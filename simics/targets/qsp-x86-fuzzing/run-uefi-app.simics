@@ -1,0 +1,94 @@
+decl {
+ ! Starts a virtual machine that boots the provided kernel, with the provided rootFS, initrd and commandline.
+
+ params from "%simics%/targets/qsp-x86/qsp-hdd-boot.simics"
+  # Do not expose all advanced options to the end user
+  except use_acpi, use_vmp, lan_bios_image, spi_flash_image,
+         enable_efi, vga_bios_image, disk0_image
+  default num_cores = 1
+  default real_time_mode = FALSE
+  default show_con0 = TRUE
+  default create_disk1 = NIL
+  default disk0_size = 200Mi
+  default enable_break_on_reboot = FALSE
+  default system_info = "QSP x86 with externally provided Kernel/RootFs/InitRd"
+  default bios_image = "%simics%/targets/qsp-x86/images/SIMICSX58IA32X64_1_1_0_r.fd"
+  
+ group "Disks"
+  param disk0_image : file("*") or nil = "%simics%/targets/qsp-x86/images/minimal_boot_disk.craff"
+  ! Disk image for disk0. Will be used as boot medium.
+
+ group "MSR"
+  param tsc_factor : int = 20
+  ! TSC factor field for platform info MSR.
+
+ group "System"
+  param auto_start_uefi_shell : bool = TRUE
+  ! Automatically enter BIOS setup and start UEFI shell
+  param tmp_dir : string or nil = NIL
+  ! Directory on the host where to place tmp files used to start the system.
+  param startup_nsh : file("*") or nil = "%simics%/targets/qsp-x86/images/run_uefi_app.nsh"
+  ! NSH script that controls things. 
+  param uefi_app : file("*")
+  ! UEFI app you wanna start. 
+
+ result system : string
+ result eth_link : string or nil
+ result service_node : string or nil
+}
+
+run-command-file targets/qsp-x86/qsp-hdd-boot.simics 
+
+@import os
+@simenv.startup_nsh_nodir = os.path.basename(simenv.startup_nsh)
+@simenv.uefi_app_nodir = os.path.basename(simenv.uefi_app)
+
+# The below branch will (when enabled) enter the BIOS menu by pressing ESC
+# after 10 seconds, then go to the third entry on the top level (by pressin DOWN twice).
+# The assumption is that this is the boot device selection (which is true for the QSP BIOS)
+# Then there is one press of UP, to select the last element in the list, which is assumed
+# to be the UEFI shell (which again is true for the QSP BIOS). Then the shell is started.
+if $auto_start_uefi_shell {
+    script-branch "UEFI Shell Enter Branch" {
+        local $kbd = $system.mb.sb.kbd
+        local $con = $system.console.con
+        local $sercon = $system.serconsole.con
+        bp.time.wait-for seconds = 10
+        $kbd.key-press ESC
+        bp.time.wait-for seconds = 3
+        foreach $i in (range 2) {
+            $kbd.key-press KP_DOWN
+            bp.time.wait-for seconds = .5
+        }
+        $kbd.key-press ENTER
+        bp.time.wait-for seconds = .5
+        $kbd.key-press KP_UP
+        bp.time.wait-for seconds = .5
+        $kbd.key-press ENTER
+        bp.time.wait-for seconds = .5
+        
+        #stop countdown
+        $kbd.key-press ENTER         
+        bp.time.wait-for seconds = .5
+        
+        $con.input "FS0:\n"
+        bp.time.wait-for seconds = 10
+
+        $con.input ("set -v UEFI_APP_ON_HOST \" " + $uefi_app + "\"\n")
+        bp.time.wait-for seconds = .5
+
+        $con.input ("set -v UEFI_APP_NODIR \" " + $uefi_app_nodir + "\"\n")
+        bp.time.wait-for seconds = .5
+
+       
+        local $manager = (start-agent-manager)
+
+        $con.input ("SimicsAgent.efi --download " + (lookup-file $startup_nsh) + "\n")
+        bp.time.wait-for seconds = .5
+        
+        $con.input ("" + $startup_nsh_nodir + "\n")
+
+    }
+}
+
+
