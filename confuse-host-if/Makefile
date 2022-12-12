@@ -1,5 +1,5 @@
-TARGET_NO_PREF_NO_SUFX=confuse_ll
-UNITS=confuse_ll
+TARGET_NO_PREF_NO_SUFX=confuse
+UNITS=confuse_ll confuse_dio
 
 .PHONY: all clean objdir
 .DEFAULT: all

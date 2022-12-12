@@ -24,6 +24,9 @@
 #include <signal.h>
 //manual declaration as we do not ship include/simics/simulator/internal.h
 extern void CORE_discard_future(void);
+
+extern void HACK_restore_state(void);
+
 typedef void (*cb_signature)(lang_void *data);
 
 #define CLASS_NAME "confuse_ll"
@@ -148,12 +151,12 @@ init_local(void)
         SIM_register_typed_attribute(cl, "send_usr2",
                                      NULL, NULL,
                                      trigger_usr2, NULL,
-                                     Sim_Attr_Session, "i", NULL,
+                                     Sim_Attr_Pseudo, "i", NULL,
                                      "Send SIGUSR2 to a process");
         SIM_register_typed_attribute(cl, "arm_auto_send_usr2",
                                      NULL, NULL,
                                      arm_usr2_on_stop, NULL,
-                                     Sim_Attr_Session, "i", NULL,
+                                     Sim_Attr_Pseudo, "i", NULL,
                                      "Arm auto-sending of SIGUSR2 on each sim stop");
 
 }

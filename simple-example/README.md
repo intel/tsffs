@@ -31,8 +31,9 @@ There are three main steps here: Build the EFI app, prepare the Simics project, 
     TARGET_ARCH           = X64
 ```
 11. Go into `edk2-libc`: `cd /path/to/workspace/edk2-libc`
-12. create a symlink pointing to `HelloFuzzing` from this repo: `ln -s /path/to/this/repo/simple-example/HelloFuzzing AppPkg/Applications/HelloFuzzing`
-13. Edit `AppPkg/AppPkg.dsc` such that it has `AppPkg/Applications/HelloFuzzing/HelloFuzzing.inf` under `[Components]`.
+12. Create a symlink pointing to `HelloFuzzing` from this repo: `ln -s /path/to/this/repo/simple-example/HelloFuzzing AppPkg/Applications/HelloFuzzing`
+13. Create a symlink pointing to `MagicPipeLib` from this repo: `ln -s /path/to/this/repo/simics/target-sw/MagicPipeLib`
+13. Edit `AppPkg/AppPkg.dsc` such that it has `AppPkg/Applications/HelloFuzzing/HelloFuzzing.inf` under `[Components]` and `MagicPipeLib|MagicPipeLib/MagicPipeLib.inf` under `[LibraryClasses]`.
 14. Invoke `build -p AppPkg/AppPkg.dsc -m AppPkg/Applications/HelloFuzzing/HelloFuzzing.inf`
 
 ### Prepare the Simics Project

@@ -29,10 +29,18 @@ Reset Simics to the snapshot created during `confuse_init`. Nothing else.
 
 Run Simics forward until Simics stops. As mentioned above, the Simics session must be configured in a way to avoid endless runs.
 
-
 ## The data input/output interface
 
-TBD
+This interface has only a single function `unsigned char* confuse_create_dio_shared_mem(unsigned long long size)`. Calling this function will create a shared memory, mmap it and return a pointer to it, ready to use.
+
+The mmap will go away when the process terminates, hence we do not need to worry about cleaning this up.
+However, the shared mem will persist. The idea is that the Simics side unlinks the shm
+as soon as it has it mmapped as well. This will ensure that the shm is deallocated as soon
+as both processes that have it mmapped die. So the only chance for a stale (and persisting)
+shm is when the Simics side fails to start or crashes before unlinking the shm.
+So in nominal execution, shm should be cleaned up at the end. For now, we recommend to check /dev/shm every now and then and potentially clean it up, in case there are some left overs.
+
+The data format in the shared mem is not yet fully defined. Right now, we only support data movement between shared memory and the magic pipe. In the current state, the contract between host side interface and Simics module is that the buffer starts with a `size_t` value defining the amount of the following bytes. These bytes will then be moved from the shared mem into the magic pipe or the other way. The format is the same for input and output.
 
 ## Building
 

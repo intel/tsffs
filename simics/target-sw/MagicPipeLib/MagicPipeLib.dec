@@ -1,0 +1,27 @@
+## @file
+#   Declarations for the UDK Standard Libraries.
+#
+# Copyright (c) 2010 - 2018, Intel Corporation. All rights reserved.<BR>
+#
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+
+[Defines]
+  DEC_SPECIFICATION              = 0x00010005
+  PACKAGE_NAME                   = MagicPipeLib
+  PACKAGE_GUID                   = 1711313e-ddda-c7c1-30ab-b89df286fdcf
+  PACKAGE_VERSION                = 0.01
+
+
+[Includes]
+  Include
+
+[Guids]
+  gStdLibTokenSpaceGuid          = { 0x1711313e, 0xddda, 0xc7c1, { 0x30, 0xab, 0xb8, 0x9d, 0xf2, 0x86, 0xfd, 0xcf }}
+
+
+[Protocols]
+  gEfiSocketProtocolGuid = { 0x58e6ed63, 0x1694, 0x440b, { 0x93, 0x88, 0xe9, 0x8f, 0xed, 0x6b, 0x65, 0xaf } }
+  gEfiSocketServiceBindingProtocolGuid = { 0x8aaedb2a, 0xa6bb, 0x47c6, { 0x94, 0xce, 0x1b, 0x80, 0x96, 0x42, 0x3f, 0x2a } }
+

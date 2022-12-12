@@ -23,7 +23,7 @@ else
         LIBSFX=a
         LIBPFX=lib
         CCLDFLAGS=
-        LIBS=-L$(PATH_TO_CONFUSE)/lib -lconfuse_ll
+        LIBS=-L$(PATH_TO_CONFUSE)/lib -lconfuse
         ARFLAGS=rs
 	else
 		$(error Platform not supported: $(UNAME_S))

@@ -25,9 +25,11 @@
   MdePkg/MdePkg.dec
   ShellPkg/ShellPkg.dec
   StdLib/StdLib.dec
+  MagicPipeLib/MagicPipeLib.dec
 
 [LibraryClasses]
   UefiLib
   ShellCEntryLib
   LibC
   MemoryAllocationLib
+  MagicPipeLib

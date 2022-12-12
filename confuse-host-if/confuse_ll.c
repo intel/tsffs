@@ -72,7 +72,7 @@ int confuse_init(const char* simics_prj, const char* config, simics_handle* simi
             }
             int rv = prctl(PR_SET_PDEATHSIG, SIGKILL); //ensure Simics dies when test dies when init caller dies
                                                        //we need to see if that makes sense when using AFL
-            rv = execlp("./simics", "./simics", config, "-e", "@SIM_main_loop()", "", NULL);
+            rv = execlp("./simics", "./simics", "-batch-mode", config, "-e", "@SIM_main_loop()", "", NULL);
             //TODO: check rvs for the two calls above
             break;
         default: //parent
