@@ -35,6 +35,7 @@ typedef void (*cb_signature)(lang_void *data);
 typedef struct {
         conf_object_t obj;
         pid_t if_pid;
+        signed int cnt;
 } confuse_ll;
 
 //get actual class from conf object prt
@@ -58,12 +59,23 @@ static void usr1_sig_handler(int signum){
 }
 
 void restore_and_clear(lang_void *data){
+    confuse_ll *run_ctrl = confuse_ll_of_obj((conf_object_t *)data);
     VT_restore_micro_checkpoint(0);
     CORE_discard_future();
+    if (kill(run_ctrl->if_pid, SIGUSR2)) {
+        SIM_log_error((conf_object_t *)data, 0, "Could not send SIGUSR2 to pid %d from restore and clear handler", run_ctrl->if_pid);
+    }
+}
+
+void stop_prof(lang_void *data){
+    SIM_run_command("selfprof.stop");
+    SIM_run_command("selfprof.list binary-func-file = selfprof.txt");
 }
 
 static void usr2_sig_handler(int signum){
-    SIM_run_alone(restore_and_clear, NULL);
+    static conf_object_t *obj = NULL;
+    if (obj == NULL) obj = SIM_get_object("fuzz_if"); //FIXME: Hard coded object name is a "no no"!
+    SIM_run_alone(restore_and_clear, obj);
 }
 
 
@@ -86,6 +98,18 @@ static void stop_callback(lang_void *callback_data,
                char *error_string)
 {
     confuse_ll *run_ctrl = confuse_ll_of_obj((conf_object_t *)callback_data);
+    
+    //below block can be used to control profiling
+    //SIM_log_info(1, (conf_object_t *)callback_data, 0, "Cnt %d", run_ctrl->cnt);
+    /*
+    if (run_ctrl->cnt == 0) {
+        SIM_run_alone(stop_prof, NULL);
+        run_ctrl->cnt = -1;
+    }
+    else
+    if (run_ctrl->cnt > 0)
+      run_ctrl->cnt--;
+      */
     if (kill(run_ctrl->if_pid, SIGUSR2)) {
         SIM_log_error((conf_object_t *)callback_data, 0, "Could not send SIGUSR2 to pid %d from stop handler", run_ctrl->if_pid);
     }
@@ -132,6 +156,7 @@ run_ctrl_init_object(conf_object_t *obj, void *param)
         if (sigaction(SIGUSR2, &sa_usr, NULL)) {
             SIM_log_error(obj, 0, "Could not install handler for SIGUSR2");
         }
+        run_ctrl->cnt = 998; //how many iteration to profile?
         return run_ctrl;
 }
 

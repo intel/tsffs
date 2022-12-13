@@ -18,6 +18,8 @@
 #define MiB * 1024 * 1024
 #define PIPE_MAGIC 0x42420f8f8ab14242ULL
 
+#if 1
+
 static int
 init_magic_pipe(pipe_handle_t* p_pipe, buffer_handle_t* p_buf)
 {
@@ -63,7 +65,7 @@ get_msg_from_pipe(buffer_handle_t buf, char** p_msg)
         *p_msg = (char*)pipe_buf_data_ptr(buf);
         return strlen(*p_msg);
 }
-
+#endif
 
 /***
   Print a welcoming message.
@@ -79,7 +81,7 @@ main (
   IN char **Argv
   )
 {
-
+#if 1
   buffer_handle_t buf = NULL;
   pipe_handle_t pipe;
   int err = init_magic_pipe(&pipe, &buf);
@@ -87,7 +89,7 @@ main (
         fprintf(stderr, "Could not init magic pipe\n");
         return -1;
   }
- 
+#endif
 
   MAGIC(42); //Inform Simics that we wanna have the start snapshot here
 
@@ -96,26 +98,26 @@ main (
   pipe_send_buf(pipe, buf); //we send nothing but get the inputs on return
 
   char* command=NULL;
-  /*unsigned int len = */ get_msg_from_pipe(buf, &command);
-  ;
+  /*unsigned int len =*/ get_msg_from_pipe(buf, &command);
 
-  /* Enable below block if you want to see something changing in a demo or so
+  /* Enable below block if you want to see something changing in a demo or so*/
+  /*
   Print(L"Hello there fellow Programmer.\n");
- 
   if (len)
     printf("%s\n",command);
   else
     Print(L"Welcome to the world of EDK II.\n");
   */
   
+#if 1  
   int ok = (command[0] == 'A')? 0 : 1;
-  
   pipe_clear_buf(buf);
   //report result
   if (ok)
       add_msg_to_pipe(buf, "OK");
   else
       add_msg_to_pipe(buf, "Fail");
+#endif
 
   pipe_send_buf(pipe, buf); //send out
 

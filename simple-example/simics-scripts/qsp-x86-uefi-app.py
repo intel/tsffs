@@ -8,8 +8,13 @@ args = [[name, commands.param_val_to_str(value)]
 simics.SIM_run_command_file_params(
     simics.SIM_lookup_file("%simics%/targets/qsp-x86-fuzzing/run-uefi-app.simics"),
     True, args)
-params.setdefault("system", simenv.system)
-params.setdefault("eth_link", simenv.eth_link)
+#params.setdefault("system", simenv.system)
+#params.setdefault("eth_link", simenv.eth_link)
+
+#conf.board.gfx.dev.console = None
+if SIM_get_batch_mode():
+  SIM_log_info(1, conf.sim, 0, 'Batch mode detected. Disconnecting console from VGA')
+  conf.board.mb.gpu.vga.console=None
 
 #Reach start state of test (indicated by MAGIC(42) in on-target test harness
 SIM_run_command('bp.hap.run-until name = Core_Magic_Instruction index = 42')
@@ -21,6 +26,7 @@ conf.dio_if.pipe = conf.magic_pipe
 
 #Enable in memory snapshot feature
 SIM_run_command('enable-unsupported-feature internals')
+#SIM_run_command('enable-unsupported-feature selfprof')
 
 #Now read some session data we get from the interface
 #TODO: make file name part of YML 
@@ -50,11 +56,15 @@ if ckpt_id != 0:
 else:
     SIM_log_info(1, conf.fuzz_if, 0, 'Microcheckpoint ID %d'%(ckpt_id))
 
+#SIM_run_command('start-selfprof') #or use vtune at that point
+
 #arm auto sender of SIGUSR2 whenever the sim stops. Since right now sim is stopped
 # this has no immediate effect
+#conf.fuzz_if.arm_auto_send_usr2 = SIM_run_command('pid') #if_pid
 conf.fuzz_if.arm_auto_send_usr2 = if_pid
 
 #Tell interface that we have reached the start state and the snapshot is ready
+#conf.fuzz_if.send_usr2 = SIM_run_command('pid') #if_pid
 conf.fuzz_if.send_usr2 = if_pid
 conf.dio_if.if_pid = if_pid
 
