@@ -21,6 +21,19 @@ In addition, it will listen to the magic pipe. The expectation is that the targe
 
 So when the module sees 0 bytes coming out of the pipe in the reader callback, it knows that in the writer callback it needs to read from the shared mem and write the new inputs for the target SW into the pipe. When it sees >0 bytes coming out of the pipe in the reader callback, it will read test results data from the pipe and write it into the shared memory and do not write anything into the pipe in the following write callback.
 
+Reaching the second magic pipe read is considered a "graceful" end of the execution (even if the return code delivered by the target SW may indicate a bad exit), because the SW did not crash. If the SW crashes, the expectation is that this either leads to crash handlers being invoked or in the system getting stuck. The former can be addressed by placing breakpoints on handlers, while the latter can be addressed by defining timeouts. Since the DIO module handles the graceful ends, a decision was made that it shall also handle the non-graceful ends.
+
+To this end, the DIO module implements the confuse_dio interface. Currently this is only available in Python in Simics. Maybe we add Simics CLI command later.
+
+- `<obj>.print_configured_abnormal_exits()`: Dump the currently configured exit breakpoints.
+- `<obj>.clear_abnormal_exits()`: Remove all currently configured exit conditions.
+- `<obj>.add_abnormal_exit(bp_id, message)`: Mark an externally configured breakpoint, identified by its breakpoint id `bp_id` as a non-graceful exit condition. When the breakpoint is hit, the simulation will stop and the message `msg` will be put into the shared memory. Currently, message are constant strings, support for dynamic strings is not yet decided upon. **NOTE**: The breakpoints must be from the legacy breakpoint system (NOT from the breakpoint manager), as the breakpoint manager does not yet support callbacks on breakpoints.
+
+
+## The confuse_dio interface
+
+This interface is implemented by the `confuse_dio` module and allows to set non-graceful exit conditions. The usage is documented in the "The confuse_dio module" section above.
+
 
 ## Simics scripts in targets/qsp-x86-fuzzing
 

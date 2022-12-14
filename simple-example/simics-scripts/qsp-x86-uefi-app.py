@@ -24,6 +24,9 @@ SIM_create_object('confuse_ll','fuzz_if',[])
 SIM_create_object('confuse_dio','dio_if',[])
 conf.dio_if.pipe = conf.magic_pipe
 
+bp_id=SIM_run_command('b 0x00000000def6249c') #taken from IDT (UD handler)
+conf.dio_if.iface.confuse_dio.add_abnormal_exit(bp_id, 'Application crash (UD)')
+
 #Enable in memory snapshot feature
 SIM_run_command('enable-unsupported-feature internals')
 #SIM_run_command('enable-unsupported-feature selfprof')

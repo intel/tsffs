@@ -25,12 +25,9 @@
 //manual declaration as we do not ship include/simics/simulator/internal.h
 extern void CORE_discard_future(void);
 
-extern void HACK_restore_state(void);
-
 typedef void (*cb_signature)(lang_void *data);
 
 #define CLASS_NAME "confuse_ll"
-
 
 typedef struct {
         conf_object_t obj;

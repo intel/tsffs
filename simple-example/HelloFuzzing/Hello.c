@@ -14,9 +14,14 @@
 #include  <string.h>
 #include  <unistd.h>
 
+#pragma GCC diagnostic ignored "-Wunused-function"
+
 #define KiB * 1024
 #define MiB * 1024 * 1024
 #define PIPE_MAGIC 0x42420f8f8ab14242ULL
+
+//uncomment below if you want to have a human visible demo
+//#define DEMO
 
 #if 1
 
@@ -98,16 +103,19 @@ main (
   pipe_send_buf(pipe, buf); //we send nothing but get the inputs on return
 
   char* command=NULL;
-  /*unsigned int len =*/ get_msg_from_pipe(buf, &command);
+  unsigned int len = get_msg_from_pipe(buf, &command);
 
   /* Enable below block if you want to see something changing in a demo or so*/
-  /*
+  #ifdef DEMO
   Print(L"Hello there fellow Programmer.\n");
+  
   if (len)
     printf("%s\n",command);
-  else
-    Print(L"Welcome to the world of EDK II.\n");
-  */
+  
+  #endif
+  
+  if (command[0] == 'H') //force an actual crash
+      __asm__ (".byte 0x06");
   
 #if 1  
   int ok = (command[0] == 'A')? 0 : 1;

@@ -1,7 +1,7 @@
 TARGET_NO_PREF_NO_SUFX=runme
 UNITS=testcode
 
-.PHONY: all clean confuse
+.PHONY: all clean
 .DEFAULT: all
 
 OBJPRE ?=
@@ -13,6 +13,7 @@ CFLAGS += -O3 -std=gnu99 $(CFLAGS_COMMON)
 DEP_CFLAGS = -MM
 DEP_CC=$(CC)
 OBJEXT=o
+CONFUSELIB=$(PATH_TO_CONFUSE)/lib/libconfuse.a
 
 
 ifeq ($(OS),Windows_NT)
@@ -35,18 +36,18 @@ TARGET=$(TARGET_NO_PREF_NO_SUFX)
 OBJECTS=$(patsubst %,obj/$(OBJPRE)%.$(OBJEXT),$(UNITS))
 DEPENDS=$(patsubst %,obj/$(OBJPRE)%.d,$(UNITS))
 
+all: $(TARGET)
 
-all: confuse $(TARGET)
-
-confuse:
+$(CONFUSELIB):
 	$(MAKE) -C $(PATH_TO_CONFUSE) 
 
 clean:
 	$(RM) -rf obj $(TARGET)
+	$(MAKE) -C $(PATH_TO_CONFUSE) clean
 
 -include $(DEPENDS)
 
-$(TARGET): $(OBJECTS) 
+$(TARGET): $(CONFUSELIB) $(OBJECTS) 
 	@echo "Creating executable $@ "
 	$(CC) $(CCLDFLAGS) -o $@ $^ $(LIBS)
 

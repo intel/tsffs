@@ -19,6 +19,7 @@
 #include <magic_pipe_setup_interface.h>
 #include <magic_pipe_reader_interface.h>
 #include <magic_pipe_writer_interface.h>
+#include <confuse_dio-interface.h>
 #include <simics/simulator-api.h>
 #include <simics/util/os.h>
 #include <stdio.h>
@@ -41,6 +42,17 @@
 /* The reserved Pipe Example magic number. */
 #define PIPE_MAGIC 0x42420f8f8ab14242ULL
 
+typedef struct exit_dsc_struct exit_dsc;
+
+struct exit_dsc_struct {
+  char * msg;
+  breakpoint_id_t bp;
+  exit_dsc* next;
+  hap_handle_t hap;
+  conf_object_t* obj;
+};
+
+
 typedef struct {
         conf_object_t obj;
 
@@ -56,10 +68,10 @@ typedef struct {
         unsigned char* shm;
         int skip_write_to_target;
         
-        //char* to_target; //message to send to target
-        //char* from_target; //message coming from target
-        notifier_type_t ntfy_type; //our notifier type
+        exit_dsc* exit_dsc_list;
+
 } confuse_dio;
+
 
 //get actual class from conf object prt
 static confuse_dio *
@@ -183,13 +195,8 @@ dio_init_object(conf_object_t *obj, void *param)
         VT_set_object_checkpointable(obj, false);
         man->magic = PIPE_MAGIC;
 
-        /* WARNING:
-           For this simple example, we can only deal with
-           messages that are 256 bytes or smaller.
-        */
-        //man->from_target = MM_MALLOC(256, char);
-        //man->from_target[0] = 0;
-        man->ntfy_type = SIM_notifier_type("MAGICPIPE_from_harness");
+        man->exit_dsc_list = MM_ZALLOC(1, exit_dsc);
+        man->exit_dsc_list->obj = obj;
         return man;
 }
 
@@ -292,6 +299,65 @@ dio_set_ifpid(void *param, conf_object_t *obj, attr_value_t *val,
         return Sim_Set_Ok;
 }
 
+void bp_handler(lang_void *callback_data,
+       conf_object_t *trigger_obj,
+       int64 breakpoint_number,
+       generic_transaction_t *memop)
+{
+    exit_dsc* tmp  = (exit_dsc*)callback_data;
+    confuse_dio *dio = confuse_dio_of_obj(tmp->obj);
+    SIM_log_info(2, (conf_object_t*)dio, 0, "Non-graceful exit detected.");
+    size_t len = strlen(tmp->msg)+1;
+    memcpy(dio->shm,&len,sizeof(size_t));
+    memcpy(dio->shm + sizeof(size_t), tmp->msg, len);
+    SIM_break_simulation(NULL);
+}
+
+
+void print_configured_abnormal_exits(conf_object_t *obj){
+    confuse_dio *dio = confuse_dio_of_obj(obj);
+    exit_dsc* tmp = dio->exit_dsc_list;
+    while (tmp->next) { //last (and unused) element is the one with no next
+        SIM_LOG_INFO(1, obj, 0, "BPID <%d> : '%s'", tmp->bp, tmp->msg);
+        tmp=tmp->next;
+    }
+}
+
+void clear_abnormal_exits(conf_object_t *obj) {
+   confuse_dio *dio = confuse_dio_of_obj(obj);
+   exit_dsc* tmp = dio->exit_dsc_list;
+   while (tmp) {
+       exit_dsc* e = tmp->next;
+       if (e) { //has next, must have been used.
+         MM_FREE(tmp->msg);
+         SIM_log_info(1, obj, 0, "Removing bp hap handler");
+         SIM_hap_delete_callback_id("Core_Breakpoint_Memop", tmp->hap);
+       }
+       if (tmp != dio->exit_dsc_list) MM_FREE(tmp);
+       else tmp->next = NULL;
+       tmp = e;
+   }
+}
+
+void add_abnormal_exit(conf_object_t *obj, breakpoint_id_t bp, const char* message){
+    confuse_dio *dio = confuse_dio_of_obj(obj);
+    exit_dsc* tmp = dio->exit_dsc_list;
+    while (tmp->next) {
+        if (tmp->bp == bp) {
+            SIM_LOG_ERROR(obj, 0, "BP ID already registered. Ignoring.");
+            return;
+        }
+        tmp = tmp->next; //iterate up to end of list (end of list is unused)
+    }
+    tmp->next = MM_ZALLOC(1, exit_dsc); //pre-allocate next
+    tmp->next->obj = obj;
+    tmp->bp = bp;
+    tmp->msg = MM_MALLOC(strlen(message)+1, char);
+    strcpy(tmp->msg, message);
+    SIM_log_info(1, obj, 0, "Adding BP hap handler");
+    tmp->hap = SIM_hap_add_callback_index("Core_Breakpoint_Memop", bp_handler, tmp, tmp->bp);
+}
+
 /* Register the pipe manager class and some attributes. */
 void
 init_local(void)
@@ -327,5 +393,11 @@ init_local(void)
                                      dio_set_pipe, NULL,
                                      Sim_Attr_Session, "o|n", NULL,
                                      "Connected pipe object or NIL");
+        static const confuse_dio_interface_t dio_interface = {
+                .print_configured_abnormal_exits = print_configured_abnormal_exits,
+                .clear_abnormal_exits = clear_abnormal_exits,
+                .add_abnormal_exit = add_abnormal_exit,
+        };
+        SIM_REGISTER_INTERFACE(cl, confuse_dio, &dio_interface);
 
 }

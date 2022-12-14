@@ -25,6 +25,7 @@ int main(int argc, char** argv) {
 
   simics_handle simics;
   int failcnt=0;
+  int crashcnt=0;
   
   if (argc != 2) {
       printf("Please provide a path to a Simics project as an argument.\n");
@@ -54,6 +55,7 @@ int main(int argc, char** argv) {
       size_t len = 20;
       rand_string(shm_array+sizeof(size_t), len); //write this into shm
       memcpy(shm_array, &len, sizeof(size_t));
+      //printf("Sending %s\n", shm_array+sizeof(size_t)); //right now we know that we just get a string
       
       //TODO: Setup input data etc
       //      Maybe based on some predefined format that has
@@ -64,14 +66,16 @@ int main(int argc, char** argv) {
 
       //printf("Iteration %d %s\n", i, shm_array+sizeof(size_t)); //right now we know that we just get a string
       if (strcmp(shm_array+sizeof(size_t), "Fail") == 0) failcnt++;
-      //sleep(1);
+      else
+      if (strcmp(shm_array+sizeof(size_t), "Application crash (UD)") == 0) crashcnt++;
+      //usleep(100000);  //DEMO: enable this line when you want to do a demo to humans
   }
   clock_gettime(CLOCK_REALTIME, &stop);
   
   double duration = (stop.tv_sec - start.tv_sec) +
                     (stop.tv_nsec - start.tv_nsec) / 1000000000.0;
   
-  printf("Total duration %lf with %d failures \n", duration, failcnt);
+  printf("Total duration %lf with %d failures and %d crashes \n", duration, failcnt, crashcnt);
   return 0;
 
 }

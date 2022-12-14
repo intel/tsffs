@@ -7,7 +7,7 @@ MODULE_CLASSES = confuse_dio
 SRC_FILES = confuse-dio.c
 #PYTHON_FILES := module_load.py simics_start.py
 
-EXTRA_MODULE_VPATH = magic-pipe-interface
+EXTRA_MODULE_VPATH = magic-pipe-interface confuse_dio-interface
 
 SIMICS_API := latest
 THREAD_SAFE = yes

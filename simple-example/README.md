@@ -33,8 +33,8 @@ There are three main steps here: Build the EFI app, prepare the Simics project, 
 11. Go into `edk2-libc`: `cd /path/to/workspace/edk2-libc`
 12. Create a symlink pointing to `HelloFuzzing` from this repo: `ln -s /path/to/this/repo/simple-example/HelloFuzzing AppPkg/Applications/HelloFuzzing`
 13. Create a symlink pointing to `MagicPipeLib` from this repo: `ln -s /path/to/this/repo/simics/target-sw/MagicPipeLib`
-13. Edit `AppPkg/AppPkg.dsc` such that it has `AppPkg/Applications/HelloFuzzing/HelloFuzzing.inf` under `[Components]` and `MagicPipeLib|MagicPipeLib/MagicPipeLib.inf` under `[LibraryClasses]`.
-14. Invoke `build -p AppPkg/AppPkg.dsc -m AppPkg/Applications/HelloFuzzing/HelloFuzzing.inf`
+14. Edit `AppPkg/AppPkg.dsc` such that it has `AppPkg/Applications/HelloFuzzing/HelloFuzzing.inf` under `[Components]` and `MagicPipeLib|MagicPipeLib/MagicPipeLib.inf` under `[LibraryClasses]`.
+15. Invoke `build -p AppPkg/AppPkg.dsc -m AppPkg/Applications/HelloFuzzing/HelloFuzzing.inf`
 
 ### Prepare the Simics Project
 
@@ -43,11 +43,13 @@ There are three main steps here: Build the EFI app, prepare the Simics project, 
 3. Ensure the QSP package is known in the project: `echo /path/to/your/simics-qsp-x86-6.0.65 > .package-list`
 4. Update the project: `./bin/project-setup`
 5. Sym-link the `confuse_ll` Simics module to the project: `ln -s /path/to/this/repo/simics/modules/confuse_ll modules/confuse_ll`
-6. Sym-link the `qsp-x86-fuzzing` Simics targets directory to the project: `ln -s /path/to/this/repo/simics/targets/qsp-x86-fuzzing targets/qsp-x86-fuzzing`
-7. Create a directory called `simple-example` in the project: `mkdir simple-example`
-8. Sym-link `simics-scripts` from the example in the repo to your project: `ln -s /path/to/this/repo/simple-example/simics-scripts simple-example/simics-scripts`
-9. Sym-link `HelloFuzzing.efi` into the project: `ln -s /path/to/workspace/edk2/Build/AppPkg/DEBUG_GCC5/X64/HelloFuzzing.efi`
-10. Invoke `make` in the project.
+6. Sym-link the `confuse_dio` Simics module to the project: `ln -s /path/to/this/repo/simics/modules/confuse_dio modules/confuse_dio`
+7. Sym-link the `confuse_dio-interface` Simics module to the project: `ln -s /path/to/this/repo/simics/modules/confuse_dio-interface modules/confuse_dio-interface`
+8. Sym-link the `qsp-x86-fuzzing` Simics targets directory to the project: `ln -s /path/to/this/repo/simics/targets/qsp-x86-fuzzing targets/qsp-x86-fuzzing`
+9. Create a directory called `simple-example` in the project: `mkdir simple-example`
+10. Sym-link `simics-scripts` from the example in the repo to your project: `ln -s /path/to/this/repo/simple-example/simics-scripts simple-example/simics-scripts`
+11. Sym-link `HelloFuzzing.efi` into the project: `ln -s /path/to/workspace/edk2/Build/AppPkg/DEBUG_GCC5/X64/HelloFuzzing.efi`
+12. Invoke `make` in the project.
 
 ### Build library and example
 
@@ -59,5 +61,8 @@ There are three main steps here: Build the EFI app, prepare the Simics project, 
 1. Go into the simple-example directory of this repo: `cd /path/to/this/repo/simple-example`
 2. Invoke `runme` giving it the **absolute** path to your project: `./runme /path/to/the/simics-project`
 
-If all works out, you should see Simics starting, going into the UEFI shell, load your EFI app and run it 10 times (right now everytime with the same data, as we have not yet finished the data input/output interface). Note that we have a sleep time of one second in there to allow you to see something.
+The test runs a 1000 times, providing random strings as input. If the string starts with an 'H' the application will crash (illegal instruction), if it starts with an 'A' it will fail (graceful end but with bad return value) and in all other cases if will end gracefully with a good return value.
+
+If you want to have a visual demo, edit `simple-example/testcode.c` and insert a short wait time (the line is commented accordingly), edit `simple-example/HelloFuzzing/Hello.c` and uncomment the `DEMO` macro definition, and finally edit `confuse-host-if/confuse_ll.c` and remove the `"-batch-mode"` argument from the `execlp` call.
+
 

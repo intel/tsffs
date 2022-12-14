@@ -73,6 +73,8 @@ int confuse_init(const char* simics_prj, const char* config, simics_handle* simi
             int rv = prctl(PR_SET_PDEATHSIG, SIGKILL); //ensure Simics dies when test dies when init caller dies
                                                        //we need to see if that makes sense when using AFL
             DBG_OUT(1, "Starting Simics.");
+            //TODO: add possiblity to not start in batch-mode (for demos)
+            //      Maybe we should parse the config ourselves and extract some values we want
             rv = execlp("./simics", "./simics",  config, "-batch-mode", "-e", "@SIM_main_loop()", NULL);
             //TODO: check rvs for the two calls above
             break;
