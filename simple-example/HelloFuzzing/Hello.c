@@ -15,6 +15,7 @@
 #include  <unistd.h>
 
 #pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic ignored "-Wunused-variable"
 
 #define KiB * 1024
 #define MiB * 1024 * 1024
