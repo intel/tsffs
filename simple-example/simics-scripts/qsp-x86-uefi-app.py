@@ -21,11 +21,15 @@ SIM_run_command('bp.hap.run-until name = Core_Magic_Instruction index = 42')
 
 #Create our glue objects
 SIM_create_object('confuse_ll','fuzz_if',[])
-SIM_create_object('confuse_dio','dio_if',[])
+SIM_create_object('confuse_dio','dio_if',[['queue',SIM_get_object(simenv.system).mb.cpu0.core[0][0]]])
 conf.dio_if.pipe = conf.magic_pipe
 
+
 bp_id=SIM_run_command('b 0x00000000def6249c') #taken from IDT (UD handler)
-conf.dio_if.iface.confuse_dio.add_abnormal_exit(bp_id, 'Application crash (UD)')
+conf.dio_if.iface.confuse_dio.add_abnormal_exit_bp(bp_id, 'Application crash (UD)')
+#Always create the timeout condition before creating the snapshot to ensure
+# the timeout event is saved as well
+conf.dio_if.iface.confuse_dio.add_abnormal_exit_to(250,   'Timeout (250ms)')
 
 #Enable in memory snapshot feature
 SIM_run_command('enable-unsupported-feature internals')

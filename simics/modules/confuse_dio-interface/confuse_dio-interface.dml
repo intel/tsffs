@@ -20,7 +20,8 @@ header %{
 extern typedef struct {
     void (*print_configured_abnormal_exits)(conf_object_t *obj);
     void (*clear_abnormal_exits)(conf_object_t *obj);
-    void (*add_abnormal_exit)(conf_object_t *obj, breakpoint_id_t bp, const char* message);
+    void (*add_abnormal_exit_bp)(conf_object_t *obj, breakpoint_id_t bp, const char* message);
+    void (*add_abnormal_exit_to)(conf_object_t *obj, uint64_t usecs, const char* message);
 } confuse_dio_interface_t;
 
 extern const char *const CONFUSE_DIO_INTERFACE;

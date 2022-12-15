@@ -27,7 +27,8 @@ extern "C" {
 SIM_INTERFACE(confuse_dio) {
         void (*print_configured_abnormal_exits)(conf_object_t *obj);
         void (*clear_abnormal_exits)(conf_object_t *obj);
-        void (*add_abnormal_exit)(conf_object_t *obj, breakpoint_id_t bp, const char* message);
+        void (*add_abnormal_exit_bp)(conf_object_t *obj, breakpoint_id_t bp, const char* message);
+        void (*add_abnormal_exit_to)(conf_object_t *obj, uint64 usecs, const char* message);
 };
 
 /* Use a #define like this whenever you need to use the name of the interface

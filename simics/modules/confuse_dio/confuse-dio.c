@@ -33,7 +33,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
-       
+
        
 
 
@@ -46,6 +46,7 @@ typedef struct exit_dsc_struct exit_dsc;
 
 struct exit_dsc_struct {
   char * msg;
+  conf_object_t*  clock;
   breakpoint_id_t bp;
   exit_dsc* next;
   hap_handle_t hap;
@@ -69,6 +70,7 @@ typedef struct {
         int skip_write_to_target;
         
         exit_dsc* exit_dsc_list;
+        exit_dsc* to_entry;
 
 } confuse_dio;
 
@@ -192,7 +194,7 @@ dio_init_object(conf_object_t *obj, void *param)
         confuse_dio *man = confuse_dio_of_obj(obj);
         /* Make sure the object isn't checkpointable
            because it contains external system state. */
-        VT_set_object_checkpointable(obj, false);
+        //VT_set_object_checkpointable(obj, false);
         man->magic = PIPE_MAGIC;
 
         man->exit_dsc_list = MM_ZALLOC(1, exit_dsc);
@@ -299,18 +301,23 @@ dio_set_ifpid(void *param, conf_object_t *obj, attr_value_t *val,
         return Sim_Set_Ok;
 }
 
+
+static void non_graceful_test_end(confuse_dio *dio, exit_dsc* end)
+{
+    SIM_log_info(2, (conf_object_t*)dio, 0, "Non-graceful exit detected.");
+    size_t len = strlen(end->msg)+1;
+    memcpy(dio->shm,&len,sizeof(size_t));
+    memcpy(dio->shm + sizeof(size_t), end->msg, len);
+    SIM_break_simulation(NULL);
+}
+
 void bp_handler(lang_void *callback_data,
        conf_object_t *trigger_obj,
        int64 breakpoint_number,
        generic_transaction_t *memop)
 {
-    exit_dsc* tmp  = (exit_dsc*)callback_data;
-    confuse_dio *dio = confuse_dio_of_obj(tmp->obj);
-    SIM_log_info(2, (conf_object_t*)dio, 0, "Non-graceful exit detected.");
-    size_t len = strlen(tmp->msg)+1;
-    memcpy(dio->shm,&len,sizeof(size_t));
-    memcpy(dio->shm + sizeof(size_t), tmp->msg, len);
-    SIM_break_simulation(NULL);
+    exit_dsc* tmp = (exit_dsc*)callback_data;
+    non_graceful_test_end(confuse_dio_of_obj(tmp->obj), tmp);
 }
 
 
@@ -318,9 +325,21 @@ void print_configured_abnormal_exits(conf_object_t *obj){
     confuse_dio *dio = confuse_dio_of_obj(obj);
     exit_dsc* tmp = dio->exit_dsc_list;
     while (tmp->next) { //last (and unused) element is the one with no next
-        SIM_LOG_INFO(1, obj, 0, "BPID <%d> : '%s'", tmp->bp, tmp->msg);
+        if (tmp->clock == 0)
+            SIM_LOG_INFO(1, obj, 0, "BPID <%d> : '%s'", tmp->bp, tmp->msg);
+        else
+            SIM_LOG_INFO(1, obj, 0, "Timeout %d : '%s'", tmp->bp, tmp->msg);
         tmp=tmp->next;
     }
+}
+
+static event_class_t *timeout_event;
+
+static void
+timeout_event_cb(conf_object_t *obj, lang_void *data)
+{
+    confuse_dio *dio = confuse_dio_of_obj(obj);
+    non_graceful_test_end(dio, dio->to_entry);
 }
 
 void clear_abnormal_exits(conf_object_t *obj) {
@@ -330,20 +349,27 @@ void clear_abnormal_exits(conf_object_t *obj) {
        exit_dsc* e = tmp->next;
        if (e) { //has next, must have been used.
          MM_FREE(tmp->msg);
-         SIM_log_info(1, obj, 0, "Removing bp hap handler");
-         SIM_hap_delete_callback_id("Core_Breakpoint_Memop", tmp->hap);
+         if (tmp->clock == 0) {
+             SIM_log_info(1, obj, 0, "Removing bp hap handler");
+             SIM_hap_delete_callback_id("Core_Breakpoint_Memop", tmp->hap);
+         }
+         else{
+           SIM_log_info(1, obj, 0, "Removing timeout event");
+           SIM_event_cancel_time(tmp->clock, timeout_event, obj, NULL, NULL);
+         }
        }
+       tmp->next = NULL;
        if (tmp != dio->exit_dsc_list) MM_FREE(tmp);
-       else tmp->next = NULL;
        tmp = e;
    }
+   dio->to_entry = NULL;
 }
 
 void add_abnormal_exit(conf_object_t *obj, breakpoint_id_t bp, const char* message){
     confuse_dio *dio = confuse_dio_of_obj(obj);
     exit_dsc* tmp = dio->exit_dsc_list;
     while (tmp->next) {
-        if (tmp->bp == bp) {
+        if (tmp->clock == 0 && tmp->bp == bp) {
             SIM_LOG_ERROR(obj, 0, "BP ID already registered. Ignoring.");
             return;
         }
@@ -351,11 +377,35 @@ void add_abnormal_exit(conf_object_t *obj, breakpoint_id_t bp, const char* messa
     }
     tmp->next = MM_ZALLOC(1, exit_dsc); //pre-allocate next
     tmp->next->obj = obj;
+    tmp->clock = NULL; 
     tmp->bp = bp;
     tmp->msg = MM_MALLOC(strlen(message)+1, char);
     strcpy(tmp->msg, message);
     SIM_log_info(1, obj, 0, "Adding BP hap handler");
     tmp->hap = SIM_hap_add_callback_index("Core_Breakpoint_Memop", bp_handler, tmp, tmp->bp);
+}
+
+
+void add_timeout(conf_object_t *obj, uint64 usecs, const char* message){
+    //TODO: Maybe check if a microcheckpoint exists and if so, abort
+    //      Creating this after a microcheckpoint is created does not make sense
+    //      because then the event would not be restored
+    confuse_dio *dio = confuse_dio_of_obj(obj);
+    exit_dsc* tmp = dio->exit_dsc_list;
+    if (dio->to_entry) {
+        SIM_LOG_ERROR(obj, 0, "Timeout already registered. Ignoring.");
+        return;
+    }
+    while (tmp->next) tmp = tmp->next; //iterate up to end of list (end of list is unused)
+    tmp->next = MM_ZALLOC(1, exit_dsc); //pre-allocate next
+    tmp->next->obj = obj;
+    tmp->clock = SIM_object_clock(obj); 
+    tmp->bp = usecs;
+    tmp->msg = MM_MALLOC(strlen(message)+1, char);
+    strcpy(tmp->msg, message);
+    dio->to_entry = tmp;
+    SIM_log_info(1, obj, 0, "Adding timeout event");
+    SIM_event_post_time(tmp->clock, timeout_event, obj, (double )usecs / 1000.0, NULL);
 }
 
 /* Register the pipe manager class and some attributes. */
@@ -396,8 +446,12 @@ init_local(void)
         static const confuse_dio_interface_t dio_interface = {
                 .print_configured_abnormal_exits = print_configured_abnormal_exits,
                 .clear_abnormal_exits = clear_abnormal_exits,
-                .add_abnormal_exit = add_abnormal_exit,
+                .add_abnormal_exit_bp = add_abnormal_exit,
+                .add_abnormal_exit_to = add_timeout,
         };
         SIM_REGISTER_INTERFACE(cl, confuse_dio, &dio_interface);
+        timeout_event = SIM_register_event(
+                "timeout_event", cl, 0,
+                timeout_event_cb, NULL, NULL, NULL, NULL);
 
 }

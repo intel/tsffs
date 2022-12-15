@@ -26,6 +26,8 @@ int main(int argc, char** argv) {
   simics_handle simics;
   int failcnt=0;
   int crashcnt=0;
+  int tocnt=0;
+  int success=0;
   
   if (argc != 2) {
       printf("Please provide a path to a Simics project as an argument.\n");
@@ -68,6 +70,10 @@ int main(int argc, char** argv) {
       if (strcmp(shm_array+sizeof(size_t), "Fail") == 0) failcnt++;
       else
       if (strcmp(shm_array+sizeof(size_t), "Application crash (UD)") == 0) crashcnt++;
+      else
+      if (strcmp(shm_array+sizeof(size_t), "Timeout (250ms)") == 0) tocnt++;
+      else
+        success++;
       //usleep(100000);  //DEMO: enable this line when you want to do a demo to humans
   }
   clock_gettime(CLOCK_REALTIME, &stop);
@@ -75,7 +81,7 @@ int main(int argc, char** argv) {
   double duration = (stop.tv_sec - start.tv_sec) +
                     (stop.tv_nsec - start.tv_nsec) / 1000000000.0;
   
-  printf("Total duration %lf with %d failures and %d crashes \n", duration, failcnt, crashcnt);
+  printf("Total duration %lf with %d failures and %d crashes and %d timeouts and %d successes\n", duration, failcnt, crashcnt, tocnt, success);
   return 0;
 
 }

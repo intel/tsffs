@@ -103,8 +103,8 @@ main (
   pipe_clear_buf(buf);
   pipe_send_buf(pipe, buf); //we send nothing but get the inputs on return
 
-  char* command=NULL;
-  unsigned int len = get_msg_from_pipe(buf, &command);
+  volatile char* command=NULL;
+  unsigned int len = get_msg_from_pipe(buf, (char**)&command);
 
   /* Enable below block if you want to see something changing in a demo or so*/
   #ifdef DEMO
@@ -117,6 +117,10 @@ main (
   
   if (command[0] == 'H') //force an actual crash
       __asm__ (".byte 0x06");
+
+  if (command[0] == 'M') //force a timeout
+     sleep(1);
+
   
 #if 1  
   int ok = (command[0] == 'A')? 0 : 1;
