@@ -105,17 +105,21 @@ pipe_agent_writer(conf_object_t *cpu, uintptr_t bufh, uint64 magic)
 
         buffer_t buf = man->pipe_wr->write_data_direct(man->pipe, bufh);
         SIM_log_info(2, (conf_object_t*)man, 0, "Checking SHM");
-        size_t len;
-        memcpy(&len, man->shm, sizeof(size_t));
-        if (len > 0) {
-            SIM_log_info(3, (conf_object_t*)man, 0, "Found %ld bytes in SHM", len);
-            if (buf.len < len) {
-                SIM_log_error((conf_object_t*)man, 0, "Magic pipe buffer too small (%ld)!", buf.len);
-                return;
+        if (man->shm){
+            size_t len;
+            memcpy(&len, man->shm, sizeof(size_t));
+            if (len > 0) {
+                SIM_log_info(3, (conf_object_t*)man, 0, "Found %ld bytes in SHM", len);
+                if (buf.len < len) {
+                    SIM_log_error((conf_object_t*)man, 0, "Magic pipe buffer too small (%ld)!", buf.len);
+                    return;
+                }
+                memcpy(buf.data, man->shm + sizeof(size_t), len);
+                SIM_log_info(3, (conf_object_t*)man, 0, "Copied %s", buf.data);
+                man->pipe_wr->write_data_add(man->pipe, bufh, len);
             }
-            memcpy(buf.data, man->shm + sizeof(size_t), len);
-            SIM_log_info(3, (conf_object_t*)man, 0, "Copied %s", buf.data);
-            man->pipe_wr->write_data_add(man->pipe, bufh, len);
+        } else {
+            SIM_log_info(1, (conf_object_t*)man, 0, "SHM not initialized. Not pushing any data into magic pipe");
         }
 }
 
@@ -131,12 +135,16 @@ pipe_agent_reader(conf_object_t *cpu, uintptr_t bufh, uint64 magic)
         SIM_log_info(3, (conf_object_t*)man, 0, "Getting data from pipe?");
         if (len>0) { //must be end of test
             //TODO: Figure out a well working serialization here
-            SIM_log_info(2, (conf_object_t*)man, 0, "Got data from SWUT");
-            bytes_t buf = man->pipe_rd->read_data_direct(man->pipe, bufh, 0);
-            memcpy(man->shm,&len,sizeof(size_t));
-            memcpy(man->shm + sizeof(size_t), buf.data, len);
-            man->skip_write_to_target = 1;
-            SIM_break_simulation(NULL);
+            if (man->shm){
+                SIM_log_info(2, (conf_object_t*)man, 0, "Got data from SWUT");
+                bytes_t buf = man->pipe_rd->read_data_direct(man->pipe, bufh, 0);
+                memcpy(man->shm,&len,sizeof(size_t));
+                memcpy(man->shm + sizeof(size_t), buf.data, len);
+                man->skip_write_to_target = 1;
+                SIM_break_simulation(NULL);
+            } else {
+                SIM_log_info(1, (conf_object_t*)man, 0, "SHM not initialized. Not pushing any data from magic pipe into SHM.");
+            }
         }
         //  NOTE: Start of test access will simply write 0 bytes
 }
@@ -283,6 +291,7 @@ dio_set_ifpid(void *param, conf_object_t *obj, attr_value_t *val,
         int fd = shm_open(mem_name, O_RDWR, 0 /*ignored anyways*/);
         if (fd < 0) {
             SIM_log_error(obj, 0, "Could not open shared mem %s", mem_name);
+            dio->shm = NULL;
             return Sim_Set_Illegal_Value;
         }
         char fullpath[256];  
@@ -305,9 +314,14 @@ dio_set_ifpid(void *param, conf_object_t *obj, attr_value_t *val,
 static void non_graceful_test_end(confuse_dio *dio, exit_dsc* end)
 {
     SIM_log_info(2, (conf_object_t*)dio, 0, "Non-graceful exit detected.");
-    size_t len = strlen(end->msg)+1;
-    memcpy(dio->shm,&len,sizeof(size_t));
-    memcpy(dio->shm + sizeof(size_t), end->msg, len);
+    if (dio->shm){
+        size_t len = strlen(end->msg)+1;
+        memcpy(dio->shm,&len,sizeof(size_t));
+        memcpy(dio->shm + sizeof(size_t), end->msg, len);
+    }
+    else {
+        SIM_log_info(1, (conf_object_t*)dio, 0, "SHM uninitilaized. Ignoring write.");
+    }
     SIM_break_simulation(NULL);
 }
 
