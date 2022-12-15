@@ -15,7 +15,7 @@ decl {
   default bios_image = "%simics%/targets/qsp-x86/images/SIMICSX58IA32X64_1_1_0_r.fd"
   
  group "Disks"
-  param disk0_image : file("*") or nil = "%simics%/targets/qsp-x86/images/minimal_boot_disk.craff"
+  param disk0_image : file("*") or nil = "%simics%/targets/qsp-x86-fuzzing/images/minimal_boot_disk.craff"
   ! Disk image for disk0. Will be used as boot medium.
 
  group "MSR"
@@ -27,7 +27,7 @@ decl {
   ! Automatically enter BIOS setup and start UEFI shell
   param tmp_dir : string or nil = NIL
   ! Directory on the host where to place tmp files used to start the system.
-  param startup_nsh : file("*") or nil = "%simics%/targets/qsp-x86/images/run_uefi_app.nsh"
+  param startup_nsh : file("*") or nil = "%simics%/targets/qsp-x86-fuzzing/images/run_uefi_app.nsh"
   ! NSH script that controls things. 
   param uefi_app : file("*")
   ! UEFI app you wanna start. 
