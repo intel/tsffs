@@ -35,6 +35,9 @@ To this end, the DIO module implements the confuse_dio interface. Currently this
 
 This interface is implemented by the `confuse_dio` module and allows to set non-graceful exit conditions. The usage is documented in the "The confuse_dio module" section above.
 
+## The afl_branch_tracer
+
+Once created, the tracer can be connected to a processor by setting the attribute `processor` of the `afl_branch_tracer` object. In order to be able to write the trace information out, the tracer needs to know the name of the shared memory. This name is _without_ any path. The tracer will prepend `/dev/shm` as needed.
 
 ## Simics scripts in targets/qsp-x86-fuzzing
 

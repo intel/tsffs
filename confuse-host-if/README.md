@@ -15,15 +15,16 @@ Expectations on the used Simics config:
 - Automatically runs up to a point from where a fuzzing loop shall start
 - Create an in-memory snapshot at that point
 - Creates an instance of the `confuse_ll` Simics module (see `simics/modules/confuse-ll` in this repo).
-- Informs the created instance of `confuse_ll` about the PID of the process using the low level interface which it can read out of the file `<SimicsProject>/_if_data_.tmp`
-- Defines stop conditions for the test that ensure the Simics session will not run endlessly when continuing from the created snapshot.
+- Creates an instance of the `confuse_dio` Simics module (see `simics/modules/confuse-dio` in this repo).
+- Informs the created instances of `confuse_ll` and `confuse_dio` about the PID of the process using the low level interface which it can read out of the file `<SimicsProject>/_if_data_.tmp` created by `confuse_init`
+- Informs the created instance of `afl-branch-tracer` about the name of the AFL shared memory which it can read out of the file `<SimicsProject>/_if_data_.tmp` created by `confuse_init`
+- Defines stop conditions (using the instance of `confuse_dio`) for the test that ensure the Simics session will not run endlessly when continuing from the created snapshot.
 
 The call to `confuse_init` will only return after all of the above is done.
 
 `int confuse_reset(const simics_handle simics)`
 
 Reset Simics to the snapshot created during `confuse_init`. Nothing else.
-
 
 `int confuse_run(const simics_handle simics);`
 

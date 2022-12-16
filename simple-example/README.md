@@ -45,11 +45,12 @@ There are three main steps here: Build the EFI app, prepare the Simics project, 
 5. Sym-link the `confuse_ll` Simics module to the project: `ln -s /path/to/this/repo/simics/modules/confuse_ll modules/confuse_ll`
 6. Sym-link the `confuse_dio` Simics module to the project: `ln -s /path/to/this/repo/simics/modules/confuse_dio modules/confuse_dio`
 7. Sym-link the `confuse_dio-interface` Simics module to the project: `ln -s /path/to/this/repo/simics/modules/confuse_dio-interface modules/confuse_dio-interface`
-8. Sym-link the `qsp-x86-fuzzing` Simics targets directory to the project: `ln -s /path/to/this/repo/simics/targets/qsp-x86-fuzzing targets/qsp-x86-fuzzing`
-9. Create a directory called `simple-example` in the project: `mkdir simple-example`
-10. Sym-link `simics-scripts` from the example in the repo to your project: `ln -s /path/to/this/repo/simple-example/simics-scripts simple-example/simics-scripts`
-11. Sym-link `HelloFuzzing.efi` into the project: `ln -s /path/to/workspace/edk2/Build/AppPkg/DEBUG_GCC5/X64/HelloFuzzing.efi`
-12. Invoke `make` in the project.
+8. Sym-link the `afl-branch-tracer` Simics module to the project: `ln -s /path/to/this/repo/simics/modules/afl-branch-tracer modules/afl-branch-tracer`
+9. Sym-link the `qsp-x86-fuzzing` Simics targets directory to the project: `ln -s /path/to/this/repo/simics/targets/qsp-x86-fuzzing targets/qsp-x86-fuzzing`
+10. Create a directory called `simple-example` in the project: `mkdir simple-example`
+11. Sym-link `simics-scripts` from the example in the repo to your project: `ln -s /path/to/this/repo/simple-example/simics-scripts simple-example/simics-scripts`
+12. Sym-link `HelloFuzzing.efi` into the project: `ln -s /path/to/workspace/edk2/Build/AppPkg/DEBUG_GCC5/X64/HelloFuzzing.efi`
+13. Invoke `make` in the project.
 
 ### Build library and example
 
@@ -65,4 +66,4 @@ The test runs a 1000 times, providing random strings as input. If the string sta
 
 If you want to have a visual demo, edit `simple-example/testcode.c` and insert a short wait time (the line is commented accordingly), edit `simple-example/HelloFuzzing/Hello.c` and uncomment the `DEMO` macro definition, and finally edit `confuse-host-if/confuse_ll.c` and remove the `"-batch-mode"` argument from the `execlp` call.
 
-
+Right now the `confuse_ll` interface has the name of the AFL shared mem hard coded to `dummy_afl_shm`. If you want to see what data comes out of the branch tracer, you need to manually create `/dev/shm/dummy_afl_shm` with a sufficient size.

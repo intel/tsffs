@@ -42,17 +42,24 @@ static void wait_for_simics() {
     sig_usr2_from_simics = 0;
 }
 
+
+static void write_to_conf(int fd, char* line){
+    int written = write(fd, line, strlen(line));
+    if (written != strlen(line)) {
+        ERR_OUT("Unexpected file I/O error when writing info for Simics.");
+        exit(-1);
+    }
+}
+
 static void generate_info_for_simics(const char* filename) {
     //TODO: This info can also hold the name of shared mem for data I/O
     //      as well as shared mem for AFL area
     int fd = open(filename, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
     char line[256];
     sprintf(line, "if_pid:%d\n", getpid());
-    int written = write(fd, line, strlen(line));
-    if (written != strlen(line)) {
-        ERR_OUT("Unexpected file I/O error when writing info for Simics.");
-        exit(-1);
-    }
+    write_to_conf(fd, line);
+    sprintf(line, "fuzzer_shm:%s\n", "dummy_afl_shm"); //hard coded for now. Later needs to be extracted from fuzzer somehow
+    write_to_conf(fd, line);
     close(fd);
 }
 

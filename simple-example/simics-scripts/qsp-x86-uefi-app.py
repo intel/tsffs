@@ -22,7 +22,10 @@ SIM_run_command('bp.hap.run-until name = Core_Magic_Instruction index = 42')
 #Create our glue objects
 SIM_create_object('confuse_ll','fuzz_if',[])
 SIM_create_object('confuse_dio','dio_if',[['queue',SIM_get_object(simenv.system).mb.cpu0.core[0][0]]])
+SIM_create_object('afl_branch_tracer','afl_tr',[])
 conf.dio_if.pipe = conf.magic_pipe
+conf.afl_tr.processor = SIM_get_object(simenv.system).mb.cpu0.core[0][0]
+
 
 
 bp_id=SIM_run_command('b 0x00000000def6249c') #taken from IDT (UD handler)
@@ -41,10 +44,17 @@ SIM_run_command('enable-unsupported-feature internals')
 #TODO: parse out shared mem file for data I/O
 #TODO: parse out shared mem file for AFL area
 if_pid=0
+sh_mem=None
 with open('./_if_data_.tmp') as if_cfg:
   for line in if_cfg:
-      if line.strip().startswith('if_pid'):
+      if   line.strip().startswith('if_pid'):
           if_pid=int(line.strip().split(':')[1])
+      elif line.strip().startswith('fuzzer_shm'):
+          sh_mem=line.strip().split(':')[1]
+
+if sh_mem:
+   SIM_log_info(1, conf.afl_tr, 0, 'Setting SHM for AFL as "%s"'%(sh_mem))
+   conf.afl_tr.shm_name = sh_mem
 
 SIM_run_command('save-snapshot name = origin')
 

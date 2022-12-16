@@ -67,6 +67,8 @@ int main(int argc, char** argv) {
       confuse_run(simics);
 
       //printf("Iteration %d %s\n", i, shm_array+sizeof(size_t)); //right now we know that we just get a string
+      
+      //TODO: Here we need to define something more efficient than strings and string operations
       if (strcmp(shm_array+sizeof(size_t), "Fail") == 0) failcnt++;
       else
       if (strcmp(shm_array+sizeof(size_t), "Application crash (UD)") == 0) crashcnt++;
