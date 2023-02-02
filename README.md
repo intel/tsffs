@@ -2,6 +2,9 @@
 Brandon Marken Ph.D.
 brandon.marken@intel.com
 
+Robert Geunzel Ph.D.
+robert.geunzel@intel.com
+
 
 The purpose of this project is to build a fuzzing module for Simics.
 
