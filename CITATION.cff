@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "A collection of fuzzing training resources."
+authors:
+- family-names: "Marken"
+  given-names: "Brandon"
+  orcid: " https://orcid.org/0000-0001-6262-7042"
+- family-names: "Geunzel"
+  given-names: "Robert"
+  orcid: ""
+- family-names: "Hart"
+  given-names: "Rowan"
+  orcid: "https://orcid.org/0000-0001-9932-3798"
+
+title: "Intel CONFUSED -- COntrolled FUzzing with Simics Enhanced"
+version: 0.5.0
+doi: ""
+date-released: 2023-01-01
+url: "https://github.com/intel-sandbox/tool.fuzzing.simics.simics-fuzzing"
