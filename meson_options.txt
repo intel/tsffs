@@ -1,0 +1,11 @@
+option(
+    'aflpp_target',
+    type: 'combo',
+    choices: [
+        'both',
+        'source',
+        'binary',
+    ],
+    description: 'Whether to build AFL++ for source, binary, or both fuzzing. Overrides AFL++ subproject option.',
+    value: 'source',
+)
