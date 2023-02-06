@@ -6,7 +6,9 @@
     "C_Cpp.default.cppStandard": "c++20",
     "C_Cpp.formatting": "clangFormat",
     "C_Cpp.intelliSenseEngine": "disabled",
-    "clangd.arguments": ["--enable-config"],
+    "clangd.arguments": [
+        "--compile-commands-dir=${workspaceFolder}/builddir"
+    ],
     "clangd.checkUpdates": true,
     "files.associations": {
         "*.in": "cpp",

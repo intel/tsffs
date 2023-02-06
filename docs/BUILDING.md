@@ -21,7 +21,13 @@ $ sudo apt-get install build-essential python3-dev automake cmake git flex bison
 This project uses the meson build system and will be able to be built by running:
 
 ```sh
-$ meson builddir
+$ meson setup builddir
 $ meson compile -C builddir
 ```
 
+*NOTE*: If you installed llvm by specifying `llvm-14` instead of simply `llvm` (which
+is the method you should most likely use), you will need to run `meson` with:
+
+```sh
+$ LLVM_CONFIG=$(which llvm-config-14) meson setup builddir
+```

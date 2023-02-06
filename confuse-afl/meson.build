@@ -10,16 +10,24 @@ confuse_afl_src = [
 # * Use a fake cross-compilation setup
 instrumented_test = custom_target(
     'instrumentedTest',
+    input: aflpp_afl_clangpp,
     output: ['instrumentedTest'],
     command: [
-        afl_clangpp,
+        aflpp_afl_clangpp,
         '-g',
         '--std=c++11',
         '-I',
-        meson.current_source_dir() / 'include',
+        meson.current_source_dir(),
         '-o',
         meson.current_build_dir() / 'instrumentedTest',
         confuse_afl_src
     ],
     build_by_default: true,
 )
+
+# afl_clangpp.process(confuse_afl_src, extra_args: [
+#     '-g',
+#     '--std=c++11',
+#     '-I',
+#     meson.current_source_dir(),
+# ])
