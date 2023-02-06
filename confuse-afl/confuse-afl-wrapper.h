@@ -20,7 +20,7 @@
 *
 */
 #define MAP_SIZE      (1ull << 16)
-extern std::shared_ptr<unsigned char> afl_area_ptr;         // for the coverage area 
+extern unsigned char * afl_area_ptr;         // for the coverage area 
 extern unsigned char *afl_input_ptr;                        // for input etc 
 
 

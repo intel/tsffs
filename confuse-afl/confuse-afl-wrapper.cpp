@@ -10,7 +10,7 @@
 #include <cstdio>
 #include <cstdlib>
 
-# define ERR_OUT_A(fmt, ...) \b
+#define ERR_OUT_A(fmt, ...) \
     fprintf(stderr, "ERROR; %s: "  fmt "\n", __func__, __VA_ARGS__)
 
 /*
