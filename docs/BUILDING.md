@@ -1,5 +1,22 @@
 # Building
 
+## Build Dependencies
+
+To run the build at all, you need both `meson` and `ninja`. The recommended installation
+method is with `pip`:
+
+```sh
+$ python3 -m pip install meson ninja
+```
+
+You may also install them with `apt`, but keep in mind the version *may* be too old to
+work correctly depending on your Linux Distribution and several other factors. If you
+must install using `apt`, use:
+
+```sh
+$ sudo apt-get install meson ninja-build
+```
+
 ## Dependencies
 
 There are a few dependencies, for AFL++ primarily.
@@ -14,7 +31,6 @@ $ sudo apt-get install build-essential python3-dev automake cmake git flex bison
     libllvm14:amd64 lld-14 lldb-14 llvm-14 llvm-14-dev llvm-14-linker-tools \
     llvm-14-runtime llvm-14-tools python3-clang:amd64 python3-clang-14 python3-lldb-14
 ```
-
 
 ## Build
 
