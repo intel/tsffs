@@ -41,9 +41,24 @@ $ meson setup builddir
 $ meson compile -C builddir
 ```
 
+### Build Notes
+
 *NOTE*: If you installed llvm by specifying `llvm-14` instead of simply `llvm` (which
-is the method you should most likely use), you will need to run `meson` with:
+is the method you should most likely use), you will need to run define the 
+`LLVM_CONFIG` variable when running `meson` like:
 
 ```sh
 $ LLVM_CONFIG=$(which llvm-config-14) meson setup builddir
+$ LLVM_CONFIG=$(which llvm-config-14) meson compile -C builddir
+```
+
+*NOTE*: On most modern distributions of Linux, `python` is no longer an alias to 
+`python2`. If your system does not run `python2` when `python` is used, you need to
+define the environment variable `PYTHON_COMMAND` when running `meson` like:
+
+
+```sh
+$ PYTHON_COMMAND=python2 meson setup builddir
+$ PYTHON_COMMAND=python2 meson compile -C builddir
+
 ```
