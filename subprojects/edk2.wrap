@@ -1,0 +1,4 @@
+[wrap-git]
+directory=edk2
+url=https://github.com/intel-sandbox/tool.fuzzing.edk2-wrap
+revision=head
