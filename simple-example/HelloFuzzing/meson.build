@@ -38,8 +38,6 @@ if not fs.is_dir(hello_fuzzing_build_dir)
     foreach src_file : hello_fuzzing_src
         run_command(cp, src_file, hello_fuzzing_build_dir, check: true)
     endforeach
-
-
 endif
 
 if not fs.is_dir(hello_fuzzing_magic_pipe_lib_build_dir)
@@ -55,7 +53,6 @@ if not fs.is_dir(hello_fuzzing_magic_pipe_lib_build_dir)
         run_command(cp, magic_pipe_lib_src_dir / 'Include' / src_file, hello_fuzzing_magic_pipe_lib_build_dir / 'Include' / src_file, check: true)
     endforeach
 endif
-
 
 hello_fuzzing_build_tgt = custom_target(
     'hello_fuzzing_build_tgt',

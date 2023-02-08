@@ -1,5 +1,19 @@
 project('confuse', 'c', 'cpp')
 
+fs = import('fs')
+ls = find_program('ls', required: true)
+
+# Get binaries
+yq = find_program(meson.current_source_dir() / 'bin' / 'yq_linux_amd64', required: true)
+
+# Get simics binaries and directory setup for workspace configuration
+simics_home = get_option('simics_home')
+
+if not fs.is_dir(simics_home)
+    error('simics_home not set or does not exist. Pass -Dsimics_home=/path/to/simics/home')
+endif
+
+
 ##################################################################################################
 ## Subproject setup & derived objects
 ##
@@ -28,7 +42,9 @@ aflpp_outputs = aflpp.get_variable('aflpp_outputs')
 # make things cleaner.
 aflpp_afl_clangpp = aflpp_outputs['afl-clang++']
 
-subdir('simics')
 subdir('confuse-host-if')
 subdir('confuse-afl')
+
+subdir('target-sw')
 subdir('simple-example')
+subdir('simics')

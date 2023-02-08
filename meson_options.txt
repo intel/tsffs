@@ -9,3 +9,9 @@ option(
     description: 'Whether to build AFL++ for source, binary, or both fuzzing. Overrides AFL++ subproject option.',
     value: 'source',
 )
+
+option(
+    'simics_home',
+    type: 'string',
+    description: 'The path to your simics installation directory. This directory should contain "manifests", "simics-6.XXX", etc.',
+)

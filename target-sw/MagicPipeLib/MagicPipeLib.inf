@@ -1,0 +1,63 @@
+## @file
+#  Standard C library: Miscelaneous implementations.
+#
+#  Copyright (c) 2010 - 2018, Intel Corporation. All rights reserved.<BR>
+#
+#  This program and the accompanying materials
+#  are licensed and made available under the terms and conditions of the BSD License
+#  which accompanies this distribution. The full text of the license may be found at
+#  http://opensource.org/licenses/bsd-license.
+#
+#  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+#
+#
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = MagicPipeLib
+  FILE_GUID                      = 1c69b2a0-cf02-c138-0b83-7dfb09959942
+  MODULE_TYPE                    = UEFI_APPLICATION
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = MagicPipeLib
+
+#
+#  VALID_ARCHITECTURES           = IA32 X64
+#
+
+[Sources]
+  magic-pipe.c
+  pipe-header.c
+  pipe-unix.c
+#  pipe-win32.c
+
+[Packages]
+  MagicPipeLib/MagicPipeLib.dec
+  MdePkg/MdePkg.dec
+  ShellPkg/ShellPkg.dec
+  StdLib/StdLib.dec
+
+[LibraryClasses]
+  LibC
+  ShellCEntryLib
+  UefiLib
+  BaseLib
+  MemoryAllocationLib
+  BaseMemoryLib
+  LibStdLib
+  LibStdio
+  LibString
+  DevConsole
+  MagicPipeLib
+
+################################################################
+#
+# The Build Options, below, are only used when building the C library.
+# DO NOT use them when building your application!
+# Nasty things could happen if you do.
+#
+[BuildOptions]
+  MSFT:*_*_IA32_CC_FLAGS = /GL-
+  GCC:*_*_IA32_CC_FLAGS = -fno-lto
+  GCC:*_*_ARM_CC_FLAGS = -fno-lto

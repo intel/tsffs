@@ -21,6 +21,8 @@ $ sudo apt-get install meson ninja-build
 
 There are a few dependencies, for AFL++ primarily.
 
+<!--TODO: Better docs for dependencies, specify for recent ubuntu, fedora, debian -->
+
 ```sh
 $ sudo apt-get install build-essential python3-dev automake cmake git flex bison libglib2.0-dev libpixman-1-dev \
     python3-setuptools cargo libgtk-3-dev gcc-11 g++-11 gcc-11-plugin-dev libstdc++-11-dev \
@@ -32,12 +34,28 @@ $ sudo apt-get install build-essential python3-dev automake cmake git flex bison
     llvm-14-runtime llvm-14-tools python3-clang:amd64 python3-clang-14 python3-lldb-14
 ```
 
-## Build
+You will also need a working simics installation somewhere on your system. You can 
+obtain this installation by following the directions [here](https://www.intel.com/content/www/us/en/developer/articles/guide/simics-simulator-installation.html).
 
-This project uses the meson build system and will be able to be built by running:
+After installing simics, you should have a directory (your installation directory) that
+looks something like this:
 
 ```sh
-$ meson setup builddir
+rhart@rhart-ubuntu2204-dev:~/hub/tool.fuzzing.simics.simics-fuzzing$ ls ~/simics/simics
+manifests       simics-docea-base-6.0.23   simics-pkg-mgr-tmp-rhart       simics-qsp-cpu-6.0.12     simics-qsp-x86-6.0.65      simics-viewer-6.0.16
+simics-6.0.157  simics-oss-sources-6.0.50  simics-qsp-clear-linux-6.0.14  simics-qsp-isim-6.0.pre4  simics-training-6.0.pre30
+```
+
+When setting up the meson build, you will use the path to this directory.
+
+## Build
+
+This project uses the meson build system. Using the path to your simics installation,
+you can build the project like so (see below for notes *first*, which you may need to 
+successfully build the project):
+
+```sh
+$ meson setup builddir -Dsimics_home=/home/rhart/simics/simics/
 $ meson compile -C builddir
 ```
 
