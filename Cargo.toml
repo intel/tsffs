@@ -2,8 +2,8 @@
 members = [
     # Provide simics and its modules
     "confuse-simics",
-    # Provide the host interface to control simics and allow simics to talk
-    "confuse-host-interface",
+    # Just provides common simics manifest tools for parsing/managing simics
+    "confuse-simics-manifest",
     # Fuzzer
     "confuse-fuzz",
     # HelloFuzz.efi edk2 UEFI module example
@@ -12,3 +12,4 @@ members = [
 
 [workspace.dependencies]
 confuse-simics = { path = "./confuse-simics" }
+confuse-simics-manifest = { path = "./confuse-simics-manifest" }
