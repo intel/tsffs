@@ -1,0 +1,27 @@
+/*
+  © 2017 Intel Corporation
+*/
+
+// confuse_dio-interface.dml - Skeleton code to base new DML interface types on
+
+// This is the DML definition of the confuse_dio interface. See
+// the "Defining a New Interface Type" section of the
+// "Simics Model Builder User's Guide" for further documentation.
+// The corresponding C definition can be found in
+// confuse_dio-interface.h.
+
+dml 1.4;
+
+header %{
+#include "confuse_dio-interface.h"
+%}
+
+// Define the new interface type
+extern typedef struct {
+    void (*print_configured_abnormal_exits)(conf_object_t *obj);
+    void (*clear_abnormal_exits)(conf_object_t *obj);
+    void (*add_abnormal_exit_bp)(conf_object_t *obj, breakpoint_id_t bp, const char* message);
+    void (*add_abnormal_exit_to)(conf_object_t *obj, uint64_t usecs, const char* message);
+} confuse_dio_interface_t;
+
+extern const char *const CONFUSE_DIO_INTERFACE;
