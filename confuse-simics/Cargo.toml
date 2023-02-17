@@ -22,3 +22,5 @@ flate2 = "1.0.25"
 serde = { version = "1.0.152", features = ["derive"] }
 serde_yaml = "0.9.17"
 tar = "0.4.38"
+bindgen = "0.64.0"
+walkdir = "2.3.2"

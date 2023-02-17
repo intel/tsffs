@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    # Provide simics and its modules
+    # Provide simics and its APIs
     "confuse-simics",
     # Just provides common simics manifest tools for parsing/managing simics
     "confuse-simics-manifest",
@@ -8,6 +8,10 @@ members = [
     "confuse-fuzz",
     # HelloFuzz.efi edk2 UEFI module example
     "examples/hello-fuzzing",
+
+    # Modules
+    "modules/confuse-branch-tracer",
+    "modules/minimal-simics-module",
 ]
 
 [workspace.dependencies]
