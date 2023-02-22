@@ -9,6 +9,7 @@
 #include <cstring>
 #include <cstdio>
 #include <cstdlib>
+#include <string>
 
 #define ERR_OUT_A(fmt, ...) \
     fprintf(stderr, "ERROR; %s: "  fmt "\n", __func__, __VA_ARGS__)
@@ -47,8 +48,9 @@ unsigned char *afl_input_ptr;
 static char *id_str;
 static char *fuzz_str;
 unsigned long prev_loc;
-
+unsigned char *simics_area_ptr;
 unsigned char * input;
+size_t input_limit;
 size_t input_size;
 FILE *input_file;
 char *input_path;
@@ -63,6 +65,9 @@ int confuse_aflplusplus_init()
     if ( !id_str )
         return -1;
 
+    // TODO this is an arbitrary value assigned
+    // will come up with a better value for it later 
+    input_limit = 64; 
 
 
     int shm_id = atoi(id_str);
@@ -127,10 +132,17 @@ void confuse_afl_report(bool crash)
 }
 
 
+
 void confuse_get_afl_input()
 {
+    if ( !input_limit )
+    {
+        return;
+    }
 
     input_size = *(uint32_t*)afl_input_ptr;
-    input = afl_input_ptr + 4;
+    if ( input_size > input_limit )
+        input_size = input_limit;
 
+    input = afl_input_ptr + 4;
 }

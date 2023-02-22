@@ -22,10 +22,11 @@
 #define MAP_SIZE      (1ull << 16)
 extern unsigned char * afl_area_ptr;         // for the coverage area 
 extern unsigned char *afl_input_ptr;                        // for input etc 
-
+extern unsigned char *simics_area_ptr;
 
 extern unsigned char * input;
 extern size_t input_size;
+extern size_t input_limit;
 extern FILE *input_file;
 extern char *input_path;
 
@@ -51,4 +52,5 @@ void confuse_afl_instrument_location(unsigned long cur_loc);
 
 void confuse_get_afl_input();
 
+void confuse_open_simics_shm();
 #endif

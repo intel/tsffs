@@ -1,6 +1,11 @@
 #include "confuse-afl-wrapper.h"
 #include <iostream>
-
+#include <string>
+#include <cstring>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
+#include <filesystem>
 
 static char *rand_string(char *str, size_t size)
 {
@@ -21,7 +26,7 @@ static void print_array(unsigned char * buffer, size_t size)
 {
   for(auto i=0; i==0; i++)
   {
-    std::cout << buffer[i];
+    std::cout << buffer[i] << " ";
   }
   std::cout << std::endl;
 }
@@ -29,42 +34,66 @@ static void print_array(unsigned char * buffer, size_t size)
 
 int main(int argc, char** argv)
 {
-    // simics_handle simics;
+    simics_handle simics;
 
-    // if (argc != 2) {
-    //       printf("Please provide a path to a Simics project as an argument.\n");
-    //       return -1;
-    // }
+    if (argc != 2) {
+        std::cout << "Please provide a path to a Simics project as an argument." << std::endl;
+        exit(1);
+    }
 
-    // // allocating MAP_SIZE memory
-    // // may change to 16*1024*1024 later to match testCode
-    // afl_area_ptr = confuse_create_dio_shared_mem(MAP_SIZE);
+    unsigned char* simics_input_ptr = confuse_create_dio_shared_mem(MAP_SIZE);
+    if (shm_array == NULL) {
+      std::cout << "Could not allocate Simics shared memory" << std::endl;
+      exit(-1);
+    }
 
-    // if(afl_area_ptr == NULL)
-    // {
-    //     return -1;
-    // }
-
-    // initializing simics
-    // auto rv = confuse_init(argv[1], "simple-example/simics-scripts/qsp-x86-uefi-app.yml", &simics);
-    // if (rv) {
-    //   printf("Could not initialize Simics.\n");
-    //   exit(-1);
-    // }
-  
-
-    // next we'll need ot start initializing afl shared memory and connect it to simics
+    auto rv = confuse_init(argv[1], "simics-scripts/qsp-x86-uefi-app.yml", &simics);
+    if (rv) {
+      std::cout << "Could not initialize Simics!" << std::endl;
+      exit(-1);
+    }
+    // allocate the shared memory between AFL
+    // this harness and simics
     auto result = confuse_aflplusplus_init();
+    confuse_open_simics_shm();
 
-    for(auto i=0; i<100; ++i)
+    // create a named pipe
+    // std::string pipeOut = "./tmp/confuse_to_simics";
+    // std::string pipeIn = "./tmp/simics_to_confuse";
+    // if(! std::filesystem::exists("./tmp/"))
+    // {
+    //     mkdir("./tmp/", 0777);
+    //     std::cout << "Made directory ./tmp/" << std::endl;
+    // }
+
+    // mkfifo(pipeOut.c_str(), 0666);
+    // auto file_in = open(pipeOut.c_str(), O_RDWR);
+
+    // mkfifo(pipeIn.c_str(), 0666);
+    // auto file_out = open(pipeIn.c_str(), O_RDWR);
+
+    std::cout << "Starting the fuzzing loop" << std::endl;
+    for(auto i=0; i<1000; ++i)
     {
+        confuse_reset(simics);
+
+        // get input from AFL and wait
         confuse_get_afl_input();
         confuse_afl_wait();
-        std::cout << *input << std::endl;
+        memcpy(afl_input_ptr, &simics_area_ptr, input_limit);
+
+        // TODO currently this just reads 64 bytes 
+        // we might want to find a better way to read the size of the instrumentation from simics
+        memcpy(simics_area_ptr, &afl_area_ptr, input_size); 
+        confuse_run(simics);
+
+        // TODO Here's where we would get the information from the branch tracer
+
+        //here we'd tell AFL if we communicate our status to AFL 
+        confuse_afl_report(false);
+
+
     }
-    
-
-
 
     return 0;
 }

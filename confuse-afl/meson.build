@@ -18,6 +18,8 @@ instrumented_test = custom_target(
         '--std=c++11',
         '-I',
         meson.current_source_dir(),
+        '-I',
+        confuse_host_if_inc_dir,
         '-o',
         meson.current_build_dir() / 'instrumentedTest',
         confuse_afl_src

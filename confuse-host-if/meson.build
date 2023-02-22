@@ -10,3 +10,5 @@ confuse_host_if_lib = static_library(
     confuse_host_if_src,
     include_directories: [confuse_host_if_inc],
 )
+
+confuse_host_if_inc_dir = meson.current_source_dir() / 'include'

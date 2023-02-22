@@ -1,6 +1,10 @@
 #ifndef __DBG_H__
 #define __DBG_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif 
+
 #ifndef CONFUSE_DBG_LVL
 # define CONFUSE_DBG_LVL 1
 #endif
@@ -32,5 +36,8 @@
 
 #endif
 
+#ifdef __cplusplus
+}
+#endif
 #endif
 
