@@ -11,7 +11,7 @@ members = [
 
     # Modules
     "modules/confuse-branch-tracer",
-    "modules/minimal/minimal-simics-module",
+    "modules/minimal-simics-module",
 ]
 
 [workspace.dependencies]
