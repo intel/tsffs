@@ -24,3 +24,4 @@ anyhow = "1.0.69"
 dotenvy_macro = "0.15.1"
 confuse-simics-manifest = { workspace = true }
 walkdir = "2.3.2"
+dockerfile-rs = "0.3.0"

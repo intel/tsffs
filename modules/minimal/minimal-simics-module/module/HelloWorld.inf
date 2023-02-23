@@ -38,6 +38,7 @@
   HelloWorldStr.uni
 
 [Packages]
+# MdePkg.dec provides the Pcds used below
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
 

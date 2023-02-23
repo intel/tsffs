@@ -3,7 +3,7 @@
 ##
 ## See: https://www.tianocore.org/edk2-pytool-extensions/integrate/porting/ for more info
 
-from os.path import dirname, abspath
+from os.path import dirname, abspath, join
 from typing import Iterable, List
 from edk2toolext.environment.uefi_build import UefiBuilder
 from edk2toolext.invocables.edk2_platform_build import BuildSettingsManager
@@ -25,10 +25,10 @@ class HelloWorldSettingsManager(
         """
         Initialize the settings manager
         """
-        SCRIPT_PATH = dirname(abspath(__file__))
+        script_path = dirname(abspath(__file__))
 
         # Initialize the workspace (ws) path
-        self.ws = SCRIPT_PATH
+        self.ws = script_path
 
     def GetWorkspaceRoot(self) -> str:
         """
@@ -67,6 +67,12 @@ class HelloWorldSettingsManager(
         Returns target tags supported by this build.
         """
         return ("DEBUG",)
+
+    def GetPackagesPath(self) -> Iterable[str]:
+        """
+        Returns the paths to the edk2 package
+        """
+        return [abspath(join(self.GetWorkspaceRoot(), ".."))]
 
 
 class PlatformBuilder(UefiBuilder):
