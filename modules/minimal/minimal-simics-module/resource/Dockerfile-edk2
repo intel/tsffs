@@ -1,0 +1,18 @@
+FROM ghcr.io/tianocore/containers/fedora-35-build:5b8a008 AS edk2-base
+
+ENV TOOL_CHAIN_TAG=GCC5
+
+# Get EDK2 Repository
+WORKDIR /
+RUN git clone https://github.com/tianocore/edk2.git /edk2
+WORKDIR /edk2
+RUN git checkout 02fcfdce1e5ce86f1951191883e7e30de5aa08be
+
+RUN python3 -m pip install -r /edk2/pip-requirements.txt
+RUN stuart_setup -c /edk2/.pytool/CISettings.py TOOL_CHAIN_TAG=GCC5 && \
+    stuart_update -c /edk2/.pytool/CISettings.py TOOL_CHAIN_TAG=GCC5 && \
+    python3 /edk2/BaseTools/Edk2ToolsBuild.py -t "${TOOL_CHAIN_TAG}"
+
+## EDK2 base image just provides a ready-to-build-your-package setup. From here, for example you
+## could build a package by copying the source into /edk2 (lets say to /edk2/HelloWorld) and
+## invoking 

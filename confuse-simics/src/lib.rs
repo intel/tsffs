@@ -1,24 +1,123 @@
 pub mod api;
 
-use std::path::Path;
+use std::{
+    collections::HashMap,
+    fs::{create_dir_all, OpenOptions},
+    io::Write,
+    path::{Path, PathBuf},
+    process::{Command, Stdio},
+};
 
 use anyhow::Result;
 use dotenvy_macro::dotenv;
-use include_dir::{include_dir, Dir};
+use log::{error, info, warn};
 
-use confuse_simics_manifest::PackageNumber;
+use confuse_simics_manifest::{package_infos, simics_latest, PackageNumber};
+use serde::{Deserialize, Serialize};
 
-const OUT_DIR: &str = env!("OUT_DIR");
 const SIMICS_HOME: &str = dotenv!("SIMICS_HOME");
-
-static SIMICS_PROJECT_DIR: Dir<'_> = include_dir!("$OUT_DIR/simics");
 
 /// Set up a SIMICs project with a specified set of packages
 pub fn setup_simics_project<P: AsRef<Path>>(
     base_path: P,
     packages: Vec<PackageNumber>,
 ) -> Result<()> {
-    SIMICS_PROJECT_DIR.extract(base_path)?;
+    let base_path: PathBuf = base_path.as_ref().to_path_buf();
+    info!(
+        "Initializing simics project with base path {:?}",
+        &base_path
+    );
+
+    if !base_path.exists() {
+        create_dir_all(&base_path)?;
+        info!("Base path {:?} does not exist. Creating it.", &base_path);
+    }
+
+    let simics_home = PathBuf::from(SIMICS_HOME);
+    let latest_simics_manifest = simics_latest(&simics_home)?;
+    let simics_base_dir = simics_home.join(format!(
+        "simics-{}",
+        latest_simics_manifest.packages[&PackageNumber::Base].version
+    ));
+
+    let simics_base_project_setup = simics_base_dir.join("bin").join("project-setup");
+
+    Command::new(simics_base_project_setup)
+        .arg("--ignore-existing-files")
+        .arg(&base_path)
+        .current_dir(&base_path)
+        .output()?;
+
+    let package_infos = package_infos(&simics_home)?;
+
+    let package_paths: Vec<String> = packages
+        .iter()
+        .filter_map(|pn| match package_infos.get(pn) {
+            Some(pn) => Some(pn),
+            None => {
+                warn!("No package info for package number {:?}", pn);
+                None
+            }
+        })
+        .filter_map(|pi| match pi.get_package_path(&simics_home) {
+            Ok(p) => Some(p.to_string_lossy().to_string()),
+            Err(e) => {
+                error!("Could not get package path for {:?}: {}", pi, e);
+                None
+            }
+        })
+        .collect();
+
+    let simics_package_list_path = base_path.join(".package-list");
+
+    info!(
+        "Writing package list ({} packages) to {:?}",
+        package_paths.len(),
+        simics_package_list_path
+    );
+
+    let mut simics_package_list = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(&simics_package_list_path)?;
+
+    simics_package_list.write_all((package_paths.join("\n") + "\n").as_bytes())?;
+
+    let simics_project_project_setup = base_path.join("bin").join("project-setup");
+
+    info!("Running {:?}", simics_project_project_setup);
+
+    Command::new(&simics_project_project_setup)
+        .current_dir(&base_path)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()?;
 
     Ok(())
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase", tag = "type", content = "default")]
+pub enum SimicsAppParamType {
+    Int(Option<i64>),
+    File(Option<String>),
+    Bool(Option<bool>),
+    Str(Option<String>),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SimicsAppParam {
+    // default: Option<T>,
+    #[serde(flatten)]
+    pub param: SimicsAppParamType,
+    pub output: Option<bool>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+/// YAML Serializable Simics app description
+pub struct SimicsApp {
+    pub description: String,
+    pub params: HashMap<String, SimicsAppParam>,
+    pub script: String,
 }

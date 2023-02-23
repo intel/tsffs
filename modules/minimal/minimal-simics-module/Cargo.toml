@@ -10,7 +10,17 @@ crate-type = ["cdylib"]
 [dependencies]
 confuse-simics = { workspace = true }
 
+[dev-dependencies]
+anyhow = "1.0.69"
+confuse-simics-manifest = { workspace = true }
+env_logger = "0.10.0"
+log = "0.4.17"
+tempdir = "0.3.7"
+test-cdylib = "1.1.0"
+test-log = "0.2.11"
+
 [build-dependencies]
 anyhow = "1.0.69"
 dotenvy_macro = "0.15.1"
 confuse-simics-manifest = { workspace = true }
+walkdir = "2.3.2"

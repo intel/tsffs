@@ -12,3 +12,5 @@ anyhow = "1.0.69"
 version-compare = "0.1.1"
 chrono = { version = "0.4.23", features = ["serde"] }
 serde_repr = "0.1.10"
+log = "0.4.17"
+regex = "1.7.1"
