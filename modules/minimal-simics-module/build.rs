@@ -1,15 +1,15 @@
 use anyhow::{bail, ensure, Result};
 use confuse_simics_manifest::{simics_latest, PackageNumber};
+use confuse_simics_modsign::generate_signature_header;
 use dockerfile_rs::{Copy, DockerFile, From, TagOrDigest, RUN, WORKDIR};
 use dotenvy_macro::dotenv;
 use std::{
     env::var,
-    fs::{copy, create_dir_all, OpenOptions},
+    fs::{read_dir, OpenOptions},
     io::Write,
-    path::{Path, PathBuf},
+    path::PathBuf,
     process::Command,
 };
-use walkdir::WalkDir;
 
 const SIMICS_HOME: &str = dotenv!("SIMICS_HOME");
 const EDK2_REPO_URL: &str = "https://github.com/tianocore/edk2.git";
@@ -37,6 +37,24 @@ fn out_dir() -> Result<PathBuf> {
         Ok(out_dir) => Ok(PathBuf::from(out_dir)),
         Err(e) => Err(e.into()),
     }
+}
+
+fn write_simics_constants() -> Result<()> {
+    let simics_home = simics_home()?;
+    let crate_name = var("CARGO_PKG_NAME")?;
+    let simics_module_header_path = PathBuf::from(var("OUT_DIR")?).join("simics_module_header.rs");
+
+    let header_contents = generate_signature_header(crate_name, simics_home)?;
+
+    let mut simics_module_header = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(&simics_module_header_path)?;
+
+    write!(&mut simics_module_header, "{}", header_contents)?;
+
+    Ok(())
 }
 
 fn link_simics() -> Result<()> {
@@ -70,6 +88,7 @@ fn link_simics() -> Result<()> {
     println!("cargo:rustc-link-lib=simics-common");
     println!("cargo:rustc-link-lib=vtutils");
     println!("cargo:rustc-link-lib=package-paths");
+    // TODO: Get this full path from the simics lib
     println!("cargo:rustc-link-lib=dylib:+verbatim=libpython3.9.so.1.0");
 
     // NOTE: This only works for `cargo run` and `cargo test` and won't work for just running
@@ -88,6 +107,18 @@ fn link_simics() -> Result<()> {
 fn build_efi_module() -> Result<()> {
     let manifest_dir = PathBuf::from(var("CARGO_MANIFEST_DIR")?);
     let module_src_path = manifest_dir.join("module");
+
+    read_dir(&module_src_path)?
+        .filter_map(|p| p.ok())
+        .for_each(|de| {
+            let p = de.path();
+            if p.is_file() {
+                if let Ok(rp) = &p.strip_prefix(&manifest_dir) {
+                    println!("cargo:rerun-if-changed={}", rp.to_string_lossy());
+                }
+            }
+        });
+
     ensure!(
         module_src_path.is_dir(),
         "Module source directory does not exist."
@@ -102,15 +133,6 @@ fn build_efi_module() -> Result<()> {
     .work_dir(WORKDIR!("/edk2"))
     .run(RUN!["git", "-C", "/edk2", "checkout", EDK2_REPO_HASH])
     // TODO: Can we use a relative path here, ensure it exists, etc?
-    .copy(Copy {
-        src: module_src_path
-            .strip_prefix(&manifest_dir)?
-            .to_string_lossy()
-            .to_string(),
-        dst: "/edk2/HelloWorld/".to_string(),
-        chown: None,
-        from: None,
-    })
     .run(RUN![
         "python3",
         "-m",
@@ -131,6 +153,15 @@ fn build_efi_module() -> Result<()> {
         "/edk2/.pytool/CISettings.py",
         "TOOL_CHAIN_TAG=GCC5"
     ])
+    .copy(Copy {
+        src: module_src_path
+            .strip_prefix(&manifest_dir)?
+            .to_string_lossy()
+            .to_string(),
+        dst: "/edk2/HelloWorld/".to_string(),
+        chown: None,
+        from: None,
+    })
     .run(RUN![
         "stuart_setup",
         "-c",
@@ -213,6 +244,7 @@ fn build_efi_module() -> Result<()> {
 
 fn main() -> Result<()> {
     println!("cargo:rerun-if-changed=build.rs");
+    write_simics_constants()?;
     link_simics()?;
     build_efi_module()?;
     Ok(())

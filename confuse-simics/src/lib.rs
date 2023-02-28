@@ -14,6 +14,7 @@ use log::{error, info, warn};
 
 use confuse_simics_manifest::{package_infos, simics_latest, PackageNumber};
 use serde::{Deserialize, Serialize};
+use serde_yaml::to_string;
 
 const SIMICS_HOME: &str = dotenv!("SIMICS_HOME");
 
@@ -114,10 +115,91 @@ pub struct SimicsAppParam {
     pub output: Option<bool>,
 }
 
+impl SimicsAppParam {
+    pub fn default() -> Self {
+        SimicsAppParam::new_int()
+    }
+    pub fn new_int() -> Self {
+        Self {
+            param: SimicsAppParamType::Int(None),
+            output: None,
+        }
+    }
+
+    pub fn new_file() -> Self {
+        Self {
+            param: SimicsAppParamType::File(None),
+            output: None,
+        }
+    }
+
+    pub fn new_bool() -> Self {
+        Self {
+            param: SimicsAppParamType::Bool(None),
+            output: None,
+        }
+    }
+
+    pub fn new_str() -> Self {
+        Self {
+            param: SimicsAppParamType::Str(None),
+            output: None,
+        }
+    }
+
+    pub fn int(mut self, value: i64) -> Self {
+        self.param = SimicsAppParamType::Int(Some(value));
+        self
+    }
+
+    pub fn file<S: AsRef<str>>(mut self, value: S) -> Self {
+        self.param = SimicsAppParamType::File(Some(value.as_ref().to_string()));
+        self
+    }
+
+    pub fn bool(mut self, value: bool) -> Self {
+        self.param = SimicsAppParamType::Bool(Some(value));
+        self
+    }
+
+    pub fn str<S: AsRef<str>>(mut self, value: S) -> Self {
+        self.param = SimicsAppParamType::Str(Some(value.as_ref().to_string()));
+        self
+    }
+
+    pub fn output(mut self, value: bool) -> Self {
+        self.output = Some(value);
+        self
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 /// YAML Serializable Simics app description
 pub struct SimicsApp {
     pub description: String,
     pub params: HashMap<String, SimicsAppParam>,
     pub script: String,
+}
+
+impl SimicsApp {
+    pub fn new<S: AsRef<str>>(description: S, script: S) -> Self {
+        Self {
+            description: description.as_ref().to_string(),
+            params: HashMap::new(),
+            script: script.as_ref().to_string(),
+        }
+    }
+
+    pub fn param<S: AsRef<str>>(mut self, key: S, param: SimicsAppParam) -> Self {
+        self.params.insert(key.as_ref().to_string(), param);
+        self
+    }
+
+    pub fn try_to_string(&self) -> Result<String> {
+        let mut appstr: String = to_string(&self)?;
+        // YAML allows no quotes, signle quotes, or double quotes. Simics, on the other hand, will
+        // reject anything not double quoted. :))))))))))))))))))))))))))))))))))))))
+        appstr = appstr.replace(r#"'"#, r#"""#);
+        Ok("%YAML 1.2\n---\n".to_owned() + &appstr)
+    }
 }

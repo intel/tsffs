@@ -10,6 +10,8 @@
 #include <Library/UefiLib.h>
 #include <Uefi.h>
 
+#include "magic-instruction.h"
+
 //
 // String token ID of help message text.
 // Shell supports to find help message in the resource section of an application image
@@ -33,8 +35,9 @@ EFI_STATUS
 EFIAPI
 UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable) {
     UINT32 Index;
-
     Index = 0;
+
+    MAGIC(42);
 
     //
     // Three PCD type (FeatureFlag, UINT32 and String) are used as the sample.
