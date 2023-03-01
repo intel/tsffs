@@ -2,7 +2,7 @@
 
 include!(concat!(env!("OUT_DIR"), "/simics_module_header.rs"));
 
-use confuse_simics::api::{class_data_t, class_kind_t_Sim_Class_Kind_Session, SIM_register_class};
+use confuse_simics_api::{class_data_t, class_kind_t_Sim_Class_Kind_Session, SIM_register_class};
 use std::ffi::CString;
 
 pub const HELLO_WORLD_EFI_MODULE: &[u8] =

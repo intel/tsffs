@@ -1,6 +1,6 @@
 use anyhow::{Context, Result, ensure};
 use chrono::Local;
-use confuse_simics::api::{SIM_VERSION, SIM_VERSION_COMPAT};
+use confuse_simics_api::{SIM_VERSION, SIM_VERSION_COMPAT};
 use confuse_simics_manifest::{simics_latest, PackageNumber};
 use object::{
     elf::FileHeader64,
@@ -16,6 +16,7 @@ use std::{
     path::{Path},
     time::{SystemTime, UNIX_EPOCH}, ascii::escape_default, iter::repeat
 };
+use whoami::username;
 
 pub const MODULE_CAPABILITIES_SYMNAME: &str = "_module_capabilities_";
 pub const MODULE_DATE_SYMNAME: &str = "_module_date";
@@ -180,7 +181,12 @@ pub fn get_mod_capabilities<'data, 'file>(
         .context("No symbol _module_capabilities_ found")?)
 }
 
-pub fn sign_simics_module<P: AsRef<Path>, S: AsRef<str>>(uname: S, module: P) -> Result<()> {
+pub fn sign_simics_module<P: AsRef<Path>>(module: P) -> Result<()> {
+    let username = username();
+    Ok(sign_simics_module_as(username, module)?)
+}
+
+pub fn sign_simics_module_as<P: AsRef<Path>, S: AsRef<str>>(uname: S, module: P) -> Result<()> {
     let data = read(&module)?;
     let idata = &data[..];
     let signed_module_data = sign_simics_module_data(uname, idata)?;

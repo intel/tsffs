@@ -11,10 +11,11 @@ crate-type = ["cdylib", "lib"]
 byte-strings = "0.2.2"
 byte-strings-proc-macro = "0.1.1"
 c_str_macro = "1.0.3"
-confuse-simics = { workspace = true }
+confuse-simics-api = { workspace = true }
 
 [dev-dependencies]
 anyhow = "1.0.69"
+confuse-simics-project = { workspace = true }
 confuse-simics-manifest = { workspace = true }
 confuse-simics-modsign = { workspace = true }
 env_logger = "0.10.0"
@@ -28,7 +29,7 @@ whoami = "1.3.0"
 [build-dependencies]
 anyhow = "1.0.69"
 dotenvy_macro = "0.15.1"
-confuse-simics = { workspace = true }
+confuse-simics-project = { workspace = true }
 confuse-simics-manifest = { workspace = true }
 confuse-simics-modsign = { workspace = true }
 dockerfile-rs = "0.3.0"
