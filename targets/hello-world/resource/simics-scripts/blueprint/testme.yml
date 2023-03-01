@@ -1,0 +1,19 @@
+%YAML 1.2
+---
+params:
+  hw:
+    blueprint: qsp_platform
+    module: comps.test.qsp_platform
+    defaults:
+      qsp:
+        memory_size_mb: 8192
+        mac_address: "00:19:A0:E1:1C:9F"
+        disk_bp: clear_linux
+        bios: "%simiucs%/targets/qsp-x86/images/SIMICSX58IA32X64_1_1_0_r.fd"
+      net:
+        sn:
+          enable_dhcp: true
+  system: {type: 'str', output: true}
+code-type: python
+script: "%script%/qsp-x86-uefi-app.py"
+...

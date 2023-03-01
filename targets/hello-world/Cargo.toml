@@ -1,0 +1,12 @@
+[package]
+name = "hello-world"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+[dev-dependencies]
+
+[build-dependencies]
+anyhow = "1.0.69"
+dockerfile-rs = "0.3.0"

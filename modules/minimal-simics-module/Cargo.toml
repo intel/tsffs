@@ -8,23 +8,16 @@ edition = "2021"
 crate-type = ["cdylib", "lib"]
 
 [dependencies]
-byte-strings = "0.2.2"
-byte-strings-proc-macro = "0.1.1"
-c_str_macro = "1.0.3"
 confuse-simics-api = { workspace = true }
 
 [dev-dependencies]
 anyhow = "1.0.69"
 confuse-simics-project = { workspace = true }
 confuse-simics-manifest = { workspace = true }
-confuse-simics-modsign = { workspace = true }
 env_logger = "0.10.0"
 log = "0.4.17"
-tempdir = "0.3.7"
 test-cdylib = "1.1.0"
 test-log = "0.2.11"
-walkdir = "2.3.2"
-whoami = "1.3.0"
 
 [build-dependencies]
 anyhow = "1.0.69"

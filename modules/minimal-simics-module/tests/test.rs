@@ -1,7 +1,6 @@
 use anyhow::Result;
 use confuse_simics_manifest::PackageNumber;
 use confuse_simics_project::SimicsProject;
-use minimal_simics_module::HELLO_WORLD_EFI_MODULE;
 use std::{env::var, path::PathBuf};
 use test_cdylib::build_current_project;
 use test_log::test;

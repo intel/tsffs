@@ -12,6 +12,8 @@ members = [
     # Modules
     "modules/confuse-branch-tracer",
     "modules/minimal-simics-module",
+    # Targets
+    "targets/hello-world",
 ]
 
 [workspace.dependencies]
@@ -19,3 +21,4 @@ confuse-simics-api = { path = "./confuse-simics-api" }
 confuse-simics-project = { path = "./confuse-simics-project" }
 confuse-simics-manifest = { path = "./confuse-simics-manifest" }
 confuse-simics-modsign = { path = "./confuse-simics-modsign" }
+confuse-fuzz = { path = "./confuse-fuzz" }

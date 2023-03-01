@@ -5,9 +5,6 @@ include!(concat!(env!("OUT_DIR"), "/simics_module_header.rs"));
 use confuse_simics_api::{class_data_t, class_kind_t_Sim_Class_Kind_Session, SIM_register_class};
 use std::ffi::CString;
 
-pub const HELLO_WORLD_EFI_MODULE: &[u8] =
-    include_bytes!(concat!(env!("OUT_DIR"), "/HelloWorld.efi"));
-
 #[no_mangle]
 pub extern "C" fn init_local() {
     let class_name: CString = CString::new(CLASS_NAME).expect("CString::new failed");
