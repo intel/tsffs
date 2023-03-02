@@ -1,0 +1,38 @@
+[package]
+name = "ipc-test-module"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+confuse-simics-api = { workspace = true }
+confuse-fuzz = { workspace = true }
+once_cell = "1.17.1"
+inventory = "0.3.3"
+const_format = "0.2.30"
+ipc-channel = "0.16.0"
+anyhow = "1.0.69"
+lazy_static = "1.4.0"
+env_logger = "0.10.0"
+log = "0.4.17"
+
+[dev-dependencies]
+anyhow = "1.0.69"
+confuse-simics-project = { workspace = true }
+confuse-simics-manifest = { workspace = true }
+env_logger = "0.10.0"
+log = "0.4.17"
+test-cdylib = "1.1.0"
+test-log = "0.2.11"
+
+[build-dependencies]
+anyhow = "1.0.69"
+dotenvy_macro = "0.15.1"
+confuse-simics-project = { workspace = true }
+confuse-simics-manifest = { workspace = true }
+confuse-simics-modsign = { workspace = true }
+dockerfile-rs = "0.3.0"
+chrono = "0.4.23"

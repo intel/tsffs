@@ -12,8 +12,11 @@ members = [
     # Modules
     "modules/confuse-branch-tracer",
     "modules/minimal-simics-module",
+    "modules/ipc-test-module",
     # Targets
     "targets/hello-world",
+    # Utilities
+    "util/ipc-shm",
 ]
 
 [workspace.dependencies]

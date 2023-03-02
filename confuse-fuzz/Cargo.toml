@@ -17,4 +17,3 @@ serde = { version = "1.0.152", features = ["derive"] }
 serde_yaml = "0.9.17"
 tempfile = "3.3.0"
 ipc-channel = { version = "0.16.0", features = ["memfd"] }
-unix-ipc = "0.2.2"

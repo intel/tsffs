@@ -14,8 +14,8 @@ flowchart LR
     %% Links
     TARG-->|Trace|BTRACE
     IFACE-->|Inject Testcase|TARG
-    IFACE-->|Run|TARG
-    IFACE-->|Reset|TARG
+    IFACE-->|Snapshot/Run|TARG
+    IFACE-->|Reset Snapshot|TARG
     TARG-->|Error/Crash|DETECT
     end
 
@@ -55,4 +55,43 @@ flowchart LR
     INIT_CORP-->|Populates|Corpus
     DETECT-->|Report Event|OBJ
     OBJ-->|Event Triggering Testcase|Corpus
+```
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant F as Fuzzer
+    participant E as ErrorDetector
+    participant B as BranchTracer
+    participant S as SimicsController
+
+    par Module Load
+        F->>+S: BOOTSTRAP_SOCKNAME ENVVAR
+        F->>+B: BOOTSTRAP_SOCKNAME ENVVAR
+        F->>+E: BOOTSTRAP_SOCKNAME ENVVAR
+    end
+
+    par On Module Load
+        S-->>F: (TX, RX) Channel
+        B-->>F: (TX, RX) Channel
+        E-->>F: (TX, RX) Channel
+    end
+
+    F->>B: Initialize
+    B-->>F: MemField Handle
+
+    F->>S: Initialize
+
+    loop Each Fuzzer Iteration
+        B-->>F: Ready
+        S-->>F: Ready
+        F->>S: Run
+        E-->>F: Status
+        F->>B: Reset
+        F->>S: Reset
+    end
+
+
+
+
 ```
