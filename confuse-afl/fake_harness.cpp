@@ -41,8 +41,8 @@ int main(int argc, char** argv)
         exit(1);
     }
 
-    unsigned char* simics_input_ptr = confuse_create_dio_shared_mem(MAP_SIZE);
-    if (shm_array == NULL) {
+    simics_area_ptr = confuse_create_dio_shared_mem(MAP_SIZE);
+    if (simics_area_ptr == NULL) {
       std::cout << "Could not allocate Simics shared memory" << std::endl;
       exit(-1);
     }
@@ -67,15 +67,17 @@ int main(int argc, char** argv)
         confuse_afl_wait();
 
         // write the size of hte input and the input from AFL to simics
-        memcpy( &simics_area_ptr, &input_size, sizeof(size));
-        memcpy(simics_area_ptr+sizeof(size_t), &afl_area_ptr, input_size); 
+        memcpy(simics_area_ptr, &input_size, sizeof(size));
+        memcpy(simics_area_ptr+sizeof(size_t), afl_input_ptr, input_size); 
         
 
         // TODO currently this just reads 64 bytes 
         // we might want to find a better way to read the size of the instrumentation from simics
         
         confuse_run(simics);
-        memcpy(afl_input_ptr, &simics_area_ptr, input_size);
+        //memcpy(afl_area_ptr, simics_area_ptr, input_size);
+        // read the size and the data from simics_area_ptr 
+        // determine whether the run was successful, a hang, crash, etc 
 
         // TODO Here's where we would get the information from the branch tracer
 
