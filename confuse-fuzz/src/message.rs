@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 
-use ipc_channel::ipc::IpcSharedMemory;
+use ipc_channel::ipc::{IpcReceiver, IpcSender};
+use ipc_shm::IpcShm;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -12,22 +13,12 @@ pub enum FuzzerEvent {
     Stop,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 /// Events simics generates that the fuzzer consumes
 pub enum SimicsEvent {
     Ready,
     Done,
-    MapHandle(IpcSharedMemory),
-}
-
-// Required because Handle doesn't impl debug
-impl Debug for SimicsEvent {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            SimicsEvent::MapHandle(_) => write!(f, "MapHandle()"),
-            _ => write!(f, "{:?}", self),
-        }
-    }
+    SharedMem(IpcShm),
 }
 
 #[derive(Debug, Serialize, Deserialize)]

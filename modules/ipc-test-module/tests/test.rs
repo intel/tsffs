@@ -3,6 +3,7 @@ use confuse_fuzz::message::{FuzzerEvent, Message, SimicsEvent};
 use confuse_simics_manifest::PackageNumber;
 use confuse_simics_project::SimicsProject;
 use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender, IpcSharedMemory};
+use ipc_shm::{IpcShm, IpcShmReader};
 use ipc_test_module::BOOTSTRAP_SOCKNAME;
 use log::info;
 use std::{env::var, path::PathBuf};
@@ -44,14 +45,24 @@ fn test_load_ipc_test_module() -> Result<()> {
 
     tx.send(Message::FuzzerEvent(FuzzerEvent::Initialize))?;
 
-    info!("Waiting for map handle");
+    info!("Receiving ipc shm");
 
-    let mut reader: IpcSharedMemory = match rx.recv()? {
-        Message::SimicsEvent(SimicsEvent::MapHandle(handle)) => handle,
-        _ => {
-            bail!("Unexpected message!")
-        }
+    let shm = match rx.recv()? {
+        Message::SimicsEvent(SimicsEvent::SharedMem(shm)) => shm,
+        _ => bail!("Unexpected message received"),
     };
+
+    let reader = shm.reader()?;
+
+    let res = reader.read_all()?;
+
+    for i in 0..res.len() {
+        assert_eq!(
+            res[i],
+            (i % u8::MAX as usize) as u8,
+            "Unexpected value in map"
+        );
+    }
 
     let status = simics_process.wait()?;
 

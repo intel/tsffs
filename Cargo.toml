@@ -25,3 +25,7 @@ confuse-simics-project = { path = "./confuse-simics-project" }
 confuse-simics-manifest = { path = "./confuse-simics-manifest" }
 confuse-simics-modsign = { path = "./confuse-simics-modsign" }
 confuse-fuzz = { path = "./confuse-fuzz" }
+ipc-shm = { path = "./util/ipc-shm" }
+ipc-channel = { git = "https://github.com/novafacing/ipc-channel.git", version = "0.16.0", features = [
+    "memfd",
+] }

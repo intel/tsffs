@@ -1,5 +1,5 @@
 [package]
-name = "confuse-fuzz"
+name = "ipc-shm"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,14 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.69"
-env_logger = "0.10.0"
-libafl = "0.9.0"
-log = "0.4.17"
-nix = "0.26.2"
-memfd = "0.6.2"
-memmap2 = "0.5.9"
-serde = { version = "1.0.152", features = ["derive"] }
-serde_yaml = "0.9.17"
-tempfile = "3.3.0"
 ipc-channel = { workspace = true }
-ipc-shm = { workspace = true }
+memfd = "0.6.2"
+memmap2 = "0.5.10"
+serde = { version = "1.0.152", features = ["derive"] }

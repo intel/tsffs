@@ -8,6 +8,7 @@ use confuse_simics_api::{
 use const_format::concatcp;
 use env_logger::init as init_logging;
 use ipc_channel::ipc::{channel, IpcReceiver, IpcSender, IpcSharedMemory};
+use ipc_shm::{IpcShm, IpcShmWriter};
 use lazy_static::lazy_static;
 use log::info;
 
@@ -24,7 +25,8 @@ pub struct ModuleCtx {
     cls: *mut conf_class,
     tx: IpcSender<Message>,
     rx: IpcReceiver<Message>,
-    writer: IpcSharedMemory,
+    shm: IpcShm,
+    writer: IpcShmWriter,
 }
 
 unsafe impl Send for ModuleCtx {}
@@ -50,20 +52,25 @@ impl ModuleCtx {
             "Did not receive Initialize command."
         );
 
-        let mut writer = IpcSharedMemory::from_byte(0u8, AFL_MAPSIZE);
+        let mut shm = IpcShm::default();
+
+        let mut writer = shm.writer()?;
+
+        for i in 0..writer.len() {
+            writer.write_at(&[(i % u8::MAX as usize) as u8], i)?;
+        }
 
         info!("Sending fuzzer memory map");
 
-        tx.send(Message::SimicsEvent(SimicsEvent::MapHandle(writer.clone())))?;
-
-        for i in 0..writer.len() {
-            writer.1[i] = (i % u8::MAX as usize) as u8;
-        }
+        tx.send(Message::SimicsEvent(SimicsEvent::SharedMem(
+            shm.try_clone()?,
+        )))?;
 
         Ok(Self {
             cls,
             tx,
             rx,
+            shm,
             writer,
         })
     }

@@ -10,10 +10,11 @@ crate-type = ["cdylib", "lib"]
 [dependencies]
 confuse-simics-api = { workspace = true }
 confuse-fuzz = { workspace = true }
+ipc-shm = { workspace = true }
 once_cell = "1.17.1"
 inventory = "0.3.3"
 const_format = "0.2.30"
-ipc-channel = "0.16.0"
+ipc-channel = { workspace = true }
 anyhow = "1.0.69"
 lazy_static = "1.4.0"
 env_logger = "0.10.0"
