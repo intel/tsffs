@@ -1,4 +1,6 @@
 #include "confuse-afl-wrapper.h"
+#include "confuse_ll.h"
+#include "confuse_dio.h"
 #include <iostream>
 #include <string>
 #include <cstring>
@@ -67,7 +69,7 @@ int main(int argc, char** argv)
         confuse_afl_wait();
 
         // write the size of hte input and the input from AFL to simics
-        memcpy(simics_area_ptr, &input_size, sizeof(size));
+        memcpy(simics_area_ptr, &input_size, sizeof(size_t));
         memcpy(simics_area_ptr+sizeof(size_t), afl_input_ptr, input_size); 
         
 
