@@ -65,8 +65,13 @@ branch_info_t branch_infos[] =
         { "jp", jcc_cb },
 //      { "jpe", jcc_cb }, == jp
         { "jpo", jcc_cb },
-        { "js", jcc_cb },
+        { "js", jcc_cb },       
 //      { "jz", jcc_cb }, == je
+        { "ljmp", jcc_cb},
+        { "retf", ret_cb}, 
+        { "retfq", ret_cb},
+        { "syscall", call_cb},
+        { "sysret", call_cb},
 };
 
 /* Cached state specific to a certain connection. */

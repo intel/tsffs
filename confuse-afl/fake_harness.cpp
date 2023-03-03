@@ -41,8 +41,8 @@ int main(int argc, char** argv)
         exit(1);
     }
 
-    unsigned char* simics_input_ptr = confuse_create_dio_shared_mem(MAP_SIZE);
-    if (shm_array == NULL) {
+    simics_area_ptr = confuse_create_dio_shared_mem(MAP_SIZE);
+    if (simics_area_ptr == NULL) {
       std::cout << "Could not allocate Simics shared memory" << std::endl;
       exit(-1);
     }
@@ -55,22 +55,7 @@ int main(int argc, char** argv)
     // allocate the shared memory between AFL
     // this harness and simics
     auto result = confuse_aflplusplus_init();
-    confuse_open_simics_shm();
-
-    // create a named pipe
-    // std::string pipeOut = "./tmp/confuse_to_simics";
-    // std::string pipeIn = "./tmp/simics_to_confuse";
-    // if(! std::filesystem::exists("./tmp/"))
-    // {
-    //     mkdir("./tmp/", 0777);
-    //     std::cout << "Made directory ./tmp/" << std::endl;
-    // }
-
-    // mkfifo(pipeOut.c_str(), 0666);
-    // auto file_in = open(pipeOut.c_str(), O_RDWR);
-
-    // mkfifo(pipeIn.c_str(), 0666);
-    // auto file_out = open(pipeIn.c_str(), O_RDWR);
+    // confuse_open_simics_shm();
 
     std::cout << "Starting the fuzzing loop" << std::endl;
     for(auto i=0; i<1000; ++i)
@@ -80,12 +65,19 @@ int main(int argc, char** argv)
         // get input from AFL and wait
         confuse_get_afl_input();
         confuse_afl_wait();
-        memcpy(afl_input_ptr, &simics_area_ptr, input_limit);
+
+        // write the size of hte input and the input from AFL to simics
+        memcpy(simics_area_ptr, &input_size, sizeof(size));
+        memcpy(simics_area_ptr+sizeof(size_t), afl_input_ptr, input_size); 
+        
 
         // TODO currently this just reads 64 bytes 
         // we might want to find a better way to read the size of the instrumentation from simics
-        memcpy(simics_area_ptr, &afl_area_ptr, input_size); 
+        
         confuse_run(simics);
+        //memcpy(afl_area_ptr, simics_area_ptr, input_size);
+        // read the size and the data from simics_area_ptr 
+        // determine whether the run was successful, a hang, crash, etc 
 
         // TODO Here's where we would get the information from the branch tracer
 

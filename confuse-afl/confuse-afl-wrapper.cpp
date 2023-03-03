@@ -132,6 +132,19 @@ void confuse_afl_report(bool crash)
 }
 
 
+void confuse_afl_instrument_location(unsigned long cur_loc)
+{
+    if ( !id_str )
+        return;
+
+    cur_loc  = (cur_loc >> 4) ^ (cur_loc << 8);
+    cur_loc &= MAP_SIZE - 1;
+
+    afl_area_ptr[cur_loc ^ prev_loc]++;
+    prev_loc = cur_loc >> 1;
+}
+
+
 
 void confuse_get_afl_input()
 {
