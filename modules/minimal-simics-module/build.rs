@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
 use confuse_simics_manifest::{simics_latest, PackageNumber};
-use confuse_simics_modsign::generate_signature_header;
+use confuse_simics_module::generate_signature_header;
 use dotenvy_macro::dotenv;
 use std::{env::var, fs::OpenOptions, io::Write, path::PathBuf};
 

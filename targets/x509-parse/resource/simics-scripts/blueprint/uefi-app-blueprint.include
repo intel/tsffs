@@ -1,0 +1,50 @@
+$system=board
+$uefi_app="./HelloWorld.efi"
+$startup_nsh = (lookup-file "%simics%/targets/qsp-x86-fuzzing/images/run_uefi_app.nsh")
+
+@import os
+@simenv.startup_nsh_nodir = os.path.basename(simenv.startup_nsh)
+@simenv.uefi_app_nodir = os.path.basename(simenv.uefi_app)
+
+
+script-branch "UEFI Shell Enter Branch" {
+    local $kbd = $system.mb.sb.lpc.super_io.kbd
+    local $con = $system.gfx.console
+    local $sercon = $system.com0.con
+    bp.time.wait-for seconds = 10
+    $kbd.key-press ESC
+    bp.time.wait-for seconds = 3
+    foreach $i in (range 2) {
+        $kbd.key-press KP_DOWN
+        bp.time.wait-for seconds = .5
+    }
+    $kbd.key-press ENTER
+    bp.time.wait-for seconds = .5
+    $kbd.key-press KP_UP
+    bp.time.wait-for seconds = .5
+    $kbd.key-press ENTER
+    bp.time.wait-for seconds = .5
+    
+    #stop countdown
+    $kbd.key-press ENTER         
+    bp.time.wait-for seconds = .5
+    
+    $con.input "FS0:\n"
+    bp.time.wait-for seconds = 10
+
+    $con.input ("set -v UEFI_APP_ON_HOST \" " + $uefi_app + "\"\n")
+    bp.time.wait-for seconds = .5
+
+    $con.input ("set -v UEFI_APP_NODIR \" " + $uefi_app_nodir + "\"\n")
+    bp.time.wait-for seconds = .5
+
+   
+    local $manager = (start-agent-manager)
+
+    $con.input ("SimicsAgent.efi --download " + (lookup-file $startup_nsh) + "\n")
+    bp.time.wait-for seconds = .5
+    
+    $con.input ("" + $startup_nsh_nodir + "\n")
+
+}
+

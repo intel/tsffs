@@ -11,7 +11,7 @@ use dotenvy_macro::dotenv;
 use log::{error, info};
 
 use confuse_simics_manifest::{package_infos, simics_latest, PackageNumber};
-use confuse_simics_modsign::sign_simics_module;
+use confuse_simics_module::SimicsModule;
 use serde::{Deserialize, Serialize};
 use serde_yaml::to_string;
 use tempdir::TempDir;
@@ -24,6 +24,7 @@ pub struct SimicsProject {
     pub base_path: PathBuf,
     pub home: PathBuf,
     packages: HashSet<PackageNumber>,
+    modules: HashSet<SimicsModule>,
     tmp: bool,
 }
 
@@ -138,6 +139,7 @@ impl SimicsProject {
             base_path,
             home: simics_home,
             packages: HashSet::new(),
+            modules: HashSet::new(),
             tmp: false,
         })
     }
@@ -145,17 +147,19 @@ impl SimicsProject {
     /// Try to add a shared object module to the simics project. This module may or may not already
     /// be signed using `sign_simics_module` but will be re-signed in all cases. This will fail if
     /// the module does not correctly include the symbols needed for simics to load it.
-    pub fn try_with_module<P: AsRef<Path>>(self, module: P) -> Result<Self> {
-        let module_dir = self.base_path.join("linux64").join("lib");
-        create_dir_all(&module_dir)?;
-        let module_filename = module
-            .as_ref()
-            .file_name()
-            .context("No file name for module")?;
-        let module_path = module_dir.join(module_filename);
-        copy(module, &module_path)?;
-        sign_simics_module(&module_path)?;
+    pub fn try_with_module<S: AsRef<str>, P: AsRef<Path>>(
+        mut self,
+        module_crate_name: S,
+        module: P,
+    ) -> Result<Self> {
+        let module_path = module.as_ref().to_path_buf();
+        let module = SimicsModule::try_new(module_crate_name, &self.base_path, &module_path)?;
+        self.modules.insert(module);
         Ok(self)
+    }
+
+    pub fn module_load_args(&self) -> Vec<String> {
+        vec![]
     }
 
     /// Get the simics executable for this project as a command ready to run with arguments

@@ -24,6 +24,6 @@ anyhow = "1.0.69"
 dotenvy_macro = "0.15.1"
 confuse-simics-project = { workspace = true }
 confuse-simics-manifest = { workspace = true }
-confuse-simics-modsign = { workspace = true }
+confuse-simics-module = { workspace = true }
 dockerfile-rs = "0.3.0"
 chrono = "0.4.23"

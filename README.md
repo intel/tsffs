@@ -18,7 +18,7 @@ This crate provides raw bindings to the SIMICS C API in rust.
 This crate provides utilities for parsing and checking the manifest files SIMICS uses
 to track multiple installations, versions, and packages for SIMICS.
 
-### [confuse-simics-modsign](./confuse-simics-modsign)
+### [confuse-simics-module](./confuse-simics-module)
 
 This crate implements utilities to apply the checksum signature SIMICS uses to determine
 if a shared object is loadable.

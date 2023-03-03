@@ -6,15 +6,16 @@ members = [
     # Just provides common simics manifest tools for parsing/managing simics
     "confuse-simics-manifest",
     # Provides module signing utilities for creating simics modules
-    "confuse-simics-modsign",
+    "confuse-simics-module",
     # Fuzzer
     "confuse-fuzz",
     # Modules
-    "modules/confuse-branch-tracer",
     "modules/minimal-simics-module",
     "modules/ipc-test-module",
+    "modules/confuse-module",
     # Targets
     "targets/hello-world",
+    "targets/x509-parse",
     # Utilities
     "util/ipc-shm",
 ]
@@ -23,7 +24,7 @@ members = [
 confuse-simics-api = { path = "./confuse-simics-api" }
 confuse-simics-project = { path = "./confuse-simics-project" }
 confuse-simics-manifest = { path = "./confuse-simics-manifest" }
-confuse-simics-modsign = { path = "./confuse-simics-modsign" }
+confuse-simics-module = { path = "./confuse-simics-module" }
 confuse-fuzz = { path = "./confuse-fuzz" }
 ipc-shm = { path = "./util/ipc-shm" }
 ipc-channel = { git = "https://github.com/novafacing/ipc-channel.git", version = "0.16.0", features = [
