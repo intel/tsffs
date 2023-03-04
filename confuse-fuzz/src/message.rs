@@ -1,6 +1,5 @@
 use std::fmt::Debug;
 
-use ipc_channel::ipc::{IpcReceiver, IpcSender};
 use ipc_shm::IpcShm;
 use serde::{Deserialize, Serialize};
 

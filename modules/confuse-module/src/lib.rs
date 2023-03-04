@@ -20,7 +20,6 @@ use std::{
 
 pub const BOOTSTRAP_SOCKNAME: &str = concatcp!(CLASS_NAME, "_SOCK");
 pub const AFL_MAPSIZE: usize = 64 * 1024;
-
 pub struct ModuleCtx {
     cls: *mut conf_class,
     tx: IpcSender<Message>,

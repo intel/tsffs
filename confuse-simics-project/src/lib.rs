@@ -2,11 +2,12 @@ use std::{
     collections::{HashMap, HashSet},
     fs::{copy, create_dir_all, remove_dir_all, OpenOptions},
     io::Write,
-    path::{Path, PathBuf},
+    path::{Component, Path, PathBuf},
     process::{Command, Stdio},
+    str::FromStr,
 };
 
-use anyhow::{ensure, Context, Result};
+use anyhow::{bail, ensure, Context, Result};
 use dotenvy_macro::dotenv;
 use log::{error, info};
 
@@ -19,6 +20,70 @@ use walkdir::WalkDir;
 
 const SIMICS_HOME: &str = dotenv!("SIMICS_HOME");
 const SIMICS_PROJECT_PREFIX: &str = "simics_project";
+
+/// Return the SIMICS_HOME directory as a PathBuf
+pub fn simics_home() -> Result<PathBuf> {
+    let simics_home = PathBuf::from(SIMICS_HOME);
+    match simics_home.exists() {
+        true => Ok(simics_home),
+        false => {
+            bail!(
+                "SIMICS_HOME is defined, but {} does not exist.",
+                SIMICS_HOME
+            )
+        }
+    }
+}
+
+/// Link against simics. This is required for any SIMICS module (as well as anything that uses
+/// the simics module, for example to access constants from it -- an unfortunate side effect but
+/// not a big deal, we'll be linking it in to almost every process regardless.
+pub fn link_simics() -> Result<()> {
+    let simics_bin_dir = simics_home()?
+        .join(format!(
+            "simics-{}",
+            simics_latest(simics_home()?)?.packages[&PackageNumber::Base].version
+        ))
+        .join("linux64")
+        .join("bin");
+
+    let simics_sys_lib_dir = simics_home()?
+        .join(format!(
+            "simics-{}",
+            simics_latest(simics_home()?)?.packages[&PackageNumber::Base].version
+        ))
+        .join("linux64")
+        .join("sys")
+        .join("lib");
+
+    println!(
+        "cargo:rustc-link-search=native={}",
+        simics_bin_dir.display()
+    );
+
+    println!(
+        "cargo:rustc-link-search=native={}",
+        simics_sys_lib_dir.display()
+    );
+
+    println!("cargo:rustc-link-lib=simics-common");
+    println!("cargo:rustc-link-lib=vtutils");
+    println!("cargo:rustc-link-lib=package-paths");
+    // TODO: Get this full path from the simics lib
+    println!("cargo:rustc-link-lib=dylib:+verbatim=libpython3.9.so.1.0");
+
+    // NOTE: This only works for `cargo run` and `cargo test` and won't work for just running
+    // the output binary
+    println!(
+        "cargo:rustc-env=LD_LIBRARY_PATH={}",
+        &format!(
+            "{};{}",
+            simics_bin_dir.to_string_lossy(),
+            simics_sys_lib_dir.to_string_lossy(),
+        )
+    );
+    Ok(())
+}
 
 pub struct SimicsProject {
     pub base_path: PathBuf,
@@ -112,6 +177,64 @@ impl SimicsProject {
         Ok(self)
     }
 
+    /// Add a file into the simics project at a path relative to the project directory.
+    pub fn try_with_file<P: AsRef<Path>, S: AsRef<str>>(
+        self,
+        src_path: P,
+        dst_relative_path: S,
+    ) -> Result<Self> {
+        // It's not 100% coverage but sanity check against dumb path traversals here
+        ensure!(
+            !PathBuf::from_str(dst_relative_path.as_ref())?
+                .components()
+                .into_iter()
+                .any(|c| c == Component::ParentDir),
+            "Path must be relative to the project directory and contain no parent directories!"
+        );
+        let dst_path = self.base_path.join(dst_relative_path.as_ref());
+        let dst_path_dir = dst_path
+            .parent()
+            .context("Destination path has no parent.")?;
+
+        create_dir_all(&dst_path_dir)?;
+
+        copy(src_path, &dst_path)?;
+
+        Ok(self)
+    }
+
+    /// Add a file into the simics project at a path relative to the project directory.
+    pub fn try_with_file_contents<S: AsRef<str>>(
+        self,
+        contents: &[u8],
+        dst_relative_path: S,
+    ) -> Result<Self> {
+        // It's not 100% coverage but sanity check against dumb path traversals here
+        ensure!(
+            !PathBuf::from_str(dst_relative_path.as_ref())?
+                .components()
+                .into_iter()
+                .any(|c| c == Component::ParentDir),
+            "Path must be relative to the project directory and contain no parent directories!"
+        );
+        let dst_path = self.base_path.join(dst_relative_path.as_ref());
+        let dst_path_dir = dst_path
+            .parent()
+            .context("Destination path has no parent.")?;
+
+        create_dir_all(&dst_path_dir)?;
+
+        let mut file = OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .create(true)
+            .open(&dst_path)?;
+
+        file.write_all(contents)?;
+
+        Ok(self)
+    }
+
     /// Create a simics project at a specific path. When a project is created this way, it is
     /// not deleted when it is dropped and will instead persist on disk.
     pub fn try_new_at<P: AsRef<Path>>(base_path: P) -> Result<Self> {
@@ -165,6 +288,11 @@ impl SimicsProject {
     /// Get the simics executable for this project as a command ready to run with arguments
     pub fn command(&self) -> Command {
         Command::new(&self.base_path.join("simics"))
+    }
+
+    /// Make this project persistent (ie it will not be deleted when dropped)
+    pub fn persist(&mut self) {
+        self.tmp = true;
     }
 }
 
