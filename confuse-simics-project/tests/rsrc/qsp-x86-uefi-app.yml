@@ -152,6 +152,5 @@ params:
   system:
     type: str
     output: true
-
 script: "%script%/qsp-x86-uefi-app.py"
 ...

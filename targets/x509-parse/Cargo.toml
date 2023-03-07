@@ -12,6 +12,7 @@ anyhow = "1.0.69"
 env_logger = "0.10.0"
 log = "0.4.17"
 confuse-simics-manifest.workspace = true
+indoc = "2.0.1"
 
 [dev-dependencies]
 

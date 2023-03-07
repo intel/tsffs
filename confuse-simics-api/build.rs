@@ -49,6 +49,7 @@ fn generate_simics_include_wrapper() -> Result<String> {
         ))
         .join("src")
         .join("include");
+
     let mut include_paths = WalkDir::new(&simics_include_path)
         .into_iter()
         .filter_map(|p| p.ok())
@@ -79,6 +80,11 @@ fn generate_simics_include_wrapper() -> Result<String> {
 
     // We need to move python-header.h to the beginning of the list
     include_paths.swap(0, python_hdr_pos);
+
+    include_paths
+        .iter()
+        .position(|p| p.file_name() == Some(OsStr::new("attr-value.h")))
+        .expect("No header attr-value.h found");
 
     let hdr_denylist = vec![
         // Most of these are denylisted because they include follower-time.h and it's :/ broken

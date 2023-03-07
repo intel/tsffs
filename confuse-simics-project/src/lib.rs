@@ -9,6 +9,7 @@ use std::{
 
 use anyhow::{bail, ensure, Context, Result};
 use dotenvy_macro::dotenv;
+use indoc::formatdoc;
 use log::{error, info};
 
 use confuse_simics_manifest::{package_infos, simics_latest, PackageNumber};
@@ -282,7 +283,10 @@ impl SimicsProject {
     }
 
     pub fn module_load_args(&self) -> Vec<String> {
-        vec![]
+        self.modules
+            .iter()
+            .map(|sm| format!("load-module {}", sm.name))
+            .collect()
     }
 
     /// Get the simics executable for this project as a command ready to run with arguments
@@ -292,7 +296,7 @@ impl SimicsProject {
 
     /// Make this project persistent (ie it will not be deleted when dropped)
     pub fn persist(&mut self) {
-        self.tmp = true;
+        self.tmp = false;
     }
 }
 
@@ -333,8 +337,7 @@ fn copy_dir_contents<P: AsRef<Path>>(src_dir: P, dst_dir: P) -> Result<()> {
     Ok(())
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase", tag = "type", content = "default")]
+const YAML_INDENT: &str = "  ";
 pub enum SimicsAppParamType {
     Int(Option<i64>),
     File(Option<String>),
@@ -342,77 +345,71 @@ pub enum SimicsAppParamType {
     Str(Option<String>),
 }
 
-#[derive(Debug, Serialize, Deserialize)]
 pub struct SimicsAppParam {
-    // default: Option<T>,
-    #[serde(flatten)]
-    pub param: SimicsAppParamType,
+    pub default: SimicsAppParamType,
     pub output: Option<bool>,
 }
 
-impl SimicsAppParam {
-    pub fn default() -> Self {
-        SimicsAppParam::new_int()
-    }
-    pub fn new_int() -> Self {
-        Self {
-            param: SimicsAppParamType::Int(None),
-            output: None,
+impl ToString for SimicsAppParam {
+    fn to_string(&self) -> String {
+        let mut pstr = vec![format!(
+            "type: {}",
+            match &self.default {
+                SimicsAppParamType::Int(_) => "int",
+                SimicsAppParamType::File(_) => "file",
+                SimicsAppParamType::Str(_) => "str",
+                SimicsAppParamType::Bool(_) => "bool",
+            }
+        )];
+
+        match &self.default {
+            SimicsAppParamType::Int(Some(v)) => {
+                pstr.push(format!("default: {}", v));
+            }
+            SimicsAppParamType::File(Some(v)) => pstr.push(format!(r#"default: "{}""#, v)),
+            SimicsAppParamType::Str(Some(v)) => pstr.push(format!(r#"default: "{}""#, v)),
+            // Yet more inconsistency with YAML spec
+            SimicsAppParamType::Bool(Some(v)) => pstr.push(format!(
+                "default: {}",
+                match v {
+                    true => "TRUE",
+                    false => "FALSE",
+                }
+            )),
+            _ => {}
+        };
+
+        if let Some(output) = self.output {
+            pstr.push(format!("output: {}", output));
         }
-    }
 
-    pub fn new_file() -> Self {
-        Self {
-            param: SimicsAppParamType::File(None),
-            output: None,
-        }
-    }
-
-    pub fn new_bool() -> Self {
-        Self {
-            param: SimicsAppParamType::Bool(None),
-            output: None,
-        }
-    }
-
-    pub fn new_str() -> Self {
-        Self {
-            param: SimicsAppParamType::Str(None),
-            output: None,
-        }
-    }
-
-    pub fn int(mut self, value: i64) -> Self {
-        self.param = SimicsAppParamType::Int(Some(value));
-        self
-    }
-
-    pub fn file<S: AsRef<str>>(mut self, value: S) -> Self {
-        self.param = SimicsAppParamType::File(Some(value.as_ref().to_string()));
-        self
-    }
-
-    pub fn bool(mut self, value: bool) -> Self {
-        self.param = SimicsAppParamType::Bool(Some(value));
-        self
-    }
-
-    pub fn str<S: AsRef<str>>(mut self, value: S) -> Self {
-        self.param = SimicsAppParamType::Str(Some(value.as_ref().to_string()));
-        self
-    }
-
-    pub fn output(mut self, value: bool) -> Self {
-        self.output = Some(value);
-        self
+        pstr.iter()
+            .map(|e| YAML_INDENT.to_string() + e)
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-/// YAML Serializable Simics app description
+impl SimicsAppParam {
+    pub fn new(typ: SimicsAppParamType) -> Self {
+        Self {
+            default: typ,
+            output: None,
+        }
+    }
+
+    pub fn set_output(&mut self, value: bool) {
+        self.output = Some(value);
+    }
+
+    pub fn set_default(&mut self, value: SimicsAppParamType) {
+        self.default = value;
+    }
+}
+
 pub struct SimicsApp {
     pub description: String,
-    pub params: HashMap<String, SimicsAppParam>,
+    pub params: Vec<(String, SimicsAppParam)>,
     pub script: String,
 }
 
@@ -420,21 +417,170 @@ impl SimicsApp {
     pub fn new<S: AsRef<str>>(description: S, script: S) -> Self {
         Self {
             description: description.as_ref().to_string(),
-            params: HashMap::new(),
+            params: Vec::new(),
             script: script.as_ref().to_string(),
         }
     }
 
-    pub fn param<S: AsRef<str>>(mut self, key: S, param: SimicsAppParam) -> Self {
-        self.params.insert(key.as_ref().to_string(), param);
+    pub fn param<S: AsRef<str>>(&mut self, key: S, param: SimicsAppParam) -> &mut Self {
+        self.params.push((key.as_ref().to_string(), param));
         self
     }
 
-    pub fn try_to_string(&self) -> Result<String> {
-        let mut appstr: String = to_string(&self)?;
-        // YAML allows no quotes, signle quotes, or double quotes. Simics, on the other hand, will
-        // reject anything not double quoted. :))))))))))))))))))))))))))))))))))))))
-        appstr = appstr.replace(r#"'"#, r#"""#);
-        Ok("%YAML 1.2\n---\n".to_owned() + &appstr)
+    pub fn params_string(&self) -> String {
+        self.params
+            .iter()
+            .map(|(k, p)| {
+                format!("{}:\n{}", k, p.to_string())
+                    .lines()
+                    .map(|l| YAML_INDENT.to_string() + l)
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
     }
+
+    pub fn add_param<S: AsRef<str>>(&mut self, key: S, param: SimicsAppParam) {
+        self.params.push((key.as_ref().to_string(), param));
+    }
+}
+
+impl ToString for SimicsApp {
+    fn to_string(&self) -> String {
+        formatdoc! {r#"
+            %YAML 1.2
+            ---
+            description: {}
+            params:
+            {}
+            script: "{}"
+            ...
+            "#, 
+            self.description,
+            self.params_string(),
+            self.script
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! int_param {
+    ($name:ident : { default: $dval:expr , output: $oval:expr $(,)? }) => {{
+        let mut param = SimicsAppParam::new(SimicsAppParamType::Int(None));
+        param.set_default(SimicsAppParamType::Int(Some($dval)));
+        param.set_output($oval);
+
+        (stringify!($name), param)
+    }};
+    ($name:ident : { default: $dval:expr }) => {{
+        let mut param = SimicsAppParam::new(SimicsAppParamType::Int(None));
+        param.set_default(SimicsAppParamType::Int(Some($dval)));
+
+        (stringify!($name), param)
+    }};
+    ($name:ident : { output: $oval:expr }) => {{
+        let mut param = SimicsAppParam::new(SimicsAppParamType::Int(None));
+        param.set_output($oval);
+
+        (stringify!($name), param)
+    }};
+}
+
+#[macro_export]
+macro_rules! str_param {
+    ($name:ident : { default: $dval:expr , output: $oval:expr $(,)? }) => {{
+        let mut param = SimicsAppParam::new(SimicsAppParamType::Str(None));
+        param.set_default(SimicsAppParamType::Str(Some($dval.into())));
+        param.set_output($oval);
+
+        (stringify!($name), param)
+    }};
+    ($name:ident : { default: $dval:expr }) => {{
+        let mut param = SimicsAppParam::new(SimicsAppParamType::Str(None));
+        param.set_default(SimicsAppParamType::Str(Some($dval.into())));
+
+        (stringify!($name), param)
+    }};
+    ($name:ident : { output: $oval:expr }) => {{
+        let mut param = SimicsAppParam::new(SimicsAppParamType::Str(None));
+        param.set_output($oval);
+
+        (stringify!($name), param)
+    }};
+}
+
+#[macro_export]
+macro_rules! file_param {
+    ($name:ident : { default: $dval:expr , output: $oval:expr $(,)? }) => {{
+        let mut param = SimicsAppParam::new(SimicsAppParamType::File(None));
+        param.set_default(SimicsAppParamType::File(Some($dval.into())));
+        param.set_output($oval);
+
+        (stringify!($name), param)
+    }};
+    ($name:ident : { default: $dval:expr }) => {{
+        let mut param = SimicsAppParam::new(SimicsAppParamType::File(None));
+        param.set_default(SimicsAppParamType::File(Some($dval.into())));
+
+        (stringify!($name), param)
+    }};
+    ($name:ident : { output: $oval:expr }) => {{
+        let mut param = SimicsAppParam::new(SimicsAppParamType::File(None));
+        param.set_output($oval);
+
+        (stringify!($name), param)
+    }};
+}
+
+#[macro_export]
+macro_rules! bool_param {
+    ($name:ident : { default: $dval:expr , output: $oval:expr $(,)? }) => {{
+        let mut param = SimicsAppParam::new(SimicsAppParamType::Bool(None));
+        param.set_default(SimicsAppParamType::Bool(Some($dval)));
+        param.set_output($oval);
+
+        (stringify!($name), param)
+    }};
+    ($name:ident : { default: $dval:expr }) => {{
+        let mut param = SimicsAppParam::new(SimicsAppParamType::Bool(None));
+        param.set_default(SimicsAppParamType::Bool(Some($dval)));
+
+        (stringify!($name), param)
+    }};
+    ($name:ident : { output: $oval:expr }) => {{
+        let mut param = SimicsAppParam::new(SimicsAppParamType::Bool(None));
+        param.set_output($oval);
+
+        (stringify!($name), param)
+    }};
+}
+
+#[macro_export]
+macro_rules! simics_app {
+    ($description:expr, $script:expr, $($param:expr),* $(,)?) => {
+        {
+            let mut app = SimicsApp::new($description, $script);
+            $(
+                app.add_param($param.0, $param.1);
+            )*
+            app
+        }
+    }
+}
+
+#[macro_export]
+/// Create a path relative to the simics project directory.
+///
+/// # Examples
+///
+/// ```
+/// const SCRIPT_PATH: &str = "scripts/app.py";
+/// let app = SimicsApp::new("An app", &simics_path!(SCRIPT_PATH));
+/// assert_eq!(app.script, "%simics%/scripts/app.py");
+/// ```
+macro_rules! simics_path {
+    ($path:expr) => {
+        format!("%simics%/{}", $path)
+    };
 }
