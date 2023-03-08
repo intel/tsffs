@@ -56,7 +56,7 @@ endif
 
 hello_fuzzing_build_tgt = custom_target(
     'hello_fuzzing_build_tgt',
-    input: [],
+    input: [hello_fuzzing_src],
     output: ['HelloFuzzing.efi', 'HelloFuzzing.debug'],
     command: [
         'build.sh',

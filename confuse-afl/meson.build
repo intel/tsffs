@@ -11,7 +11,7 @@ confuse_afl_src = [
 
 instrumented_test = custom_target(
     'instrumentedTest',
-    input: aflpp_afl_clangpp,
+    input: [aflpp_afl_clangpp, confuse_afl_src],
     output: ['instrumentedTest'],
     command: [
         aflpp_afl_clangpp,
