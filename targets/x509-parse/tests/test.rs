@@ -1,5 +1,7 @@
 use anyhow::Result;
+use confuse_module::CRATE_NAME as CONFUSE_MODULE_CRATE_NAME;
 use confuse_simics_manifest::PackageNumber;
+use confuse_simics_module::find_module;
 use confuse_simics_project::{
     bool_param, file_param, int_param, simics_app, simics_path, str_param, SimicsApp,
     SimicsAppParam, SimicsAppParamType, SimicsProject,
@@ -81,21 +83,26 @@ pub fn test_load() -> Result<()> {
         import commands
         import io, contextlib
 
-        args = [[name, commands.param_val_to_str(value)]
-                for (name, value) in params.items()]
+        args = [
+            [name, commands.param_val_to_str(value)] for (name, value) in params.items()
+        ]
+
         simics.SIM_run_command_file_params(
             simics.SIM_lookup_file("{}"),
-            True, args)
+            True, args
+        )
 
         if SIM_get_batch_mode():
-            SIM_log_info(1, conf.sim, 0, 'Batch mode detected. Disconnecting console from VGA')
+            SIM_log_info(
+                1,
+                conf.sim,
+                0,
+                'Batch mode detected. Disconnecting console from VGA'
+            )
             conf.board.mb.gpu.vga.console=None
 
-        #Reach start state of test (indicated by MAGIC(42) in on-target test harness
         SIM_run_command('bp.hap.run-until name = Core_Magic_Instruction index = {}')
-
         SIM_run_command('enable-unsupported-feature internals')
-
         SIM_run_command('save-snapshot name = origin')
 
         cmd_output = io.StringIO()
@@ -232,6 +239,8 @@ pub fn test_load() -> Result<()> {
         "targets/qsp-x86/qsp-hdd-boot.simics"
     };
 
+    let confuse_module = find_module(CONFUSE_MODULE_CRATE_NAME)?;
+
     let mut simics_project = SimicsProject::try_new()?
         .try_with_package(PackageNumber::QuickStartPlatform)?
         .try_with_file_contents(&X509_PARSE_EFI_MODULE, UEFI_APP_PATH)?
@@ -239,9 +248,8 @@ pub fn test_load() -> Result<()> {
         .try_with_file_contents(app_script.as_bytes(), APP_SCRIPT_PATH)?
         .try_with_file_contents(boot_disk, BOOT_DISK_PATH)?
         .try_with_file_contents(run_uefi_app_nsh_script, STARTUP_NSH_PATH)?
-        .try_with_file_contents(run_uefi_app_simics_script.as_bytes(), STARTUP_SIMICS_PATH)?;
-
-    simics_project.persist();
+        .try_with_file_contents(run_uefi_app_simics_script.as_bytes(), STARTUP_SIMICS_PATH)?
+        .try_with_module(CONFUSE_MODULE_CRATE_NAME, &confuse_module)?;
 
     println!("Project: {}", simics_project.base_path.display());
 
