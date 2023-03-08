@@ -285,7 +285,7 @@ impl SimicsProject {
     pub fn module_load_args(&self) -> Vec<String> {
         self.modules
             .iter()
-            .map(|sm| format!("load-module {}", sm.name))
+            .flat_map(|sm| ["-e".to_string(), format!("load-module {}", sm.name)])
             .collect()
     }
 

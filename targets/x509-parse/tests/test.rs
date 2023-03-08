@@ -1,16 +1,24 @@
-use anyhow::Result;
-use confuse_module::CRATE_NAME as CONFUSE_MODULE_CRATE_NAME;
+use anyhow::{bail, Result};
+use confuse_fuzz::message::{FuzzerEvent, Message, SimicsEvent};
+use confuse_module::{
+    BOOTSTRAP_SOCKNAME as CONFUSE_MODULE_BOOTSTRAP_SOCKNAME,
+    CRATE_NAME as CONFUSE_MODULE_CRATE_NAME,
+};
 use confuse_simics_manifest::PackageNumber;
 use confuse_simics_module::find_module;
 use confuse_simics_project::{
     bool_param, file_param, int_param, simics_app, simics_path, str_param, SimicsApp,
     SimicsAppParam, SimicsAppParamType, SimicsProject,
 };
+use env_logger::{init_from_env, Env, DEFAULT_FILTER_ENV};
 use indoc::{formatdoc, indoc};
+use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender};
+use log::info;
 use x509_parse::X509_PARSE_EFI_MODULE;
 
 #[test]
 pub fn test_load() -> Result<()> {
+    init_from_env(Env::default().filter_or(DEFAULT_FILTER_ENV, "info"));
     // Paths of
     const APP_SCRIPT_PATH: &str = "scripts/app.py";
     const APP_YML_PATH: &str = "scripts/app.yml";
@@ -91,6 +99,10 @@ pub fn test_load() -> Result<()> {
             simics.SIM_lookup_file("{}"),
             True, args
         )
+
+        SIM_create_object('confuse_module', 'confuse_module', [])
+        conf.confuse_module.processor = SIM_get_object(simenv.system).mb.cpu0.core[0][0]
+
 
         if SIM_get_batch_mode():
             SIM_log_info(
@@ -241,7 +253,7 @@ pub fn test_load() -> Result<()> {
 
     let confuse_module = find_module(CONFUSE_MODULE_CRATE_NAME)?;
 
-    let mut simics_project = SimicsProject::try_new()?
+    let simics_project = SimicsProject::try_new()?
         .try_with_package(PackageNumber::QuickStartPlatform)?
         .try_with_file_contents(&X509_PARSE_EFI_MODULE, UEFI_APP_PATH)?
         .try_with_file_contents(&app.to_string().as_bytes(), APP_YML_PATH)?
@@ -251,7 +263,38 @@ pub fn test_load() -> Result<()> {
         .try_with_file_contents(run_uefi_app_simics_script.as_bytes(), STARTUP_SIMICS_PATH)?
         .try_with_module(CONFUSE_MODULE_CRATE_NAME, &confuse_module)?;
 
+    let (bootstrap, bootstrap_name) = IpcOneShotServer::new()?;
+
+    let mut simics_process = simics_project
+        .command()
+        .args(simics_project.module_load_args())
+        .arg(APP_YML_PATH)
+        .arg("-batch-mode")
+        .arg("-e")
+        .arg("@SIM_main_loop()")
+        .current_dir(&simics_project.base_path)
+        .env(CONFUSE_MODULE_BOOTSTRAP_SOCKNAME, bootstrap_name)
+        .env("RUST_LOG", "trace")
+        .spawn()?;
+
+    let (_, (tx, rx)): (_, (IpcSender<Message>, IpcReceiver<Message>)) = bootstrap.accept()?;
+
+    info!("Sending initialize");
+
+    tx.send(Message::FuzzerEvent(FuzzerEvent::Initialize))?;
+
+    info!("Receiving ipc shm");
+
+    let shm = match rx.recv()? {
+        Message::SimicsEvent(SimicsEvent::SharedMem(shm)) => shm,
+        _ => bail!("Unexpected message received"),
+    };
+
+    let reader = shm.reader()?;
+
     println!("Project: {}", simics_project.base_path.display());
+
+    simics_process.wait()?;
 
     Ok(())
 }

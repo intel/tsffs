@@ -87,7 +87,13 @@ pub fn find_module<S: AsRef<str>>(crate_name: S) -> Result<PathBuf> {
     #[cfg(not(debug_assertions))]
     let target_subdir = "release";
 
-    let lib_path = workspace_metadata.target_directory.join(target_subdir).join(format!("lib{}.so", target.name.replace("-", "_")));
+    let lib_paths = [
+        workspace_metadata.target_directory.join(target_subdir).join(format!("lib{}.so", target.name.replace("-", "_"))),
+        workspace_metadata.target_directory.join(target_subdir).join("deps").join(format!("lib{}.so", target.name.replace("-", "_")))
+
+    ];
+
+    let lib_path = lib_paths.iter().filter(|p| p.is_file()).next().context(format!("No file exists for requested module {}", crate_name.as_ref()))?;
 
     Ok(lib_path.into())
 }

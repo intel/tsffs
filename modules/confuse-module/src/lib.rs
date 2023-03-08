@@ -3,15 +3,15 @@ include!(concat!(env!("OUT_DIR"), "/simics_module_header.rs"));
 use anyhow::{anyhow, bail, ensure, Context, Result};
 use confuse_fuzz::message::{FuzzerEvent, Message, SimicsEvent};
 use confuse_simics_api::{
-    attr_value_t, cached_instruction_handle_t, class_data_t, class_kind_t_Sim_Class_Kind_Session,
-    conf_class, conf_class_t, conf_object_t, cpu_cached_instruction_interface_t,
-    cpu_instruction_query_interface_t, cpu_instrumentation_subscribe_interface_t,
-    instruction_handle_t, obj_hap_func_t, processor_info_v2_interface_t, set_error_t,
-    set_error_t_Sim_Set_Ok, SIM_attr_object_or_nil, SIM_c_get_interface, SIM_hap_add_callback,
-    SIM_register_class,
+    attr_attr_t_Sim_Attr_Pseudo, attr_value_t, cached_instruction_handle_t, class_data_t,
+    class_kind_t_Sim_Class_Kind_Session, conf_class, conf_class_t, conf_object_t,
+    cpu_cached_instruction_interface_t, cpu_instruction_query_interface_t,
+    cpu_instrumentation_subscribe_interface_t, instruction_handle_t, int_register_interface_t,
+    obj_hap_func_t, processor_info_v2_interface_t, set_error_t, set_error_t_Sim_Set_Ok,
+    SIM_attr_object_or_nil, SIM_c_get_interface, SIM_hap_add_callback, SIM_make_attr_object,
+    SIM_register_attribute, SIM_register_class,
 };
 use const_format::concatcp;
-use cstr::cstr;
 use env_logger::init as init_logging;
 use ipc_channel::ipc::{channel, IpcReceiver, IpcSender};
 use ipc_shm::{IpcShm, IpcShmWriter};
@@ -42,22 +42,24 @@ macro_rules! nonnull {
 
 /// Container for the SIMICS structures needed to trace execution of a processor
 pub struct Processor {
-    cpu: *const conf_object_t,
-    cpu_instrumentation_subscribe: *const cpu_instrumentation_subscribe_interface_t,
-    cpu_instrumentation_query: *const cpu_instruction_query_interface_t,
-    cpu_cached_instruction: *const cpu_cached_instruction_interface_t,
-    processor_info_v2: *const processor_info_v2_interface_t,
+    cpu: *mut conf_object_t,
+    cpu_instrumentation_subscribe: *mut cpu_instrumentation_subscribe_interface_t,
+    cpu_instrumentation_query: *mut cpu_instruction_query_interface_t,
+    cpu_cached_instruction: *mut cpu_cached_instruction_interface_t,
+    processor_info_v2: *mut processor_info_v2_interface_t,
+    int_register: *mut int_register_interface_t,
 }
 
 impl Processor {
     pub fn try_new(
-        cpu: *const conf_object_t,
+        cpu: *mut conf_object_t,
         // For information on these interfaces, see the "Model-to-simulator interfaces" part of the
         // documentation
-        cpu_instrumentation_subscribe: *const cpu_instrumentation_subscribe_interface_t,
-        cpu_instrumentation_query: *const cpu_instruction_query_interface_t,
-        cpu_cached_instruction: *const cpu_cached_instruction_interface_t,
-        processor_info_v2: *const processor_info_v2_interface_t,
+        cpu_instrumentation_subscribe: *mut cpu_instrumentation_subscribe_interface_t,
+        cpu_instrumentation_query: *mut cpu_instruction_query_interface_t,
+        cpu_cached_instruction: *mut cpu_cached_instruction_interface_t,
+        processor_info_v2: *mut processor_info_v2_interface_t,
+        int_register: *mut int_register_interface_t,
     ) -> Result<Self> {
         Ok(Self {
             cpu: nonnull!(cpu)?,
@@ -65,8 +67,21 @@ impl Processor {
             cpu_instrumentation_query: nonnull!(cpu_instrumentation_query)?,
             cpu_cached_instruction: nonnull!(cpu_cached_instruction)?,
             processor_info_v2: nonnull!(processor_info_v2)?,
+            int_register: nonnull!(int_register)?,
         })
     }
+}
+
+/// NOTE: This macro leaks memory, do not use it hot!
+macro_rules! raw_cstr {
+    ($s:expr) => {
+        CString::new($s)
+            .expect(concat!(
+                "Failed to initialize C string from ",
+                stringify!($s)
+            ))
+            .into_raw()
+    };
 }
 
 /// Context for the module. This module is responsible for:
@@ -79,7 +94,7 @@ pub struct ModuleCtx {
     rx: IpcReceiver<Message>,
     shm: IpcShm,
     writer: IpcShmWriter,
-    processors: Vec<Processor>,
+    processor: Option<Processor>,
 }
 
 unsafe impl Send for ModuleCtx {}
@@ -125,28 +140,28 @@ impl ModuleCtx {
             rx,
             shm,
             writer,
-            processors: Vec::new(),
+            processor: None,
         })
     }
 
     pub fn init(&mut self) -> Result<()> {
-        init_logging();
-
         let _start_cb_handle = unsafe {
             SIM_hap_add_callback(
-                cstr!("Core_Magic_Instruction").as_ptr(),
+                raw_cstr!("Core_Magic_Instruction"),
                 transmute(core_magic_instruction_cb as unsafe extern "C" fn(_, _, _)),
                 null_mut(),
             )
         };
+
+        info!("Added callback for magic instruction");
 
         info!("Initialized Module Context");
 
         Ok(())
     }
 
-    pub fn add_processor(&mut self, processor: Processor) -> Result<()> {
-        self.processors.push(processor);
+    pub fn set_processor(&mut self, processor: Processor) -> Result<()> {
+        self.processor = Some(processor);
         Ok(())
     }
 }
@@ -165,9 +180,9 @@ lazy_static! {
             pre_delete_instance: None,
             delete_instance: None,
             // Leaked
-            description: class_data_desc.into_raw(),
+            description: raw_cstr!(CLASS_NAME),
             // Leaked
-            class_desc: class_data_class_desc.into_raw(),
+            class_desc: raw_cstr!("Confuse module"),
             kind: class_kind_t_Sim_Class_Kind_Session,
         };
 
@@ -175,6 +190,20 @@ lazy_static! {
             // Class name Leaked
             SIM_register_class(class_name.into_raw(), &class_data as *const class_data_t)
         };
+
+        unsafe {
+            SIM_register_attribute(
+                cls,
+                raw_cstr!("processor"),
+                Some(get_processor),
+                Some(set_processor),
+                attr_attr_t_Sim_Attr_Pseudo,
+                raw_cstr!("o|n"),
+                raw_cstr!("The <i>processor</i> to trace."),
+            );
+        };
+
+        info!("Registered processor attribute");
 
         Arc::new(Mutex::new(
             ModuleCtx::try_new(cls).expect("Failed to initialize module"),
@@ -184,6 +213,7 @@ lazy_static! {
 
 #[no_mangle]
 pub extern "C" fn init_local() {
+    init_logging();
     let mut ctx = CTX.lock().expect("Could not lock context!");
     ctx.init().expect("Could not initialize context");
     info!("Initialized context for {}", CLASS_NAME);
@@ -194,26 +224,46 @@ pub extern "C" fn init_local() {
 #[no_mangle]
 /// Add processor to the branch tracer for tracing along with its associated instrumentation. Right
 /// now it is an error to add more than one processor, but this is intended to be improved
-pub extern "C" fn add_processor(_obj: *mut conf_object_t, val: *mut attr_value_t) -> set_error_t {
-    let cpu: *const conf_object_t =
+pub extern "C" fn set_processor(_obj: *mut conf_object_t, val: *mut attr_value_t) -> set_error_t {
+    info!("Adding processor to context");
+    let cpu: *mut conf_object_t =
         unsafe { SIM_attr_object_or_nil(*val) }.expect("Attribute object expected");
 
-    let cpu_instrumentation_subscribe: *const cpu_instrumentation_subscribe_interface_t = unsafe {
-        SIM_c_get_interface(cpu, cstr!("cpu_instrumentation_subscribe").as_ptr())
-            as *const cpu_instrumentation_subscribe_interface_t
+    info!("Got CPU");
+
+    let cpu_instrumentation_subscribe: *mut cpu_instrumentation_subscribe_interface_t = unsafe {
+        SIM_c_get_interface(cpu, raw_cstr!("cpu_instrumentation_subscribe"))
+            as *mut cpu_instrumentation_subscribe_interface_t
     };
-    let cpu_instruction_query: *const cpu_instruction_query_interface_t = unsafe {
-        SIM_c_get_interface(cpu, cstr!("cpu_instruction_query").as_ptr())
-            as *const cpu_instruction_query_interface_t
+
+    info!("Subscribed to CPU instrumentation");
+
+    let cpu_instruction_query: *mut cpu_instruction_query_interface_t = unsafe {
+        SIM_c_get_interface(cpu, raw_cstr!("cpu_instruction_query"))
+            as *mut cpu_instruction_query_interface_t
     };
-    let cpu_cached_instruction: *const cpu_cached_instruction_interface_t = unsafe {
-        SIM_c_get_interface(cpu, cstr!("cpu_cached_instruction").as_ptr())
-            as *const cpu_cached_instruction_interface_t
+
+    info!("Got CPU query interface");
+
+    let cpu_cached_instruction: *mut cpu_cached_instruction_interface_t = unsafe {
+        SIM_c_get_interface(cpu, raw_cstr!("cpu_cached_instruction"))
+            as *mut cpu_cached_instruction_interface_t
     };
-    let processor_info_v2: *const processor_info_v2_interface_t = unsafe {
-        SIM_c_get_interface(cpu, cstr!("processor_info_v2").as_ptr())
-            as *const processor_info_v2_interface_t
+
+    info!("Subscribed to cached instructions");
+
+    let processor_info_v2: *mut processor_info_v2_interface_t = unsafe {
+        SIM_c_get_interface(cpu, raw_cstr!("processor_info_v2"))
+            as *mut processor_info_v2_interface_t
     };
+
+    info!("Subscribed to processor info");
+
+    let int_register: *mut int_register_interface_t = unsafe {
+        SIM_c_get_interface(cpu, raw_cstr!("int_register")) as *mut int_register_interface_t
+    };
+
+    info!("Subscribed to internal register queries");
 
     let processor = Processor::try_new(
         cpu,
@@ -221,15 +271,24 @@ pub extern "C" fn add_processor(_obj: *mut conf_object_t, val: *mut attr_value_t
         cpu_instruction_query,
         cpu_cached_instruction,
         processor_info_v2,
+        int_register,
     )
     .expect("Could not initialize processor for tracing");
 
     let mut ctx = CTX.lock().expect("Could not lock context!");
 
-    ctx.add_processor(processor)
+    ctx.set_processor(processor)
         .expect("Could not add processor");
 
     set_error_t_Sim_Set_Ok
+}
+
+#[no_mangle]
+pub extern "C" fn get_processor(_obj: *mut conf_object_t) -> attr_value_t {
+    let ctx = CTX.lock().expect("Could not lock context!");
+    let processor = ctx.processor.as_ref().expect("No processor");
+    let cpu = processor.cpu;
+    SIM_make_attr_object(cpu)
 }
 
 #[no_mangle]
@@ -241,6 +300,7 @@ pub extern "C" fn cached_instruction_callback(
     _user_data: *const c_void,
 ) {
     let ctx = CTX.lock().expect("Could not lock context!");
+    info!("Cached instruction callback");
 }
 
 #[no_mangle]
@@ -249,5 +309,49 @@ pub extern "C" fn core_magic_instruction_cb(
     trigger_obj: *const conf_object_t,
     parameter: i64,
 ) {
-    println!("Got magic instruction");
+    info!("Got magic instruction");
+    let ctx = CTX.lock().expect("Could not lock context!");
+    let processor = ctx.processor.as_ref().expect("No processor");
+    let cpu = processor.cpu;
+    info!("Got processor");
+    let rsi_number = unsafe {
+        (*processor.int_register)
+            .get_number
+            .expect("No get_number function available")(cpu, raw_cstr!("rsi"))
+    };
+
+    info!("Got number for register rsi: {}", rsi_number);
+
+    let rdi_number = unsafe {
+        (*processor.int_register)
+            .get_number
+            .expect("No get_number function available")(
+            processor.cpu as *mut conf_object_t,
+            raw_cstr!("rdi"),
+        )
+    };
+
+    info!("Got number for register rdi: {}", rsi_number);
+
+    let rsi_value = unsafe {
+        (*processor.int_register)
+            .read
+            .expect("No read function available")(
+            processor.cpu as *mut conf_object_t, rsi_number
+        )
+    };
+
+    info!("Got value for register rsi: {}", rsi_value);
+
+    let rdi_value = unsafe {
+        (*processor.int_register)
+            .read
+            .expect("No read function available")(
+            processor.cpu as *mut conf_object_t, rdi_number
+        )
+    };
+
+    info!("Got value for register rdi: {}", rdi_value);
+
+    info!("Got magic instruction");
 }
