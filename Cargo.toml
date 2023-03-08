@@ -18,6 +18,7 @@ members = [
     "targets/x509-parse",
     # Utilities
     "util/ipc-shm",
+    "util/raw-cstr",
 ]
 
 [workspace.dependencies]
@@ -28,6 +29,7 @@ confuse-simics-module = { path = "./confuse-simics-module" }
 confuse-fuzz = { path = "./confuse-fuzz" }
 confuse-module = { path = "./modules/confuse-module" }
 ipc-shm = { path = "./util/ipc-shm" }
+raw-cstr = { path = "./util/raw-cstr" }
 ipc-channel = { git = "https://github.com/novafacing/ipc-channel.git", version = "0.16.0", features = [
     "memfd",
 ] }
