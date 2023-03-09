@@ -13,7 +13,7 @@ use confuse_simics_project::{
 use env_logger::{init_from_env, Env, DEFAULT_FILTER_ENV};
 use indoc::{formatdoc, indoc};
 use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender};
-use log::info;
+use log::{error, info};
 use x509_parse::X509_PARSE_EFI_MODULE;
 
 #[test]
@@ -114,28 +114,9 @@ pub fn test_load() -> Result<()> {
             conf.board.mb.gpu.vga.console=None
 
         conf.confuse_module.signal = 1
-        SIM_run_command('bp.hap.run-until name = Core_Magic_Instruction index = {}')
-        SIM_run_command('enable-unsupported-feature internals')
-        SIM_run_command('save-snapshot name = origin')
-
-        cmd_output = io.StringIO()
-
-        with contextlib.redirect_stdout(cmd_output):
-            SIM_run_command('list-snapshots')
-
-        res = cmd_output.getvalue()
-
-        ckpt_id = -1
-
-        for line in res.split('\n'):
-            line = line.split()
-            if len(line) > 2 and line[1]=='origin':
-                ckpt_id = int(line[0])
-
-        if ckpt_id != 0:
-            print("Error! Microcheckpoint id incorrect")
-        else:
-            print("Took checkpoint :)")
+        # SIM_run_command('bp.hap.run-until name = Core_Magic_Instruction index = {}')
+        # SIM_run_command('enable-unsupported-feature internals')
+        # SIM_run_command('save-snapshot name = origin')
     "#,
             // simics.SIM_lookup_file("%simics%/targets/qsp-x86-fuzzing/run-uefi-app.simics"),
           &simics_path!(STARTUP_SIMICS_PATH),
@@ -282,22 +263,67 @@ pub fn test_load() -> Result<()> {
         .env("RUST_LOG", "trace")
         .spawn()?;
 
-    let (_, (tx, rx)): (_, (IpcSender<Message>, IpcReceiver<Message>)) = bootstrap.accept()?;
+    let (_, (tx, rx)): (_, (IpcSender<FuzzerEvent>, IpcReceiver<SimicsEvent>)) =
+        bootstrap.accept()?;
 
     info!("Sending initialize");
 
-    tx.send(Message::FuzzerEvent(FuzzerEvent::Initialize))?;
+    tx.send(FuzzerEvent::Initialize)?;
 
     info!("Receiving ipc shm");
 
     let shm = match rx.recv()? {
-        Message::SimicsEvent(SimicsEvent::SharedMem(shm)) => shm,
+        SimicsEvent::SharedMem(shm) => shm,
         _ => bail!("Unexpected message received"),
     };
 
     let reader = shm.reader()?;
 
-    println!("Project: {}", simics_project.base_path.display());
+    info!("Project: {}", simics_project.base_path.display());
+
+    // Simics will now run until the stop handler
+    for 0..100 {
+        // We expect we'll get a simics ready message:
+        match rx.recv()? {
+            SimicsEvent::Ready => {
+                info!("Received ready signal");
+            }
+            _ => {
+                error!("Received unexpected event");
+            }
+        }
+
+        info!("Sending run signal");
+        tx.send(FuzzerEvent::Run)?;
+
+        match rx.recv()? {
+            SimicsEvent::Stopped => {
+                info!("Received stopped signal");
+            }
+            _ => {
+                error!("Received unexpected event");
+            }
+        }
+
+        // We'd read the state of the vm here, including caught exceptions and branch trace
+
+        // Now we send the reset signal
+        info!("Sending reset signal");
+
+        tx.send(FuzzerEvent::Reset)?;
+    }
+
+    // We expect we'll get a simics ready message:
+    match rx.recv()? {
+        SimicsEvent::Ready => {
+            info!("Received ready signal");
+        }
+        _ => {
+            error!("Received unexpected event");
+        }
+    }
+
+    tx.send(FuzzerEvent::Stop)?;
 
     simics_process.wait()?;
 

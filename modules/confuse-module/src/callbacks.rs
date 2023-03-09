@@ -4,22 +4,22 @@ use confuse_simics_api::{
     attr_value_t, cached_instruction_handle_t, conf_class_t, conf_object_t,
     cpu_cached_instruction_interface_t, cpu_instruction_query_interface_t,
     cpu_instrumentation_subscribe_interface_t, instruction_handle_t, int_register_interface_t,
+    micro_checkpoint_flags_t_Sim_MC_ID_User, micro_checkpoint_flags_t_Sim_MC_Persistent,
     processor_info_v2_interface_t, set_error_t, set_error_t_Sim_Set_Ok, SIM_attr_integer,
     SIM_attr_object_or_nil, SIM_break_simulation, SIM_c_get_interface, SIM_continue,
-    SIM_make_attr_object, SIM_register_work, SIM_run_alone,
+    SIM_make_attr_object, SIM_register_work, SIM_run_alone, VT_save_micro_checkpoint,
 };
 use log::{info, warn};
 use raw_cstr::raw_cstr;
 use std::{
-    ffi::{c_void, CString},
+    ffi::{c_char, c_void, CString},
     mem::transmute,
     ptr::null_mut,
 };
 
-use crate::{context::CTX, processor::Processor, signal::Signal};
-
-const CONFUSE_START_SIGNAL: i64 = 0x4343;
-const CONFUSE_STOP_SIGNAL: i64 = 0x4242;
+use crate::{
+    context::CTX, magic::Magic, processor::Processor, signal::Signal, stop_action::StopReason,
+};
 
 // TODO: right now this will error if we add more than one processor, but this limitation
 // can be removed with some effort
@@ -105,7 +105,7 @@ pub extern "C" fn cached_instruction_callback(
     info!("Cached instruction callback");
 }
 
-unsafe fn resume_simulation() {
+pub unsafe fn resume_simulation() {
     SIM_run_alone(
         Some(transmute(SIM_continue as unsafe extern "C" fn(_) -> _)),
         null_mut(),
@@ -118,11 +118,10 @@ pub extern "C" fn core_magic_instruction_cb(
     _trigger_obj: *const conf_object_t,
     parameter: i64,
 ) {
-    info!("Got magic instruction with parameter {}", parameter);
-
-    match parameter {
-        CONFUSE_START_SIGNAL => {
-            let ctx = CTX.lock().expect("Could not lock context!");
+    match Magic::try_from(parameter) {
+        Ok(Magic::Start) => {
+            info!("Got magic start");
+            let mut ctx = CTX.lock().expect("Could not lock context!");
             let processor = ctx.get_processor().expect("No processor");
             let cpu = processor.get_cpu();
             info!("Got processor");
@@ -169,14 +168,25 @@ pub extern "C" fn core_magic_instruction_cb(
 
             unsafe { SIM_break_simulation(raw_cstr!("Stopping for snapshot")) };
 
-            warn!("TODO: Implement snapshot. Resuming.");
+            info!("Stopped simulation");
 
-            unsafe { resume_simulation() };
+            ctx.set_stopped_reason(Some(StopReason::Magic(Magic::Start)))
+                .expect("Couldn't set stop reason");
+
+            // Send ready event
         }
-        CONFUSE_STOP_SIGNAL => {
+        Ok(Magic::Stop) => {
+            info!("Got magic stop signal, stopping simulation");
+            let mut ctx = CTX.lock().expect("Could not lock context!");
             unsafe { SIM_break_simulation(raw_cstr!("Stopping to restore snapshot")) };
+            ctx.set_stopped_reason(Some(StopReason::Magic(Magic::Stop)))
+                .expect("Couldn't set stop reason");
+
+            // Send stopped event
         }
-        _ => {}
+        _ => {
+            info!("Unrecognized magic parameter: {}", parameter);
+        }
     }
 
     info!("Got magic instruction");
@@ -195,4 +205,16 @@ pub extern "C" fn set_signal(_obj: *mut conf_object_t, val: *mut attr_value_t) -
 pub extern "C" fn get_signal(_obj: *mut conf_object_t) -> attr_value_t {
     info!("Signal retrieved (no-op");
     SIM_make_attr_object(null_mut())
+}
+
+#[no_mangle]
+pub extern "C" fn core_simulation_stopped_cb(
+    _data: *mut c_void,
+    _trigger_obj: *mut conf_object_t,
+    _exception: i64,
+    _error_string: *mut c_char,
+) {
+    info!("Simulation has stopped");
+    let mut ctx = CTX.lock().expect("Could not lock context!");
+    ctx.handle_stop().expect("Failed to handle stop");
 }

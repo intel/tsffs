@@ -16,6 +16,7 @@ pub enum FuzzerEvent {
 /// Events simics generates that the fuzzer consumes
 pub enum SimicsEvent {
     Ready,
+    Stopped,
     Done,
     SharedMem(IpcShm),
 }

@@ -8,6 +8,12 @@
 
 include!(concat!(env!("OUT_DIR"), "/simics_bindings.rs"));
 
+// Exported by internal.h
+extern "C" {
+    pub fn CORE_discard_future();
+
+}
+
 pub fn SIM_attr_is_nil(attr: attr_value_t) -> bool {
     attr.private_kind == attr_kind_t_Sim_Val_Nil
 }
@@ -38,4 +44,17 @@ pub fn SIM_make_attr_object(obj: *mut conf_object_t) -> attr_value_t {
 
 pub unsafe fn SIM_attr_integer(attr: attr_value_t) -> i64 {
     unsafe { attr.private_u.integer }
+}
+
+pub fn SIM_attr_list_size(attr: attr_value_t) -> u32 {
+    attr.private_size
+}
+
+pub unsafe fn SIM_attr_list_item(attr: attr_value_t, index: u32) -> attr_value_t {
+    unsafe {
+        *attr
+            .private_u
+            .list
+            .offset(index.try_into().expect("Unable to convert index"))
+    }
 }
