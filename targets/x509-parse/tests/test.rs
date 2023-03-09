@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
 use confuse_fuzz::message::{FuzzerEvent, Message, SimicsEvent};
-use confuse_module::{
+use confuse_module::interface::{
     BOOTSTRAP_SOCKNAME as CONFUSE_MODULE_BOOTSTRAP_SOCKNAME,
     CRATE_NAME as CONFUSE_MODULE_CRATE_NAME,
 };
@@ -113,6 +113,7 @@ pub fn test_load() -> Result<()> {
             )
             conf.board.mb.gpu.vga.console=None
 
+        conf.confuse_module.signal = 1
         SIM_run_command('bp.hap.run-until name = Core_Magic_Instruction index = {}')
         SIM_run_command('enable-unsupported-feature internals')
         SIM_run_command('save-snapshot name = origin')
@@ -152,57 +153,55 @@ pub fn test_load() -> Result<()> {
 
     let run_uefi_app_simics_script = formatdoc! {r#"
         decl {{
-            ! Starts a virtual machine that boots the provided kernel, with the provided rootFS, initrd and commandline.
 
+            # We import most parameters from the QSP-X86 boot script
             params from "{}"
-            # Do not expose all advanced options to the end user
-            except use_acpi, use_vmp, lan_bios_image, spi_flash_image,
-                    enable_efi, vga_bios_image, disk0_image
-            default num_cores = 1
-            default real_time_mode = FALSE
-            default show_con0 = TRUE
-            default create_disk1 = NIL
-            default disk0_size = 200Mi
-            default enable_break_on_reboot = FALSE
-            default system_info = "QSP x86 with externally provided Kernel/RootFs/InitRd"
-            default bios_image = "{}"
-            
-            group "Disks"
-            param disk0_image : file("*") or nil = "{}"
-            ! Disk image for disk0. Will be used as boot medium.
 
             group "MSR"
+
+            # Set the TSC factor field for platform info MSR.
             param tsc_factor : int = 20
-            ! TSC factor field for platform info MSR.
 
             group "System"
+
+            # Automatically enter BIOS setup and start UEFI shell using the script
+            # branch below
             param auto_start_uefi_shell : bool = TRUE
-            ! Automatically enter BIOS setup and start UEFI shell
-            param tmp_dir : string or nil = NIL
-            ! Directory on the host where to place tmp files used to start the system.
+
+            # NSH script that controls things. 
             param startup_nsh : file("*") or nil = "{}"
-            ! NSH script that controls things. 
+
+            # UEFI app you wanna start. 
             param uefi_app : file("*")
-            ! UEFI app you wanna start. 
 
             result system : string
             result eth_link : string or nil
             result service_node : string or nil
         }}
 
+        echo "Loaded simics declaration"
+
+        echo "Running command file"
+
         run-command-file {}
 
         @import os
         @simenv.startup_nsh_nodir = os.path.basename(simenv.startup_nsh)
+        echo "Set startup nsh"
         @simenv.uefi_app_nodir = os.path.basename(simenv.uefi_app)
+        echo "Set startup uefi app"
 
         # The below branch will (when enabled) enter the BIOS menu by pressing ESC
         # after 10 seconds, then go to the third entry on the top level (by pressin DOWN twice).
         # The assumption is that this is the boot device selection (which is true for the QSP BIOS)
         # Then there is one press of UP, to select the last element in the list, which is assumed
         # to be the UEFI shell (which again is true for the QSP BIOS). Then the shell is started.
+
+        # Confuse note: this is actually needed to boot the uefi image!
+
         if $auto_start_uefi_shell {{
             script-branch "UEFI Shell Enter Branch" {{
+                echo "Doing UEFI button combination"
                 local $kbd = $system.mb.sb.kbd
                 local $con = $system.console.con
                 local $sercon = $system.serconsole.con
@@ -224,29 +223,35 @@ pub fn test_load() -> Result<()> {
                 $kbd.key-press ENTER         
                 bp.time.wait-for seconds = .5
                 
+                echo "Running command: FS0:\n"
+
                 $con.input "FS0:\n"
                 bp.time.wait-for seconds = 10
 
+                echo "Running command: " + "set -v UEFI_APP_ON_HOST \"" + $uefi_app + "\"\n"
                 $con.input ("set -v UEFI_APP_ON_HOST \" " + $uefi_app + "\"\n")
                 bp.time.wait-for seconds = .5
 
+                echo "Running command: " + "set -v UEFI_APP_NODIR \"" + $uefi_app_nodir + "\"\n"
                 $con.input ("set -v UEFI_APP_NODIR \" " + $uefi_app_nodir + "\"\n")
                 bp.time.wait-for seconds = .5
 
             
                 local $manager = (start-agent-manager)
 
+                echo "Running command: " + "SimicsAgent.efi --download \"" + (lookup-file $startup_nsh) + "\"\n"
                 $con.input ("SimicsAgent.efi --download " + (lookup-file $startup_nsh) + "\n")
                 bp.time.wait-for seconds = .5
                 
+                echo "Running command: " + "\"" + $startup_nsh_nodir + "\"\n"
                 $con.input ("" + $startup_nsh_nodir + "\n")
 
             }}
         }}
     "#,
         &simics_path!("targets/qsp-x86/qsp-hdd-boot.simics"),
-        &simics_path!("targets/qsp-x86/images/SIMICSX58IA32X64_1_1_0_r.fd"),
-        &simics_path!(BOOT_DISK_PATH),
+        // &simics_path!("targets/qsp-x86/images/SIMICSX58IA32X64_1_1_0_r.fd"),
+        // &simics_path!(BOOT_DISK_PATH),
         &simics_path!(STARTUP_NSH_PATH),
         "targets/qsp-x86/qsp-hdd-boot.simics"
     };

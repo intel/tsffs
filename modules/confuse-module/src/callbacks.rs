@@ -1,26 +1,25 @@
 //! Callback handlers from SIMICS to the module
 
-
-
 use confuse_simics_api::{
-    attr_value_t, cached_instruction_handle_t, conf_object_t,
+    attr_value_t, cached_instruction_handle_t, conf_class_t, conf_object_t,
     cpu_cached_instruction_interface_t, cpu_instruction_query_interface_t,
-    cpu_instrumentation_subscribe_interface_t, instruction_handle_t, int_register_interface_t, processor_info_v2_interface_t, set_error_t, set_error_t_Sim_Set_Ok,
-    SIM_attr_object_or_nil, SIM_c_get_interface, SIM_make_attr_object,
+    cpu_instrumentation_subscribe_interface_t, instruction_handle_t, int_register_interface_t,
+    processor_info_v2_interface_t, set_error_t, set_error_t_Sim_Set_Ok, SIM_attr_integer,
+    SIM_attr_object_or_nil, SIM_break_simulation, SIM_c_get_interface, SIM_continue,
+    SIM_make_attr_object, SIM_register_work, SIM_run_alone,
 };
-
-
-
-
-
-use log::{info};
+use log::{info, warn};
 use raw_cstr::raw_cstr;
-
 use std::{
     ffi::{c_void, CString},
+    mem::transmute,
+    ptr::null_mut,
 };
 
-use crate::{context::CTX, processor::Processor};
+use crate::{context::CTX, processor::Processor, signal::Signal};
+
+const CONFUSE_START_SIGNAL: i64 = 0x4343;
+const CONFUSE_STOP_SIGNAL: i64 = 0x4242;
 
 // TODO: right now this will error if we add more than one processor, but this limitation
 // can be removed with some effort
@@ -106,50 +105,94 @@ pub extern "C" fn cached_instruction_callback(
     info!("Cached instruction callback");
 }
 
+unsafe fn resume_simulation() {
+    SIM_run_alone(
+        Some(transmute(SIM_continue as unsafe extern "C" fn(_) -> _)),
+        null_mut(),
+    );
+}
+
 #[no_mangle]
 pub extern "C" fn core_magic_instruction_cb(
     _user_data: *mut c_void,
     _trigger_obj: *const conf_object_t,
-    _parameter: i64,
+    parameter: i64,
 ) {
+    info!("Got magic instruction with parameter {}", parameter);
+
+    match parameter {
+        CONFUSE_START_SIGNAL => {
+            let ctx = CTX.lock().expect("Could not lock context!");
+            let processor = ctx.get_processor().expect("No processor");
+            let cpu = processor.get_cpu();
+            info!("Got processor");
+            let rsi_number = unsafe {
+                (*processor.get_int_register())
+                    .get_number
+                    .expect("No get_number function available")(
+                    cpu, raw_cstr!("rsi")
+                )
+            };
+
+            info!("Got number for register rsi: {}", rsi_number);
+
+            let rdi_number = unsafe {
+                (*processor.get_int_register())
+                    .get_number
+                    .expect("No get_number function available")(
+                    processor.get_cpu(),
+                    raw_cstr!("rdi"),
+                )
+            };
+
+            info!("Got number for register rdi: {}", rdi_number);
+
+            let rsi_value = unsafe {
+                (*processor.get_int_register())
+                    .read
+                    .expect("No read function available")(
+                    processor.get_cpu(), rsi_number
+                )
+            };
+
+            info!("Got value for register rsi: {:#x}", rsi_value);
+
+            let rdi_value = unsafe {
+                (*processor.get_int_register())
+                    .read
+                    .expect("No read function available")(
+                    processor.get_cpu(), rdi_number
+                )
+            };
+
+            info!("Got value for register rdi: {:#x}", rdi_value);
+
+            unsafe { SIM_break_simulation(raw_cstr!("Stopping for snapshot")) };
+
+            warn!("TODO: Implement snapshot. Resuming.");
+
+            unsafe { resume_simulation() };
+        }
+        CONFUSE_STOP_SIGNAL => {
+            unsafe { SIM_break_simulation(raw_cstr!("Stopping to restore snapshot")) };
+        }
+        _ => {}
+    }
+
     info!("Got magic instruction");
+}
+
+#[no_mangle]
+pub extern "C" fn set_signal(_obj: *mut conf_object_t, val: *mut attr_value_t) -> set_error_t {
+    let signal = Signal::try_from(unsafe { SIM_attr_integer(*val) }).expect("No such signal");
+    info!("Got signal {:?}", signal);
     let ctx = CTX.lock().expect("Could not lock context!");
-    let processor = ctx.get_processor().expect("No processor");
-    let cpu = processor.get_cpu();
-    info!("Got processor");
-    let rsi_number = unsafe {
-        (*processor.get_int_register())
-            .get_number
-            .expect("No get_number function available")(cpu, raw_cstr!("rsi"))
-    };
+    ctx.handle_signal(signal);
+    set_error_t_Sim_Set_Ok
+}
 
-    info!("Got number for register rsi: {}", rsi_number);
-
-    let rdi_number = unsafe {
-        (*processor.get_int_register())
-            .get_number
-            .expect("No get_number function available")(
-            processor.get_cpu(), raw_cstr!("rdi")
-        )
-    };
-
-    info!("Got number for register rdi: {}", rdi_number);
-
-    let rsi_value = unsafe {
-        (*processor.get_int_register())
-            .read
-            .expect("No read function available")(processor.get_cpu(), rsi_number)
-    };
-
-    info!("Got value for register rsi: {}", rsi_value);
-
-    let rdi_value = unsafe {
-        (*processor.get_int_register())
-            .read
-            .expect("No read function available")(processor.get_cpu(), rdi_number)
-    };
-
-    info!("Got value for register rdi: {}", rdi_value);
-
-    info!("Got magic instruction");
+#[no_mangle]
+pub extern "C" fn get_signal(_obj: *mut conf_object_t) -> attr_value_t {
+    info!("Signal retrieved (no-op");
+    SIM_make_attr_object(null_mut())
 }

@@ -1,5 +1,5 @@
 use anyhow::{ensure, Result};
-use confuse_module::CRATE_NAME as CONFUSE_MODULE_CRATE_NAME;
+use confuse_module::interface::CRATE_NAME as CONFUSE_MODULE_CRATE_NAME;
 use confuse_simics_manifest::PackageNumber;
 use confuse_simics_module::find_module;
 

@@ -35,3 +35,7 @@ pub fn SIM_make_attr_object(obj: *mut conf_object_t) -> attr_value_t {
         private_u: attr_value__bindgen_ty_1 { object: obj },
     }
 }
+
+pub unsafe fn SIM_attr_integer(attr: attr_value_t) -> i64 {
+    unsafe { attr.private_u.integer }
+}

@@ -18,6 +18,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH}, ascii::escape_default, iter::repeat
 };
 use whoami::username;
+use log::info;
 
 pub const MODULE_CAPABILITIES_SYMNAME: &str = "_module_capabilities_";
 pub const MODULE_DATE_SYMNAME: &str = "_module_date";
@@ -88,12 +89,14 @@ pub fn find_module<S: AsRef<str>>(crate_name: S) -> Result<PathBuf> {
     let target_subdir = "release";
 
     let lib_paths = [
+        workspace_metadata.target_directory.join(target_subdir).join("deps").join(format!("lib{}.so", target.name.replace("-", "_"))),
         workspace_metadata.target_directory.join(target_subdir).join(format!("lib{}.so", target.name.replace("-", "_"))),
-        workspace_metadata.target_directory.join(target_subdir).join("deps").join(format!("lib{}.so", target.name.replace("-", "_")))
 
     ];
 
     let lib_path = lib_paths.iter().filter(|p| p.is_file()).next().context(format!("No file exists for requested module {}", crate_name.as_ref()))?;
+
+    info!("Found module for {} at {:?}", crate_name.as_ref(), lib_path);
 
     Ok(lib_path.into())
 }
