@@ -9,7 +9,7 @@ use confuse_simics_api::{
     SIM_attr_object_or_nil, SIM_break_simulation, SIM_c_get_interface, SIM_continue,
     SIM_make_attr_object, SIM_register_work, SIM_run_alone, VT_save_micro_checkpoint,
 };
-use log::{info, warn};
+use log::{error, info, warn};
 use raw_cstr::raw_cstr;
 use std::{
     ffi::{c_char, c_void, CString},
@@ -67,6 +67,18 @@ pub extern "C" fn set_processor(_obj: *mut conf_object_t, val: *mut attr_value_t
 
     info!("Subscribed to internal register queries");
 
+    if let Some(register) = unsafe { *cpu_instrumentation_subscribe }.register_cached_instruction_cb
+    {
+        unsafe {
+            register(
+                cpu,
+                null_mut(),
+                Some(cached_instruction_callback),
+                null_mut(),
+            )
+        };
+    }
+
     let processor = Processor::try_new(
         cpu,
         cpu_instrumentation_subscribe,
@@ -95,14 +107,23 @@ pub extern "C" fn get_processor(_obj: *mut conf_object_t) -> attr_value_t {
 
 #[no_mangle]
 pub extern "C" fn cached_instruction_callback(
-    _obj: *const conf_object_t,
-    _cpu: *const conf_object_t,
-    _cached_instruction: *const cached_instruction_handle_t,
-    _instruction_query: *const instruction_handle_t,
-    _user_data: *const c_void,
+    _obj: *mut conf_object_t,
+    cpu: *mut conf_object_t,
+    _cached_instruction: *mut cached_instruction_handle_t,
+    instruction_query: *mut instruction_handle_t,
+    _user_data: *mut c_void,
 ) {
-    let _ctx = CTX.lock().expect("Could not lock context!");
-    info!("Cached instruction callback");
+    let mut ctx = CTX.lock().expect("Could not lock context!");
+    let processor = ctx.get_processor().expect("Could not get processor");
+    match processor.is_branch(cpu, instruction_query) {
+        Ok(Some(pc)) => {
+            ctx.log(pc).expect("Failed to log pc");
+        }
+        Err(e) => {
+            error!("Error checking whether instruction is branch: {}", e);
+        }
+        _ => {}
+    }
 }
 
 pub unsafe fn resume_simulation() {
@@ -120,51 +141,7 @@ pub extern "C" fn core_magic_instruction_cb(
 ) {
     match Magic::try_from(parameter) {
         Ok(Magic::Start) => {
-            info!("Got magic start");
             let mut ctx = CTX.lock().expect("Could not lock context!");
-            let processor = ctx.get_processor().expect("No processor");
-            let cpu = processor.get_cpu();
-            info!("Got processor");
-            let rsi_number = unsafe {
-                (*processor.get_int_register())
-                    .get_number
-                    .expect("No get_number function available")(
-                    cpu, raw_cstr!("rsi")
-                )
-            };
-
-            info!("Got number for register rsi: {}", rsi_number);
-
-            let rdi_number = unsafe {
-                (*processor.get_int_register())
-                    .get_number
-                    .expect("No get_number function available")(
-                    processor.get_cpu(),
-                    raw_cstr!("rdi"),
-                )
-            };
-
-            info!("Got number for register rdi: {}", rdi_number);
-
-            let rsi_value = unsafe {
-                (*processor.get_int_register())
-                    .read
-                    .expect("No read function available")(
-                    processor.get_cpu(), rsi_number
-                )
-            };
-
-            info!("Got value for register rsi: {:#x}", rsi_value);
-
-            let rdi_value = unsafe {
-                (*processor.get_int_register())
-                    .read
-                    .expect("No read function available")(
-                    processor.get_cpu(), rdi_number
-                )
-            };
-
-            info!("Got value for register rdi: {:#x}", rdi_value);
 
             unsafe { SIM_break_simulation(raw_cstr!("Stopping for snapshot")) };
 
@@ -185,11 +162,9 @@ pub extern "C" fn core_magic_instruction_cb(
             // Send stopped event
         }
         _ => {
-            info!("Unrecognized magic parameter: {}", parameter);
+            // info!("Unrecognized magic parameter: {}", parameter);
         }
     }
-
-    info!("Got magic instruction");
 }
 
 #[no_mangle]

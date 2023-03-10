@@ -3,10 +3,10 @@ use confuse_fuzz::message::{FuzzerEvent, Message, SimicsEvent};
 use confuse_simics_api::{
     attr_attr_t_Sim_Attr_Pseudo, class_data_t, class_kind_t_Sim_Class_Kind_Session, conf_class,
     conf_class_t, conf_object_t, micro_checkpoint_flags_t_Sim_MC_ID_User,
-    micro_checkpoint_flags_t_Sim_MC_Persistent, SIM_attr_integer, SIM_attr_list_size,
-    SIM_get_attribute, SIM_get_object, SIM_get_port_interface, SIM_hap_add_callback,
-    SIM_register_attribute, SIM_register_class, VT_restore_micro_checkpoint,
-    VT_save_micro_checkpoint, CORE_discard_future
+    micro_checkpoint_flags_t_Sim_MC_Persistent, physical_address_t, CORE_discard_future,
+    SIM_attr_integer, SIM_attr_list_size, SIM_get_attribute, SIM_get_object,
+    SIM_get_port_interface, SIM_hap_add_callback, SIM_register_attribute, SIM_register_class,
+    SIM_write_phys_memory, VT_restore_micro_checkpoint, VT_save_micro_checkpoint,
 };
 use const_format::concatcp;
 
@@ -53,6 +53,10 @@ pub struct ModuleCtx {
     writer: IpcShmWriter,
     processor: Option<Processor>,
     stop_reason: Option<StopReason>,
+    initialized: bool,
+    prev_loc: u64,
+    buffer_address: u64,
+    buffer_size: u64,
 }
 
 unsafe impl Send for ModuleCtx {}
@@ -98,6 +102,10 @@ impl ModuleCtx {
             writer,
             processor: None,
             stop_reason: None,
+            initialized: false,
+            prev_loc: 0,
+            buffer_address: 0,
+            buffer_size: 0,
         })
     }
 
@@ -127,26 +135,102 @@ impl ModuleCtx {
         match &self.stop_reason {
             Some(StopReason::Magic(m)) => match m {
                 Magic::Start => {
-                    // Start harness stop means we need to take a snapshot!
-                    unsafe {
-                        VT_save_micro_checkpoint(
-                            raw_cstr!("origin"),
-                            micro_checkpoint_flags_t_Sim_MC_ID_User
-                                | micro_checkpoint_flags_t_Sim_MC_Persistent,
-                        )
-                    };
+                    if self.initialized {
+                        // If we're already initialized, so we just go
+                        info!("Got start magic. Already initialized, off we go!");
+                        unsafe { resume_simulation() };
+                    } else {
+                        // Start harness stop means we need to take a snapshot!
+                        unsafe {
+                            VT_save_micro_checkpoint(
+                                raw_cstr!("origin"),
+                                micro_checkpoint_flags_t_Sim_MC_ID_User
+                                    | micro_checkpoint_flags_t_Sim_MC_Persistent,
+                            )
+                        };
 
-                    info!("Took snapshot");
+                        info!("Took snapshot");
 
-                    self.tx.send(SimicsEvent::Ready)?;
+                        let processor = self.get_processor()?;
+                        let cpu = processor.get_cpu();
+                        info!("Got processor");
+                        let rsi_number = unsafe {
+                            (*processor.get_int_register())
+                                .get_number
+                                .context("No function get_number")?(
+                                cpu, raw_cstr!("rsi")
+                            )
+                        };
 
-                    // We'll wait for a signal to start
-                    match self.rx.recv()? {
-                        FuzzerEvent::Run => {
-                            unsafe { resume_simulation() };
-                        }
-                        _ => {
-                            bail!("Unexpected event");
+                        info!("Got number for register rsi: {}", rsi_number);
+
+                        let rdi_number = unsafe {
+                            (*processor.get_int_register())
+                                .get_number
+                                .context("No function get_number")?(
+                                cpu, raw_cstr!("rdi")
+                            )
+                        };
+
+                        info!("Got number for register rdi: {}", rdi_number);
+
+                        let rsi_value = unsafe {
+                            (*processor.get_int_register())
+                                .read
+                                .context("No read function available")?(
+                                cpu, rsi_number
+                            )
+                        };
+
+                        info!("Got value for register rsi: {:#x}", rsi_value);
+
+                        let rdi_value = unsafe {
+                            (*processor.get_int_register())
+                                .read
+                                .context("No read function available")?(
+                                cpu, rdi_number
+                            )
+                        };
+
+                        info!("Got value for register rdi: {:#x}", rdi_value);
+
+                        self.buffer_address = rsi_value;
+                        self.buffer_size = rdi_value;
+
+                        self.initialized = true;
+
+                        self.tx.send(SimicsEvent::Ready)?;
+
+                        info!("Sent ready signal");
+
+                        // We'll wait for a signal to start
+                        match self.rx.recv()? {
+                            FuzzerEvent::Run(input) => {
+                                info!("Got input, running");
+
+                                for (i, chunk) in input.chunks(8).enumerate() {
+                                    // TODO: this is really inefficient, make it better
+                                    let data: &mut [u8] = &mut [0; 8];
+                                    for (i, v) in chunk.iter().enumerate() {
+                                        data[i] = *v;
+                                    }
+                                    let val = u64::from_le_bytes(data.try_into()?);
+                                    let addr: physical_address_t =
+                                        self.buffer_address + (i * 8) as u64;
+                                    unsafe {
+                                        SIM_write_phys_memory(
+                                            cpu,
+                                            addr,
+                                            val,
+                                            chunk.len().try_into()?,
+                                        )
+                                    };
+                                }
+                                unsafe { resume_simulation() };
+                            }
+                            _ => {
+                                bail!("Unexpected event");
+                            }
                         }
                     }
                 }
@@ -185,13 +269,26 @@ impl ModuleCtx {
 
                     self.tx.send(SimicsEvent::Ready)?;
 
-                    // We'll wait for a signal to start
+                    let processor = self.get_processor()?;
+                    let cpu = processor.get_cpu();
+
                     match self.rx.recv()? {
-                        FuzzerEvent::Run => {
+                        FuzzerEvent::Run(input) => {
+                            info!("Got input, running");
+
+                            for (i, chunk) in input.chunks(8).enumerate() {
+                                // TODO: this is really inefficient, make it better
+                                let data: &mut [u8] = &mut [0; 8];
+                                for (i, v) in chunk.iter().enumerate() {
+                                    data[i] = *v;
+                                }
+                                let val = u64::from_le_bytes(data.try_into()?);
+                                let addr: physical_address_t = self.buffer_address + (i * 8) as u64;
+                                unsafe {
+                                    SIM_write_phys_memory(cpu, addr, val, chunk.len().try_into()?)
+                                };
+                            }
                             unsafe { resume_simulation() };
-                        }
-                        FuzzerEvent::Stop => {
-                            info!("Got stop signal, we want to stop cleanly here");
                         }
                         _ => {
                             bail!("Unexpected event");
@@ -215,6 +312,15 @@ impl ModuleCtx {
     pub fn start(&self) {
         info!("Starting module");
         unsafe { resume_simulation() };
+    }
+
+    pub fn log(&mut self, pc: u64) -> Result<()> {
+        let cur_loc = ((pc >> 4) ^ (pc << 8)) & (self.writer.len() - 1) as u64;
+        let data = &[self.writer.read_byte(cur_loc as usize)?];
+        self.writer
+            .write_at(data, (cur_loc ^ self.prev_loc) as usize)?;
+        self.prev_loc >>= 1;
+        Ok(())
     }
 }
 

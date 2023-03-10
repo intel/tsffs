@@ -13,7 +13,9 @@ use confuse_simics_project::{
 use env_logger::{init_from_env, Env, DEFAULT_FILTER_ENV};
 use indoc::{formatdoc, indoc};
 use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender};
+use libafl::prelude::*;
 use log::{error, info};
+use std::iter::repeat;
 use x509_parse::X509_PARSE_EFI_MODULE;
 
 #[test]
@@ -239,6 +241,7 @@ pub fn test_load() -> Result<()> {
 
     let confuse_module = find_module(CONFUSE_MODULE_CRATE_NAME)?;
 
+    let input = repeat(b'A').take(4096).collect::<Vec<_>>();
     let simics_project = SimicsProject::try_new()?
         .try_with_package(PackageNumber::QuickStartPlatform)?
         .try_with_file_contents(&X509_PARSE_EFI_MODULE, UEFI_APP_PATH)?
@@ -247,7 +250,10 @@ pub fn test_load() -> Result<()> {
         .try_with_file_contents(boot_disk, BOOT_DISK_PATH)?
         .try_with_file_contents(run_uefi_app_nsh_script, STARTUP_NSH_PATH)?
         .try_with_file_contents(run_uefi_app_simics_script.as_bytes(), STARTUP_SIMICS_PATH)?
+        .try_with_file_contents(&input, "corpus/input")?
         .try_with_module(CONFUSE_MODULE_CRATE_NAME, &confuse_module)?;
+
+    info!("Project: {}", simics_project.base_path.display());
 
     let (bootstrap, bootstrap_name) = IpcOneShotServer::new()?;
 
@@ -277,31 +283,63 @@ pub fn test_load() -> Result<()> {
         _ => bail!("Unexpected message received"),
     };
 
-    let reader = shm.reader()?;
+    let mut reader = shm.reader()?;
 
-    info!("Project: {}", simics_project.base_path.display());
+    info!("Got reader");
 
-    // Simics will now run until the stop handler
-    for 0..100 {
+    let coverage_observer =
+        unsafe { StdMapObserver::from_mut_ptr("observer", reader.as_mut_ptr(), reader.len()) };
+
+    let mut coverage_feedback = MaxMapFeedback::new(&coverage_observer);
+
+    let mut objectives: Vec<bool> = Vec::new();
+    let objectives_observer = unsafe { ListObserver::new("objectives", &mut objectives) };
+    let mut objectives_feedback = ListFeedback::with_observer(&objectives_observer);
+
+    let mut state = StdState::new(
+        StdRand::with_seed(current_nanos()),
+        InMemoryCorpus::new(),
+        OnDiskCorpus::new(simics_project.base_path.join("crashes"))?,
+        &mut coverage_feedback,
+        &mut objectives_feedback,
+    )?;
+
+    let mon = SimpleMonitor::new(|s| println!("{s}"));
+    let mut mgr = SimpleEventManager::new(mon);
+    let scheduler = QueueScheduler::new();
+    let mut fuzzer = StdFuzzer::new(scheduler, coverage_feedback, objectives_feedback);
+
+    let mut harness = |input: &BytesInput| {
+        let target = input.target_bytes();
+        let buf = target.as_slice();
+        let run_input = buf.to_vec();
         // We expect we'll get a simics ready message:
-        match rx.recv()? {
+        info!("Harness running");
+        println!("Harness running");
+        match rx.recv().expect("Failed to receive message") {
             SimicsEvent::Ready => {
                 info!("Received ready signal");
+                println!("Harness running");
             }
             _ => {
                 error!("Received unexpected event");
+                println!("Received unexpected event");
             }
         }
 
         info!("Sending run signal");
-        tx.send(FuzzerEvent::Run)?;
+        println!("Sending run signal");
+        tx.send(FuzzerEvent::Run(run_input))
+            .expect("Failed to send message");
 
-        match rx.recv()? {
+        match rx.recv().expect("Failed to receive message") {
             SimicsEvent::Stopped => {
                 info!("Received stopped signal");
+                println!("Received stopped signal");
             }
             _ => {
                 error!("Received unexpected event");
+                println!("Received unexpected event");
             }
         }
 
@@ -309,9 +347,44 @@ pub fn test_load() -> Result<()> {
 
         // Now we send the reset signal
         info!("Sending reset signal");
+        println!("Sending reset signal");
 
-        tx.send(FuzzerEvent::Reset)?;
-    }
+        tx.send(FuzzerEvent::Reset).expect("Failed to send message");
+
+        info!("Harness done");
+        println!("Harness done");
+
+        ExitKind::Ok
+    };
+
+    info!("Creating executor");
+
+    let mut executor = InProcessExecutor::new(
+        &mut harness,
+        tuple_list!(coverage_observer),
+        &mut fuzzer,
+        &mut state,
+        &mut mgr,
+    )?;
+
+    info!("Generating initial inputs");
+
+    // state.load_initial_inputs(
+    //     &mut fuzzer,
+    //     &mut executor,
+    //     &mut mgr,
+    //     &[simics_project.base_path.join("corpus")],
+    // )?;
+
+    info!("Creating mutator");
+
+    let mutator = StdScheduledMutator::new(havoc_mutations());
+
+    let mut stages = tuple_list!(StdMutationalStage::new(mutator));
+
+    info!("Starting fuzz loop");
+
+    fuzzer.fuzz_loop_for(&mut stages, &mut executor, &mut state, &mut mgr, 100)?;
 
     // We expect we'll get a simics ready message:
     match rx.recv()? {

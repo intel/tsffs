@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 /// Events the fuzzer generates that simics consumes
 pub enum FuzzerEvent {
     Initialize,
-    Run,
+    Run(Vec<u8>),
     Reset,
     Stop,
 }

@@ -79,7 +79,11 @@ impl IpcShm {
         })
     }
 
-    pub fn writer(&mut self) -> Result<IpcShmWriter> {
+    /// Obtain a unique writer to the shared memory. If there is already a `writer` obtained
+    /// for this memory, it will still be able to write, so take care when using this method
+    /// that `unique_writer` is called to obtain a first and *only* writable mapping if this is
+    /// desired.
+    pub fn unique_writer(&mut self) -> Result<IpcShmWriter> {
         let mmap = unsafe { MmapOptions::new().map_mut(&self.memfd)? };
 
         self.memfd.add_seal(FileSeal::SealFutureWrite)?;
@@ -91,8 +95,27 @@ impl IpcShm {
         })
     }
 
+    /// Obtain a non-unique writer to the shared memory. Other writers may be created before and
+    /// after this one, all of which may write to the mapped memory. Using this method,
+    /// synchronization should be used to ensure ordered mutable access
+    pub fn writer(&mut self) -> Result<IpcShmWriter> {
+        let mmap = unsafe { MmapOptions::new().map_mut(&self.memfd)? };
+
+        // Make it so we can't apply any more seals, specifically SealFutureWrite to ensure
+        // this mapping cannot be made write-sealed
+        if self.memfd.seals()?.contains(&FileSeal::SealSeal) {
+            self.memfd.add_seal(FileSeal::SealSeal)?;
+        }
+
+        Ok(IpcShmWriter {
+            size: self.size,
+            mmap,
+        })
+    }
+
     pub fn reader(&self) -> Result<IpcShmReader> {
         let mmap = unsafe { MmapOptions::new().map(&self.memfd)? };
+
         Ok(IpcShmReader {
             size: self.size,
             mmap,
@@ -149,8 +172,47 @@ impl IpcShmWriter {
 
         Ok(())
     }
+
+    pub fn read_all(&self) -> Result<Vec<u8>> {
+        let reader = self.mmap.as_ref();
+        let data = reader[..].to_vec();
+
+        Ok(data)
+    }
+
+    pub fn read(&self, len: usize) -> Result<Vec<u8>> {
+        ensure!(len <= self.size, "Read length exceeds size.");
+
+        let reader = self.mmap.as_ref();
+        let data = reader[..len].to_vec();
+
+        Ok(data)
+    }
+
+    pub fn read_at(&self, len: usize, offset: usize) -> Result<Vec<u8>> {
+        ensure!(len + offset <= self.size, "Read length exceeds size.");
+
+        let reader = self.mmap.as_ref();
+        let data = reader[offset..offset + len].to_vec();
+
+        Ok(data)
+    }
+
+    pub fn read_byte(&self, offset: usize) -> Result<u8> {
+        ensure!(offset < self.size, "Read length exceeds size.");
+
+        let reader = self.mmap.as_ref();
+        let data = reader[offset];
+
+        Ok(data)
+    }
+
+    pub fn as_mut_ptr(&mut self) -> *mut u8 {
+        self.mmap.as_mut_ptr()
+    }
 }
 
+#[derive(Debug)]
 pub struct IpcShmReader {
     size: usize,
     mmap: Mmap,
@@ -186,5 +248,9 @@ impl IpcShmReader {
         let data = reader[offset..offset + len].to_vec();
 
         Ok(data)
+    }
+
+    pub fn as_mut_ptr(&self) -> *mut u8 {
+        self.mmap.as_ptr() as *mut u8
     }
 }
