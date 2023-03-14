@@ -328,8 +328,13 @@ fn main() -> Result<()> {
     info!("Sending initialize");
 
     let mut info = InitInfo::default();
-    info.add_fault(Fault::Triple);
-    info.add_fault(Fault::InvalidOpcode);
+
+    info.add_faults([
+        Fault::Triple,
+        Fault::InvalidOpcode,
+        Fault::Double,
+        Fault::GeneralProtection,
+    ]);
 
     tx.send(FuzzerEvent::Initialize(info))?;
 

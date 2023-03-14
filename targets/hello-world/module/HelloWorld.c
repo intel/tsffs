@@ -41,13 +41,19 @@ UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable) {
 
     switch (*input) {
       case 'A': {
-        // Execute bad code, this is a "crash"
+        // Invalid opcode
         __asm__(".byte 0x06");
       }
       case 'B': {
         // Sleep for 10 seconds, this is a "hang"
+
         // NOTE: gBS is the global Boot Services table
         gBS->Stall(10 * 1000 * 1000);
+      }
+      case 'C': {
+        // This should double or triple fault (or both)
+        char *x = (char*)0x400000;
+        *x = 1;
       }
       default: {
         // Nothing, this is a "success"
