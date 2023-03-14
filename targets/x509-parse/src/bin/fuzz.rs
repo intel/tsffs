@@ -1,5 +1,9 @@
 use anyhow::{bail, Result};
-use confuse_fuzz::message::{FuzzerEvent, Message, SimicsEvent};
+use chrono::Local;
+use confuse_fuzz::{
+    message::{FuzzerEvent, Message, SimicsEvent, StopType},
+    Fault, InitInfo,
+};
 use confuse_module::interface::{
     BOOTSTRAP_SOCKNAME as CONFUSE_MODULE_BOOTSTRAP_SOCKNAME,
     CRATE_NAME as CONFUSE_MODULE_CRATE_NAME,
@@ -10,19 +14,43 @@ use confuse_simics_project::{
     bool_param, file_param, int_param, simics_app, simics_path, str_param, SimicsApp,
     SimicsAppParam, SimicsAppParamType, SimicsProject,
 };
-use env_logger::{init_from_env, Env, DEFAULT_FILTER_ENV};
+use env_logger::{init_from_env, Builder, Env, Target, DEFAULT_FILTER_ENV};
 use indoc::{formatdoc, indoc};
 use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender};
-use libafl::prelude::*;
-use log::{error, info};
-use std::iter::repeat;
+use libafl::prelude::{tui::TuiMonitor, *};
+use log::{debug, error, info, warn, LevelFilter};
+use std::{
+    io::{BufRead, BufReader, Write},
+    iter::repeat,
+    process::Stdio,
+    thread::spawn,
+};
+use tempfile::NamedTempFile;
+
 use x509_parse::X509_PARSE_EFI_MODULE;
 
 static mut TEST_MAP: [u8; 16] = [0; 16];
 static mut TEST_MAP_PTR: *mut u8 = unsafe { TEST_MAP.as_mut_ptr() };
 
 fn main() -> Result<()> {
-    init_from_env(Env::default().filter_or(DEFAULT_FILTER_ENV, "info"));
+    let logfile = NamedTempFile::new()?;
+    let (file, _path) = logfile.keep()?;
+    Builder::new()
+        .format(|buf, record| {
+            writeln!(
+                buf,
+                "{}:{} {} [{}] - {}",
+                record.file().unwrap_or("unknown"),
+                record.line().unwrap_or(0),
+                Local::now().format("%Y-%m-%dT%H:%M:%S%.2f"),
+                record.level(),
+                record.args()
+            )
+        })
+        .target(Target::Pipe(Box::new(file)))
+        .filter(None, LevelFilter::Info)
+        .init();
+
     // Paths of
     const APP_SCRIPT_PATH: &str = "scripts/app.py";
     const APP_YML_PATH: &str = "scripts/app.yml";
@@ -269,14 +297,41 @@ fn main() -> Result<()> {
         .current_dir(&simics_project.base_path)
         .env(CONFUSE_MODULE_BOOTSTRAP_SOCKNAME, bootstrap_name)
         .env("RUST_LOG", "trace")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .spawn()?;
+
+    let stdout = simics_process.stdout.take().expect("Could not get stdout");
+    let stderr = simics_process.stderr.take().expect("Could not get stderr");
+
+    let simics_output_reader = spawn(move || {
+        let mut reader = BufReader::new(stdout);
+        let mut line = String::new();
+        loop {
+            reader.read_line(&mut line).expect("Could not read line");
+            info!("SIMICS: {}", line);
+        }
+    });
+
+    let simics_err_reader = spawn(move || {
+        let mut reader = BufReader::new(stderr);
+        let mut line = String::new();
+        loop {
+            reader.read_line(&mut line).expect("Could not read line");
+            warn!("SIMICS: {}", line);
+        }
+    });
 
     let (_, (tx, rx)): (_, (IpcSender<FuzzerEvent>, IpcReceiver<SimicsEvent>)) =
         bootstrap.accept()?;
 
     info!("Sending initialize");
 
-    tx.send(FuzzerEvent::Initialize)?;
+    let mut info = InitInfo::default();
+    info.add_fault(Fault::Triple);
+    info.add_fault(Fault::InvalidOpcode);
+
+    tx.send(FuzzerEvent::Initialize(info))?;
 
     info!("Receiving ipc shm");
 
@@ -308,21 +363,21 @@ fn main() -> Result<()> {
         &mut objective,
     )?;
 
-    let mon = SimpleMonitor::new(|s| println!("{s}"));
+    let mon = TuiMonitor::new("Test fuzzer for x509 parse".to_string(), true);
     let mut mgr = SimpleEventManager::new(mon);
     let scheduler = QueueScheduler::new();
     let mut fuzzer = StdFuzzer::new(scheduler, coverage_feedback, objective);
-
     let mut harness = |input: &BytesInput| {
         let target = input.target_bytes();
         let buf = target.as_slice();
         let run_input = buf.to_vec();
+        let mut exit_kind = ExitKind::Ok;
         // We expect we'll get a simics ready message:
 
-        info!("Harness running with {:?}", run_input);
+        info!("Running with input '{:?}'", run_input);
         match rx.recv().expect("Failed to receive message") {
             SimicsEvent::Ready => {
-                info!("Received ready signal");
+                debug!("Received ready signal");
             }
             _ => {
                 error!("Received unexpected event");
@@ -334,24 +389,35 @@ fn main() -> Result<()> {
             .expect("Failed to send message");
 
         match rx.recv().expect("Failed to receive message") {
-            SimicsEvent::Stopped => {
-                info!("Received stopped signal");
-            }
+            SimicsEvent::Stopped(stop_type) => match stop_type {
+                StopType::Crash => {
+                    error!("Target crashed, yeehaw!");
+                    exit_kind = ExitKind::Crash;
+                }
+                StopType::Normal => {
+                    info!("Target stopped normally ;_;");
+
+                    exit_kind = ExitKind::Ok;
+                }
+                StopType::TimeOut => {
+                    warn!("Target timed out, yeehaw(???)");
+                    exit_kind = ExitKind::Timeout;
+                }
+            },
             _ => {
                 error!("Received unexpected event");
             }
         }
 
         // We'd read the state of the vm here, including caught exceptions and branch trace
-
         // Now we send the reset signal
-        info!("Sending reset signal");
+        debug!("Sending reset signal");
 
         tx.send(FuzzerEvent::Reset).expect("Failed to send message");
 
-        info!("Harness done");
+        debug!("Harness done");
 
-        ExitKind::Ok
+        exit_kind
     };
 
     info!("Creating executor");
@@ -366,13 +432,15 @@ fn main() -> Result<()> {
 
     info!("Generating initial inputs");
 
-    let mut generator = RandPrintablesGenerator::new(32);
+    let mut generator = RandBytesGenerator::new(32);
 
-    // TODO: Wait after, but for now we need this for testing
-
-    // Generate 8 initial inputs
-    // forced because otherwise it'll try and run them and we ain't ready
-    state.generate_initial_inputs_forced(&mut fuzzer, &mut executor, &mut generator, &mut mgr, 8)?;
+    state.generate_initial_inputs_forced(
+        &mut fuzzer,
+        &mut executor,
+        &mut generator,
+        &mut mgr,
+        8,
+    )?;
 
     info!("Creating mutator");
 
@@ -395,6 +463,14 @@ fn main() -> Result<()> {
     }
 
     tx.send(FuzzerEvent::Stop)?;
+
+    simics_output_reader
+        .join()
+        .expect("Could not join output thread");
+    simics_err_reader
+        .join()
+        .expect("Could not join output thread");
+
     simics_process.wait()?;
 
     Ok(())

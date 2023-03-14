@@ -42,7 +42,9 @@ fn test_load_ipc_test_module() -> Result<()> {
 
     info!("Sending initialize");
 
-    tx.send(Message::FuzzerEvent(FuzzerEvent::Initialize))?;
+    let info = InitInfo::default();
+
+    tx.send(Message::FuzzerEvent(FuzzerEvent::Initialize(info)))?;
 
     info!("Receiving ipc shm");
 

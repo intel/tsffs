@@ -47,10 +47,10 @@ impl ModuleCtx {
 
         info!("Waiting for initialize command");
 
-        ensure!(
-            matches!(rx.recv()?, Message::FuzzerEvent(FuzzerEvent::Initialize)),
-            "Did not receive Initialize command."
-        );
+        let init_info = match rx.recv()? {
+            Message::FuzzerEvent(FuzzerEvent::Initialize(info)) => info,
+            _ => bail!("Expected initialize command"),
+        };
 
         let mut shm = IpcShm::default();
 

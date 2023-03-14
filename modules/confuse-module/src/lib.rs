@@ -5,5 +5,5 @@ mod context;
 mod magic;
 mod processor;
 mod signal;
-mod stop_action;
+mod stop_reason;
 mod util;

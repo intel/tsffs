@@ -1,5 +1,6 @@
 use anyhow::{bail, ensure, Context, Result};
-use confuse_fuzz::message::{FuzzerEvent, Message, SimicsEvent};
+use confuse_fuzz::message::{FuzzerEvent, SimicsEvent, StopType};
+use confuse_fuzz::{Fault, InitInfo};
 use confuse_simics_api::{
     attr_attr_t_Sim_Attr_Pseudo, class_data_t, class_kind_t_Sim_Class_Kind_Session, conf_class,
     conf_class_t, conf_object_t, micro_checkpoint_flags_t_Sim_MC_ID_User,
@@ -17,19 +18,20 @@ use log::info;
 use raw_cstr::raw_cstr;
 
 use crate::callbacks::{
-    core_simulation_stopped_cb, get_processor, get_signal, resume_simulation, set_processor,
-    set_signal,
+    core_exception_cb, core_simulation_stopped_cb, get_processor, get_signal, resume_simulation,
+    set_processor, set_signal, x86_triple_fault_cb,
 };
 
 use crate::magic::Magic;
 use crate::processor::Processor;
 use crate::signal::Signal;
-use crate::stop_action::StopReason;
+use crate::stop_reason::StopReason;
 use crate::{
     callbacks::core_magic_instruction_cb,
     interface::{BOOTSTRAP_SOCKNAME, CLASS_NAME},
 };
 
+use std::collections::HashSet;
 use std::ffi::c_void;
 use std::{
     env::var,
@@ -57,6 +59,7 @@ pub struct ModuleCtx {
     prev_loc: u64,
     buffer_address: u64,
     buffer_size: u64,
+    init_info: InitInfo,
 }
 
 unsafe impl Send for ModuleCtx {}
@@ -77,10 +80,37 @@ impl ModuleCtx {
 
         info!("Waiting for initialize command");
 
-        ensure!(
-            matches!(rx.recv()?, FuzzerEvent::Initialize),
-            "Did not receive Initialize command."
-        );
+        let init_info = match rx.recv()? {
+            FuzzerEvent::Initialize(info) => info,
+            _ => bail!("Expected initialize command"),
+        };
+
+        if init_info.faults.contains(&Fault::Triple) {
+            // We care about triple, set the x86 triple handler
+            let _triple_fault_cb = unsafe {
+                SIM_hap_add_callback(
+                    raw_cstr!("X86_Triple_Fault"),
+                    transmute(x86_triple_fault_cb as unsafe extern "C" fn(_, _)),
+                    null_mut(),
+                )
+            };
+        }
+
+        if init_info
+            .faults
+            .difference(&HashSet::from([Fault::Triple]))
+            .next()
+            .is_some()
+        {
+            // 1+ elements that aren't triple, we need to set the core_exception handler
+            let _triple_fault_cb = unsafe {
+                SIM_hap_add_callback(
+                    raw_cstr!("Core_Exception"),
+                    transmute(core_exception_cb as unsafe extern "C" fn(_, _, _)),
+                    null_mut(),
+                )
+            };
+        }
 
         let mut shm = IpcShm::default();
 
@@ -106,6 +136,7 @@ impl ModuleCtx {
             prev_loc: 0,
             buffer_address: 0,
             buffer_size: 0,
+            init_info,
         })
     }
 
@@ -237,7 +268,7 @@ impl ModuleCtx {
                 Magic::Stop => {
                     // Stop harness stop means we need to reset to the snapshot and be ready to
                     // run
-                    self.tx.send(SimicsEvent::Stopped)?;
+                    self.tx.send(SimicsEvent::Stopped(StopType::Normal))?;
 
                     let rexec = unsafe { SIM_get_object(raw_cstr!("sim.rexec")) };
 
@@ -296,6 +327,64 @@ impl ModuleCtx {
                     }
                 }
             },
+            Some(StopReason::Crash) => {
+                self.tx.send(SimicsEvent::Stopped(StopType::Crash))?;
+                let rexec = unsafe { SIM_get_object(raw_cstr!("sim.rexec")) };
+
+                let sinfo = unsafe { SIM_get_attribute(rexec, raw_cstr!("state_info")) };
+
+                let sinfo_size = SIM_attr_list_size(sinfo);
+
+                ensure!(
+                    sinfo_size == 1,
+                    "Invalid size of state_info: {}",
+                    sinfo_size
+                );
+                info!("Waiting for reset signal to restore state");
+
+                match self.rx.recv()? {
+                    FuzzerEvent::Reset => {
+                        unsafe { VT_restore_micro_checkpoint(0) };
+                        unsafe { CORE_discard_future() };
+
+                        info!("Restored checkpoint");
+                    }
+                    FuzzerEvent::Stop => {
+                        info!("Got stop signal, we want to stop cleanly here");
+                    }
+                    _ => {
+                        bail!("Unexpected event");
+                    }
+                }
+
+                self.tx.send(SimicsEvent::Ready)?;
+
+                let processor = self.get_processor()?;
+                let cpu = processor.get_cpu();
+
+                match self.rx.recv()? {
+                    FuzzerEvent::Run(input) => {
+                        info!("Got input, running");
+
+                        for (i, chunk) in input.chunks(8).enumerate() {
+                            // TODO: this is really inefficient, make it better
+                            let data: &mut [u8] = &mut [0; 8];
+                            for (i, v) in chunk.iter().enumerate() {
+                                data[i] = *v;
+                            }
+                            let val = u64::from_le_bytes(data.try_into()?);
+                            let addr: physical_address_t = self.buffer_address + (i * 8) as u64;
+                            unsafe {
+                                SIM_write_phys_memory(cpu, addr, val, chunk.len().try_into()?)
+                            };
+                        }
+                        unsafe { resume_simulation() };
+                    }
+                    _ => {
+                        bail!("Unexpected event");
+                    }
+                }
+            }
             None => {}
         }
 
@@ -321,6 +410,10 @@ impl ModuleCtx {
             .write_at(data, (cur_loc ^ self.prev_loc) as usize)?;
         self.prev_loc >>= 1;
         Ok(())
+    }
+
+    pub fn is_fault(&self, fault: Fault) -> bool {
+        self.init_info.faults.contains(&fault)
     }
 }
 
@@ -389,6 +482,7 @@ lazy_static! {
             )
         };
 
+
         info!("Added callback for magic instruction");
 
 
@@ -397,38 +491,3 @@ lazy_static! {
         ))
     };
 }
-
-/*
-
-// TODO: Don't use global state, instead we should follow simics' methodology and use the object
-// format it defines:
-
-#[no_mangle]
-pub extern "C" fn alloc_ctx(_data: *mut c_void) -> *mut conf_object_t {
-    info!("Alloc called");
-    null_mut()
-}
-
-#[no_mangle]
-pub extern "C" fn init_ctx(_obj: *mut conf_object_t, _data: *mut c_void) -> *mut c_void {
-    info!("Init called");
-    null_mut()
-}
-
-#[no_mangle]
-pub extern "C" fn finalize_ctx(_obj: *mut conf_object_t) {
-    info!("Finalize called");
-}
-
-#[no_mangle]
-pub extern "C" fn pre_delete_ctx(_obj: *mut conf_object_t) {
-    info!("Pre delete called");
-}
-
-#[no_mangle]
-pub extern "C" fn delete_instance_ctx(_obj: *mut conf_object_t) -> i32 {
-    info!("Delete called");
-    0
-}
-
-*/

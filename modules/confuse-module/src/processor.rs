@@ -7,8 +7,9 @@ use anyhow::{anyhow, bail, Result};
 
 use confuse_simics_api::{
     conf_object_t, cpu_cached_instruction_interface_t, cpu_instruction_query_interface_t,
-    cpu_instrumentation_subscribe_interface_t, instruction_handle_t, int_register_interface_t,
-    mm_free, processor_info_v2_interface_t, SIM_attr_free, SIM_make_attr_data,
+    cpu_instrumentation_subscribe_interface_t, exception_interface_t, instruction_handle_t,
+    int_register_interface_t, mm_free, processor_info_v2_interface_t, SIM_attr_free,
+    SIM_make_attr_data,
 };
 
 use log::error;
@@ -29,6 +30,7 @@ pub struct Processor {
     cpu_cached_instruction: *mut cpu_cached_instruction_interface_t,
     processor_info_v2: *mut processor_info_v2_interface_t,
     int_register: *mut int_register_interface_t,
+    exception: *mut exception_interface_t,
 }
 
 impl Processor {
@@ -41,6 +43,7 @@ impl Processor {
         cpu_cached_instruction: *mut cpu_cached_instruction_interface_t,
         processor_info_v2: *mut processor_info_v2_interface_t,
         int_register: *mut int_register_interface_t,
+        exception: *mut exception_interface_t,
     ) -> Result<Self> {
         Ok(Self {
             cpu: nonnull!(cpu)?,
@@ -49,6 +52,7 @@ impl Processor {
             cpu_cached_instruction: nonnull!(cpu_cached_instruction)?,
             processor_info_v2: nonnull!(processor_info_v2)?,
             int_register: nonnull!(int_register)?,
+            exception: nonnull!(exception)?,
         })
     }
 

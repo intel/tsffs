@@ -5,6 +5,7 @@
   SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
+#include <Library/BaseMemoryLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/PcdLib.h>
 #include <Library/UefiBootServicesTableLib.h>
@@ -25,13 +26,18 @@
 EFI_STATUS
 EFIAPI
 UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable) {
-    UINT8 *input = (UINT8 *)AllocatePages(EFI_SIZE_TO_PAGES(CONFUSE_MAXSIZE));
+    UINTN input_max_size = 0x1000;
+    UINTN input_size = input_max_size;
+    UINT8 *input = (UINT8 *)AllocatePages(EFI_SIZE_TO_PAGES(input_max_size));
+
 
     if (!input) {
       return EFI_OUT_OF_RESOURCES;
     }
 
-    HARNESS_START(input, CONFUSE_MAXSIZE);
+    SetMem((VOID *)input, input_max_size, 0);
+
+    HARNESS_START(&input, &input_size);
 
     switch (*input) {
       case 'A': {
@@ -39,9 +45,9 @@ UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable) {
         __asm__(".byte 0x06");
       }
       case 'B': {
-        // Sleep for 3 seconds, this is a "hang"
+        // Sleep for 10 seconds, this is a "hang"
         // NOTE: gBS is the global Boot Services table
-        gBS->Stall(3 * 1000 * 1000);
+        gBS->Stall(10 * 1000 * 1000);
       }
       default: {
         // Nothing, this is a "success"
@@ -53,7 +59,7 @@ UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable) {
 
 
     if (input) {
-      FreePages(input, EFI_SIZE_TO_PAGES(CONFUSE_MAXSIZE));
+      FreePages(input, EFI_SIZE_TO_PAGES(input_max_size));
     }
 
     return EFI_SUCCESS;

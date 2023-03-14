@@ -5,12 +5,12 @@
   SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
+#include <Library/BaseCryptLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/PcdLib.h>
-#include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiApplicationEntryPoint.h>
+#include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiLib.h>
-#include <Library/BaseCryptLib.h>
 #include <Uefi.h>
 
 #include "confuse.h"
@@ -26,16 +26,18 @@
 EFI_STATUS
 EFIAPI
 UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable) {
-    UINT8 *input = (UINT8 *)AllocatePages(EFI_SIZE_TO_PAGES(CONFUSE_MAXSIZE));
+    UINTN max_input_size = 0x1000;
+    UINTN input_size = max_input_size;
+    UINT8 *input = (UINT8 *)AllocatePages(EFI_SIZE_TO_PAGES(max_input_size));
 
     if (!input) {
-      return EFI_OUT_OF_RESOURCES;
+        return EFI_OUT_OF_RESOURCES;
     }
 
-    HARNESS_START(input, CONFUSE_MAXSIZE);
+    HARNESS_START(&input, &input_size);
 
     UINT8 *Cert = input;
-    UINTN CertSize = CONFUSE_MAXSIZE / 2;
+    UINTN CertSize = input_size / 2;
     UINT8 *CACert = (input + CertSize);
     UINTN CACertSize = CertSize;
 
@@ -43,9 +45,8 @@ UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable) {
 
     HARNESS_STOP();
 
-
     if (input) {
-      FreePages(input, EFI_SIZE_TO_PAGES(CONFUSE_MAXSIZE));
+        FreePages(input, EFI_SIZE_TO_PAGES(max_input_size));
     }
 
     return EFI_SUCCESS;

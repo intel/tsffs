@@ -1,5 +1,8 @@
 use anyhow::{bail, Result};
-use confuse_fuzz::message::{FuzzerEvent, Message, SimicsEvent};
+use confuse_fuzz::{
+    message::{FuzzerEvent, Message, SimicsEvent},
+    InitInfo,
+};
 use confuse_simics_manifest::PackageNumber;
 use confuse_simics_project::SimicsProject;
 use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender, IpcSharedMemory};
@@ -43,7 +46,9 @@ fn test_load_ipc_test_module() -> Result<()> {
 
     info!("Sending initialize");
 
-    tx.send(Message::FuzzerEvent(FuzzerEvent::Initialize))?;
+    tx.send(Message::FuzzerEvent(FuzzerEvent::Initialize(
+        InitInfo::default(),
+    )))?;
 
     info!("Receiving ipc shm");
 

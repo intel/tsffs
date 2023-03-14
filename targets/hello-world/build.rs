@@ -1,4 +1,5 @@
 use anyhow::{ensure, Result};
+use confuse_simics_project::link_simics;
 use dockerfile_rs::{Copy, DockerFile, From, TagOrDigest, RUN, WORKDIR};
 use std::{
     env::var,
@@ -163,5 +164,6 @@ fn build_efi_module() -> Result<()> {
 fn main() -> Result<()> {
     println!("cargo:rerun-if-changed=build.rs");
     build_efi_module()?;
+    link_simics()?;
     Ok(())
 }
