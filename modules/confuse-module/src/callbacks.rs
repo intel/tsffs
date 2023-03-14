@@ -3,16 +3,14 @@
 use anyhow::Result;
 use confuse_fuzz::Fault;
 use confuse_simics_api::{
-    attr_value_t, cached_instruction_handle_t, conf_class_t, conf_object_t,
-    cpu_cached_instruction_interface_t, cpu_instruction_query_interface_t,
-    cpu_instrumentation_subscribe_interface_t, exception_interface_t, instruction_handle_t,
-    int_register_interface_t, micro_checkpoint_flags_t_Sim_MC_ID_User,
-    micro_checkpoint_flags_t_Sim_MC_Persistent, processor_info_v2_interface_t, set_error_t,
-    set_error_t_Sim_Set_Ok, SIM_attr_integer, SIM_attr_object_or_nil, SIM_break_simulation,
-    SIM_c_get_interface, SIM_continue, SIM_make_attr_object, SIM_register_work, SIM_run_alone,
-    VT_save_micro_checkpoint,
+    attr_value_t, cached_instruction_handle_t, conf_object_t, cpu_cached_instruction_interface_t,
+    cpu_instruction_query_interface_t, cpu_instrumentation_subscribe_interface_t,
+    exception_interface_t, instruction_handle_t, int_register_interface_t,
+    processor_info_v2_interface_t, set_error_t, set_error_t_Sim_Set_Ok, SIM_attr_integer,
+    SIM_attr_object_or_nil, SIM_break_simulation, SIM_c_get_interface, SIM_continue,
+    SIM_make_attr_object, SIM_run_alone,
 };
-use log::{debug, error, info, warn};
+use log::{debug, error, info};
 use raw_cstr::raw_cstr;
 use std::{
     ffi::{c_char, c_void, CString},
@@ -178,7 +176,8 @@ pub extern "C" fn core_magic_instruction_cb(
 
 #[no_mangle]
 pub extern "C" fn set_signal(_obj: *mut conf_object_t, val: *mut attr_value_t) -> set_error_t {
-    let signal = Signal::try_from(unsafe { SIM_attr_integer(*val) }).expect("No such signal");
+    let signal = Signal::try_from(unsafe { SIM_attr_integer(*val).expect("Error getting value") })
+        .expect("No such signal");
     info!("Got signal {:?}", signal);
     let ctx = CTX.lock().expect("Could not lock context!");
     ctx.handle_signal(signal);
@@ -232,13 +231,8 @@ pub extern "C" fn core_exception_cb(
     // exception. Continuing the simulation will then re-run the exception, this time without
     // calling hap functions.
 
-    match Fault::try_from(exception_number) {
-        Ok(fault) => {
-            handle_fault(fault).expect("Could not handle fault");
-        }
-        _ => {
-            // Don't do anything, this isn't a valid fault we care about
-        }
+    if let Ok(fault) = Fault::try_from(exception_number) {
+        handle_fault(fault).expect("Could not handle fault");
     }
 }
 

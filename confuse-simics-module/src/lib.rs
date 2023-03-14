@@ -1,3 +1,10 @@
+//! Confuse Simics Module
+//! 
+//! This crate provides tools for creating a signed simics module that can be loaded by SIMICS
+//! out of a compiled shared object (ELF file). It implements the signature code from SIMICS
+//! and allows signing of arbitrary ELF files, not just those compiled using the SIMICS Makefile
+//! system
+
 use anyhow::{Context, Result, ensure};
 use cargo_metadata::MetadataCommand;
 use chrono::Local;
@@ -15,7 +22,7 @@ use std::{
     io::Write,
     num::Wrapping,
     path::{Path, PathBuf},
-    time::{SystemTime, UNIX_EPOCH}, ascii::escape_default, iter::repeat
+    time::{SystemTime, UNIX_EPOCH}, ascii::escape_default,
 };
 use whoami::username;
 use log::info;
@@ -31,10 +38,13 @@ pub const SIMICS_UNAME_LIMIT: usize = 20;
 pub const SIMICS_SIGNATURE_LENGTH: usize = 44;
 
 #[derive(Hash, PartialEq, Eq)]
+/// Struture for a SIMICS module written in rust to manage installation of the module into a SIMICS
+/// project for use
 pub struct SimicsModule {
     /// The path the module is at when the instance of `SimicsModule` is created
     /// and before it is signed and copied to its new home
     pub original_path: PathBuf,
+    /// The path the module is located inside the SIMICS project
     pub path: PathBuf,
     pub project_base_path: PathBuf,
     pub name: String,
@@ -42,12 +52,14 @@ pub struct SimicsModule {
 }
 
 impl SimicsModule {
+    /// Attempt to create a new simics module instance from a crate name in this workspace, the path to the
+    /// simics project, and the original path to the simics module
     pub fn try_new<S: AsRef<str>, P: AsRef<Path>>(crate_name: S, project_base_path: P, module_path: P) -> Result<Self> {
         let original_path = module_path.as_ref().to_path_buf();
         let project_base_path = project_base_path.as_ref().to_path_buf();
         let username = username();
         let name = crate_name.as_ref().to_string();
-        let class_name = name.replace("-", "_");
+        let class_name = name.replace('-', "_");
         let module_dir = project_base_path.join("linux64").join("lib");
         let path = module_dir.join(original_path.file_name().context("No filename in module path")?);
 
@@ -67,6 +79,13 @@ impl SimicsModule {
 
 }
 
+/// Find a simics module by crate name. The simics module is looked up by finding the workspace
+/// root, finding a crate (aka package) that is a library and is named `crate_name`, then finds
+/// a shared object in either the `target/deps` directory (first try) or the `target` directory
+/// if there is no library in the `target/deps` directory with the correct name.
+/// 
+/// This isn't 100% foolproof but should work consistently for targets/fuzzers set up like the
+/// examples given in the Confuse workspace
 pub fn find_module<S: AsRef<str>>(crate_name: S) -> Result<PathBuf> {
     let metadata = MetadataCommand::new().no_deps().exec()?;
     let ws_root = metadata.workspace_root;
@@ -77,8 +96,8 @@ pub fn find_module<S: AsRef<str>>(crate_name: S) -> Result<PathBuf> {
 
     let target = workspace_metadata.packages
         .iter()
-        .filter(|p| p.name == crate_name.as_ref() && p.targets.iter().filter(|t| t.is_lib()).next().is_some())
-        .filter_map(|p| p.targets.iter().filter(|t| t.is_lib()).next())
+        .filter(|p| p.name == crate_name.as_ref() && p.targets.iter().any(|t| t.is_lib()))
+        .filter_map(|p| p.targets.iter().find(|t| t.is_lib()))
         .take(1)
         .next()
         .context("No package with given crate name.")?;
@@ -89,12 +108,12 @@ pub fn find_module<S: AsRef<str>>(crate_name: S) -> Result<PathBuf> {
     let target_subdir = "release";
 
     let lib_paths = [
-        workspace_metadata.target_directory.join(target_subdir).join("deps").join(format!("lib{}.so", target.name.replace("-", "_"))),
-        workspace_metadata.target_directory.join(target_subdir).join(format!("lib{}.so", target.name.replace("-", "_"))),
+        workspace_metadata.target_directory.join(target_subdir).join("deps").join(format!("lib{}.so", target.name.replace('-', "_"))),
+        workspace_metadata.target_directory.join(target_subdir).join(format!("lib{}.so", target.name.replace('-', "_"))),
 
     ];
 
-    let lib_path = lib_paths.iter().filter(|p| p.is_file()).next().context(format!("No file exists for requested module {}", crate_name.as_ref()))?;
+    let lib_path = lib_paths.iter().find(|p| p.is_file()).context(format!("No file exists for requested module {}", crate_name.as_ref()))?;
 
     info!("Found module for {} at {:?}", crate_name.as_ref(), lib_path);
 
@@ -113,12 +132,12 @@ pub fn generate_signature_header<P: AsRef<Path>, S: AsRef<str>>(
     let simics_latest = simics_latest(&simics_home)?;
     let simics_api = simics_latest.packages[&PackageNumber::Base]
         .version
-        .split(".")
+        .split('.')
         .next()
         .context("No major version")?
         .trim();
     let crate_name = crate_name.as_ref().to_string();
-    let class_name = crate_name.replace("-", "_");
+    let class_name = crate_name.replace('-', "_");
     // This is the extra space where the signature will be inserted in the format:
     // "\x00CCCC\x00YYYY-MM-DD HH:MM;USER\x00"
     // Where "USER" may be up to 20 chars in length and is null-padded out to the EXTRA length
@@ -138,7 +157,7 @@ pub fn generate_signature_header<P: AsRef<Path>, S: AsRef<str>>(
         format!("CLS:{}", class_name),
         "HOSTTYPE:linux64".to_string(),
         "THREADSAFE".to_string(),
-        repeat(" ").take(43).collect()
+        " ".repeat(43)
     ];
     let capabilities_string = capabilities.join(";") + ";" + "\x00";
     let capabilities_bytes  = capabilities_string.as_bytes().iter().map(|b| b.to_string()).collect::<Vec<_>>();
@@ -172,26 +191,30 @@ pub fn generate_signature_header<P: AsRef<Path>, S: AsRef<str>>(
     Ok(template)
 }
 
-pub fn parse_module<'data>(
-    module: &'data [u8],
-) -> Result<ElfFile<'data, FileHeader64<LittleEndian>>> {
+/// Parse a byte slice into an Elf File instance
+pub fn parse_module(
+    module: &'_ [u8],
+) -> Result<ElfFile<'_, FileHeader64<LittleEndian>>> {
     Ok(ElfFile64::parse(module)?)
 }
 
+/// Get the contents of the module capabilities byte string in an Elf File
 pub fn get_mod_capabilities<'data, 'file>(
     elf: &'file ElfFile<'data, FileHeader64<LittleEndian>>,
 ) -> Result<ElfSymbol<'data, 'file, FileHeader64<LittleEndian>>> {
-    Ok(elf
+    elf
         .symbols()
         .find(|s| s.name() == Ok(MODULE_CAPABILITIES_SYMNAME))
-        .context("No symbol _module_capabilities_ found")?)
+        .context("No symbol _module_capabilities_ found")
 }
 
+/// Sign a simics module with the current user's username
 pub fn sign_simics_module<P: AsRef<Path>>(module: P) -> Result<()> {
     let username = username();
-    Ok(sign_simics_module_as(username, module)?)
+    sign_simics_module_as(username, module)
 }
 
+/// Sign and move a simics module as a particular username
 pub fn sign_move_simics_module_as<P: AsRef<Path>, S: AsRef<str>>(uname: S, module: P, dest: P) -> Result<()> {
     let data = read(&module)?;
     let idata = &data[..];
@@ -207,6 +230,7 @@ pub fn sign_move_simics_module_as<P: AsRef<Path>, S: AsRef<str>>(uname: S, modul
     Ok(())
 }
 
+/// Sign a simics module with a particular username
 pub fn sign_simics_module_as<P: AsRef<Path>, S: AsRef<str>>(uname: S, module: P) -> Result<()> {
     let data = read(&module)?;
     let idata = &data[..];
@@ -222,6 +246,9 @@ pub fn sign_simics_module_as<P: AsRef<Path>, S: AsRef<str>>(uname: S, module: P)
     Ok(())
 }
 
+/// Calculate the "checksum" of a simics module shared object. This "checksum" is just the product
+/// of the sum of the first 256 bytes of the text and data sections of the shared object ORed with
+/// 1
 pub fn calculate_module_checksum(elf: &ElfFile<FileHeader64<LittleEndian>>) -> Result<Wrapping<u32>> {
     let text_section = elf
         .section_by_name(ELF_TEXT_SECTION_NAME)
@@ -238,7 +265,7 @@ pub fn calculate_module_checksum(elf: &ElfFile<FileHeader64<LittleEndian>>) -> R
 
     let csum: Wrapping<u32> = 
     // Checksum starts with 1 instead of 0 because it is multiplicative
-        Wrapping(1u32)
+        (Wrapping(1u32)
         * (
             // The size of the text section
             Wrapping(text_section.size() as u32)
@@ -254,25 +281,26 @@ pub fn calculate_module_checksum(elf: &ElfFile<FileHeader64<LittleEndian>>) -> R
             // The sum of the first 256 bytes or entirety of the data section, whichever is smaller
             data_section_data
                 .iter()
-                .fold(Wrapping(0u32), |a, e| a + Wrapping(*e as u32)))
-        // OR with 1 to set the lsb to prevent the csum from ever equaling '    ' (0x20202020)
-        | Wrapping(1u32);
+                .fold(Wrapping(0u32), |a, e| a + Wrapping(*e as u32)))) | Wrapping(1u32);
 
     Ok(csum)
 
 }
 
-pub fn get_mod_capabilities_data<'data, 'file>(elf: &'file ElfFile<'data, FileHeader64<LittleEndian>>) -> Result<Vec<u8>> {
-    let mod_capabilities = get_mod_capabilities(&elf)?;
+/// Get the contents of the mod capabilities string
+pub fn get_mod_capabilities_data(elf: &'_ ElfFile<'_, FileHeader64<LittleEndian>>) -> Result<Vec<u8>> {
+    let mod_capabilities = get_mod_capabilities(elf)?;
     let data = elf.data();
     let mod_capabilities_data = &data[mod_capabilities.address() as usize..mod_capabilities.address() as usize + mod_capabilities.size() as usize];
     Ok(mod_capabilities_data.to_vec())
 }
 
-pub fn generate_signature_data<'data, 'file, S: AsRef<str>>(uname: S, elf: &'file ElfFile<'data, FileHeader64<LittleEndian>>) -> Result<Vec<u8>> {
-    let checksum = calculate_module_checksum(&elf)?;
+/// Generate the data to insert into the signature field directly following the module capabilities string
+/// which contains the date, username, and "checksum"
+pub fn generate_signature_data<S: AsRef<str>>(uname: S, elf: &'_ ElfFile<'_, FileHeader64<LittleEndian>>) -> Result<Vec<u8>> {
+    let checksum = calculate_module_checksum(elf)?;
     let csum_bytes: [u8; 4] = checksum.0.to_le_bytes();
-    let mod_capabilities_data = get_mod_capabilities_data(&elf)?;
+    let mod_capabilities_data = get_mod_capabilities_data(elf)?;
     let split_seq = b"; ";
     let sign_pos = mod_capabilities_data.windows(split_seq.len()).position(|w| w == split_seq).context(format!(
         "Sequence '{:?}' not found in byte string '{}'.",
@@ -297,6 +325,8 @@ pub fn generate_signature_data<'data, 'file, S: AsRef<str>>(uname: S, elf: &'fil
     Ok(signature)
 }
 
+/// Insert the signature into the data of a simics module shared object and return the modified
+/// data
 pub fn sign_simics_module_data<S: AsRef<str>>(uname: S, module: &[u8]) -> Result<Vec<u8>> {
     let elf = parse_module(module)?;
     let mod_capabilities = get_mod_capabilities(&elf)?;
@@ -308,7 +338,7 @@ pub fn sign_simics_module_data<S: AsRef<str>>(uname: S, module: &[u8]) -> Result
     let signed = pre_sig.iter().chain(signature_data.iter()).chain(post_sig.iter()).cloned().collect::<Vec<_>>();
 
     ensure!(module.len() == signed.len(), "Signed module length differs from input module.");
-    ensure!(module != &signed, "Signed module is the same as the input module.");
+    ensure!(module != signed, "Signed module is the same as the input module.");
 
     Ok(signed)
 }

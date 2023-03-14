@@ -1,13 +1,13 @@
 include!(concat!(env!("OUT_DIR"), "/simics_module_header.rs"));
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{bail, Result};
 use confuse_fuzz::message::{FuzzerEvent, Message, SimicsEvent};
 use confuse_simics_api::{
     class_data_t, class_kind_t_Sim_Class_Kind_Session, conf_class, SIM_register_class,
 };
 use const_format::concatcp;
 use env_logger::init as init_logging;
-use ipc_channel::ipc::{channel, IpcReceiver, IpcSender, IpcSharedMemory};
+use ipc_channel::ipc::{channel, IpcReceiver, IpcSender};
 use ipc_shm::{IpcShm, IpcShmWriter};
 use lazy_static::lazy_static;
 use log::info;
@@ -22,11 +22,11 @@ pub const BOOTSTRAP_SOCKNAME: &str = concatcp!(CLASS_NAME, "_SOCK");
 pub const AFL_MAPSIZE: usize = 64 * 1024;
 
 pub struct ModuleCtx {
-    cls: *mut conf_class,
-    tx: IpcSender<Message>,
-    rx: IpcReceiver<Message>,
-    shm: IpcShm,
-    writer: IpcShmWriter,
+    _cls: *mut conf_class,
+    _tx: IpcSender<Message>,
+    _rx: IpcReceiver<Message>,
+    _shm: IpcShm,
+    _writer: IpcShmWriter,
 }
 
 unsafe impl Send for ModuleCtx {}
@@ -47,7 +47,7 @@ impl ModuleCtx {
 
         info!("Waiting for initialize command");
 
-        let init_info = match rx.recv()? {
+        let _init_info = match rx.recv()? {
             Message::FuzzerEvent(FuzzerEvent::Initialize(info)) => info,
             _ => bail!("Expected initialize command"),
         };
@@ -67,11 +67,11 @@ impl ModuleCtx {
         )))?;
 
         Ok(Self {
-            cls,
-            tx,
-            rx,
-            shm,
-            writer,
+            _cls: cls,
+            _tx: tx,
+            _rx: rx,
+            _shm: shm,
+            _writer: writer,
         })
     }
 }

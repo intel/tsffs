@@ -3,13 +3,12 @@ use confuse_fuzz::message::{FuzzerEvent, SimicsEvent, StopType};
 use confuse_fuzz::{Fault, InitInfo};
 use confuse_simics_api::{
     attr_attr_t_Sim_Attr_Pseudo, class_data_t, class_kind_t_Sim_Class_Kind_Session, conf_class,
-    conf_class_t, conf_object_t, micro_checkpoint_flags_t_Sim_MC_ID_User,
+    conf_class_t, micro_checkpoint_flags_t_Sim_MC_ID_User,
     micro_checkpoint_flags_t_Sim_MC_Persistent, physical_address_t, CORE_discard_future,
-    SIM_attr_integer, SIM_attr_list_size, SIM_get_attribute, SIM_get_object,
-    SIM_get_port_interface, SIM_hap_add_callback, SIM_register_attribute, SIM_register_class,
-    SIM_write_phys_memory, VT_restore_micro_checkpoint, VT_save_micro_checkpoint,
+    SIM_attr_list_size, SIM_get_attribute, SIM_get_object, SIM_hap_add_callback,
+    SIM_register_attribute, SIM_register_class, SIM_write_phys_memory, VT_restore_micro_checkpoint,
+    VT_save_micro_checkpoint,
 };
-use const_format::concatcp;
 
 use ipc_channel::ipc::{channel, IpcReceiver, IpcSender};
 use ipc_shm::{IpcShm, IpcShmWriter};
@@ -32,7 +31,6 @@ use crate::{
 };
 
 use std::collections::HashSet;
-use std::ffi::c_void;
 use std::{
     env::var,
     ffi::CString,
@@ -40,7 +38,6 @@ use std::{
     ptr::null_mut,
     sync::{Arc, Mutex},
 };
-pub const AFL_MAPSIZE: usize = 64 * 1024;
 
 /// Container for the SIMICS structures needed to trace execution of a processor
 /// Context for the module. This module is responsible for:
@@ -48,10 +45,10 @@ pub const AFL_MAPSIZE: usize = 64 * 1024;
 /// - Branch tracing
 /// - Detecting errors
 pub struct ModuleCtx {
-    cls: *mut conf_class,
+    _cls: *mut conf_class,
     tx: IpcSender<SimicsEvent>,
     rx: IpcReceiver<FuzzerEvent>,
-    shm: IpcShm,
+    _shm: IpcShm,
     writer: IpcShmWriter,
     processor: Option<Processor>,
     stop_reason: Option<StopReason>,
@@ -125,10 +122,10 @@ impl ModuleCtx {
         tx.send(SimicsEvent::SharedMem(shm.try_clone()?))?;
 
         Ok(Self {
-            cls,
+            _cls: cls,
             tx,
             rx,
-            shm,
+            _shm: shm,
             writer,
             processor: None,
             stop_reason: None,
@@ -152,13 +149,14 @@ impl ModuleCtx {
     }
 
     pub fn get_processor(&self) -> Result<&Processor> {
-        Ok(self.processor.as_ref().context("No processor available")?)
+        self.processor.as_ref().context("No processor available")
     }
 
     pub fn handle_signal(&self, signal: Signal) {
+        #[allow(clippy::single_match)]
         match signal {
             Signal::Start => self.start(),
-            _ => {}
+            _ => unreachable!("No such signal"),
         }
     }
 
@@ -274,7 +272,7 @@ impl ModuleCtx {
 
                     let sinfo = unsafe { SIM_get_attribute(rexec, raw_cstr!("state_info")) };
 
-                    let sinfo_size = SIM_attr_list_size(sinfo);
+                    let sinfo_size = SIM_attr_list_size(sinfo)?;
 
                     ensure!(
                         sinfo_size == 1,
@@ -333,7 +331,7 @@ impl ModuleCtx {
 
                 let sinfo = unsafe { SIM_get_attribute(rexec, raw_cstr!("state_info")) };
 
-                let sinfo_size = SIM_attr_list_size(sinfo);
+                let sinfo_size = SIM_attr_list_size(sinfo)?;
 
                 ensure!(
                     sinfo_size == 1,

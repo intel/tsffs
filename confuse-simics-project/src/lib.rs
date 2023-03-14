@@ -1,5 +1,10 @@
+//! Confuse Simics Project
+//!
+//! This crate provides tools for managing simics projects, including linking to simics, loading
+//! modules, and creating and destroying temporary project directories
+
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashSet,
     fs::{copy, create_dir_all, remove_dir_all, OpenOptions},
     io::Write,
     path::{Component, Path, PathBuf},
@@ -14,12 +19,13 @@ use log::{error, info};
 
 use confuse_simics_manifest::{package_infos, simics_latest, PackageNumber};
 use confuse_simics_module::SimicsModule;
-use serde::{Deserialize, Serialize};
-use serde_yaml::to_string;
 use tempdir::TempDir;
 use walkdir::WalkDir;
 
+/// The SIMICS home installation directory. A `.env` file containing a line like:
+/// SIMICS_HOME=/home/username/simics/ must be present in the workspace tree
 const SIMICS_HOME: &str = dotenv!("SIMICS_HOME");
+/// Prefix for naming temporary directories
 const SIMICS_PROJECT_PREFIX: &str = "simics_project";
 
 /// Return the SIMICS_HOME directory as a PathBuf
@@ -86,6 +92,8 @@ pub fn link_simics() -> Result<()> {
     Ok(())
 }
 
+/// Structure for managing simics projects on disk, including the packages added to the project
+/// and the modules loaded in it.
 pub struct SimicsProject {
     pub base_path: PathBuf,
     pub home: PathBuf,
@@ -129,7 +137,7 @@ impl SimicsProject {
             .create(true)
             .write(true)
             .append(true)
-            .open(&simics_package_list_path)?;
+            .open(simics_package_list_path)?;
 
         writeln!(&simics_package_list, "{}", package_path)?;
 
@@ -178,7 +186,13 @@ impl SimicsProject {
         Ok(self)
     }
 
-    /// Add a file into the simics project at a path relative to the project directory.
+    /// Add a file into the simics project at a path relative to the project directory. For example
+    ///
+    /// ```text
+    /// project.try_with_file(PathBuf::from("/tmp/some_file", "modules/mod.so"))
+    /// ```
+    ///
+    /// This would copy /tmp/some_file into the simics project in the modules directory as mod.so
     pub fn try_with_file<P: AsRef<Path>, S: AsRef<str>>(
         self,
         src_path: P,
@@ -197,7 +211,7 @@ impl SimicsProject {
             .parent()
             .context("Destination path has no parent.")?;
 
-        create_dir_all(&dst_path_dir)?;
+        create_dir_all(dst_path_dir)?;
 
         copy(src_path, &dst_path)?;
 
@@ -223,7 +237,7 @@ impl SimicsProject {
             .parent()
             .context("Destination path has no parent.")?;
 
-        create_dir_all(&dst_path_dir)?;
+        create_dir_all(dst_path_dir)?;
 
         let mut file = OpenOptions::new()
             .write(true)
@@ -282,6 +296,9 @@ impl SimicsProject {
         Ok(self)
     }
 
+    /// Retrieve the arguments for loading all the modules that are added to the project. The order
+    /// is arbitrary, so if there is an ordering dependency you should specify these arguments
+    /// manually
     pub fn module_load_args(&self) -> Vec<String> {
         self.modules
             .iter()
@@ -291,7 +308,7 @@ impl SimicsProject {
 
     /// Get the simics executable for this project as a command ready to run with arguments
     pub fn command(&self) -> Command {
-        Command::new(&self.base_path.join("simics"))
+        Command::new(self.base_path.join("simics"))
     }
 
     /// Make this project persistent (ie it will not be deleted when dropped)
@@ -338,6 +355,9 @@ fn copy_dir_contents<P: AsRef<Path>>(src_dir: P, dst_dir: P) -> Result<()> {
 }
 
 const YAML_INDENT: &str = "  ";
+
+/// Params to a simics app can be one of four types: int, file, bool, or str. They don't
+/// necessarily have a "default" which is the value stored in this enum
 pub enum SimicsAppParamType {
     Int(Option<i64>),
     File(Option<String>),
@@ -345,6 +365,8 @@ pub enum SimicsAppParamType {
     Str(Option<String>),
 }
 
+/// Parameter to a simics app, these always have a type, may have a default (if the default is
+/// not provided, it must be set by the app's script), and they may set the boolean `output`.
 pub struct SimicsAppParam {
     pub default: SimicsAppParamType,
     pub output: Option<bool>,

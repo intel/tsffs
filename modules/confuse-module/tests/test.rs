@@ -1,5 +1,8 @@
 use anyhow::{bail, Result};
-use confuse_fuzz::message::{FuzzerEvent, Message, SimicsEvent};
+use confuse_fuzz::{
+    message::{FuzzerEvent, Message, SimicsEvent},
+    InitInfo,
+};
 use confuse_module::interface::{BOOTSTRAP_SOCKNAME, CRATE_NAME};
 use confuse_simics_manifest::PackageNumber;
 use confuse_simics_project::SimicsProject;

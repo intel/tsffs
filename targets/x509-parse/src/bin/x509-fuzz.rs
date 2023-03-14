@@ -1,7 +1,7 @@
 use anyhow::{bail, Result};
 use chrono::Local;
 use confuse_fuzz::{
-    message::{FuzzerEvent, Message, SimicsEvent, StopType},
+    message::{FuzzerEvent, SimicsEvent, StopType},
     Fault, InitInfo,
 };
 use confuse_module::interface::{
@@ -14,22 +14,19 @@ use confuse_simics_project::{
     bool_param, file_param, int_param, simics_app, simics_path, str_param, SimicsApp,
     SimicsAppParam, SimicsAppParamType, SimicsProject,
 };
-use env_logger::{init_from_env, Builder, Env, Target, DEFAULT_FILTER_ENV};
-use hello_world::HELLO_WORLD_EFI_MODULE;
+use env_logger::{Builder, Target};
 use indoc::{formatdoc, indoc};
 use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender};
 use libafl::prelude::{tui::TuiMonitor, *};
 use log::{debug, error, info, warn, LevelFilter};
 use std::{
     io::{BufRead, BufReader, Write},
-    iter::repeat,
     process::Stdio,
     thread::spawn,
 };
 use tempfile::NamedTempFile;
 
-static mut TEST_MAP: [u8; 16] = [0; 16];
-static mut TEST_MAP_PTR: *mut u8 = unsafe { TEST_MAP.as_mut_ptr() };
+use x509_parse::X509_PARSE_EFI_MODULE;
 
 fn main() -> Result<()> {
     let logfile = NamedTempFile::new()?;
@@ -50,14 +47,13 @@ fn main() -> Result<()> {
         .filter(None, LevelFilter::Info)
         .init();
 
-    // init_from_env(Env::default().filter_or(DEFAULT_FILTER_ENV, "info"));
     // Paths of
     const APP_SCRIPT_PATH: &str = "scripts/app.py";
     const APP_YML_PATH: &str = "scripts/app.yml";
-    const BOOT_DISK_PATH: &str = "targets/hello-world/minimal_boot_disk.craff";
-    const STARTUP_NSH_PATH: &str = "targets/hello-world/run_uefi_app.nsh";
-    const STARTUP_SIMICS_PATH: &str = "targets/hello-world/run-uefi-app.simics";
-    const UEFI_APP_PATH: &str = "HelloWorld.efi";
+    const BOOT_DISK_PATH: &str = "targets/x509-parse/minimal_boot_disk.craff";
+    const STARTUP_NSH_PATH: &str = "targets/x509-parse/run_uefi_app.nsh";
+    const STARTUP_SIMICS_PATH: &str = "targets/x509-parse/run-uefi-app.simics";
+    const UEFI_APP_PATH: &str = "X509Parse.efi";
 
     let app = simics_app! {
         "QSP With UEFI App (Fuzzing)",
@@ -115,7 +111,6 @@ fn main() -> Result<()> {
     };
 
     const CONFUSE_START_SIGNAL: u32 = 0x4343;
-    const CONFUSE_STOP_SIGNAL: u32 = 0x4242;
 
     let app_script = formatdoc! {r#"
         from sim_params import params
@@ -274,14 +269,14 @@ fn main() -> Result<()> {
     // let input = repeat(b'A').take(4096).collect::<Vec<_>>();
     let simics_project = SimicsProject::try_new()?
         .try_with_package(PackageNumber::QuickStartPlatform)?
-        .try_with_file_contents(&HELLO_WORLD_EFI_MODULE, UEFI_APP_PATH)?
-        .try_with_file_contents(&app.to_string().as_bytes(), APP_YML_PATH)?
+        .try_with_file_contents(X509_PARSE_EFI_MODULE, UEFI_APP_PATH)?
+        .try_with_file_contents(app.to_string().as_bytes(), APP_YML_PATH)?
         .try_with_file_contents(app_script.as_bytes(), APP_SCRIPT_PATH)?
         .try_with_file_contents(boot_disk, BOOT_DISK_PATH)?
         .try_with_file_contents(run_uefi_app_nsh_script, STARTUP_NSH_PATH)?
         .try_with_file_contents(run_uefi_app_simics_script.as_bytes(), STARTUP_SIMICS_PATH)?
         // .try_with_file_contents(&input, "corpus/input")?
-        .try_with_module(CONFUSE_MODULE_CRATE_NAME, &confuse_module)?;
+        .try_with_module(CONFUSE_MODULE_CRATE_NAME, confuse_module)?;
 
     info!("Project: {}", simics_project.base_path.display());
 
@@ -328,8 +323,13 @@ fn main() -> Result<()> {
     info!("Sending initialize");
 
     let mut info = InitInfo::default();
-    info.add_fault(Fault::Triple);
-    info.add_fault(Fault::InvalidOpcode);
+
+    info.add_faults([
+        Fault::Triple,
+        Fault::InvalidOpcode,
+        Fault::Double,
+        Fault::GeneralProtection,
+    ]);
 
     tx.send(FuzzerEvent::Initialize(info))?;
 
@@ -345,7 +345,7 @@ fn main() -> Result<()> {
     info!("Got writer");
 
     let coverage_observer =
-        unsafe { StdMapObserver::from_mut_ptr("map", writer.as_mut_ptr(), TEST_MAP.len()) };
+        unsafe { StdMapObserver::from_mut_ptr("map", writer.as_mut_ptr(), writer.len()) };
 
     let mut coverage_feedback = MaxMapFeedback::new(&coverage_observer);
 
@@ -363,11 +363,10 @@ fn main() -> Result<()> {
         &mut objective,
     )?;
 
-    let mon = TuiMonitor::new("Test fuzzer for hello world".to_string(), true);
+    let mon = TuiMonitor::new("Test fuzzer for x509 parse".to_string(), true);
     let mut mgr = SimpleEventManager::new(mon);
     let scheduler = QueueScheduler::new();
     let mut fuzzer = StdFuzzer::new(scheduler, coverage_feedback, objective);
-
     let mut harness = |input: &BytesInput| {
         let target = input.target_bytes();
         let buf = target.as_slice();
@@ -453,8 +452,6 @@ fn main() -> Result<()> {
 
     fuzzer.fuzz_loop_for(&mut stages, &mut executor, &mut state, &mut mgr, 100)?;
 
-    info!("Done.");
-
     // We expect we'll get a simics ready message:
     match rx.recv()? {
         SimicsEvent::Ready => {
@@ -473,6 +470,7 @@ fn main() -> Result<()> {
     simics_err_reader
         .join()
         .expect("Could not join output thread");
+
     simics_process.wait()?;
 
     Ok(())

@@ -19,27 +19,27 @@ struct IpcShmSerializable {
     pub backing_file: OwnedDescriptor,
 }
 
-impl Into<IpcShmSerializable> for &IpcShm {
-    fn into(self) -> IpcShmSerializable {
-        let backing_file = self
+impl From<&IpcShm> for IpcShmSerializable {
+    fn from(val: &IpcShm) -> Self {
+        let backing_file = val
             .memfd
             .as_file()
             .try_clone()
             .expect("Could not clone file");
 
         IpcShmSerializable {
-            size: self.size,
+            size: val.size,
             backing_file: backing_file.into(),
         }
     }
 }
 
-impl Into<IpcShm> for IpcShmSerializable {
-    fn into(self) -> IpcShm {
-        let memfd = Memfd::try_from_file(self.backing_file.into()).expect("Could not create memfd");
+impl From<IpcShmSerializable> for IpcShm {
+    fn from(val: IpcShmSerializable) -> Self {
+        let memfd = Memfd::try_from_file(val.backing_file.into()).expect("Could not create memfd");
 
         IpcShm {
-            size: self.size,
+            size: val.size,
             memfd,
         }
     }
@@ -149,6 +149,10 @@ pub struct IpcShmWriter {
 }
 
 impl IpcShmWriter {
+    pub fn is_empty(&self) -> bool {
+        self.size == 0
+    }
+
     pub fn len(&self) -> usize {
         self.size
     }
@@ -219,6 +223,10 @@ pub struct IpcShmReader {
 }
 
 impl IpcShmReader {
+    pub fn is_empty(&self) -> bool {
+        self.size == 0
+    }
+
     pub fn len(&self) -> usize {
         self.size
     }

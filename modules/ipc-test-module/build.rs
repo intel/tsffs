@@ -22,7 +22,7 @@ fn write_simics_constants() -> Result<()> {
         .create(true)
         .write(true)
         .truncate(true)
-        .open(&simics_module_header_path)?;
+        .open(simics_module_header_path)?;
 
     write!(&mut simics_module_header, "{}", header_contents)?;
 
