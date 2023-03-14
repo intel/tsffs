@@ -60,7 +60,7 @@ fn generate_simics_include_wrapper() -> Result<String> {
                     if e == "h" {
                         match p.path().canonicalize() {
                             Ok(p) => p
-                                .strip_prefix(&simics_include_path)
+                                .strip_prefix(simics_include_path)
                                 .map_or_else(|_| None::<PathBuf>, |p| Some(p.to_path_buf())),
                             Err(_) => None,
                         }
@@ -101,7 +101,7 @@ fn generate_simics_include_wrapper() -> Result<String> {
         let pos = include_paths
             .iter()
             .position(|p| p.file_name() == Some(OsStr::new(le)))
-            .expect(&format!("No header '{}' found.", le));
+            .unwrap_or_else(|| panic!("No header '{}' found.", le));
         include_paths.remove(pos);
     });
 
@@ -355,14 +355,32 @@ fn generate_simics_api<P: AsRef<Path>>(header: P) -> Result<()> {
         .blocklist_function("y1l")
         .blocklist_function("__ynl")
         .blocklist_function("ynl")
+        .blocklist_item("M_E")
+        .blocklist_item("M_LOG2E")
+        .blocklist_item("M_LOG10E")
+        .blocklist_item("M_LN2")
+        .blocklist_item("M_LN10")
+        .blocklist_item("M_PI")
+        .blocklist_item("M_PI_2")
+        .blocklist_item("M_PI_4")
+        .blocklist_item("M_1_PI")
+        .blocklist_item("M_2_PI")
+        .blocklist_item("M_2_SQRTPI")
+        .blocklist_item("M_SQRT2")
+        .blocklist_item("M_SQRT1_2")
+        .blocklist_item("Py_MATH_PIl")
+        .blocklist_item("Py_MATH_PI")
+        .blocklist_item("Py_MATH_El")
+        .blocklist_item("Py_MATH_E")
+        .blocklist_item("Py_MATH_TAU")
         .generate()?;
-    bindings.write_to_file(&simics_bindings_path)?;
+    bindings.write_to_file(simics_bindings_path)?;
     Ok(())
 }
 
 fn main() -> Result<()> {
     println!("cargo:rerun-if-changed=build.rs");
     let wrapper_path = write_simics_include_wrapper()?;
-    generate_simics_api(&wrapper_path)?;
+    generate_simics_api(wrapper_path)?;
     Ok(())
 }
