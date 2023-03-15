@@ -21,7 +21,7 @@ fn init_logging() -> Result<()> {
         .target(Target::Stderr)
         // For SIMICS we just output the message because we're going to get stuck into a log
         // message anyway, and we need a newline or all the outputs will get buffered. lol
-        .encoder(Box::new(PatternEncoder::new("{m}{n}")))
+        .encoder(Box::new(PatternEncoder::new("[SIMICS] {m}{n}")))
         .build();
     // let level = LevelFilter::Info;
     let config = Config::builder()

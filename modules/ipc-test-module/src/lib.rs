@@ -8,7 +8,6 @@ use confuse_simics_api::{
     class_data_t, class_kind_t_Sim_Class_Kind_Session, conf_class, SIM_register_class,
 };
 use const_format::concatcp;
-use env_logger::init as init_logging;
 use ipc_channel::ipc::{channel, IpcReceiver, IpcSender};
 use ipc_shm::{IpcShm, IpcShmWriter};
 use lazy_static::lazy_static;
@@ -111,7 +110,6 @@ lazy_static! {
 
 #[no_mangle]
 pub extern "C" fn init_local() {
-    init_logging();
     let _ctx = CTX.lock().expect("Could not lock context!");
     info!("Initialized context for {}", CLASS_NAME);
 }

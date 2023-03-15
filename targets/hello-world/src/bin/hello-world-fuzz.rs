@@ -1,58 +1,56 @@
-use anyhow::{bail, Result};
-use confuse_module::{
-    interface::{
-        BOOTSTRAP_SOCKNAME as CONFUSE_MODULE_BOOTSTRAP_SOCKNAME,
-        CRATE_NAME as CONFUSE_MODULE_CRATE_NAME,
-    },
-    messages::{Fault, FuzzerEvent, InitInfo, SimicsEvent, StopType},
-};
+use anyhow::Result;
+use confuse_fuzz::fuzzer::Fuzzer;
+use confuse_module::messages::{Fault, InitInfo};
 use confuse_simics_manifest::PackageNumber;
-use confuse_simics_module::find_module;
 use confuse_simics_project::{
     bool_param, file_param, int_param, simics_app, simics_path, str_param, SimicsApp,
     SimicsAppParam, SimicsAppParamType, SimicsProject,
 };
 use hello_world::HELLO_WORLD_EFI_MODULE;
 use indoc::{formatdoc, indoc};
-use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender};
-use libafl::prelude::{tui::TuiMonitor, *};
-use log::{debug, error, info, warn, LevelFilter};
+use log::LevelFilter;
 use log4rs::{
-    append::file::FileAppender,
-    config::{Appender, Config, Root},
+    append::rolling_file::{
+        policy::compound::{
+            roll::delete::DeleteRoller, trigger::size::SizeTrigger, CompoundPolicy,
+        },
+        RollingFileAppender,
+    },
+    config::{Appender, Root},
     encode::pattern::PatternEncoder,
-    init_config,
-};
-use std::{
-    io::{BufRead, BufReader},
-    process::Stdio,
-    thread::spawn,
+    init_config, Config,
 };
 use tempfile::Builder as NamedTempFileBuilder;
 
-fn main() -> Result<()> {
+fn init_logging() -> Result<()> {
     let logfile = NamedTempFileBuilder::new()
-        .prefix("hello-world")
+        .prefix("confuse-log")
         .suffix(".log")
         .rand_bytes(4)
         .tempfile()?;
-    let logfile_path = logfile.path().to_path_buf();
-    let appender = FileAppender::builder()
-        // Pattern: https://docs.rs/log4rs/*/log4rs/encode/pattern/index.html
-        .encoder(Box::new(PatternEncoder::new(
-            "[{h({l}):10.10}] | {d(%H:%M:%S)} | {m}{n}",
-        )))
-        .build(logfile_path)
-        .unwrap();
+    // This line is very important! Otherwise the file drops after this function returns :)
+    let logfile_path = logfile.into_temp_path().to_path_buf();
+    let size_trigger = Box::new(SizeTrigger::new(100_000_000));
+    let roller = Box::new(DeleteRoller::new());
+    let policy = Box::new(CompoundPolicy::new(size_trigger, roller));
+    let encoder = Box::new(PatternEncoder::new("{l:5.5} | {d(%H:%M:%S)} | {m}{n}"));
+    let appender = RollingFileAppender::builder()
+        .encoder(encoder)
+        .build(logfile_path, policy)?;
     let config = Config::builder()
         .appender(Appender::builder().build("logfile", Box::new(appender)))
         .build(
             Root::builder()
                 .appender("logfile")
                 .build(LevelFilter::Trace),
-        )
-        .unwrap();
+        )?;
     let _handle = init_config(config)?;
+
+    Ok(())
+}
+
+fn main() -> Result<()> {
+    init_logging()?;
 
     // init_from_env(Env::default().filter_or(DEFAULT_FILTER_ENV, "info"));
     // Paths of
@@ -118,8 +116,6 @@ fn main() -> Result<()> {
         str_param!(system: { output: true }),
     };
 
-    const CONFUSE_START_SIGNAL: u32 = 0x4343;
-
     let app_script = formatdoc! {r#"
         from sim_params import params
         import simics
@@ -149,13 +145,9 @@ fn main() -> Result<()> {
             conf.board.mb.gpu.vga.console=None
 
         conf.confuse_module.signal = 1
-        # SIM_run_command('bp.hap.run-until name = Core_Magic_Instruction index = {}')
-        # SIM_run_command('enable-unsupported-feature internals')
-        # SIM_run_command('save-snapshot name = origin')
     "#,
             // simics.SIM_lookup_file("%simics%/targets/qsp-x86-fuzzing/run-uefi-app.simics"),
           &simics_path!(STARTUP_SIMICS_PATH),
-          CONFUSE_START_SIGNAL,
     };
 
     let boot_disk = include_bytes!("resource/test_load/minimal_boot_disk.craff");
@@ -272,8 +264,6 @@ fn main() -> Result<()> {
         "targets/qsp-x86/qsp-hdd-boot.simics"
     };
 
-    let confuse_module = find_module(CONFUSE_MODULE_CRATE_NAME)?;
-
     // let input = repeat(b'A').take(4096).collect::<Vec<_>>();
     let simics_project = SimicsProject::try_new()?
         .try_with_package(PackageNumber::QuickStartPlatform)?
@@ -282,208 +272,18 @@ fn main() -> Result<()> {
         .try_with_file_contents(app_script.as_bytes(), APP_SCRIPT_PATH)?
         .try_with_file_contents(boot_disk, BOOT_DISK_PATH)?
         .try_with_file_contents(run_uefi_app_nsh_script, STARTUP_NSH_PATH)?
-        .try_with_file_contents(run_uefi_app_simics_script.as_bytes(), STARTUP_SIMICS_PATH)?
-        // .try_with_file_contents(&input, "corpus/input")?
-        .try_with_module(CONFUSE_MODULE_CRATE_NAME, confuse_module)?;
+        .try_with_file_contents(run_uefi_app_simics_script.as_bytes(), STARTUP_SIMICS_PATH)?;
+    // .try_with_file_contents(&input, "corpus/input")?
 
-    info!("Project: {}", simics_project.base_path.display());
+    let mut init_info = InitInfo::default();
+    init_info.add_fault(Fault::Triple);
+    init_info.add_fault(Fault::InvalidOpcode);
+    init_info.set_timeout_seconds(1);
 
-    let (bootstrap, bootstrap_name) = IpcOneShotServer::new()?;
+    let mut fuzzer = Fuzzer::try_new(init_info, APP_YML_PATH, simics_project)?;
 
-    let mut simics_process = simics_project
-        .command()
-        .args(simics_project.module_load_args())
-        .arg(APP_YML_PATH)
-        .arg("-batch-mode")
-        .arg("-e")
-        .arg("@SIM_main_loop()")
-        .current_dir(&simics_project.base_path)
-        .env(CONFUSE_MODULE_BOOTSTRAP_SOCKNAME, bootstrap_name)
-        .env("RUST_LOG", "trace")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
-
-    let stdout = simics_process.stdout.take().expect("Could not get stdout");
-    let stderr = simics_process.stderr.take().expect("Could not get stderr");
-
-    let simics_output_reader = spawn(move || {
-        let mut reader = BufReader::new(stdout);
-        let mut line = String::new();
-        loop {
-            line.clear();
-            reader.read_line(&mut line).expect("Could not read line");
-            info!("SIMICS: {}", line.trim());
-        }
-    });
-
-    let simics_err_reader = spawn(move || {
-        let mut reader = BufReader::new(stderr);
-        let mut line = String::new();
-        loop {
-            line.clear();
-            reader.read_line(&mut line).expect("Could not read line");
-            warn!("SIMICS: {}", line.trim());
-        }
-    });
-
-    let (_, (tx, rx)): (_, (IpcSender<FuzzerEvent>, IpcReceiver<SimicsEvent>)) =
-        bootstrap.accept()?;
-
-    info!("Sending initialize");
-
-    let mut info = InitInfo::default();
-    info.add_fault(Fault::Triple);
-    info.add_fault(Fault::InvalidOpcode);
-    info.set_timeout_seconds(1);
-
-    tx.send(FuzzerEvent::Initialize(info))?;
-
-    info!("Receiving ipc shm");
-
-    let mut shm = match rx.recv()? {
-        SimicsEvent::SharedMem(shm) => shm,
-        _ => bail!("Unexpected message received"),
-    };
-
-    let mut writer = shm.writer()?;
-
-    info!("Got writer");
-
-    info!("Sending initial reset signal");
-
-    tx.send(FuzzerEvent::Reset)?;
-
-    let coverage_observer =
-        unsafe { StdMapObserver::from_mut_ptr("map", writer.as_mut_ptr(), writer.len()) };
-
-    let mut coverage_feedback = MaxMapFeedback::new(&coverage_observer);
-
-    // let mut objectives: Vec<bool> = Vec::new();
-    // let objectives_observer = unsafe { ListObserver::new("objectives", &mut objectives) };
-    // let mut objectives_feedback = ListFeedback::with_observer(&objectives_observer);
-
-    let mut objective = CrashFeedback::new();
-
-    let mut state = StdState::new(
-        StdRand::with_seed(current_nanos()),
-        InMemoryCorpus::new(),
-        OnDiskCorpus::new(simics_project.base_path.join("crashes"))?,
-        &mut coverage_feedback,
-        &mut objective,
-    )?;
-
-    let mon = TuiMonitor::new("Test fuzzer for hello world".to_string(), true);
-    let mut mgr = SimpleEventManager::new(mon);
-    let scheduler = QueueScheduler::new();
-    let mut fuzzer = StdFuzzer::new(scheduler, coverage_feedback, objective);
-
-    let mut harness = |input: &BytesInput| {
-        let target = input.target_bytes();
-        let buf = target.as_slice();
-        let run_input = buf.to_vec();
-        let mut exit_kind = ExitKind::Ok;
-        // We expect we'll get a simics ready message:
-
-        info!("Running with input '{:?}'", run_input);
-        match rx.recv().expect("Failed to receive message") {
-            SimicsEvent::Ready => {
-                debug!("Received ready signal");
-            }
-            _ => {
-                error!("Received unexpected event");
-            }
-        }
-
-        info!("Sending run signal");
-        tx.send(FuzzerEvent::Run(run_input))
-            .expect("Failed to send message");
-
-        match rx.recv().expect("Failed to receive message") {
-            SimicsEvent::Stopped(stop_type) => match stop_type {
-                StopType::Crash(fault) => {
-                    error!("Target crashed with fault {:?}, yeehaw!", fault);
-                    exit_kind = ExitKind::Crash;
-                }
-                StopType::Normal => {
-                    info!("Target stopped normally ;_;");
-
-                    exit_kind = ExitKind::Ok;
-                }
-                StopType::TimeOut => {
-                    warn!("Target timed out, yeehaw(???)");
-                    exit_kind = ExitKind::Timeout;
-                }
-            },
-            _ => {
-                error!("Received unexpected event");
-            }
-        }
-
-        // We'd read the state of the vm here, including caught exceptions and branch trace
-        // Now we send the reset signal
-        debug!("Sending reset signal");
-
-        tx.send(FuzzerEvent::Reset).expect("Failed to send message");
-
-        debug!("Harness done");
-
-        exit_kind
-    };
-
-    info!("Creating executor");
-
-    let mut executor = InProcessExecutor::new(
-        &mut harness,
-        tuple_list!(coverage_observer),
-        &mut fuzzer,
-        &mut state,
-        &mut mgr,
-    )?;
-
-    info!("Generating initial inputs");
-
-    let mut generator = RandBytesGenerator::new(32);
-
-    state.generate_initial_inputs_forced(
-        &mut fuzzer,
-        &mut executor,
-        &mut generator,
-        &mut mgr,
-        8,
-    )?;
-
-    info!("Creating mutator");
-
-    let mutator = StdScheduledMutator::new(havoc_mutations());
-
-    let mut stages = tuple_list!(StdMutationalStage::new(mutator));
-
-    info!("Starting fuzz loop");
-
-    fuzzer.fuzz_loop(&mut stages, &mut executor, &mut state, &mut mgr)?;
-
-    info!("Done.");
-
-    // We expect we'll get a simics ready message:
-    match rx.recv()? {
-        SimicsEvent::Ready => {
-            info!("Received ready signal");
-        }
-        _ => {
-            error!("Received unexpected event");
-        }
-    }
-
-    tx.send(FuzzerEvent::Stop)?;
-
-    simics_output_reader
-        .join()
-        .expect("Could not join output thread");
-    simics_err_reader
-        .join()
-        .expect("Could not join output thread");
-    simics_process.wait()?;
+    fuzzer.run_cycles(10)?;
+    fuzzer.stop()?;
 
     Ok(())
 }

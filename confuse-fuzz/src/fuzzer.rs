@@ -64,8 +64,12 @@ impl Fuzzer {
             let mut reader = BufReader::new(stdout);
             let mut line = String::new();
             loop {
+                line.clear();
                 reader.read_line(&mut line).expect("Could not read line");
-                info!("SIMICS: {}", line);
+                let logline = line.trim();
+                if !logline.is_empty() {
+                    info!("{}", line.trim());
+                }
             }
         });
 
@@ -73,8 +77,12 @@ impl Fuzzer {
             let mut reader = BufReader::new(stderr);
             let mut line = String::new();
             loop {
+                line.clear();
                 reader.read_line(&mut line).expect("Could not read line");
-                warn!("SIMICS: {}", line);
+                let logline = line.trim();
+                if !logline.is_empty() {
+                    debug!("{}", line.trim());
+                }
             }
         });
 

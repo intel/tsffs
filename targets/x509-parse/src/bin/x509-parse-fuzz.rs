@@ -1,5 +1,5 @@
 use anyhow::Result;
-use confuse_fuzz::{fuzzer::Fuzzer, logging::Logger};
+use confuse_fuzz::fuzzer::Fuzzer;
 use confuse_module::messages::{Fault, InitInfo};
 use confuse_simics_manifest::PackageNumber;
 use confuse_simics_project::{
@@ -7,11 +7,53 @@ use confuse_simics_project::{
     SimicsAppParam, SimicsAppParamType, SimicsProject,
 };
 use indoc::{formatdoc, indoc};
+use log::LevelFilter;
+use log4rs::{
+    append::rolling_file::{
+        policy::compound::{
+            roll::delete::DeleteRoller, trigger::size::SizeTrigger, CompoundPolicy,
+        },
+        RollingFileAppender,
+    },
+    config::{Appender, Root},
+    encode::pattern::PatternEncoder,
+    init_config, Config,
+};
+use tempfile::Builder as NamedTempFileBuilder;
 
 use x509_parse::X509_PARSE_EFI_MODULE;
 
+fn init_logging() -> Result<()> {
+    let logfile = NamedTempFileBuilder::new()
+        .prefix("confuse-log")
+        .suffix(".log")
+        .rand_bytes(4)
+        .tempfile()?;
+    // This line is very important! Otherwise the file drops after this function returns :)
+    let logfile_path = logfile.into_temp_path().to_path_buf();
+    let size_trigger = Box::new(SizeTrigger::new(100_000_000));
+    let roller = Box::new(DeleteRoller::new());
+    let policy = Box::new(CompoundPolicy::new(size_trigger, roller));
+    let encoder = Box::new(PatternEncoder::new("{l:5.5} | {d(%H:%M:%S)} | {m}{n}"));
+    let appender = RollingFileAppender::builder()
+        .encoder(encoder)
+        .build(logfile_path, policy)?;
+    let config = Config::builder()
+        .appender(Appender::builder().build("logfile", Box::new(appender)))
+        .build(
+            Root::builder()
+                .appender("logfile")
+                .build(LevelFilter::Trace),
+        )?;
+    let _handle = init_config(config)?;
+
+    Ok(())
+}
+
 fn main() -> Result<()> {
-    _ = Logger::init()?;
+    // Set up logging to a temp file that will roll around every 100mb (this is pretty small for
+    // the amount of output we get, so you can increase this if you are debugging)
+    init_logging()?;
 
     // Paths of
     const APP_SCRIPT_PATH: &str = "scripts/app.py";
@@ -246,8 +288,7 @@ fn main() -> Result<()> {
 
     let mut fuzzer = Fuzzer::try_new(init_info, APP_YML_PATH, simics_project)?;
 
-    // Run for about 5000 executions
-    fuzzer.run_cycles(100)?;
+    fuzzer.run_cycles(10)?;
     fuzzer.stop()?;
 
     Ok(())
