@@ -1,6 +1,5 @@
+use crate::messages::{Fault, FuzzerEvent, InitInfo, SimicsEvent, StopType};
 use anyhow::{bail, ensure, Context, Result};
-use confuse_fuzz::message::{FuzzerEvent, SimicsEvent, StopType};
-use confuse_fuzz::{Fault, InitInfo};
 use confuse_simics_api::{
     attr_attr_t_Sim_Attr_Pseudo, class_data_t, class_kind_t_Sim_Class_Kind_Session, conf_class,
     conf_class_t, event_class, micro_checkpoint_flags_t_Sim_MC_ID_User,

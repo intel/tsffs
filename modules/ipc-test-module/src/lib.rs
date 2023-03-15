@@ -1,7 +1,9 @@
 include!(concat!(env!("OUT_DIR"), "/simics_module_header.rs"));
 
+pub mod messages;
+
+use crate::messages::{FuzzerEvent, Message, SimicsEvent};
 use anyhow::{bail, Result};
-use confuse_fuzz::message::{FuzzerEvent, Message, SimicsEvent};
 use confuse_simics_api::{
     class_data_t, class_kind_t_Sim_Class_Kind_Session, conf_class, SIM_register_class,
 };
@@ -47,8 +49,8 @@ impl ModuleCtx {
 
         info!("Waiting for initialize command");
 
-        let _init_info = match rx.recv()? {
-            Message::FuzzerEvent(FuzzerEvent::Initialize(info)) => info,
+        match rx.recv()? {
+            Message::FuzzerEvent(FuzzerEvent::Initialize) => {}
             _ => bail!("Expected initialize command"),
         };
 

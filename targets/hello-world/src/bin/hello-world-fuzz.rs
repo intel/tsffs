@@ -1,11 +1,10 @@
 use anyhow::{bail, Result};
-use confuse_fuzz::{
-    message::{FuzzerEvent, SimicsEvent, StopType},
-    Fault, InitInfo,
-};
-use confuse_module::interface::{
-    BOOTSTRAP_SOCKNAME as CONFUSE_MODULE_BOOTSTRAP_SOCKNAME,
-    CRATE_NAME as CONFUSE_MODULE_CRATE_NAME,
+use confuse_module::{
+    interface::{
+        BOOTSTRAP_SOCKNAME as CONFUSE_MODULE_BOOTSTRAP_SOCKNAME,
+        CRATE_NAME as CONFUSE_MODULE_CRATE_NAME,
+    },
+    messages::{Fault, FuzzerEvent, InitInfo, SimicsEvent, StopType},
 };
 use confuse_simics_manifest::PackageNumber;
 use confuse_simics_module::find_module;

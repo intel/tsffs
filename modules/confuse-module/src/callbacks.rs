@@ -1,7 +1,7 @@
 //! Callback handlers from SIMICS to the module
 
+use crate::messages::Fault;
 use anyhow::Result;
-use confuse_fuzz::Fault;
 use confuse_simics_api::{
     attr_value_t, cached_instruction_handle_t, conf_object_t, cpu_cached_instruction_interface_t,
     cpu_instruction_query_interface_t, cpu_instrumentation_subscribe_interface_t,

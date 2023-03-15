@@ -1,4 +1,5 @@
 pub mod interface;
+pub mod messages;
 
 mod callbacks;
 mod context;

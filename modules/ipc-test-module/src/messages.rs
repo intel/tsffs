@@ -1,10 +1,3 @@
-//! Messages are information sent between the fuzzer and the Confuse SIMICS module and contain
-//! events and corresponding information about those events. These events generally implicitly
-//! define the fuzzing state machine of the SIMICS snapshot fuzzing process.
-
-use std::fmt::Debug;
-
-pub use crate::{InitInfo, StopType};
 use ipc_shm::IpcShm;
 use serde::{Deserialize, Serialize};
 
@@ -13,7 +6,7 @@ use serde::{Deserialize, Serialize};
 pub enum FuzzerEvent {
     /// Initialize event, the fuzzer signals the Confuse SIMICS module to initialize itself with
     /// a given set of global campaign settings
-    Initialize(InitInfo),
+    Initialize,
     /// The fuzzer signals the Confuse SIMICS module to run with a given input of bytes
     Run(Vec<u8>),
     /// The fuzzer signals the Confuse SIMICS module to reset to the start snapshot
@@ -28,7 +21,7 @@ pub enum SimicsEvent {
     /// Simics signals the fuzzer that it is ready to run
     Ready,
     /// Simics signals the fuzzer that it has stopped and why
-    Stopped(StopType),
+    Stopped,
     /// Simics signals the fuzzer that it is done executing.
     Done,
     /// Simics sends the AFL map shared memory to the fuzzer

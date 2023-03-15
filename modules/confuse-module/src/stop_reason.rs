@@ -1,4 +1,4 @@
-use confuse_fuzz::Fault;
+use crate::messages::Fault;
 
 use crate::magic::Magic;
 pub enum StopReason {
