@@ -21,7 +21,15 @@ or
 $ cargo run --bin x509-parse-fuzz
 ```
 
-These samples will run for 100 fuzzing stages (about 5000 executions) before stopping.
+These samples will run for 10 fuzzing stages (about 500-1000 executions) before stopping.
+The LibAFL tui does not close itself, but pressing `q` followed by Ctrl+C in the TUI
+once it stops will quit the fuzzer. Logs will output to `/tmp/confuse-logXXXX.log` where
+`X` is a random character. You can view the logs while the fuzzer is running in another
+terminal with `tail -F /tmp/confuse-log*`. The log will rotate every 100MB to avoid
+depleting storage. The fuzzer should stop the `simics-common` process when it finishes,
+but in some cases this may fail (the project is experimental!). You can check for
+defunct processes with `ps | grep simics-common` and kill them with
+`pkill simics-common` if you wish.
 
 ## Crates
 
