@@ -9,7 +9,7 @@ use confuse_simics_api::{
     conf_object_t, cpu_bytes_t, cpu_cached_instruction_interface_t,
     cpu_instruction_query_interface_t, cpu_instrumentation_subscribe_interface_t,
     exception_interface_t, instruction_handle_t, int_register_interface_t, mm_free,
-    processor_info_v2_interface_t, SIM_attr_free, SIM_make_attr_data, SIM_make_attr_data_adopt,
+    processor_info_v2_interface_t, SIM_attr_free, SIM_make_attr_data,
 };
 
 use log::error;

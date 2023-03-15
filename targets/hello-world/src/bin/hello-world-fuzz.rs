@@ -1,5 +1,4 @@
 use anyhow::{bail, Result};
-use chrono::Local;
 use confuse_fuzz::{
     message::{FuzzerEvent, SimicsEvent, StopType},
     Fault, InitInfo,
@@ -41,7 +40,9 @@ fn main() -> Result<()> {
     let logfile_path = logfile.path().to_path_buf();
     let appender = FileAppender::builder()
         // Pattern: https://docs.rs/log4rs/*/log4rs/encode/pattern/index.html
-        .encoder(Box::new(PatternEncoder::new("{l} - {m}\n")))
+        .encoder(Box::new(PatternEncoder::new(
+            "[{h({l}):10.10}] | {d(%H:%M:%S)} | {m}{n}",
+        )))
         .build(logfile_path)
         .unwrap();
     let config = Config::builder()
@@ -335,9 +336,7 @@ fn main() -> Result<()> {
     let mut info = InitInfo::default();
     info.add_fault(Fault::Triple);
     info.add_fault(Fault::InvalidOpcode);
-    // Hello World stalls for 10 seconds on 'B', we'll treat a timeout as slightly shorter than
-    // that
-    info.set_timeout_seconds(6);
+    info.set_timeout_seconds(1);
 
     tx.send(FuzzerEvent::Initialize(info))?;
 
@@ -403,8 +402,8 @@ fn main() -> Result<()> {
 
         match rx.recv().expect("Failed to receive message") {
             SimicsEvent::Stopped(stop_type) => match stop_type {
-                StopType::Crash => {
-                    error!("Target crashed, yeehaw!");
+                StopType::Crash(fault) => {
+                    error!("Target crashed with fault {:?}, yeehaw!", fault);
                     exit_kind = ExitKind::Crash;
                 }
                 StopType::Normal => {

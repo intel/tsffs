@@ -8,21 +8,21 @@ use log::{info, LevelFilter};
 use log4rs::{
     append::console::{ConsoleAppender, Target},
     config::{Appender, Config, Root},
+    encode::pattern::PatternEncoder,
     init_config,
 };
-use tempfile::Builder as NamedTempFileBuilder;
 
 use crate::context::CTX;
 
 pub const BOOTSTRAP_SOCKNAME: &str = concatcp!(CLASS_NAME, "_SOCK");
 
 fn init_logging() -> Result<()> {
-    let logfile = NamedTempFileBuilder::new()
-        .prefix("confuse-module")
-        .suffix(".log")
-        .rand_bytes(4)
-        .tempfile()?;
-    let stderr = ConsoleAppender::builder().target(Target::Stderr).build();
+    let stderr = ConsoleAppender::builder()
+        .target(Target::Stderr)
+        // For SIMICS we just output the message because we're going to get stuck into a log
+        // message anyway, and we need a newline or all the outputs will get buffered. lol
+        .encoder(Box::new(PatternEncoder::new("{m}{n}")))
+        .build();
     // let level = LevelFilter::Info;
     let config = Config::builder()
         .appender(Appender::builder().build("stderr", Box::new(stderr)))

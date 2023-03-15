@@ -88,7 +88,9 @@ pub extern "C" fn set_processor(_obj: *mut conf_object_t, val: *mut attr_value_t
     let mut ctx = CTX.lock().expect("Could not lock context!");
 
     if ctx.need_triple_handler() {
-        // We care about triple, set the x86 triple handler
+        // We care about triple, set the x86 triple handler. We have to do this here and not
+        // in the same place as we initialize the context because it will fail if the x86 processor
+        // doesn't exist yet.
         let _triple_fault_cb = unsafe {
             SIM_hap_add_callback(
                 raw_cstr!("X86_Triple_Fault"),
@@ -217,7 +219,7 @@ fn handle_fault(fault: Fault) -> Result<()> {
 
         debug!("Crash detected, reporting!");
 
-        ctx.set_stopped_reason(Some(StopReason::Crash))?;
+        ctx.set_stopped_reason(Some(StopReason::Crash(fault)))?;
     }
 
     Ok(())
@@ -244,6 +246,7 @@ pub extern "C" fn core_exception_cb(
 
 #[no_mangle]
 pub extern "C" fn x86_triple_fault_cb(_data: *mut c_void, _trigger_obj: *mut conf_object_t) {
+    debug!("Triple fault detected, reporting!");
     handle_fault(Fault::Triple).expect("Could not handle triple fault");
 }
 
@@ -252,7 +255,7 @@ pub extern "C" fn timeout_event_cb(_obj: *mut conf_object_t, _data: *mut c_void)
     let mut ctx = CTX.lock().expect("Could not lock context!");
     unsafe { SIM_break_simulation(raw_cstr!("Stopping to report crash")) };
 
-    debug!("Crash detected, reporting!");
+    debug!("Timeout detected, reporting!");
     ctx.set_stopped_reason(Some(StopReason::Timeout))
         .expect("Could not set stop reason");
 }

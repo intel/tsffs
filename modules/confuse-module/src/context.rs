@@ -3,7 +3,7 @@ use confuse_fuzz::message::{FuzzerEvent, SimicsEvent, StopType};
 use confuse_fuzz::{Fault, InitInfo};
 use confuse_simics_api::{
     attr_attr_t_Sim_Attr_Pseudo, class_data_t, class_kind_t_Sim_Class_Kind_Session, conf_class,
-    conf_class_t, conf_object_t, event_class, micro_checkpoint_flags_t_Sim_MC_ID_User,
+    conf_class_t, event_class, micro_checkpoint_flags_t_Sim_MC_ID_User,
     micro_checkpoint_flags_t_Sim_MC_Persistent, physical_address_t, CORE_discard_future,
     SIM_attr_list_size, SIM_continue, SIM_event_post_time, SIM_get_attribute, SIM_get_object,
     SIM_hap_add_callback, SIM_object_clock, SIM_register_attribute, SIM_register_class,
@@ -19,7 +19,7 @@ use raw_cstr::raw_cstr;
 
 use crate::callbacks::{
     core_exception_cb, core_simulation_stopped_cb, get_processor, get_signal, set_processor,
-    set_signal, timeout_event_cb, x86_triple_fault_cb,
+    set_signal, timeout_event_cb,
 };
 
 use crate::magic::Magic;
@@ -215,6 +215,9 @@ impl ModuleCtx {
                 }
                 unsafe { self.resume_simulation() };
             }
+            FuzzerEvent::Stop => {
+                info!("Got stop signal, we want to stop cleanly here");
+            }
             _ => {
                 bail!("Unexpected event");
             }
@@ -329,8 +332,9 @@ impl ModuleCtx {
                     self.reset_run()?;
                 }
             },
-            Some(StopReason::Crash) => {
-                self.tx.send(SimicsEvent::Stopped(StopType::Crash))?;
+            Some(StopReason::Crash(fault)) => {
+                self.tx
+                    .send(SimicsEvent::Stopped(StopType::Crash(*fault)))?;
                 self.reset_run()?;
             }
             Some(StopReason::Timeout) => {
