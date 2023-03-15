@@ -33,4 +33,4 @@ raw-cstr = { path = "./util/raw-cstr" }
 ipc-channel = { git = "https://github.com/novafacing/ipc-channel.git", version = "0.16.0", features = [
     "memfd",
 ] }
-libafl = { path = "/home/rhart/hub/libafl/libafl" }
+libafl = "0.9.0"

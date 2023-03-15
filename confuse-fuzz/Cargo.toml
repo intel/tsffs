@@ -21,3 +21,4 @@ ipc-shm = { workspace = true }
 num-derive = "0.3.3"
 num-traits = "0.2.15"
 num = "0.4.0"
+log4rs = "1.2.0"

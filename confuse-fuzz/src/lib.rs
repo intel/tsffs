@@ -2,6 +2,8 @@
 //!
 //! This library contains abstractions over a fuzzing campaign using the SIMICS platform
 
+pub mod fuzzer;
+pub mod logging;
 pub mod message;
 
 extern crate num_traits;

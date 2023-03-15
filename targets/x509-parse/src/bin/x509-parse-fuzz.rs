@@ -33,28 +33,7 @@ use tempfile::Builder as NamedTempFileBuilder;
 use x509_parse::X509_PARSE_EFI_MODULE;
 
 fn main() -> Result<()> {
-    let logfile = NamedTempFileBuilder::new()
-        .prefix("hello-world")
-        .suffix(".log")
-        .rand_bytes(4)
-        .tempfile()?;
-    let logfile_path = logfile.path().to_path_buf();
-    let appender = FileAppender::builder()
-        // Pattern: https://docs.rs/log4rs/*/log4rs/encode/pattern/index.html
-        .encoder(Box::new(PatternEncoder::new(
-            "[{h({l}):10.10}] | {d(%H:%M:%S)} | {m}{n}",
-        )))
-        .build(logfile_path)
-        .unwrap();
-    let config = Config::builder()
-        .appender(Appender::builder().build("logfile", Box::new(appender)))
-        .build(
-            Root::builder()
-                .appender("logfile")
-                .build(LevelFilter::Trace),
-        )
-        .unwrap();
-    let _handle = init_config(config)?;
+    let logger = Logger::init()?;
 
     // Paths of
     const APP_SCRIPT_PATH: &str = "scripts/app.py";

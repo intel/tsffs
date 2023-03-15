@@ -1,5 +1,28 @@
 # Confuse: **CO**ntrolled **FU**zzing with **S**imics -- **E**nhanced
 
+## Setup
+
+Detailed instructions for setting up and building this project can be found in
+[SETUP.md](./docs/SETUP.md). You should follow the documentation there before trying
+to run the samples.
+
+## Running A Sample
+
+There are two provided samples, `hello-world` and `x509-parse`. You can run them by
+running one of the following commands after following the setup instructions.
+
+```sh
+$ cargo run --bin hello-world-fuzz
+```
+
+or
+
+```sh
+$ cargo run --bin x509-parse-fuzz
+```
+
+These samples will run for 100 fuzzing stages (about 5000 executions) before stopping.
+
 ## Crates
 
 This project consists of several crates.
