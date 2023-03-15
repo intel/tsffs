@@ -133,13 +133,6 @@ pub extern "C" fn cached_instruction_callback(
     }
 }
 
-pub unsafe fn resume_simulation() {
-    SIM_run_alone(
-        Some(transmute(SIM_continue as unsafe extern "C" fn(_) -> _)),
-        null_mut(),
-    );
-}
-
 #[no_mangle]
 pub extern "C" fn core_magic_instruction_cb(
     _user_data: *mut c_void,
