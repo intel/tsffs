@@ -240,6 +240,7 @@ impl ModuleCtx {
                         info!("Got magic start, doing first time initialization");
                         let cpu = self.get_processor()?.get_cpu();
                         let clock = unsafe { SIM_object_clock(cpu) };
+                        // TODO: Re-post on snapshot restores - check perf
                         unsafe {
                             SIM_event_post_time(
                                 clock,

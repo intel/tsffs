@@ -462,7 +462,7 @@ fn main() -> Result<()> {
 
     info!("Starting fuzz loop");
 
-    fuzzer.fuzz_loop_for(&mut stages, &mut executor, &mut state, &mut mgr, 100)?;
+    fuzzer.fuzz_loop(&mut stages, &mut executor, &mut state, &mut mgr)?;
 
     info!("Done.");
 

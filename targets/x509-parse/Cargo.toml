@@ -17,6 +17,7 @@ ipc-channel = { workspace = true }
 libafl = { workspace = true }
 tempfile = "3.4.0"
 chrono = "0.4.24"
+log4rs = "1.2.0"
 
 [dev-dependencies]
 

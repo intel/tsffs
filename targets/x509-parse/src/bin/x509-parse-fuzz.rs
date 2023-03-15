@@ -1,5 +1,4 @@
 use anyhow::{bail, Result};
-use chrono::Local;
 use confuse_fuzz::{
     message::{FuzzerEvent, SimicsEvent, StopType},
     Fault, InitInfo,
@@ -14,38 +13,48 @@ use confuse_simics_project::{
     bool_param, file_param, int_param, simics_app, simics_path, str_param, SimicsApp,
     SimicsAppParam, SimicsAppParamType, SimicsProject,
 };
-use env_logger::{Builder, Target};
 use indoc::{formatdoc, indoc};
 use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender};
 use libafl::prelude::{tui::TuiMonitor, *};
 use log::{debug, error, info, warn, LevelFilter};
+use log4rs::{
+    append::file::FileAppender,
+    config::{Appender, Config, Root},
+    encode::pattern::PatternEncoder,
+    init_config,
+};
 use std::{
-    io::{BufRead, BufReader, Write},
+    io::{BufRead, BufReader},
     process::Stdio,
     thread::spawn,
 };
-use tempfile::NamedTempFile;
+use tempfile::Builder as NamedTempFileBuilder;
 
 use x509_parse::X509_PARSE_EFI_MODULE;
 
 fn main() -> Result<()> {
-    let logfile = NamedTempFile::new()?;
-    let (file, _path) = logfile.keep()?;
-    Builder::new()
-        .format(|buf, record| {
-            writeln!(
-                buf,
-                "{}:{} {} [{}] - {}",
-                record.file().unwrap_or("unknown"),
-                record.line().unwrap_or(0),
-                Local::now().format("%Y-%m-%dT%H:%M:%S%.2f"),
-                record.level(),
-                record.args()
-            )
-        })
-        .target(Target::Pipe(Box::new(file)))
-        .filter(None, LevelFilter::Info)
-        .init();
+    let logfile = NamedTempFileBuilder::new()
+        .prefix("hello-world")
+        .suffix(".log")
+        .rand_bytes(4)
+        .tempfile()?;
+    let logfile_path = logfile.path().to_path_buf();
+    let appender = FileAppender::builder()
+        // Pattern: https://docs.rs/log4rs/*/log4rs/encode/pattern/index.html
+        .encoder(Box::new(PatternEncoder::new(
+            "[{h({l}):10.10}] | {d(%H:%M:%S)} | {m}{n}",
+        )))
+        .build(logfile_path)
+        .unwrap();
+    let config = Config::builder()
+        .appender(Appender::builder().build("logfile", Box::new(appender)))
+        .build(
+            Root::builder()
+                .appender("logfile")
+                .build(LevelFilter::Trace),
+        )
+        .unwrap();
+    let _handle = init_config(config)?;
 
     // Paths of
     const APP_SCRIPT_PATH: &str = "scripts/app.py";
@@ -397,8 +406,8 @@ fn main() -> Result<()> {
 
         match rx.recv().expect("Failed to receive message") {
             SimicsEvent::Stopped(stop_type) => match stop_type {
-                StopType::Crash => {
-                    error!("Target crashed, yeehaw!");
+                StopType::Crash(fault) => {
+                    error!("Target crashed with fault {:?}, yeehaw!", fault);
                     exit_kind = ExitKind::Crash;
                 }
                 StopType::Normal => {
@@ -457,7 +466,7 @@ fn main() -> Result<()> {
 
     info!("Starting fuzz loop");
 
-    fuzzer.fuzz_loop_for(&mut stages, &mut executor, &mut state, &mut mgr, 100)?;
+    fuzzer.fuzz_loop(&mut stages, &mut executor, &mut state, &mut mgr)?;
 
     // We expect we'll get a simics ready message:
     match rx.recv()? {
