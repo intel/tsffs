@@ -14,37 +14,45 @@ use confuse_simics_project::{
     bool_param, file_param, int_param, simics_app, simics_path, str_param, SimicsApp,
     SimicsAppParam, SimicsAppParamType, SimicsProject,
 };
-use env_logger::{Builder, Target};
 use hello_world::HELLO_WORLD_EFI_MODULE;
 use indoc::{formatdoc, indoc};
 use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender};
 use libafl::prelude::{tui::TuiMonitor, *};
 use log::{debug, error, info, warn, LevelFilter};
+use log4rs::{
+    append::file::FileAppender,
+    config::{Appender, Config, Root},
+    encode::pattern::PatternEncoder,
+    init_config,
+};
 use std::{
-    io::{BufRead, BufReader, Write},
+    io::{BufRead, BufReader},
     process::Stdio,
     thread::spawn,
 };
-use tempfile::NamedTempFile;
+use tempfile::Builder as NamedTempFileBuilder;
 
 fn main() -> Result<()> {
-    let logfile = NamedTempFile::new()?;
-    let (file, _path) = logfile.keep()?;
-    Builder::new()
-        .format(|buf, record| {
-            writeln!(
-                buf,
-                "{}:{} {} [{}] - {}",
-                record.file().unwrap_or("unknown"),
-                record.line().unwrap_or(0),
-                Local::now().format("%Y-%m-%dT%H:%M:%S%.2f"),
-                record.level(),
-                record.args()
-            )
-        })
-        .target(Target::Pipe(Box::new(file)))
-        .filter(None, LevelFilter::Info)
-        .init();
+    let logfile = NamedTempFileBuilder::new()
+        .prefix("hello-world")
+        .suffix(".log")
+        .rand_bytes(4)
+        .tempfile()?;
+    let logfile_path = logfile.path().to_path_buf();
+    let appender = FileAppender::builder()
+        // Pattern: https://docs.rs/log4rs/*/log4rs/encode/pattern/index.html
+        .encoder(Box::new(PatternEncoder::new("{l} - {m}\n")))
+        .build(logfile_path)
+        .unwrap();
+    let config = Config::builder()
+        .appender(Appender::builder().build("logfile", Box::new(appender)))
+        .build(
+            Root::builder()
+                .appender("logfile")
+                .build(LevelFilter::Trace),
+        )
+        .unwrap();
+    let _handle = init_config(config)?;
 
     // init_from_env(Env::default().filter_or(DEFAULT_FILTER_ENV, "info"));
     // Paths of
@@ -269,14 +277,14 @@ fn main() -> Result<()> {
     // let input = repeat(b'A').take(4096).collect::<Vec<_>>();
     let simics_project = SimicsProject::try_new()?
         .try_with_package(PackageNumber::QuickStartPlatform)?
-        .try_with_file_contents(&HELLO_WORLD_EFI_MODULE, UEFI_APP_PATH)?
-        .try_with_file_contents(&app.to_string().as_bytes(), APP_YML_PATH)?
+        .try_with_file_contents(HELLO_WORLD_EFI_MODULE, UEFI_APP_PATH)?
+        .try_with_file_contents(app.to_string().as_bytes(), APP_YML_PATH)?
         .try_with_file_contents(app_script.as_bytes(), APP_SCRIPT_PATH)?
         .try_with_file_contents(boot_disk, BOOT_DISK_PATH)?
         .try_with_file_contents(run_uefi_app_nsh_script, STARTUP_NSH_PATH)?
         .try_with_file_contents(run_uefi_app_simics_script.as_bytes(), STARTUP_SIMICS_PATH)?
         // .try_with_file_contents(&input, "corpus/input")?
-        .try_with_module(CONFUSE_MODULE_CRATE_NAME, &confuse_module)?;
+        .try_with_module(CONFUSE_MODULE_CRATE_NAME, confuse_module)?;
 
     info!("Project: {}", simics_project.base_path.display());
 
@@ -303,8 +311,9 @@ fn main() -> Result<()> {
         let mut reader = BufReader::new(stdout);
         let mut line = String::new();
         loop {
+            line.clear();
             reader.read_line(&mut line).expect("Could not read line");
-            info!("SIMICS: {}", line);
+            info!("SIMICS: {}", line.trim());
         }
     });
 
@@ -312,8 +321,9 @@ fn main() -> Result<()> {
         let mut reader = BufReader::new(stderr);
         let mut line = String::new();
         loop {
+            line.clear();
             reader.read_line(&mut line).expect("Could not read line");
-            warn!("SIMICS: {}", line);
+            warn!("SIMICS: {}", line.trim());
         }
     });
 
@@ -325,6 +335,9 @@ fn main() -> Result<()> {
     let mut info = InitInfo::default();
     info.add_fault(Fault::Triple);
     info.add_fault(Fault::InvalidOpcode);
+    // Hello World stalls for 10 seconds on 'B', we'll treat a timeout as slightly shorter than
+    // that
+    info.set_timeout_seconds(6);
 
     tx.send(FuzzerEvent::Initialize(info))?;
 
@@ -338,6 +351,10 @@ fn main() -> Result<()> {
     let mut writer = shm.writer()?;
 
     info!("Got writer");
+
+    info!("Sending initial reset signal");
+
+    tx.send(FuzzerEvent::Reset)?;
 
     let coverage_observer =
         unsafe { StdMapObserver::from_mut_ptr("map", writer.as_mut_ptr(), writer.len()) };

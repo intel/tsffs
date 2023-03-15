@@ -3,11 +3,12 @@ use confuse_fuzz::message::{FuzzerEvent, SimicsEvent, StopType};
 use confuse_fuzz::{Fault, InitInfo};
 use confuse_simics_api::{
     attr_attr_t_Sim_Attr_Pseudo, class_data_t, class_kind_t_Sim_Class_Kind_Session, conf_class,
-    conf_class_t, micro_checkpoint_flags_t_Sim_MC_ID_User,
+    conf_class_t, conf_object_t, event_class, micro_checkpoint_flags_t_Sim_MC_ID_User,
     micro_checkpoint_flags_t_Sim_MC_Persistent, physical_address_t, CORE_discard_future,
-    SIM_attr_list_size, SIM_continue, SIM_get_attribute, SIM_get_object, SIM_hap_add_callback,
-    SIM_register_attribute, SIM_register_class, SIM_run_alone, SIM_write_phys_memory,
-    VT_restore_micro_checkpoint, VT_save_micro_checkpoint,
+    SIM_attr_list_size, SIM_continue, SIM_event_post_time, SIM_get_attribute, SIM_get_object,
+    SIM_hap_add_callback, SIM_object_clock, SIM_register_attribute, SIM_register_class,
+    SIM_register_event, SIM_run_alone, SIM_write_phys_memory, VT_restore_micro_checkpoint,
+    VT_save_micro_checkpoint,
 };
 
 use ipc_channel::ipc::{channel, IpcReceiver, IpcSender};
@@ -18,7 +19,7 @@ use raw_cstr::raw_cstr;
 
 use crate::callbacks::{
     core_exception_cb, core_simulation_stopped_cb, get_processor, get_signal, set_processor,
-    set_signal, x86_triple_fault_cb,
+    set_signal, timeout_event_cb, x86_triple_fault_cb,
 };
 
 use crate::magic::Magic;
@@ -57,6 +58,7 @@ pub struct ModuleCtx {
     buffer_address: u64,
     buffer_size: u64,
     init_info: InitInfo,
+    timeout_event: *mut event_class,
 }
 
 unsafe impl Send for ModuleCtx {}
@@ -82,16 +84,7 @@ impl ModuleCtx {
             _ => bail!("Expected initialize command"),
         };
 
-        if init_info.faults.contains(&Fault::Triple) {
-            // We care about triple, set the x86 triple handler
-            let _triple_fault_cb = unsafe {
-                SIM_hap_add_callback(
-                    raw_cstr!("X86_Triple_Fault"),
-                    transmute(x86_triple_fault_cb as unsafe extern "C" fn(_, _)),
-                    null_mut(),
-                )
-            };
-        }
+        // We set the triple fault handler later once we get a processor instance
 
         if init_info
             .faults
@@ -100,7 +93,7 @@ impl ModuleCtx {
             .is_some()
         {
             // 1+ elements that aren't triple, we need to set the core_exception handler
-            let _triple_fault_cb = unsafe {
+            let _core_exc_cb = unsafe {
                 SIM_hap_add_callback(
                     raw_cstr!("Core_Exception"),
                     transmute(core_exception_cb as unsafe extern "C" fn(_, _, _)),
@@ -108,6 +101,19 @@ impl ModuleCtx {
                 )
             };
         }
+
+        let timeout_event = unsafe {
+            SIM_register_event(
+                raw_cstr!("Timeout"),
+                cls,
+                0,
+                Some(timeout_event_cb),
+                None,
+                None,
+                None,
+                None,
+            )
+        };
 
         let mut shm = IpcShm::default();
 
@@ -134,6 +140,7 @@ impl ModuleCtx {
             buffer_address: 0,
             buffer_size: 0,
             init_info,
+            timeout_event,
         })
     }
 
@@ -141,6 +148,10 @@ impl ModuleCtx {
         info!("Initialized Module Context");
 
         Ok(())
+    }
+
+    pub fn need_triple_handler(&self) -> bool {
+        self.init_info.faults.contains(&Fault::Triple)
     }
 
     pub fn set_processor(&mut self, processor: Processor) -> Result<()> {
@@ -165,6 +176,53 @@ impl ModuleCtx {
         );
     }
 
+    fn reset_run(&mut self) -> Result<()> {
+        info!("Waiting for reset signal to restore state");
+
+        match self.rx.recv()? {
+            FuzzerEvent::Reset => {
+                unsafe { VT_restore_micro_checkpoint(0) };
+                unsafe { CORE_discard_future() };
+
+                info!("Restored checkpoint");
+            }
+            FuzzerEvent::Stop => {
+                info!("Got stop signal, we want to stop cleanly here");
+            }
+            _ => {
+                bail!("Unexpected event");
+            }
+        }
+
+        self.tx.send(SimicsEvent::Ready)?;
+
+        let processor = self.get_processor()?;
+        let cpu = processor.get_cpu();
+
+        match self.rx.recv()? {
+            FuzzerEvent::Run(input) => {
+                info!("Got input, running");
+
+                for (i, chunk) in input.chunks(8).enumerate() {
+                    // TODO: this is really inefficient, make it better
+                    let data: &mut [u8] = &mut [0; 8];
+                    for (i, v) in chunk.iter().enumerate() {
+                        data[i] = *v;
+                    }
+                    let val = u64::from_le_bytes(data.try_into()?);
+                    let addr: physical_address_t = self.buffer_address + (i * 8) as u64;
+                    unsafe { SIM_write_phys_memory(cpu, addr, val, chunk.len().try_into()?) };
+                }
+                unsafe { self.resume_simulation() };
+            }
+            _ => {
+                bail!("Unexpected event");
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn handle_stop(&mut self) -> Result<()> {
         match &self.stop_reason {
             Some(StopReason::Magic(m)) => match m {
@@ -174,7 +232,23 @@ impl ModuleCtx {
                         info!("Got start magic. Already initialized, off we go!");
                         unsafe { self.resume_simulation() };
                     } else {
-                        // Start harness stop means we need to take a snapshot!
+                        // Not initialized yet, we need to set our checkpoints and such
+                        // Right before the snapshot, set a timed event for timeout detection
+                        info!("Got magic start, doing first time initialization");
+                        let cpu = self.get_processor()?.get_cpu();
+                        let clock = unsafe { SIM_object_clock(cpu) };
+                        unsafe {
+                            SIM_event_post_time(
+                                clock,
+                                self.timeout_event,
+                                cpu,
+                                self.init_info.timeout as f64,
+                                null_mut(),
+                            )
+                        };
+
+                        info!("Setting timeout event");
+
                         unsafe {
                             VT_save_micro_checkpoint(
                                 raw_cstr!("origin"),
@@ -184,6 +258,18 @@ impl ModuleCtx {
                         };
 
                         info!("Took snapshot");
+
+                        let rexec = unsafe { SIM_get_object(raw_cstr!("sim.rexec")) };
+
+                        let sinfo = unsafe { SIM_get_attribute(rexec, raw_cstr!("state_info")) };
+
+                        let sinfo_size = SIM_attr_list_size(sinfo)?;
+
+                        ensure!(
+                            sinfo_size == 1,
+                            "Invalid size of state_info: {}",
+                            sinfo_size
+                        );
 
                         let processor = self.get_processor()?;
                         let cpu = processor.get_cpu();
@@ -232,40 +318,7 @@ impl ModuleCtx {
                         self.buffer_size = rdi_value;
 
                         self.initialized = true;
-
-                        self.tx.send(SimicsEvent::Ready)?;
-
-                        info!("Sent ready signal");
-
-                        // We'll wait for a signal to start
-                        match self.rx.recv()? {
-                            FuzzerEvent::Run(input) => {
-                                info!("Got input, running");
-
-                                for (i, chunk) in input.chunks(8).enumerate() {
-                                    // TODO: this is really inefficient, make it better
-                                    let data: &mut [u8] = &mut [0; 8];
-                                    for (i, v) in chunk.iter().enumerate() {
-                                        data[i] = *v;
-                                    }
-                                    let val = u64::from_le_bytes(data.try_into()?);
-                                    let addr: physical_address_t =
-                                        self.buffer_address + (i * 8) as u64;
-                                    unsafe {
-                                        SIM_write_phys_memory(
-                                            cpu,
-                                            addr,
-                                            val,
-                                            chunk.len().try_into()?,
-                                        )
-                                    };
-                                }
-                                unsafe { self.resume_simulation() };
-                            }
-                            _ => {
-                                bail!("Unexpected event");
-                            }
-                        }
+                        self.reset_run()?;
                     }
                 }
                 Magic::Stop => {
@@ -273,120 +326,16 @@ impl ModuleCtx {
                     // run
                     self.tx.send(SimicsEvent::Stopped(StopType::Normal))?;
 
-                    let rexec = unsafe { SIM_get_object(raw_cstr!("sim.rexec")) };
-
-                    let sinfo = unsafe { SIM_get_attribute(rexec, raw_cstr!("state_info")) };
-
-                    let sinfo_size = SIM_attr_list_size(sinfo)?;
-
-                    ensure!(
-                        sinfo_size == 1,
-                        "Invalid size of state_info: {}",
-                        sinfo_size
-                    );
-                    info!("Waiting for reset signal to restore state");
-
-                    match self.rx.recv()? {
-                        FuzzerEvent::Reset => {
-                            unsafe { VT_restore_micro_checkpoint(0) };
-                            unsafe { CORE_discard_future() };
-
-                            info!("Restored checkpoint");
-                        }
-                        FuzzerEvent::Stop => {
-                            info!("Got stop signal, we want to stop cleanly here");
-                        }
-                        _ => {
-                            bail!("Unexpected event");
-                        }
-                    }
-
-                    self.tx.send(SimicsEvent::Ready)?;
-
-                    let processor = self.get_processor()?;
-                    let cpu = processor.get_cpu();
-
-                    match self.rx.recv()? {
-                        FuzzerEvent::Run(input) => {
-                            info!("Got input, running");
-
-                            for (i, chunk) in input.chunks(8).enumerate() {
-                                // TODO: this is really inefficient, make it better
-                                let data: &mut [u8] = &mut [0; 8];
-                                for (i, v) in chunk.iter().enumerate() {
-                                    data[i] = *v;
-                                }
-                                let val = u64::from_le_bytes(data.try_into()?);
-                                let addr: physical_address_t = self.buffer_address + (i * 8) as u64;
-                                unsafe {
-                                    SIM_write_phys_memory(cpu, addr, val, chunk.len().try_into()?)
-                                };
-                            }
-                            unsafe { self.resume_simulation() };
-                        }
-                        _ => {
-                            bail!("Unexpected event");
-                        }
-                    }
+                    self.reset_run()?;
                 }
             },
             Some(StopReason::Crash) => {
                 self.tx.send(SimicsEvent::Stopped(StopType::Crash))?;
-                let rexec = unsafe { SIM_get_object(raw_cstr!("sim.rexec")) };
-
-                let sinfo = unsafe { SIM_get_attribute(rexec, raw_cstr!("state_info")) };
-
-                let sinfo_size = SIM_attr_list_size(sinfo)?;
-
-                ensure!(
-                    sinfo_size == 1,
-                    "Invalid size of state_info: {}",
-                    sinfo_size
-                );
-                info!("Waiting for reset signal to restore state");
-
-                match self.rx.recv()? {
-                    FuzzerEvent::Reset => {
-                        unsafe { VT_restore_micro_checkpoint(0) };
-                        unsafe { CORE_discard_future() };
-
-                        info!("Restored checkpoint");
-                    }
-                    FuzzerEvent::Stop => {
-                        info!("Got stop signal, we want to stop cleanly here");
-                    }
-                    _ => {
-                        bail!("Unexpected event");
-                    }
-                }
-
-                self.tx.send(SimicsEvent::Ready)?;
-
-                let processor = self.get_processor()?;
-                let cpu = processor.get_cpu();
-
-                match self.rx.recv()? {
-                    FuzzerEvent::Run(input) => {
-                        info!("Got input, running");
-
-                        for (i, chunk) in input.chunks(8).enumerate() {
-                            // TODO: this is really inefficient, make it better
-                            let data: &mut [u8] = &mut [0; 8];
-                            for (i, v) in chunk.iter().enumerate() {
-                                data[i] = *v;
-                            }
-                            let val = u64::from_le_bytes(data.try_into()?);
-                            let addr: physical_address_t = self.buffer_address + (i * 8) as u64;
-                            unsafe {
-                                SIM_write_phys_memory(cpu, addr, val, chunk.len().try_into()?)
-                            };
-                        }
-                        unsafe { self.resume_simulation() };
-                    }
-                    _ => {
-                        bail!("Unexpected event");
-                    }
-                }
+                self.reset_run()?;
+            }
+            Some(StopReason::Timeout) => {
+                self.tx.send(SimicsEvent::Stopped(StopType::TimeOut))?;
+                self.reset_run()?;
             }
             None => {}
         }

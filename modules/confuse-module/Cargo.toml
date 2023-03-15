@@ -17,9 +17,10 @@ const_format = "0.2.30"
 ipc-channel = { workspace = true }
 anyhow = "1.0.69"
 lazy_static = "1.4.0"
-env_logger = "0.10.0"
 log = "0.4.17"
 raw-cstr.workspace = true
+log4rs = "1.2.0"
+tempfile = "3.4.0"
 
 [dev-dependencies]
 anyhow = "1.0.69"

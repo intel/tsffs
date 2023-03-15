@@ -62,6 +62,10 @@ impl TryFrom<i64> for Fault {
 pub struct InitInfo {
     /// The set of faults that are considered crashes for this fuzzing campaign
     pub faults: HashSet<Fault>,
+    /// The duration after the start harness to treat as a timeout, in microseconds
+    /// (1/1000000 seconds). Use `set_timeout_seconds` or `set_timeout_milliseconds` instead of
+    /// doing the math yourself!
+    pub timeout: u64,
 }
 
 impl InitInfo {
@@ -77,13 +81,29 @@ impl InitInfo {
             self.faults.insert(i);
         });
     }
+
+    /// Set the timeout in seconds
+    pub fn set_timeout_seconds(&mut self, seconds: u64) {
+        self.timeout = seconds * 1000 * 1000;
+    }
+
+    pub fn set_timeout_milliseconds(&mut self, milliseconds: u64) {
+        self.timeout = milliseconds * 1000;
+    }
+
+    pub fn set_timeout_microseconds(&mut self, microseconds: u64) {
+        self.timeout = microseconds;
+    }
 }
 
 impl Default for InitInfo {
     /// Initializes the initialization info struct with sane defaults (no faults enabled)
     fn default() -> Self {
         Self {
+            // Default to no faults
             faults: HashSet::new(),
+            // Default timeout to 60 seconds
+            timeout: 60 * 1000 * 1000,
         }
     }
 }

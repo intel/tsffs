@@ -9,7 +9,7 @@ use confuse_simics_api::{
     conf_object_t, cpu_bytes_t, cpu_cached_instruction_interface_t,
     cpu_instruction_query_interface_t, cpu_instrumentation_subscribe_interface_t,
     exception_interface_t, instruction_handle_t, int_register_interface_t, mm_free,
-    processor_info_v2_interface_t, SIM_attr_free, SIM_make_attr_data_adopt,
+    processor_info_v2_interface_t, SIM_attr_free, SIM_make_attr_data, SIM_make_attr_data_adopt,
 };
 
 use log::error;
@@ -77,10 +77,12 @@ impl Processor {
             _ => bail!("No function get_instruction_bytes in interface"),
         };
 
-        let mut instruction_bytes_object = SIM_make_attr_data_adopt(
-            instruction_bytes.size,
-            instruction_bytes.data as *mut c_void,
-        )?;
+        let mut instruction_bytes_object = unsafe {
+            SIM_make_attr_data(
+                instruction_bytes.size,
+                instruction_bytes.data as *mut c_void,
+            )
+        };
 
         let disassembled_instruction = match unsafe { *self.processor_info_v2 }.disassemble {
             Some(disassemble) => unsafe { disassemble(cpu, 0, instruction_bytes_object, 0) },

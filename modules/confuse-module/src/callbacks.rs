@@ -7,8 +7,8 @@ use confuse_simics_api::{
     cpu_instruction_query_interface_t, cpu_instrumentation_subscribe_interface_t,
     exception_interface_t, instruction_handle_t, int_register_interface_t,
     processor_info_v2_interface_t, set_error_t, set_error_t_Sim_Set_Ok, SIM_attr_integer,
-    SIM_attr_object_or_nil, SIM_break_simulation, SIM_c_get_interface, SIM_continue,
-    SIM_make_attr_object, SIM_run_alone,
+    SIM_attr_object_or_nil, SIM_break_simulation, SIM_c_get_interface, SIM_hap_add_callback,
+    SIM_make_attr_object,
 };
 use log::{debug, error, info};
 use raw_cstr::raw_cstr;
@@ -85,6 +85,21 @@ pub extern "C" fn set_processor(_obj: *mut conf_object_t, val: *mut attr_value_t
 
     info!("Subscribed to exception queries");
 
+    let mut ctx = CTX.lock().expect("Could not lock context!");
+
+    if ctx.need_triple_handler() {
+        // We care about triple, set the x86 triple handler
+        let _triple_fault_cb = unsafe {
+            SIM_hap_add_callback(
+                raw_cstr!("X86_Triple_Fault"),
+                transmute(x86_triple_fault_cb as unsafe extern "C" fn(_, _)),
+                null_mut(),
+            )
+        };
+
+        info!("Set triple fault handler");
+    }
+
     let processor = Processor::try_new(
         cpu,
         cpu_instrumentation_subscribe,
@@ -95,8 +110,6 @@ pub extern "C" fn set_processor(_obj: *mut conf_object_t, val: *mut attr_value_t
         exception,
     )
     .expect("Could not initialize processor for tracing");
-
-    let mut ctx = CTX.lock().expect("Could not lock context!");
 
     ctx.set_processor(processor)
         .expect("Could not add processor");
@@ -232,4 +245,14 @@ pub extern "C" fn core_exception_cb(
 #[no_mangle]
 pub extern "C" fn x86_triple_fault_cb(_data: *mut c_void, _trigger_obj: *mut conf_object_t) {
     handle_fault(Fault::Triple).expect("Could not handle triple fault");
+}
+
+#[no_mangle]
+pub extern "C" fn timeout_event_cb(_obj: *mut conf_object_t, _data: *mut c_void) {
+    let mut ctx = CTX.lock().expect("Could not lock context!");
+    unsafe { SIM_break_simulation(raw_cstr!("Stopping to report crash")) };
+
+    debug!("Crash detected, reporting!");
+    ctx.set_stopped_reason(Some(StopReason::Timeout))
+        .expect("Could not set stop reason");
 }

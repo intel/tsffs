@@ -331,6 +331,9 @@ fn main() -> Result<()> {
         Fault::GeneralProtection,
     ]);
 
+    // More than 3 seconds is a definite hang for x509 parsing
+    info.set_timeout_seconds(3);
+
     tx.send(FuzzerEvent::Initialize(info))?;
 
     info!("Receiving ipc shm");
@@ -343,6 +346,10 @@ fn main() -> Result<()> {
     let mut writer = shm.writer()?;
 
     info!("Got writer");
+
+    info!("Sending initial reset signal");
+
+    tx.send(FuzzerEvent::Reset)?;
 
     let coverage_observer =
         unsafe { StdMapObserver::from_mut_ptr("map", writer.as_mut_ptr(), writer.len()) };
