@@ -1,6 +1,6 @@
 use std::{
     ffi::OsStr,
-    io::{BufRead, BufReader},
+    io::{stdout, BufRead, BufReader},
     process::{Child, Stdio},
     thread::{spawn, JoinHandle},
 };
@@ -13,6 +13,12 @@ use confuse_module::{
 };
 use confuse_simics_module::find_module;
 use confuse_simics_project::SimicsProject;
+use crossterm::{
+    cursor::Show,
+    event::DisableMouseCapture,
+    execute,
+    terminal::{disable_raw_mode, Clear, ClearType, LeaveAlternateScreen},
+};
 use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender};
 use ipc_shm::{IpcShm, IpcShmWriter};
 use libafl::{
@@ -65,12 +71,16 @@ impl Fuzzer {
             let mut line = String::new();
             loop {
                 line.clear();
-                reader.read_line(&mut line).expect("Could not read line");
+                let rv = reader.read_line(&mut line).expect("Could not read line");
+                if rv == 0 {
+                    break;
+                }
                 let logline = line.trim();
                 if !logline.is_empty() {
                     info!("{}", line.trim());
                 }
             }
+            info!("Output reader exited.");
         });
 
         let err_reader = spawn(move || {
@@ -78,12 +88,16 @@ impl Fuzzer {
             let mut line = String::new();
             loop {
                 line.clear();
-                reader.read_line(&mut line).expect("Could not read line");
+                let rv = reader.read_line(&mut line).expect("Could not read line");
+                if rv == 0 {
+                    break;
+                }
                 let logline = line.trim();
                 if !logline.is_empty() {
                     debug!("{}", line.trim());
                 }
             }
+            info!("Err reader exited.");
         });
 
         let (_, (tx, rx)): (_, (IpcSender<FuzzerEvent>, IpcReceiver<SimicsEvent>)) =
@@ -246,7 +260,7 @@ impl Fuzzer {
             &mut objective,
         )?;
 
-        let mon = TuiMonitor::new("Test fuzzer for x509 parse".to_string(), true);
+        let mon = TuiMonitor::new("Confuse Fuzzer".to_string(), true);
         let mut mgr = SimpleEventManager::new(mon);
         let scheduler = QueueScheduler::new();
         let mut fuzzer = StdFuzzer::new(scheduler, coverage_feedback, objective);
@@ -337,6 +351,7 @@ impl Fuzzer {
         info!("Starting fuzz loop");
 
         fuzzer.fuzz_loop_for(&mut stages, &mut executor, &mut state, &mut mgr, cycles)?;
+
         Ok(())
     }
 
@@ -364,6 +379,19 @@ impl Fuzzer {
         self.err_reader.join().ok();
 
         info!("Stopped. Bye!");
+
+        // TODO: PR a fix for this to libafl to make this not necessary
+        // The TUI Monitor doesn't clean itself up nicely so we do this for now
+        disable_raw_mode()?;
+        execute!(
+            stdout(),
+            LeaveAlternateScreen,
+            DisableMouseCapture,
+            Show,
+            Clear(ClearType::Purge)
+        )?;
+
+        info!("Stopped fuzzer.");
 
         Ok(())
     }
