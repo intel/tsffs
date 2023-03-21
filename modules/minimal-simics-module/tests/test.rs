@@ -4,7 +4,6 @@ use confuse_simics_project::SimicsProject;
 use minimal_simics_module::CRATE_NAME;
 use std::{env::var, path::PathBuf};
 use test_cdylib::build_current_project;
-use test_log::test;
 
 #[test]
 fn test_minimal_simics_module_exists() -> Result<()> {
@@ -23,8 +22,8 @@ fn test_load_minimal_simics_module() -> Result<()> {
 
     let simics_project = SimicsProject::try_new()?
         .try_with_package(PackageNumber::QuickStartPlatform)?
-        .try_with_contents(&resource_dir)?
-        .try_with_module(CRATE_NAME, &minimal_module_path)?;
+        .try_with_contents(resource_dir)?
+        .try_with_module(CRATE_NAME, minimal_module_path)?;
 
     let status = simics_project
         .command()

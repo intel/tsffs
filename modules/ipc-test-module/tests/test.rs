@@ -11,7 +11,6 @@ use ipc_test_module::{BOOTSTRAP_SOCKNAME, CRATE_NAME};
 use log::info;
 use std::{env::var, path::PathBuf};
 use test_cdylib::build_current_project;
-use test_log::test;
 
 #[test]
 fn test_minimal_simics_module_exists() -> Result<()> {
