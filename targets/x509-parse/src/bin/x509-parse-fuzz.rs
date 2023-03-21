@@ -288,7 +288,7 @@ fn main() -> Result<()> {
 
     let mut fuzzer = Fuzzer::try_new(init_info, APP_YML_PATH, simics_project)?;
 
-    fuzzer.run_cycles(10)?;
+    fuzzer.run_cycles(100)?;
     fuzzer.stop()?;
 
     Ok(())

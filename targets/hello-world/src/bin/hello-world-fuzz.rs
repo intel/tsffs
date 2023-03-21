@@ -282,7 +282,8 @@ fn main() -> Result<()> {
 
     let mut fuzzer = Fuzzer::try_new(init_info, APP_YML_PATH, simics_project)?;
 
-    fuzzer.run_cycles(10)?;
+    // This should be enough cycles to hit a bug
+    fuzzer.run_cycles(100)?;
     fuzzer.stop()?;
 
     Ok(())
