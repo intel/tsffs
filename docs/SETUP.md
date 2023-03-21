@@ -31,9 +31,17 @@ the SIMICS installation.
 This step is optional, if you want to use the Simics GUI to install it, you will need
 these dependencies.
 
+For Ubuntu or Debian, install them with:
+
 ```sh
 $ sudo apt-get install libatk1.0-0 libatk-bridge2.0-0 libcups2 libgtk-3-0 libgbm1 \
     libasound2
+```
+
+On Red Hat or Fedora, install them with:
+
+```sh
+$ sudo dnf install atk cups gtk3 mesa-libgbm alsa-lib
 ```
 
 #### Download Simics
@@ -82,6 +90,8 @@ SIMICS_HOME=/home/rhart/install/simics/
 
 ### Docker
 
+#### Docker Group Membership
+
 If you get an error like this when trying to run docker commands:
 
 ```text
@@ -98,3 +108,14 @@ $ sudo usermod -aG docker $USER
 You'll then need to log out and log back in, or you can run `newgrp docker` to apply
 the changes in your running shell. Be aware `newgrp` will not persist changes in other
 shells, so logging out and in is recommended.
+
+#### Docker Proxy Use
+
+If you need to use a proxy to connect to the internet (for example you are on a VPN)
+you may want to follow the directions from
+[docker](https://docs.docker.com/config/daemon/systemd/#httphttps-proxy) to direct
+docker engine to use a proxy to pull images.
+
+If you need to do this, you will also likely need to follow the directions from
+[docker](https://docs.docker.com/network/proxy/) to use a proxy *inside* the image, not
+just for pulling images.
