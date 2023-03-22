@@ -9,6 +9,7 @@ use anyhow::{bail, Result};
 use confuse_module::{
     interface::BOOTSTRAP_SOCKNAME as CONFUSE_MODULE_BOOTSTRAP_SOCKNAME,
     interface::CRATE_NAME as CONFUSE_MODULE_CRATE_NAME,
+    interface::LOGLEVEL_VARNAME as CONFUSE_MODULE_LOGLEVEL_VARNAME,
     messages::{FuzzerEvent, InitInfo, SimicsEvent, StopType},
 };
 use confuse_simics_module::find_module;
@@ -25,7 +26,7 @@ use libafl::{
     prelude::{tui::TuiMonitor, *},
     Fuzzer as _,
 };
-use log::{debug, error, info, warn};
+use log::{debug, error, info, warn, Level};
 
 /// Customizable fuzzer for SIMICS
 pub struct Fuzzer {
@@ -44,6 +45,7 @@ impl Fuzzer {
         init_info: InitInfo,
         app_yml_path: S,
         simics_project: SimicsProject,
+        simics_log_level: Level,
     ) -> Result<Self> {
         let confuse_module = find_module(CONFUSE_MODULE_CRATE_NAME)?;
         let simics_project =
@@ -58,6 +60,7 @@ impl Fuzzer {
             .arg("@SIM_main_loop()")
             .current_dir(&simics_project.base_path)
             .env(CONFUSE_MODULE_BOOTSTRAP_SOCKNAME, bootstrap_name)
+            .env(CONFUSE_MODULE_LOGLEVEL_VARNAME, simics_log_level.as_str())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 
@@ -187,7 +190,7 @@ impl Fuzzer {
                         exit_kind = ExitKind::Ok;
                     }
                     StopType::TimeOut => {
-                        warn!("Target timed out, yeehaw(???)");
+                        error!("Target timed out, yeehaw(???)");
                         exit_kind = ExitKind::Timeout;
                     }
                 },

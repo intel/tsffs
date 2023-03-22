@@ -1,27 +1,116 @@
-use std::{
-    ffi::{c_void, CStr},
-    ptr::addr_of_mut,
-};
+use std::slice::from_raw_parts;
 
 use anyhow::{anyhow, bail, Result};
 
 use confuse_simics_api::{
     conf_object_t, cpu_bytes_t, cpu_cached_instruction_interface_t,
     cpu_instruction_query_interface_t, cpu_instrumentation_subscribe_interface_t,
-    exception_interface_t, instruction_handle_t, int_register_interface_t, mm_free,
-    processor_info_v2_interface_t, SIM_attr_free, SIM_make_attr_data,
+    exception_interface_t, instruction_handle_t, int_register_interface_t,
+    processor_info_v2_interface_t,
 };
+
+use yaxpeax_x86::amd64::{InstDecoder, Instruction, Opcode};
 
 use log::error;
 
 use crate::nonnull;
 
-const BRANCH_INSTR_MNEM: &[&str] = &[
-    "call", "ret", "jmp", "ja", "jae", "jb", "jbe", "jc", "jcxz", "jecxz", "jrcxz", "je", "jg",
-    "jge", "jl", "jle", "jna", "jnae", "jnb", "jnbe", "jnc", "jne", "jng", "jnge", "jnl", "jnle",
-    "jno", "jnp", "jns", "jnz", "jo", "jp", "jpe", "jpo", "js", "jz", "ljmp", "retf", "retfq",
-    "syscall", "sysret",
-];
+/// Check if an instruction is a control flow instruction
+fn instr_is_control_flow(insn: Instruction) -> bool {
+    match insn.opcode() {
+        Opcode::JA
+        | Opcode::JB
+        | Opcode::JRCXZ
+        | Opcode::JG
+        | Opcode::JGE
+        | Opcode::JL
+        | Opcode::JLE
+        | Opcode::JNA
+        | Opcode::JNB
+        | Opcode::JNO
+        | Opcode::JNP
+        | Opcode::JNS
+        | Opcode::JNZ
+        | Opcode::JO
+        | Opcode::JP
+        | Opcode::JS
+        | Opcode::JZ
+        | Opcode::LOOP
+        | Opcode::LOOPNZ
+        | Opcode::LOOPZ => true,
+        _ => false,
+    }
+}
+
+/// Check if an instruction is a call instruction
+fn instr_is_call(insn: Instruction) -> bool {
+    match insn.opcode() {
+        Opcode::CALL | Opcode::CALLF => true,
+        _ => false,
+    }
+}
+
+/// Check if an instruction is a ret instruction
+fn instr_is_ret(insn: Instruction) -> bool {
+    match insn.opcode() {
+        Opcode::RETF | Opcode::RETURN => true,
+        _ => false,
+    }
+}
+
+/// Check if an instruction is a cmp instruction
+fn instr_is_cmp(insn: Instruction) -> bool {
+    match insn.opcode() {
+        Opcode::CMP
+        | Opcode::CMPPD
+        | Opcode::CMPS
+        | Opcode::CMPSD
+        | Opcode::CMPSS
+        | Opcode::CMPXCHG16B
+        | Opcode::COMISD
+        | Opcode::COMISS
+        | Opcode::FCOM
+        | Opcode::FCOMI
+        | Opcode::FCOMIP
+        | Opcode::FCOMP
+        | Opcode::FCOMPP
+        | Opcode::FICOM
+        | Opcode::FICOMP
+        | Opcode::FTST
+        | Opcode::FUCOM
+        | Opcode::FUCOMI
+        | Opcode::FUCOMIP
+        | Opcode::FUCOMP
+        | Opcode::FXAM
+        | Opcode::PCMPEQB
+        | Opcode::PCMPEQD
+        | Opcode::PCMPEQW
+        | Opcode::PCMPGTB
+        | Opcode::PCMPGTD
+        | Opcode::PCMPGTQ
+        | Opcode::PCMPGTW
+        | Opcode::PMAXSB
+        | Opcode::PMAXSD
+        | Opcode::PMAXUD
+        | Opcode::PMAXUW
+        | Opcode::PMINSB
+        | Opcode::PMINSD
+        | Opcode::PMINUD
+        | Opcode::PMINUW
+        | Opcode::TEST
+        | Opcode::UCOMISD
+        | Opcode::UCOMISS
+        | Opcode::VPCMPB
+        | Opcode::VPCMPD
+        | Opcode::VPCMPQ
+        | Opcode::VPCMPUB
+        | Opcode::VPCMPUD
+        | Opcode::VPCMPUQ
+        | Opcode::VPCMPUW
+        | Opcode::VPCMPW => true,
+        _ => false,
+    }
+}
 
 pub struct Processor {
     cpu: *mut conf_object_t,
@@ -64,7 +153,8 @@ impl Processor {
         self.int_register
     }
 
-    // Called in cached instruction callback to check if the current instruction is a branch
+    /// Called in cached instruction callback to check if the current instruction is a branch and
+    /// return the pc at the instruction
     pub fn is_branch(
         &self,
         cpu: *mut conf_object_t,
@@ -77,36 +167,55 @@ impl Processor {
             _ => bail!("No function get_instruction_bytes in interface"),
         };
 
-        let mut instruction_bytes_object = unsafe {
-            SIM_make_attr_data(
-                instruction_bytes.size,
-                instruction_bytes.data as *mut c_void,
-            )
-        };
+        let instruction_bytes_data =
+            unsafe { from_raw_parts(instruction_bytes.data, instruction_bytes.size) };
 
-        let disassembled_instruction = match unsafe { *self.processor_info_v2 }.disassemble {
-            Some(disassemble) => unsafe { disassemble(cpu, 0, instruction_bytes_object, 0) },
-            _ => bail!("No function disassemble in interface"),
-        };
+        let decoder = InstDecoder::default();
 
-        let instruction_string =
-            unsafe { CStr::from_ptr(disassembled_instruction.string) }.to_string_lossy();
-
-        let instruction_is_branch = BRANCH_INSTR_MNEM
-            .iter()
-            .any(|p| instruction_string.starts_with(&**p));
-
-        unsafe {
-            SIM_attr_free(addr_of_mut!(instruction_bytes_object));
-            mm_free(disassembled_instruction.string as *mut c_void);
+        if let Ok(insn) = decoder.decode_slice(instruction_bytes_data) {
+            if instr_is_control_flow(insn) || instr_is_call(insn) || instr_is_ret(insn) {
+                let pc = match unsafe { *self.processor_info_v2 }.get_program_counter {
+                    Some(get_program_counter) => unsafe { get_program_counter(cpu) },
+                    _ => bail!("No function get_program_counter in interface"),
+                };
+                Ok(Some(pc))
+            } else {
+                Ok(None)
+            }
+        } else {
+            Ok(None)
         }
+    }
 
-        if instruction_is_branch {
-            let pc = match unsafe { *self.processor_info_v2 }.get_program_counter {
-                Some(get_program_counter) => unsafe { get_program_counter(cpu) },
-                _ => bail!("No function disassemble in interface"),
-            };
-            Ok(Some(pc))
+    /// checks if the current instruction is a compare and returns the set of constants it finds
+    pub fn is_cmp(
+        &self,
+        cpu: *mut conf_object_t,
+        instruction_query: *mut instruction_handle_t,
+    ) -> Result<Option<(u64, u64)>> {
+        let instruction_bytes: cpu_bytes_t = match unsafe { *self.cpu_instrumentation_query }
+            .get_instruction_bytes
+        {
+            Some(get_instruction_bytes) => unsafe { get_instruction_bytes(cpu, instruction_query) },
+            _ => bail!("No function get_instruction_bytes in interface"),
+        };
+
+        let instruction_bytes_data =
+            unsafe { from_raw_parts(instruction_bytes.data, instruction_bytes.size) };
+
+        let decoder = InstDecoder::default();
+
+        if let Ok(insn) = decoder.decode_slice(instruction_bytes_data) {
+            if instr_is_cmp(insn) {
+                let pc = match unsafe { *self.processor_info_v2 }.get_program_counter {
+                    Some(get_program_counter) => unsafe { get_program_counter(cpu) },
+                    _ => bail!("No function get_program_counter in interface"),
+                };
+                // TODO: Log the actual cmp value(s)
+                Ok(Some((pc, 0)))
+            } else {
+                Ok(None)
+            }
         } else {
             Ok(None)
         }

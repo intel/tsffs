@@ -368,6 +368,11 @@ impl ModuleCtx {
         Ok(())
     }
 
+    pub fn cmplog(&mut self, _pc: u64, _val: u64) -> Result<()> {
+        // TODO: Actually do cmplog
+        Ok(())
+    }
+
     pub fn is_fault(&self, fault: Fault) -> bool {
         self.init_info.faults.contains(&fault)
     }

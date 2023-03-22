@@ -24,6 +24,8 @@ tempfile = "3.4.0"
 num-traits = "0.2.15"
 num-derive = "0.3.3"
 num = "0.4.0"
+yaxpeax-x86 = "1.1.5"
+yaxpeax-arch = { version = "0.2.7", features = ["std", "address-parse", "use-serde"] }
 
 [dev-dependencies]
 anyhow = "1.0.69"

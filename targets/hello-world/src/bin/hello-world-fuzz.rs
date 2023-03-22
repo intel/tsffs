@@ -8,7 +8,7 @@ use confuse_simics_project::{
 };
 use hello_world::HELLO_WORLD_EFI_MODULE;
 use indoc::{formatdoc, indoc};
-use log::LevelFilter;
+use log::{Level, LevelFilter};
 use log4rs::{
     append::rolling_file::{
         policy::compound::{
@@ -42,7 +42,7 @@ fn init_logging() -> Result<()> {
         .build(
             Root::builder()
                 .appender("logfile")
-                .build(LevelFilter::Trace),
+                .build(LevelFilter::Error),
         )?;
     let _handle = init_config(config)?;
 
@@ -280,7 +280,7 @@ fn main() -> Result<()> {
     init_info.add_fault(Fault::InvalidOpcode);
     init_info.set_timeout_seconds(1);
 
-    let mut fuzzer = Fuzzer::try_new(init_info, APP_YML_PATH, simics_project)?;
+    let mut fuzzer = Fuzzer::try_new(init_info, APP_YML_PATH, simics_project, Level::Error)?;
 
     // This should be enough cycles to hit a bug
     fuzzer.run_cycles(100)?;

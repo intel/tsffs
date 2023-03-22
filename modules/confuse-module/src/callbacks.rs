@@ -136,10 +136,26 @@ pub extern "C" fn cached_instruction_callback(
     _user_data: *mut c_void,
 ) {
     let mut ctx = CTX.lock().expect("Could not lock context!");
-    let processor = ctx.get_processor().expect("Could not get processor");
-    match processor.is_branch(cpu, instruction_query) {
+    match ctx
+        .get_processor()
+        .expect("Could not get processor")
+        .is_branch(cpu, instruction_query)
+    {
         Ok(Some(pc)) => {
             ctx.log(pc).expect("Failed to log pc");
+        }
+        Err(e) => {
+            error!("Error checking whether instruction is branch: {}", e);
+        }
+        _ => {}
+    }
+    match ctx
+        .get_processor()
+        .expect("Could not get processor")
+        .is_cmp(cpu, instruction_query)
+    {
+        Ok(Some((pc, val))) => {
+            ctx.cmplog(pc, val).expect("Failed to log pc");
         }
         Err(e) => {
             error!("Error checking whether instruction is branch: {}", e);

@@ -7,7 +7,7 @@ use confuse_simics_project::{
     SimicsAppParam, SimicsAppParamType, SimicsProject,
 };
 use indoc::{formatdoc, indoc};
-use log::LevelFilter;
+use log::{Level, LevelFilter};
 use log4rs::{
     append::rolling_file::{
         policy::compound::{
@@ -286,7 +286,7 @@ fn main() -> Result<()> {
 
     init_info.set_timeout_seconds(3);
 
-    let mut fuzzer = Fuzzer::try_new(init_info, APP_YML_PATH, simics_project)?;
+    let mut fuzzer = Fuzzer::try_new(init_info, APP_YML_PATH, simics_project, Level::Error)?;
 
     fuzzer.run_cycles(100)?;
     fuzzer.stop()?;
