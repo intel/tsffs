@@ -17,99 +17,93 @@ use crate::nonnull;
 
 /// Check if an instruction is a control flow instruction
 fn instr_is_control_flow(insn: Instruction) -> bool {
-    match insn.opcode() {
+    matches!(
+        insn.opcode(),
         Opcode::JA
-        | Opcode::JB
-        | Opcode::JRCXZ
-        | Opcode::JG
-        | Opcode::JGE
-        | Opcode::JL
-        | Opcode::JLE
-        | Opcode::JNA
-        | Opcode::JNB
-        | Opcode::JNO
-        | Opcode::JNP
-        | Opcode::JNS
-        | Opcode::JNZ
-        | Opcode::JO
-        | Opcode::JP
-        | Opcode::JS
-        | Opcode::JZ
-        | Opcode::LOOP
-        | Opcode::LOOPNZ
-        | Opcode::LOOPZ => true,
-        _ => false,
-    }
+            | Opcode::JB
+            | Opcode::JRCXZ
+            | Opcode::JG
+            | Opcode::JGE
+            | Opcode::JL
+            | Opcode::JLE
+            | Opcode::JNA
+            | Opcode::JNB
+            | Opcode::JNO
+            | Opcode::JNP
+            | Opcode::JNS
+            | Opcode::JNZ
+            | Opcode::JO
+            | Opcode::JP
+            | Opcode::JS
+            | Opcode::JZ
+            | Opcode::LOOP
+            | Opcode::LOOPNZ
+            | Opcode::LOOPZ
+    )
 }
 
 /// Check if an instruction is a call instruction
 fn instr_is_call(insn: Instruction) -> bool {
-    match insn.opcode() {
-        Opcode::CALL | Opcode::CALLF => true,
-        _ => false,
-    }
+    matches!(insn.opcode(), Opcode::CALL | Opcode::CALLF)
 }
 
 /// Check if an instruction is a ret instruction
 fn instr_is_ret(insn: Instruction) -> bool {
-    match insn.opcode() {
-        Opcode::RETF | Opcode::RETURN => true,
-        _ => false,
-    }
+    matches!(insn.opcode(), Opcode::RETF | Opcode::RETURN)
 }
 
 /// Check if an instruction is a cmp instruction
 fn instr_is_cmp(insn: Instruction) -> bool {
-    match insn.opcode() {
+    matches!(
+        insn.opcode(),
         Opcode::CMP
-        | Opcode::CMPPD
-        | Opcode::CMPS
-        | Opcode::CMPSD
-        | Opcode::CMPSS
-        | Opcode::CMPXCHG16B
-        | Opcode::COMISD
-        | Opcode::COMISS
-        | Opcode::FCOM
-        | Opcode::FCOMI
-        | Opcode::FCOMIP
-        | Opcode::FCOMP
-        | Opcode::FCOMPP
-        | Opcode::FICOM
-        | Opcode::FICOMP
-        | Opcode::FTST
-        | Opcode::FUCOM
-        | Opcode::FUCOMI
-        | Opcode::FUCOMIP
-        | Opcode::FUCOMP
-        | Opcode::FXAM
-        | Opcode::PCMPEQB
-        | Opcode::PCMPEQD
-        | Opcode::PCMPEQW
-        | Opcode::PCMPGTB
-        | Opcode::PCMPGTD
-        | Opcode::PCMPGTQ
-        | Opcode::PCMPGTW
-        | Opcode::PMAXSB
-        | Opcode::PMAXSD
-        | Opcode::PMAXUD
-        | Opcode::PMAXUW
-        | Opcode::PMINSB
-        | Opcode::PMINSD
-        | Opcode::PMINUD
-        | Opcode::PMINUW
-        | Opcode::TEST
-        | Opcode::UCOMISD
-        | Opcode::UCOMISS
-        | Opcode::VPCMPB
-        | Opcode::VPCMPD
-        | Opcode::VPCMPQ
-        | Opcode::VPCMPUB
-        | Opcode::VPCMPUD
-        | Opcode::VPCMPUQ
-        | Opcode::VPCMPUW
-        | Opcode::VPCMPW => true,
-        _ => false,
-    }
+            | Opcode::CMPPD
+            | Opcode::CMPS
+            | Opcode::CMPSD
+            | Opcode::CMPSS
+            | Opcode::CMPXCHG16B
+            | Opcode::COMISD
+            | Opcode::COMISS
+            | Opcode::FCOM
+            | Opcode::FCOMI
+            | Opcode::FCOMIP
+            | Opcode::FCOMP
+            | Opcode::FCOMPP
+            | Opcode::FICOM
+            | Opcode::FICOMP
+            | Opcode::FTST
+            | Opcode::FUCOM
+            | Opcode::FUCOMI
+            | Opcode::FUCOMIP
+            | Opcode::FUCOMP
+            | Opcode::FXAM
+            | Opcode::PCMPEQB
+            | Opcode::PCMPEQD
+            | Opcode::PCMPEQW
+            | Opcode::PCMPGTB
+            | Opcode::PCMPGTD
+            | Opcode::PCMPGTQ
+            | Opcode::PCMPGTW
+            | Opcode::PMAXSB
+            | Opcode::PMAXSD
+            | Opcode::PMAXUD
+            | Opcode::PMAXUW
+            | Opcode::PMINSB
+            | Opcode::PMINSD
+            | Opcode::PMINUD
+            | Opcode::PMINUW
+            | Opcode::TEST
+            | Opcode::UCOMISD
+            | Opcode::UCOMISS
+            | Opcode::VPCMPB
+            | Opcode::VPCMPD
+            | Opcode::VPCMPQ
+            | Opcode::VPCMPUB
+            | Opcode::VPCMPUD
+            | Opcode::VPCMPUQ
+            | Opcode::VPCMPUW
+            | Opcode::VPCMPW
+    )
 }
 
 pub struct Processor {

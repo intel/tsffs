@@ -179,7 +179,6 @@ pub fn package_infos<P: AsRef<Path>>(
     simics_home: P,
 ) -> Result<HashMap<PackageNumber, PackageInfo>> {
     let infos: Vec<PackageInfo> = read_dir(&simics_home)?
-        .into_iter()
         .filter_map(|d| {
             d.map_err(|e| error!("Could not read directory entry: {}", e))
                 .ok()

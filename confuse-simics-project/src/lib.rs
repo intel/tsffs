@@ -202,7 +202,6 @@ impl SimicsProject {
         ensure!(
             !PathBuf::from_str(dst_relative_path.as_ref())?
                 .components()
-                .into_iter()
                 .any(|c| c == Component::ParentDir),
             "Path must be relative to the project directory and contain no parent directories!"
         );
@@ -228,7 +227,6 @@ impl SimicsProject {
         ensure!(
             !PathBuf::from_str(dst_relative_path.as_ref())?
                 .components()
-                .into_iter()
                 .any(|c| c == Component::ParentDir),
             "Path must be relative to the project directory and contain no parent directories!"
         );

@@ -8,7 +8,7 @@ use confuse_simics_module::{
 use object::ObjectSymbol;
 
 // A known good module that simics can load correctly
-const AFL_BT_MODULE: &'static [u8] = include_bytes!("./resource/afl-branch-tracer.so");
+const AFL_BT_MODULE: &[u8] = include_bytes!("./resource/afl-branch-tracer.so");
 
 #[test]
 fn test_read_simics_module() -> Result<()> {

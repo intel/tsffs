@@ -1,12 +1,10 @@
 use anyhow::{bail, Result};
 use confuse_simics_manifest::PackageNumber;
 use confuse_simics_project::SimicsProject;
-use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender, IpcSharedMemory};
-use ipc_shm::{IpcShm, IpcShmReader};
+use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender};
 use ipc_test_module::messages::{FuzzerEvent, Message, SimicsEvent};
 use ipc_test_module::{BOOTSTRAP_SOCKNAME, CRATE_NAME};
 use log::info;
-use std::{env::var, path::PathBuf};
 use test_cdylib::build_current_project;
 
 #[test]
@@ -21,7 +19,6 @@ fn test_minimal_simics_module_exists() -> Result<()> {
 #[test]
 fn test_load_ipc_test_module() -> Result<()> {
     let ipc_test_module_path = build_current_project();
-    let manifest_dir = PathBuf::from(var("CARGO_MANIFEST_DIR")?);
 
     let simics_project = SimicsProject::try_new()?
         .try_with_package(PackageNumber::QuickStartPlatform)?
@@ -55,9 +52,9 @@ fn test_load_ipc_test_module() -> Result<()> {
 
     let res = reader.read_all()?;
 
-    for i in 0..res.len() {
+    for (i, itm) in res.iter().enumerate() {
         assert_eq!(
-            res[i],
+            *itm,
             (i % u8::MAX as usize) as u8,
             "Unexpected value in map"
         );
