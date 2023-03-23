@@ -1,7 +1,7 @@
 use anyhow::Result;
 use confuse_fuzz::fuzzer::Fuzzer;
 use confuse_module::messages::{Fault, InitInfo};
-use confuse_simics_manifest::PackageNumber;
+use confuse_simics_manifest::{PackageNumber, PublicPackageNumber};
 use confuse_simics_project::{
     bool_param, file_param, int_param, simics_app, simics_path, str_param, SimicsApp,
     SimicsAppParam, SimicsAppParamType, SimicsProject,
@@ -267,7 +267,7 @@ fn main() -> Result<()> {
     };
 
     let simics_project = SimicsProject::try_new()?
-        .try_with_package(PackageNumber::QuickStartPlatform)?
+        .try_with_package_latest(PublicPackageNumber::QspX86)?
         .try_with_file_contents(X509_PARSE_EFI_MODULE, UEFI_APP_PATH)?
         .try_with_file_contents(app.to_string().as_bytes(), APP_YML_PATH)?
         .try_with_file_contents(app_script.as_bytes(), APP_SCRIPT_PATH)?

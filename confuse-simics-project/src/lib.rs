@@ -19,6 +19,7 @@ use log::{error, info};
 
 use confuse_simics_manifest::{package_infos, simics_latest, PackageNumber};
 use confuse_simics_module::SimicsModule;
+use semver::{Version, VersionReq};
 use tempdir::TempDir;
 use walkdir::WalkDir;
 
@@ -47,18 +48,12 @@ pub fn simics_home() -> Result<PathBuf> {
 /// not a big deal, we'll be linking it in to almost every process regardless.
 pub fn link_simics() -> Result<()> {
     let simics_bin_dir = simics_home()?
-        .join(format!(
-            "simics-{}",
-            simics_latest(simics_home()?)?.packages[&PackageNumber::Base].version
-        ))
+        .join(format!("simics-{}", simics_latest(simics_home()?)?.version))
         .join("linux64")
         .join("bin");
 
     let simics_sys_lib_dir = simics_home()?
-        .join(format!(
-            "simics-{}",
-            simics_latest(simics_home()?)?.packages[&PackageNumber::Base].version
-        ))
+        .join(format!("simics-{}", simics_latest(simics_home()?)?.version))
         .join("linux64")
         .join("sys")
         .join("lib");
@@ -113,20 +108,44 @@ impl SimicsProject {
         Ok(project)
     }
 
-    /// Try to add a package to this project by number
-    pub fn try_with_package(mut self, package: PackageNumber) -> Result<Self> {
+    /// Try to add a package to this project by number. If multiple versions are available, pick
+    /// the latest version
+    pub fn try_with_package_latest<P: Into<PackageNumber>>(self, package: P) -> Result<Self> {
+        self.try_with_package_version(package, "*")
+    }
+
+    /// Try to add a package to this project by number and optional version constraint
+    pub fn try_with_package_version<S: AsRef<str>, P: Into<PackageNumber>>(
+        mut self,
+        package: P,
+        version_constraint: S,
+    ) -> Result<Self> {
+        let package = package.into();
         if self.packages.contains(&package) {
             return Ok(self);
         }
 
+        let constraint = VersionReq::parse(version_constraint.as_ref())?;
+
         let package_infos = package_infos(&self.home)?;
 
-        let package_info = package_infos.get(&package).with_context(|| {
+        let package_infos = package_infos.get(&package).with_context(|| {
             error!("Package {:?} not be found in package info", package);
             "Package does not exist"
         })?;
 
+        let version = package_infos
+            .keys()
+            .filter_map(|k| Version::parse(k).ok())
+            .filter(|v| constraint.matches(v))
+            .max()
+            .context("No matching version")?;
+
         let simics_package_list_path = self.base_path.join(".package-list");
+
+        let package_info = package_infos
+            .get(&version.to_string())
+            .context("No such version")?;
 
         let package_path = package_info
             .get_package_path(&self.home)?
@@ -258,10 +277,8 @@ impl SimicsProject {
         }
         let simics_home = PathBuf::from(SIMICS_HOME).canonicalize()?;
         let latest_simics_manifest = simics_latest(&simics_home)?;
-        let simics_base_dir = simics_home.join(format!(
-            "simics-{}",
-            latest_simics_manifest.packages[&PackageNumber::Base].version
-        ));
+        let simics_base_dir =
+            simics_home.join(format!("simics-{}", latest_simics_manifest.version));
 
         let simics_base_project_setup = simics_base_dir.join("bin").join("project-setup");
 

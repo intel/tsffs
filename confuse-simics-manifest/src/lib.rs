@@ -2,111 +2,63 @@
 //! includes manifest files for each installation in .smf format (AKA YAML) and in a pseudo-yaml
 //! format with each package.
 
-use anyhow::{bail, Context, Error, Result};
-use chrono::NaiveDate;
+use anyhow::{Context, Result};
+use itertools::Itertools;
 use log::{error, warn};
+use num::{FromPrimitive, ToPrimitive};
+use semver::Version;
 use serde::{Deserialize, Serialize};
-use serde_repr::{Deserialize_repr, Serialize_repr};
-use serde_yaml::from_reader;
 use std::{
     collections::HashMap,
     fs::{read_dir, read_to_string},
     path::{Path, PathBuf},
 };
+
 extern crate num_traits;
 #[macro_use]
 extern crate num_derive;
 
-#[derive(
-    Hash,
-    Clone,
-    Copy,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Deserialize_repr,
-    Serialize_repr,
-    Debug,
-    FromPrimitive,
-)]
-#[repr(u64)]
-/// Package Identifiers for Simics Manifest
-///
-/// If you have or need a package not listed here, just add it!
-pub enum PackageNumber {
+pub type PackageNumber = i64;
+pub type PackageVersion = String;
+
+#[derive(Hash, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, FromPrimitive, ToPrimitive)]
+#[repr(i64)]
+pub enum PublicPackageNumber {
+    QspClearLinux = 4094,
+    QspCpu = 8112,
+    QspIsim = 8144,
+    DoceaBase = 7801,
+    OssSources = 1020,
+    Training = 6010,
+    Viewer = 8126,
+    QspX86 = 2096,
     Base = 1000,
-    OSSSources = 1020,
-    QuickStartPlatform = 2096,
-    QuickStartPlatformClearLinux = 4094,
-    SimicsTraining = 6010,
-    SimicsDoceaBase = 7801,
-    QuickStartPlatformCpu = 8112,
-    SimicsViewer = 8126,
-    QuickStartPlatformISim = 8144,
-    Error = 0,
+    Error = -1,
 }
 
-impl TryFrom<u64> for PackageNumber {
-    type Error = Error;
-    /// Try to convert a u64 to a PackageNumber and fail if the PackageNumber is unknown
-    fn try_from(value: u64) -> Result<Self> {
-        num::FromPrimitive::from_u64(value).context("Could not convert to PackageNumber")
+impl From<i64> for PublicPackageNumber {
+    fn from(value: i64) -> Self {
+        FromPrimitive::from_i64(value).unwrap_or(PublicPackageNumber::Error)
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-/// The profile for a SIMICS manifest
-pub struct SimicsManifestProfile {
-    pub description: String,
-    pub name: String,
-    pub platform_script: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-/// A package description in a SIMICS manifest
-pub struct SimicsManifestPackage {
-    pub description: Option<String>,
-    pub version: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-/// A SIMICS manifest, the top-level manifest for an installation in YAML format
-pub struct SimicsManifest {
-    pub manifest_format: u64,
-    pub name: String,
-    pub group: String,
-    pub version: String,
-    pub date: NaiveDate,
-    pub description: String,
-    pub profiles: HashMap<String, SimicsManifestProfile>,
-    pub packages: HashMap<PackageNumber, SimicsManifestPackage>,
-}
-
-/// Parse a simics manifest file into a `SimicsManifest` object
-pub fn parse_simics_manifest(manifest: &Path) -> Result<SimicsManifest> {
-    let manifest_content = read_to_string(manifest)?;
-    let manifest: SimicsManifest = from_reader(manifest_content.as_bytes())?;
-    Ok(manifest)
+impl From<PublicPackageNumber> for i64 {
+    fn from(val: PublicPackageNumber) -> Self {
+        ToPrimitive::to_i64(&val).expect("Invalid conversion to i64")
+    }
 }
 
 /// Parse all SIMICS manifest(s) in the installation to determine the latest simics version and
 /// return its manifest
-pub fn simics_latest<P: AsRef<Path>>(simics_home: P) -> Result<SimicsManifest> {
-    let manifest_dir = simics_home.as_ref().join("manifests");
-    let mut manifests = read_dir(manifest_dir)?
-        .filter_map(|de| match de.ok() {
-            Some(de) => parse_simics_manifest(&de.path()).ok(),
-            None => None,
-        })
-        .collect::<Vec<_>>();
+pub fn simics_latest<P: AsRef<Path>>(simics_home: P) -> Result<PackageInfo> {
+    let infos = package_infos(simics_home)?[&1000].clone();
 
-    manifests.sort_by(|a, b| a.date.cmp(&b.date));
+    let max_base = infos
+        .into_iter()
+        .max_by_key(|k| Version::parse(&k.0).expect("Invalid version string"))
+        .context("No versions for base")?;
 
-    match manifests.last() {
-        Some(m) => Ok(m.clone()),
-        None => bail!("No highest version manifest found."),
-    }
+    Ok(max_base.1)
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -114,26 +66,26 @@ pub fn simics_latest<P: AsRef<Path>>(simics_home: P) -> Result<SimicsManifest> {
 /// a simics package, for example SIMICS_HOME/simics-6.0.157/packageinfo/Simics-Base-linux64
 /// and is not *quite* YAML but is close.
 pub struct PackageInfo {
-    name: String,
-    description: String,
-    version: String,
+    pub name: String,
+    pub description: String,
+    pub version: String,
     #[serde(rename = "extra-version")]
-    extra_version: String,
-    host: String,
-    confidentiality: String,
+    pub extra_version: String,
+    pub host: String,
+    pub confidentiality: String,
     #[serde(rename = "package-name")]
-    package_name: String,
+    pub package_name: String,
     #[serde(rename = "package-number")]
-    package_number: PackageNumber,
+    pub package_number: PackageNumber,
     #[serde(rename = "build-id")]
-    build_id: u64,
+    pub build_id: u64,
     #[serde(rename = "build-id-namespace")]
-    build_id_namespace: String,
+    pub build_id_namespace: String,
     #[serde(rename = "type")]
-    typ: String,
+    pub typ: String,
     #[serde(rename = "package-name-full")]
-    package_name_full: String,
-    files: Vec<String>,
+    pub package_name_full: String,
+    pub files: Vec<String>,
 }
 
 impl Default for PackageInfo {
@@ -147,7 +99,7 @@ impl Default for PackageInfo {
             host: "".to_string(),
             confidentiality: "".to_string(),
             package_name: "".to_string(),
-            package_number: PackageNumber::Error,
+            package_number: -1,
             build_id: 0,
             build_id_namespace: "".to_string(),
             typ: "".to_string(),
@@ -177,7 +129,7 @@ impl PackageInfo {
 /// Get all the package information of all packages in the simics home installation directory
 pub fn package_infos<P: AsRef<Path>>(
     simics_home: P,
-) -> Result<HashMap<PackageNumber, PackageInfo>> {
+) -> Result<HashMap<PackageNumber, HashMap<PackageVersion, PackageInfo>>> {
     let infos: Vec<PackageInfo> = read_dir(&simics_home)?
         .filter_map(|d| {
             d.map_err(|e| error!("Could not read directory entry: {}", e))
@@ -236,12 +188,8 @@ pub fn package_infos<P: AsRef<Path>>(
                                 "confidentiality" => package_info.confidentiality = v.to_string(),
                                 "package-name" => package_info.package_name = v.to_string(),
                                 "package-number" => {
-                                    package_info.package_number = v
-                                        .to_string()
-                                        .parse()
-                                        .unwrap_or(0)
-                                        .try_into()
-                                        .unwrap_or(PackageNumber::Error)
+                                    package_info.package_number =
+                                        v.to_string().parse().unwrap_or(0).try_into().unwrap_or(-1)
                                 }
                                 "build-id" => {
                                     package_info.build_id = v.to_string().parse().unwrap_or(0)
@@ -265,6 +213,16 @@ pub fn package_infos<P: AsRef<Path>>(
 
     Ok(infos
         .iter()
-        .map(|pi| (pi.package_number, pi.clone()))
+        .group_by(|p| p.package_number)
+        .into_iter()
+        .map(|(k, g)| {
+            let g: Vec<_> = g.collect();
+            (
+                k,
+                g.iter()
+                    .map(|p| (p.version.clone(), (*p).clone()))
+                    .collect(),
+            )
+        })
         .collect())
 }

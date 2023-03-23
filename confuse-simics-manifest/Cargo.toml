@@ -9,7 +9,6 @@ edition = "2021"
 serde = { version = "1.0.152", features = ["derive"] }
 serde_yaml = "0.9.17"
 anyhow = "1.0.69"
-version-compare = "0.1.1"
 chrono = { version = "0.4.23", features = ["serde"] }
 serde_repr = "0.1.10"
 log = "0.4.17"
@@ -17,3 +16,5 @@ regex = "1.7.1"
 num = "0.4.0"
 num-derive = "0.3.3"
 num-traits = "0.2.15"
+itertools = "0.10.5"
+semver = "1.0.17"

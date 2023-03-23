@@ -130,7 +130,7 @@ pub fn generate_signature_header<P: AsRef<Path>, S: AsRef<str>>(
 ) -> Result<String> {
     // Probably this will be "6"
     let simics_latest = simics_latest(&simics_home)?;
-    let simics_api = simics_latest.packages[&PackageNumber::Base]
+    let simics_api = simics_latest
         .version
         .split('.')
         .next()

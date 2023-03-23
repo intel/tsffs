@@ -1,9 +1,11 @@
 use anyhow::Result;
-use confuse_simics_manifest::PackageNumber;
+use confuse_simics_manifest::PublicPackageNumber;
 use confuse_simics_project::SimicsProject;
 use minimal_simics_module::CRATE_NAME;
 use std::{env::var, path::PathBuf};
 use test_cdylib::build_current_project;
+
+const QSP_X86_PACKAGE_NUMBER: i64 = 2096;
 
 #[test]
 fn test_minimal_simics_module_exists() -> Result<()> {
@@ -21,7 +23,7 @@ fn test_load_minimal_simics_module() -> Result<()> {
     let resource_dir = manifest_dir.join("resource");
 
     let simics_project = SimicsProject::try_new()?
-        .try_with_package(PackageNumber::QuickStartPlatform)?
+        .try_with_package_latest(PublicPackageNumber::QspX86)?
         .try_with_contents(resource_dir)?
         .try_with_module(CRATE_NAME, minimal_module_path)?;
 
