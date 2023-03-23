@@ -1,7 +1,6 @@
 ```mermaid
 flowchart LR
     MAP_SHM["AFL Map SHM (MemField)"]
-    INP_SHM["AFL Input SHM (MemField)"]
     INIT_CORP["Initial Corpus"]
 
     subgraph Simics
@@ -47,8 +46,7 @@ flowchart LR
 
     EXEC-->|Resets Target|IFACE
     EXEC-->|Runs Target|IFACE
-    EXEC-->|Current Testcase|INP_SHM
-    INP_SHM-->|Current Testcase|IFACE
+    EXEC-->|Current Testcase|IFACE
     BTRACE-->|Populates|MAP_SHM
     MAP_SHM-->|Observes|OBS
     Corpus-->|Next Testcase|SCHED
