@@ -5,8 +5,6 @@ use minimal_simics_module::CRATE_NAME;
 use std::{env::var, path::PathBuf};
 use test_cdylib::build_current_project;
 
-const QSP_X86_PACKAGE_NUMBER: i64 = 2096;
-
 #[test]
 fn test_minimal_simics_module_exists() -> Result<()> {
     let dylib_path = build_current_project();

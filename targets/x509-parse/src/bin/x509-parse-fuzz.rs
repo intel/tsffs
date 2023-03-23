@@ -1,7 +1,7 @@
 use anyhow::Result;
 use confuse_fuzz::fuzzer::Fuzzer;
 use confuse_module::messages::{Fault, InitInfo};
-use confuse_simics_manifest::{PackageNumber, PublicPackageNumber};
+use confuse_simics_manifest::{PublicPackageNumber};
 use confuse_simics_project::{
     bool_param, file_param, int_param, simics_app, simics_path, str_param, SimicsApp,
     SimicsAppParam, SimicsAppParamType, SimicsProject,

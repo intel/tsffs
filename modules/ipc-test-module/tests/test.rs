@@ -1,5 +1,5 @@
 use anyhow::{bail, Result};
-use confuse_simics_manifest::{PackageNumber, PublicPackageNumber};
+use confuse_simics_manifest::{PublicPackageNumber};
 use confuse_simics_project::SimicsProject;
 use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender};
 use ipc_test_module::messages::{FuzzerEvent, Message, SimicsEvent};

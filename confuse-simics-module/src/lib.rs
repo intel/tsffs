@@ -9,7 +9,7 @@ use anyhow::{Context, Result, ensure};
 use cargo_metadata::MetadataCommand;
 use chrono::Local;
 use confuse_simics_api::{SIM_VERSION, SIM_VERSION_COMPAT};
-use confuse_simics_manifest::{simics_latest, PackageNumber};
+use confuse_simics_manifest::{simics_latest};
 use object::{
     elf::FileHeader64,
     endian::LittleEndian,
