@@ -6,13 +6,13 @@ use anyhow::{Context, Result};
 use itertools::Itertools;
 use log::{error, warn};
 use num::{FromPrimitive, ToPrimitive};
-use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     fs::{read_dir, read_to_string},
     path::{Path, PathBuf},
 };
+use versions::Versioning;
 
 extern crate num_traits;
 #[macro_use]
@@ -55,7 +55,7 @@ pub fn simics_latest<P: AsRef<Path>>(simics_home: P) -> Result<PackageInfo> {
 
     let max_base = infos
         .into_iter()
-        .max_by_key(|k| Version::parse(&k.0).expect("Invalid version string"))
+        .max_by_key(|k| Versioning::new(&k.0).expect("Invalid version string"))
         .context("No versions for base")?;
 
     Ok(max_base.1)

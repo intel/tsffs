@@ -19,6 +19,7 @@ members = [
     # Utilities
     "util/ipc-shm",
     "util/raw-cstr",
+    "util/version-tools",
 ]
 
 [workspace.dependencies]
@@ -30,6 +31,7 @@ confuse-fuzz = { path = "./confuse-fuzz" }
 confuse-module = { path = "./modules/confuse-module" }
 ipc-shm = { path = "./util/ipc-shm" }
 raw-cstr = { path = "./util/raw-cstr" }
+version-tools = { path = "./util/version-tools" }
 ipc-channel = { git = "https://github.com/novafacing/ipc-channel.git", version = "0.16.0", features = [
     "memfd",
 ] }

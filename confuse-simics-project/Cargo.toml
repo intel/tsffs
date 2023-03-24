@@ -16,7 +16,8 @@ log = "0.4.17"
 tempdir = "0.3.7"
 walkdir = "2.3.2"
 indoc = "2.0.1"
-semver = "1.0.17"
+versions = "4.1.0"
+version-tools.workspace = true
 
 [build-dependencies]
 confuse-simics-manifest = { workspace = true }

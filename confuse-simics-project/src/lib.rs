@@ -19,8 +19,9 @@ use log::{error, info};
 
 use confuse_simics_manifest::{package_infos, simics_latest, PackageNumber};
 use confuse_simics_module::SimicsModule;
-use semver::{Version, VersionReq};
 use tempdir::TempDir;
+use version_tools::VersionConstraint;
+use versions::Versioning;
 use walkdir::WalkDir;
 
 /// The SIMICS home installation directory. A `.env` file containing a line like:
@@ -125,7 +126,8 @@ impl SimicsProject {
             return Ok(self);
         }
 
-        let constraint = VersionReq::parse(version_constraint.as_ref())?;
+        // let constraint = VersionReq::parse(version_constraint.as_ref())?;
+        let constraint: VersionConstraint = version_constraint.as_ref().parse()?;
 
         let package_infos = package_infos(&self.home)?;
 
@@ -136,7 +138,7 @@ impl SimicsProject {
 
         let version = package_infos
             .keys()
-            .filter_map(|k| Version::parse(k).ok())
+            .filter_map(|k| Versioning::new(k))
             .filter(|v| constraint.matches(v))
             .max()
             .context("No matching version")?;
