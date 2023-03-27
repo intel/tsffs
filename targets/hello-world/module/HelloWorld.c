@@ -47,12 +47,13 @@ UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable) {
             // Sleep for 10 seconds, this is a "hang"
 
             // NOTE: gBS is the global Boot Services table
-            // gBS->Stall(10 * 1000 * 1000);
+            gBS->Stall(10 * 1000 * 1000);
+
         }
         case 'C': {
             // This should double or triple fault (or both)
-            char *x = (char *)0x400000;
-            *x = 1;
+            UINT8* ptr = (UINT8*)0xffffffffffffffff;
+            *ptr = 0x00;
         }
         default: {
             // Nothing, this is a "success"

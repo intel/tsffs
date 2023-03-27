@@ -177,6 +177,15 @@ impl IpcShmWriter {
         Ok(())
     }
 
+    pub fn write_byte(&mut self, data: u8, offset: usize) -> Result<()> {
+        ensure!(offset < self.size, "Offset out of bounds");
+
+        let writer = self.mmap.as_mut();
+        writer[offset] = data;
+
+        Ok(())
+    }
+
     pub fn read_all(&self) -> Result<Vec<u8>> {
         let reader = self.mmap.as_ref();
         let data = reader[..].to_vec();

@@ -17,6 +17,7 @@ libafl = { workspace = true, features = ["tui_monitor"] }
 tempfile = "3.4.0"
 chrono = "0.4.24"
 log4rs = "1.2.0"
+clap = { version = "4.1.13", features = ["derive"] }
 
 [dev-dependencies]
 

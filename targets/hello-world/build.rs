@@ -164,6 +164,6 @@ fn build_efi_module() -> Result<()> {
 fn main() -> Result<()> {
     println!("cargo:rerun-if-changed=build.rs");
     build_efi_module()?;
-    link_simics()?;
+    link_simics("*")?;
     Ok(())
 }

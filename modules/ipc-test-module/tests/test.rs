@@ -1,5 +1,5 @@
 use anyhow::{bail, Result};
-use confuse_simics_manifest::{PublicPackageNumber};
+use confuse_simics_manifest::PublicPackageNumber;
 use confuse_simics_project::SimicsProject;
 use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender};
 use ipc_test_module::messages::{FuzzerEvent, Message, SimicsEvent};
@@ -20,7 +20,7 @@ fn test_minimal_simics_module_exists() -> Result<()> {
 fn test_load_ipc_test_module() -> Result<()> {
     let ipc_test_module_path = build_current_project();
 
-    let simics_project = SimicsProject::try_new()?
+    let simics_project = SimicsProject::try_new_latest()?
         .try_with_package_latest(PublicPackageNumber::QspX86)?
         .try_with_module(CRATE_NAME, &ipc_test_module_path)?;
 

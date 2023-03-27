@@ -12,6 +12,7 @@ use std::{
     fs::{read_dir, read_to_string},
     path::{Path, PathBuf},
 };
+use version_tools::VersionConstraint;
 use versions::Versioning;
 
 extern crate num_traits;
@@ -50,7 +51,7 @@ impl From<PublicPackageNumber> for i64 {
 
 /// Parse all SIMICS manifest(s) in the installation to determine the latest simics version and
 /// return its manifest
-pub fn simics_latest<P: AsRef<Path>>(simics_home: P) -> Result<PackageInfo> {
+pub fn simics_base_latest<P: AsRef<Path>>(simics_home: P) -> Result<PackageInfo> {
     let infos = package_infos(simics_home)?[&1000].clone();
 
     let max_base = infos
@@ -59,6 +60,25 @@ pub fn simics_latest<P: AsRef<Path>>(simics_home: P) -> Result<PackageInfo> {
         .context("No versions for base")?;
 
     Ok(max_base.1)
+}
+
+pub fn simics_base_version<P: AsRef<Path>, S: AsRef<str>>(
+    simics_home: P,
+    base_version_constraint: S,
+) -> Result<PackageInfo> {
+    let constraint: VersionConstraint = base_version_constraint.as_ref().parse()?;
+    let infos = package_infos(simics_home)?[&1000].clone();
+    let version = infos
+        .keys()
+        .filter_map(|k| Versioning::new(k))
+        .filter(|v| constraint.matches(v))
+        .max()
+        .context("No matching version")?;
+
+    Ok(infos
+        .get(&version.to_string())
+        .context(format!("No such version {}", version))?
+        .clone())
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

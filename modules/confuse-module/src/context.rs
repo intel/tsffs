@@ -10,10 +10,12 @@ use confuse_simics_api::{
     VT_save_micro_checkpoint,
 };
 
+use crc32fast::hash;
 use ipc_channel::ipc::{channel, IpcReceiver, IpcSender};
 use ipc_shm::{IpcShm, IpcShmWriter};
 use lazy_static::lazy_static;
-use log::info;
+use log::{info, trace};
+use rand::{thread_rng, Rng};
 use raw_cstr::raw_cstr;
 
 use crate::callbacks::{
@@ -31,6 +33,7 @@ use crate::{
 };
 
 use std::collections::HashSet;
+use std::num::Wrapping;
 use std::{
     env::var,
     ffi::CString,
@@ -116,15 +119,13 @@ impl ModuleCtx {
 
         let mut shm = IpcShm::default();
 
-        let mut writer = shm.writer()?;
-
-        for i in 0..writer.len() {
-            writer.write_at(&[(i % u8::MAX as usize) as u8], i)?;
-        }
+        let writer = shm.writer()?;
 
         info!("Sending fuzzer memory map");
 
         tx.send(SimicsEvent::SharedMem(shm.try_clone()?))?;
+
+        let prev_loc = thread_rng().gen_range(0..writer.len());
 
         Ok(Self {
             _cls: cls,
@@ -135,7 +136,7 @@ impl ModuleCtx {
             processor: None,
             stop_reason: None,
             initialized: false,
-            prev_loc: 0,
+            prev_loc: prev_loc.try_into()?,
             buffer_address: 0,
             buffer_size: 0,
             init_info,
@@ -177,6 +178,11 @@ impl ModuleCtx {
 
     fn reset_run(&mut self) -> Result<()> {
         info!("Waiting for reset signal to restore state");
+
+        let map = self.writer.read_all()?;
+        let map_csum = hash(&map);
+
+        info!("Got map csum: {}", map_csum);
 
         match self.rx.recv()? {
             FuzzerEvent::Reset => {
@@ -360,11 +366,11 @@ impl ModuleCtx {
     }
 
     pub fn log(&mut self, pc: u64) -> Result<()> {
-        let cur_loc = ((pc >> 4) ^ (pc << 8)) & (self.writer.len() - 1) as u64;
-        let data = &[self.writer.read_byte(cur_loc as usize)?];
-        self.writer
-            .write_at(data, (cur_loc ^ self.prev_loc) as usize)?;
-        self.prev_loc >>= 1;
+        let afl_idx = (pc ^ self.prev_loc) % self.writer.len() as u64;
+        let mut cur_byte: Wrapping<u8> = Wrapping(self.writer.read_byte(afl_idx as usize)?);
+        cur_byte += 1;
+        self.writer.write_byte(cur_byte.0, afl_idx as usize)?;
+        self.prev_loc = (pc >> 1) % self.writer.len() as u64;
         Ok(())
     }
 

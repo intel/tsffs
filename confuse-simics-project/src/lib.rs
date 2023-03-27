@@ -7,6 +7,7 @@ use std::{
     collections::HashSet,
     fs::{copy, create_dir_all, remove_dir_all, OpenOptions},
     io::Write,
+    os::unix::fs::symlink,
     path::{Component, Path, PathBuf},
     process::{Command, Stdio},
     str::FromStr,
@@ -17,8 +18,9 @@ use dotenvy_macro::dotenv;
 use indoc::formatdoc;
 use log::{error, info};
 
-use confuse_simics_manifest::{package_infos, simics_latest, PackageNumber};
+use confuse_simics_manifest::{package_infos, simics_base_version, PackageNumber};
 use confuse_simics_module::SimicsModule;
+use regex::Regex;
 use tempdir::TempDir;
 use version_tools::VersionConstraint;
 use versions::Versioning;
@@ -44,46 +46,114 @@ pub fn simics_home() -> Result<PathBuf> {
     }
 }
 
+fn find_file_in_simics_base<P: AsRef<Path>, S: AsRef<str>>(
+    simics_base_dir: P,
+    file_name_pattern: S,
+) -> Result<PathBuf> {
+    let file_name_regex = Regex::new(file_name_pattern.as_ref())?;
+    let found_file = WalkDir::new(&simics_base_dir)
+        .into_iter()
+        .filter_map(|de| de.ok())
+        // is_ok_and is unstable ;_;
+        .filter(|de| {
+            if let Ok(m) = de.metadata() {
+                m.is_file()
+            } else {
+                false
+            }
+        })
+        .find(|de| {
+            if let Some(name) = de.path().file_name() {
+                file_name_regex.is_match(&name.to_string_lossy())
+            } else {
+                false
+            }
+        })
+        .context(format!(
+            "Could not find libsimics-common.so in {}",
+            simics_base_dir.as_ref().display()
+        ))?
+        .path()
+        .to_path_buf();
+
+    ensure!(
+        found_file.is_file(),
+        "No file {} found in {}",
+        file_name_pattern.as_ref(),
+        simics_base_dir.as_ref().display()
+    );
+
+    Ok(found_file)
+}
+
 /// Link against simics. This is required for any SIMICS module (as well as anything that uses
 /// the simics module, for example to access constants from it -- an unfortunate side effect but
 /// not a big deal, we'll be linking it in to almost every process regardless.
-pub fn link_simics() -> Result<()> {
-    let simics_bin_dir = simics_home()?
-        .join(format!("simics-{}", simics_latest(simics_home()?)?.version))
-        .join("linux64")
+pub fn link_simics<S: AsRef<str>>(version_constraint: S) -> Result<()> {
+    let simics_home_dir = simics_home()?;
+
+    let simics_base_info = simics_base_version(&simics_home_dir, &version_constraint)?;
+    let simics_base_dir = simics_base_info.get_package_path(&simics_home_dir)?;
+
+    let simics_common_lib = find_file_in_simics_base(&simics_base_dir, "libsimics-common.so")?;
+    let simics_bin_dir = simics_home_dir
+        .join(format!(
+            "simics-{}",
+            simics_base_version(simics_home()?, version_constraint)?.version
+        ))
         .join("bin");
 
-    let simics_sys_lib_dir = simics_home()?
-        .join(format!("simics-{}", simics_latest(simics_home()?)?.version))
-        .join("linux64")
-        .join("sys")
-        .join("lib");
-
-    println!(
-        "cargo:rustc-link-search=native={}",
-        simics_bin_dir.display()
+    ensure!(
+        simics_bin_dir.is_dir(),
+        "No bin directory found in {}",
+        simics_home_dir.display()
     );
 
-    println!(
-        "cargo:rustc-link-search=native={}",
-        simics_sys_lib_dir.display()
-    );
+    let output = Command::new("ld.so")
+        .arg(simics_common_lib)
+        .stdout(Stdio::piped())
+        .output()?;
 
-    println!("cargo:rustc-link-lib=simics-common");
-    println!("cargo:rustc-link-lib=vtutils");
-    println!("cargo:rustc-link-lib=package-paths");
-    // TODO: Get this full path from the simics lib
-    println!("cargo:rustc-link-lib=dylib:+verbatim=libpython3.9.so.1.0");
+    let ld_line_pattern = Regex::new(r#"\s*([^\s]+)\s*=>\s*not\sfound"#)?;
+    let notfound_libs: Vec<_> = String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .filter_map(|l| {
+            if let Some(captures) = ld_line_pattern.captures(l) {
+                captures.get(1)
+            } else {
+                None
+            }
+        })
+        .map(|m| m.as_str().to_string())
+        .collect();
+
+    info!("Locating {}", notfound_libs.join(", "));
+
+    let mut lib_search_dirs = HashSet::new();
+
+    for lib_name in notfound_libs {
+        println!("cargo:rustc-link-lib=dylib:+verbatim={}", lib_name);
+        let found_lib = find_file_in_simics_base(&simics_base_dir, lib_name)?;
+        let found_lib_parent = found_lib.parent().context("No parent path found")?;
+        lib_search_dirs.insert(found_lib_parent.to_path_buf());
+    }
+
+    for lib_search_dir in &lib_search_dirs {
+        println!(
+            "cargo:rustc-link-search=native={}",
+            lib_search_dir.display()
+        );
+    }
 
     // NOTE: This only works for `cargo run` and `cargo test` and won't work for just running
     // the output binary
+    let search_dir_strings = lib_search_dirs
+        .iter()
+        .map(|pb| pb.to_string_lossy())
+        .collect::<Vec<_>>();
     println!(
         "cargo:rustc-env=LD_LIBRARY_PATH={}",
-        &format!(
-            "{};{}",
-            simics_bin_dir.to_string_lossy(),
-            simics_sys_lib_dir.to_string_lossy(),
-        )
+        search_dir_strings.join(";")
     );
     Ok(())
 }
@@ -100,11 +170,20 @@ pub struct SimicsProject {
 
 impl SimicsProject {
     /// Try to create a new temporary simics project. If a project is created this way, it is
-    /// removed from disk when this object is dropped.
-    pub fn try_new() -> Result<Self> {
+    /// removed from disk when this object is dropped. Creates the project using the newest
+    /// Simics-Base package it finds in SIMICS_HOME
+    pub fn try_new_latest() -> Result<Self> {
         let base_path = TempDir::new(SIMICS_PROJECT_PREFIX)?;
         let base_path = base_path.into_path();
-        let mut project = SimicsProject::try_new_at(base_path)?;
+        let mut project = SimicsProject::try_new_at(base_path, "*")?;
+        project.tmp = true;
+        Ok(project)
+    }
+
+    pub fn try_new<S: AsRef<str>>(base_version_constraint: S) -> Result<Self> {
+        let base_path = TempDir::new(SIMICS_PROJECT_PREFIX)?;
+        let base_path = base_path.into_path();
+        let mut project = SimicsProject::try_new_at(base_path, base_version_constraint)?;
         project.tmp = true;
         Ok(project)
     }
@@ -269,18 +348,39 @@ impl SimicsProject {
         Ok(self)
     }
 
+    /// Symlink a file into the simics project at a path relative to the project directory.
+    ///
+    /// This is useful when a very large file needs to be available in the project but you
+    /// don't necessarily want to copy or move it.
+    pub fn try_with_file_symlink<P: AsRef<Path>, S: AsRef<str>>(
+        self,
+        src_path: P,
+        dst_relative_path: S,
+    ) -> Result<Self> {
+        ensure!(
+            src_path.as_ref().is_file(),
+            "Path {} does not exist or is not a file",
+            src_path.as_ref().display()
+        );
+        let dst_path = self.base_path.join(dst_relative_path.as_ref());
+        symlink(src_path, dst_path)?;
+        Ok(self)
+    }
+
     /// Create a simics project at a specific path. When a project is created this way, it is
     /// not deleted when it is dropped and will instead persist on disk.
-    pub fn try_new_at<P: AsRef<Path>>(base_path: P) -> Result<Self> {
+    pub fn try_new_at<P: AsRef<Path>, S: AsRef<str>>(
+        base_path: P,
+        base_version_constraint: S,
+    ) -> Result<Self> {
         let base_path = base_path.as_ref().to_path_buf();
         let base_path = base_path.canonicalize()?;
         if !base_path.exists() {
             create_dir_all(&base_path)?;
         }
         let simics_home = PathBuf::from(SIMICS_HOME).canonicalize()?;
-        let latest_simics_manifest = simics_latest(&simics_home)?;
-        let simics_base_dir =
-            simics_home.join(format!("simics-{}", latest_simics_manifest.version));
+        let simics_manifest = simics_base_version(&simics_home, &base_version_constraint)?;
+        let simics_base_dir = simics_home.join(format!("simics-{}", simics_manifest.version));
 
         let simics_base_project_setup = simics_base_dir.join("bin").join("project-setup");
 

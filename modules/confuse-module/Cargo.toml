@@ -26,6 +26,8 @@ num-derive = "0.3.3"
 num = "0.4.0"
 yaxpeax-x86 = "1.1.5"
 yaxpeax-arch = { version = "0.2.7", features = ["std", "address-parse", "use-serde"] }
+crc32fast = "1.3.2"
+rand = "0.8.5"
 
 [dev-dependencies]
 anyhow = "1.0.69"

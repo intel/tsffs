@@ -32,6 +32,6 @@ fn write_simics_constants() -> Result<()> {
 fn main() -> Result<()> {
     println!("cargo:rerun-if-changed=build.rs");
     write_simics_constants()?;
-    link_simics()?;
+    link_simics("*")?;
     Ok(())
 }

@@ -17,7 +17,7 @@ enum Op {
 
 pub struct VersionConstraint {
     op: Op,
-    version: Versioning,
+    version: Option<Versioning>,
 }
 
 impl FromStr for VersionConstraint {
@@ -43,7 +43,14 @@ impl FromStr for VersionConstraint {
 
         Ok(Self {
             op: comp,
-            version: Versioning::new(rest).context(format!("Invalid version {}", rest))?,
+            version: if rest.is_empty() {
+                None
+            } else {
+                Some(
+                    Versioning::new(rest)
+                        .context(format!("Invalid constraint string: {}", rest))?,
+                )
+            },
         })
     }
 }
@@ -56,16 +63,21 @@ impl VersionConstraint {
     fn matches_caret(&self, _v: &Versioning) -> bool {
         panic!("Caret constraint not implemented.");
     }
+
     pub fn matches(&self, v: &Versioning) -> bool {
-        match self.op {
-            Op::Exact => *v == self.version,
-            Op::Greater => *v > self.version,
-            Op::GreaterEq => *v >= self.version,
-            Op::Less => *v < self.version,
-            Op::LessEq => *v <= self.version,
-            Op::Tilde => self.matches_tilde(v),
-            Op::Caret => self.matches_caret(v),
-            Op::Wildcard => true,
+        if let Some(sv) = &self.version {
+            match self.op {
+                Op::Exact => v == sv,
+                Op::Greater => v > sv,
+                Op::GreaterEq => v >= sv,
+                Op::Less => v < sv,
+                Op::LessEq => v <= sv,
+                Op::Tilde => self.matches_tilde(v),
+                Op::Caret => self.matches_caret(v),
+                Op::Wildcard => true,
+            }
+        } else {
+            matches!(self.op, Op::Wildcard)
         }
     }
 }

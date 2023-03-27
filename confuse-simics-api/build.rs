@@ -3,7 +3,7 @@ use bindgen::{
     callbacks::{MacroParsingBehavior, ParseCallbacks},
     Builder, CargoCallbacks,
 };
-use confuse_simics_manifest::simics_latest;
+use confuse_simics_manifest::simics_base_latest;
 use dotenvy_macro::dotenv;
 use std::{
     collections::HashSet,
@@ -43,7 +43,10 @@ fn simics_home() -> Result<PathBuf> {
 
 fn generate_simics_include_wrapper() -> Result<String> {
     let simics_include_path = simics_home()?
-        .join(format!("simics-{}", simics_latest(simics_home()?)?.version))
+        .join(format!(
+            "simics-{}",
+            simics_base_latest(simics_home()?)?.version
+        ))
         .join("src")
         .join("include");
 
@@ -166,11 +169,17 @@ impl IgnoreMacros {
 
 fn generate_simics_api<P: AsRef<Path>>(header: P) -> Result<()> {
     let simics_include_path = simics_home()?
-        .join(format!("simics-{}", simics_latest(simics_home()?)?.version))
+        .join(format!(
+            "simics-{}",
+            simics_base_latest(simics_home()?)?.version
+        ))
         .join("src")
         .join("include");
     let simics_python_include_path = simics_home()?
-        .join(format!("simics-{}", simics_latest(simics_home()?)?.version))
+        .join(format!(
+            "simics-{}",
+            simics_base_latest(simics_home()?)?.version
+        ))
         .join("linux64")
         .join("include")
         // TODO: Do we need to make this dynamic?

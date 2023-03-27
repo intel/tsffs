@@ -13,9 +13,11 @@ members = [
     "modules/minimal-simics-module",
     "modules/ipc-test-module",
     "modules/confuse-module",
+    "modules/simics-cmd-module",
     # Targets
     "targets/hello-world",
     "targets/x509-parse",
+    "targets/gnr-tdx",
     # Utilities
     "util/ipc-shm",
     "util/raw-cstr",

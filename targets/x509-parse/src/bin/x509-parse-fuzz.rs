@@ -1,13 +1,16 @@
-use anyhow::Result;
+use std::path::PathBuf;
+
+use anyhow::{Error, Result};
+use clap::Parser;
 use confuse_fuzz::fuzzer::Fuzzer;
 use confuse_module::messages::{Fault, InitInfo};
-use confuse_simics_manifest::{PublicPackageNumber};
+use confuse_simics_manifest::PublicPackageNumber;
 use confuse_simics_project::{
     bool_param, file_param, int_param, simics_app, simics_path, str_param, SimicsApp,
     SimicsAppParam, SimicsAppParamType, SimicsProject,
 };
 use indoc::{formatdoc, indoc};
-use log::{Level, LevelFilter};
+use log::{error, Level};
 use log4rs::{
     append::rolling_file::{
         policy::compound::{
@@ -23,7 +26,20 @@ use tempfile::Builder as NamedTempFileBuilder;
 
 use x509_parse::X509_PARSE_EFI_MODULE;
 
-fn init_logging() -> Result<()> {
+#[derive(Parser)]
+#[command(author, version, about)]
+struct Args {
+    /// Path to the initial input corpus for the fuzzer
+    #[arg(short, long)]
+    input: PathBuf,
+    /// Logging level
+    #[arg(short, long, default_value_t = Level::Error)]
+    log_level: Level,
+    #[arg(short, long, default_value_t = 1000)]
+    cycles: u64,
+}
+
+fn init_logging(level: Level) -> Result<()> {
     let logfile = NamedTempFileBuilder::new()
         .prefix("confuse-log")
         .suffix(".log")
@@ -43,7 +59,7 @@ fn init_logging() -> Result<()> {
         .build(
             Root::builder()
                 .appender("logfile")
-                .build(LevelFilter::Error),
+                .build(level.to_level_filter()),
         )?;
     let _handle = init_config(config)?;
 
@@ -51,9 +67,10 @@ fn init_logging() -> Result<()> {
 }
 
 fn main() -> Result<()> {
+    let args = Args::parse();
     // Set up logging to a temp file that will roll around every 100mb (this is pretty small for
     // the amount of output we get, so you can increase this if you are debugging)
-    init_logging()?;
+    init_logging(args.log_level)?;
 
     // Paths of
     const APP_SCRIPT_PATH: &str = "scripts/app.py";
@@ -266,7 +283,7 @@ fn main() -> Result<()> {
         "targets/qsp-x86/qsp-hdd-boot.simics"
     };
 
-    let simics_project = SimicsProject::try_new()?
+    let simics_project = SimicsProject::try_new_latest()?
         .try_with_package_latest(PublicPackageNumber::QspX86)?
         .try_with_file_contents(X509_PARSE_EFI_MODULE, UEFI_APP_PATH)?
         .try_with_file_contents(app.to_string().as_bytes(), APP_YML_PATH)?
@@ -282,13 +299,27 @@ fn main() -> Result<()> {
         Fault::InvalidOpcode,
         Fault::Double,
         Fault::GeneralProtection,
+        Fault::Page,
     ]);
 
     init_info.set_timeout_seconds(3);
 
-    let mut fuzzer = Fuzzer::try_new(init_info, APP_YML_PATH, simics_project, Level::Error)?;
+    let mut fuzzer = Fuzzer::try_new(
+        args.input,
+        init_info,
+        APP_YML_PATH,
+        simics_project,
+        args.log_level,
+    )?;
 
-    fuzzer.run_cycles(1000)?;
+    // Workaround to make sure we always stop even if we get a failure
+    fuzzer
+        .run_cycles(args.cycles)
+        .or_else(|e| {
+            error!("Error running cycles: {}", e);
+            Ok::<(), Error>(())
+        })
+        .ok();
     fuzzer.stop()?;
 
     Ok(())

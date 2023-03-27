@@ -1,14 +1,17 @@
-use anyhow::Result;
+use std::path::PathBuf;
+
+use anyhow::{Error, Result};
+use clap::Parser;
 use confuse_fuzz::fuzzer::Fuzzer;
 use confuse_module::messages::{Fault, InitInfo};
-use confuse_simics_manifest::{PublicPackageNumber};
+use confuse_simics_manifest::PublicPackageNumber;
 use confuse_simics_project::{
     bool_param, file_param, int_param, simics_app, simics_path, str_param, SimicsApp,
     SimicsAppParam, SimicsAppParamType, SimicsProject,
 };
 use hello_world::HELLO_WORLD_EFI_MODULE;
 use indoc::{formatdoc, indoc};
-use log::{Level, LevelFilter};
+use log::{error, Level, LevelFilter};
 use log4rs::{
     append::rolling_file::{
         policy::compound::{
@@ -22,7 +25,20 @@ use log4rs::{
 };
 use tempfile::Builder as NamedTempFileBuilder;
 
-fn init_logging() -> Result<()> {
+#[derive(Parser)]
+#[command(author, version, about)]
+struct Args {
+    /// Path to the initial input corpus for the fuzzer
+    #[arg(short, long)]
+    input: PathBuf,
+    /// Logging level
+    #[arg(short, long, default_value_t = Level::Error)]
+    log_level: Level,
+    #[arg(short, long, default_value_t = 1000)]
+    cycles: u64,
+}
+
+fn init_logging(level: Level) -> Result<()> {
     let logfile = NamedTempFileBuilder::new()
         .prefix("confuse-log")
         .suffix(".log")
@@ -42,7 +58,7 @@ fn init_logging() -> Result<()> {
         .build(
             Root::builder()
                 .appender("logfile")
-                .build(LevelFilter::Error),
+                .build(level.to_level_filter()),
         )?;
     let _handle = init_config(config)?;
 
@@ -50,7 +66,8 @@ fn init_logging() -> Result<()> {
 }
 
 fn main() -> Result<()> {
-    init_logging()?;
+    let args = Args::parse();
+    init_logging(args.log_level)?;
 
     // init_from_env(Env::default().filter_or(DEFAULT_FILTER_ENV, "info"));
     // Paths of
@@ -265,7 +282,7 @@ fn main() -> Result<()> {
     };
 
     // let input = repeat(b'A').take(4096).collect::<Vec<_>>();
-    let simics_project = SimicsProject::try_new()?
+    let simics_project = SimicsProject::try_new_latest()?
         .try_with_package_latest(PublicPackageNumber::QspX86)?
         .try_with_file_contents(HELLO_WORLD_EFI_MODULE, UEFI_APP_PATH)?
         .try_with_file_contents(app.to_string().as_bytes(), APP_YML_PATH)?
@@ -276,14 +293,26 @@ fn main() -> Result<()> {
     // .try_with_file_contents(&input, "corpus/input")?
 
     let mut init_info = InitInfo::default();
-    init_info.add_fault(Fault::Triple);
     init_info.add_fault(Fault::InvalidOpcode);
+    init_info.add_fault(Fault::Page);
     init_info.set_timeout_seconds(1);
 
-    let mut fuzzer = Fuzzer::try_new(init_info, APP_YML_PATH, simics_project, Level::Error)?;
+    let mut fuzzer = Fuzzer::try_new(
+        args.input,
+        init_info,
+        APP_YML_PATH,
+        simics_project,
+        args.log_level,
+    )?;
 
     // This should be enough cycles to hit a bug
-    fuzzer.run_cycles(100)?;
+    fuzzer
+        .run_cycles(args.cycles)
+        .or_else(|e| {
+            error!("Error running cycles: {}", e);
+            Ok::<(), Error>(())
+        })
+        .ok();
     fuzzer.stop()?;
 
     Ok(())

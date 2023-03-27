@@ -9,7 +9,7 @@ use anyhow::{Context, Result, ensure};
 use cargo_metadata::MetadataCommand;
 use chrono::Local;
 use confuse_simics_api::{SIM_VERSION, SIM_VERSION_COMPAT};
-use confuse_simics_manifest::{simics_latest};
+use confuse_simics_manifest::{simics_base_latest};
 use object::{
     elf::FileHeader64,
     endian::LittleEndian,
@@ -129,8 +129,8 @@ pub fn generate_signature_header<P: AsRef<Path>, S: AsRef<str>>(
     simics_home: P,
 ) -> Result<String> {
     // Probably this will be "6"
-    let simics_latest = simics_latest(&simics_home)?;
-    let simics_api = simics_latest
+    let simics_base_latest = simics_base_latest(&simics_home)?;
+    let simics_api = simics_base_latest
         .version
         .split('.')
         .next()

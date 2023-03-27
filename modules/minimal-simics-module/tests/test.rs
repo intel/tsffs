@@ -20,7 +20,7 @@ fn test_load_minimal_simics_module() -> Result<()> {
     let manifest_dir = PathBuf::from(var("CARGO_MANIFEST_DIR")?);
     let resource_dir = manifest_dir.join("resource");
 
-    let simics_project = SimicsProject::try_new()?
+    let simics_project = SimicsProject::try_new_latest()?
         .try_with_package_latest(PublicPackageNumber::QspX86)?
         .try_with_contents(resource_dir)?
         .try_with_module(CRATE_NAME, minimal_module_path)?;
