@@ -4,10 +4,10 @@ use confuse_simics_api::{
     attr_attr_t_Sim_Attr_Pseudo, class_data_t, class_kind_t_Sim_Class_Kind_Session, conf_class,
     conf_class_t, event_class, micro_checkpoint_flags_t_Sim_MC_ID_User,
     micro_checkpoint_flags_t_Sim_MC_Persistent, physical_address_t, CORE_discard_future,
-    SIM_attr_list_size, SIM_continue, SIM_event_post_time, SIM_get_attribute, SIM_get_object,
-    SIM_hap_add_callback, SIM_object_clock, SIM_register_attribute, SIM_register_class,
-    SIM_register_event, SIM_run_alone, SIM_write_phys_memory, VT_restore_micro_checkpoint,
-    VT_save_micro_checkpoint,
+    SIM_attr_list_size, SIM_continue, SIM_event_cancel_time, SIM_event_post_time,
+    SIM_get_attribute, SIM_get_object, SIM_hap_add_callback, SIM_object_clock,
+    SIM_register_attribute, SIM_register_class, SIM_register_event, SIM_run_alone,
+    SIM_write_phys_memory, VT_restore_micro_checkpoint, VT_save_micro_checkpoint,
 };
 
 use crc32fast::hash;
@@ -218,6 +218,19 @@ impl ModuleCtx {
                     let addr: physical_address_t = self.buffer_address + (i * 8) as u64;
                     unsafe { SIM_write_phys_memory(cpu, addr, val, chunk.len().try_into()?) };
                 }
+
+                let clock = unsafe { SIM_object_clock(cpu) };
+
+                unsafe {
+                    SIM_event_post_time(
+                        clock,
+                        self.timeout_event,
+                        cpu,
+                        self.init_info.timeout as f64,
+                        null_mut(),
+                    )
+                };
+
                 unsafe { self.resume_simulation() };
             }
             FuzzerEvent::Stop => {
@@ -243,20 +256,6 @@ impl ModuleCtx {
                         // Not initialized yet, we need to set our checkpoints and such
                         // Right before the snapshot, set a timed event for timeout detection
                         info!("Got magic start, doing first time initialization");
-                        let cpu = self.get_processor()?.get_cpu();
-                        let clock = unsafe { SIM_object_clock(cpu) };
-                        // TODO: Re-post on snapshot restores - check perf
-                        unsafe {
-                            SIM_event_post_time(
-                                clock,
-                                self.timeout_event,
-                                cpu,
-                                self.init_info.timeout as f64,
-                                null_mut(),
-                            )
-                        };
-
-                        info!("Setting timeout event");
 
                         unsafe {
                             VT_save_micro_checkpoint(
@@ -331,8 +330,12 @@ impl ModuleCtx {
                     }
                 }
                 Magic::Stop => {
-                    // Stop harness stop means we need to reset to the snapshot and be ready to
-                    // run
+                    let processor = self.get_processor()?;
+                    let cpu = processor.get_cpu();
+                    let clock = unsafe { SIM_object_clock(cpu) };
+                    unsafe {
+                        SIM_event_cancel_time(clock, self.timeout_event, cpu, None, null_mut())
+                    }
                     self.tx.send(SimicsEvent::Stopped(StopType::Normal))?;
 
                     self.reset_run()?;

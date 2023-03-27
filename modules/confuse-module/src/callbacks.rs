@@ -271,7 +271,7 @@ pub extern "C" fn timeout_event_cb(_obj: *mut conf_object_t, _data: *mut c_void)
     let mut ctx = CTX.lock().expect("Could not lock context!");
     unsafe { SIM_break_simulation(raw_cstr!("Stopping to report crash")) };
 
-    debug!("Timeout detected, reporting!");
+    error!("Timeout detected, reporting!");
     ctx.set_stopped_reason(Some(StopReason::Timeout))
         .expect("Could not set stop reason");
 }
