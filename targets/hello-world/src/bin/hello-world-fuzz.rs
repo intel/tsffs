@@ -295,7 +295,7 @@ fn main() -> Result<()> {
     let mut init_info = InitInfo::default();
     init_info.add_fault(Fault::InvalidOpcode);
     init_info.add_fault(Fault::Page);
-    init_info.set_timeout_seconds(1);
+    init_info.set_timeout_seconds(1.0);
 
     let mut fuzzer = Fuzzer::try_new(
         args.input,

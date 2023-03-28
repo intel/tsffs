@@ -12,7 +12,10 @@ members = [
     # Modules
     "modules/minimal-simics-module",
     "modules/ipc-test-module",
+    # The new version of the confuse module using a dynamic state
     "modules/confuse-module",
+    # The old version of the confuse module using a static global state
+    "modules/confuse-module-static",
     "modules/simics-cmd-module",
     # Targets
     "targets/hello-world",

@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
-use confuse_module::interface::{BOOTSTRAP_SOCKNAME, CRATE_NAME};
-use confuse_module::messages::{FuzzerEvent, InitInfo, Message, SimicsEvent};
+use confuse_module_static::interface::{BOOTSTRAP_SOCKNAME, CRATE_NAME};
+use confuse_module_static::messages::{FuzzerEvent, InitInfo, Message, SimicsEvent};
 use confuse_simics_manifest::PublicPackageNumber;
 use confuse_simics_project::SimicsProject;
 use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender};

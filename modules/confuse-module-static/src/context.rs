@@ -4,8 +4,8 @@ use confuse_simics_api::{
     attr_attr_t_Sim_Attr_Pseudo, class_data_t, class_kind_t_Sim_Class_Kind_Session, conf_class,
     conf_class_t, event_class, micro_checkpoint_flags_t_Sim_MC_ID_User,
     micro_checkpoint_flags_t_Sim_MC_Persistent, physical_address_t, CORE_discard_future,
-    SIM_attr_list_size, SIM_continue, SIM_event_cancel_time, SIM_event_post_time,
-    SIM_get_attribute, SIM_get_object, SIM_hap_add_callback, SIM_object_clock,
+    SIM_attr_list_size, SIM_continue, SIM_event_cancel_time, SIM_event_find_next_time,
+    SIM_event_post_time, SIM_get_attribute, SIM_get_object, SIM_hap_add_callback, SIM_object_clock,
     SIM_register_attribute, SIM_register_class, SIM_register_event, SIM_run_alone,
     SIM_write_phys_memory, VT_restore_micro_checkpoint, VT_save_micro_checkpoint,
 };
@@ -220,16 +220,14 @@ impl ModuleCtx {
                 }
 
                 let clock = unsafe { SIM_object_clock(cpu) };
-
-                unsafe {
-                    SIM_event_post_time(
-                        clock,
-                        self.timeout_event,
-                        cpu,
-                        self.init_info.timeout as f64,
-                        null_mut(),
-                    )
+                let remaining = unsafe {
+                    SIM_event_find_next_time(clock, self.timeout_event, cpu, None, null_mut())
                 };
+
+                info!(
+                    "Remaining time before start: {} / {}",
+                    remaining, self.init_info.timeout
+                );
 
                 unsafe { self.resume_simulation() };
             }
@@ -251,11 +249,25 @@ impl ModuleCtx {
                     if self.initialized {
                         // If we're already initialized, so we just go
                         info!("Got start magic. Already initialized, off we go!");
+
                         unsafe { self.resume_simulation() };
                     } else {
                         // Not initialized yet, we need to set our checkpoints and such
                         // Right before the snapshot, set a timed event for timeout detection
                         info!("Got magic start, doing first time initialization");
+
+                        let processor = self.get_processor()?;
+                        let cpu = processor.get_cpu();
+                        let clock = unsafe { SIM_object_clock(cpu) };
+                        unsafe {
+                            SIM_event_post_time(
+                                clock,
+                                self.timeout_event,
+                                cpu,
+                                self.init_info.timeout,
+                                null_mut(),
+                            )
+                        };
 
                         unsafe {
                             VT_save_micro_checkpoint(
@@ -279,8 +291,6 @@ impl ModuleCtx {
                             sinfo_size
                         );
 
-                        let processor = self.get_processor()?;
-                        let cpu = processor.get_cpu();
                         info!("Got processor");
                         let rsi_number = unsafe {
                             (*processor.get_int_register())
@@ -333,6 +343,15 @@ impl ModuleCtx {
                     let processor = self.get_processor()?;
                     let cpu = processor.get_cpu();
                     let clock = unsafe { SIM_object_clock(cpu) };
+                    let remaining = unsafe {
+                        SIM_event_find_next_time(clock, self.timeout_event, cpu, None, null_mut())
+                    };
+
+                    info!(
+                        "Remaining time after stop: {} / {}",
+                        remaining, self.init_info.timeout
+                    );
+
                     unsafe {
                         SIM_event_cancel_time(clock, self.timeout_event, cpu, None, null_mut())
                     }

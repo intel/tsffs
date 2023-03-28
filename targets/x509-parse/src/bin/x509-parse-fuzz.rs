@@ -302,7 +302,7 @@ fn main() -> Result<()> {
         Fault::Page,
     ]);
 
-    init_info.set_timeout_seconds(3);
+    init_info.set_timeout_seconds(3.0);
 
     let mut fuzzer = Fuzzer::try_new(
         args.input,
