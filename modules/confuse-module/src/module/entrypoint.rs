@@ -4,11 +4,10 @@
 //! perform our own initialization
 include!(concat!(env!("OUT_DIR"), "/simics_module_header.rs"));
 
-use super::{component::ComponentInitializer, controller::Controller};
-use anyhow::Result;
+use std::cell::RefCell;
+
+use super::{components::tracer::AFLCoverageTracer, controller::Controller};
 use const_format::concatcp;
-use inventory::{collect, iter};
-use std::{env::var, str::FromStr};
 
 pub const BOOTSTRAP_SOCKNAME: &str = concatcp!(CLASS_NAME, "_SOCK");
 pub const LOGLEVEL_VARNAME: &str = concatcp!(CLASS_NAME, "_LOGLEVEL");
@@ -18,4 +17,7 @@ pub const LOGLEVEL_VARNAME: &str = concatcp!(CLASS_NAME, "_LOGLEVEL");
 #[no_mangle]
 pub extern "C" fn init_local() {
     let mut controller = Controller::get().expect("Could not get controller");
+    controller
+        .initialize()
+        .expect("Could not initialize the controller");
 }

@@ -13,6 +13,16 @@ pub struct IpcShm {
     pub memfd: Memfd,
 }
 
+impl IpcShm {
+    pub fn is_empty(&self) -> bool {
+        self.size == 0
+    }
+
+    pub fn len(&self) -> usize {
+        self.size
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 struct IpcShmSerializable {
     pub size: usize,

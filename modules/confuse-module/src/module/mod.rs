@@ -4,7 +4,7 @@
 pub mod component;
 pub mod components;
 pub mod config;
-mod controller;
+pub mod controller;
 pub mod entrypoint;
-mod map_type;
-mod stop_reason;
+pub mod map_type;
+pub mod stop_reason;

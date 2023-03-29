@@ -22,7 +22,7 @@ use std::{
     io::Write,
     num::Wrapping,
     path::{Path, PathBuf},
-    time::{SystemTime, UNIX_EPOCH}, ascii::escape_default,
+    time::{SystemTime, UNIX_EPOCH}, ascii::escape_default, process::Command,
 };
 use whoami::username;
 use log::info;
@@ -36,6 +36,13 @@ pub const MAX_SECTION_CSUM_SIZE: u64 = 256;
 // check and may clobber the ELF is it sees a longer one. We won't allow that (20 chars + nul = 21)
 pub const SIMICS_UNAME_LIMIT: usize = 20;
 pub const SIMICS_SIGNATURE_LENGTH: usize = 44;
+
+#[derive(Hash, PartialEq, Eq)]
+pub struct SimicsModuleInterface {
+    pub c_binding: String,
+    pub dml_binding: String,
+    pub name: String,
+}
 
 #[derive(Hash, PartialEq, Eq)]
 /// Struture for a SIMICS module written in rust to manage installation of the module into a SIMICS
@@ -54,7 +61,7 @@ pub struct SimicsModule {
 impl SimicsModule {
     /// Attempt to create a new simics module instance from a crate name in this workspace, the path to the
     /// simics project, and the original path to the simics module
-    pub fn try_new<S: AsRef<str>, P: AsRef<Path>>(crate_name: S, project_base_path: P, module_path: P) -> Result<Self> {
+    pub fn try_new<S: AsRef<str>, P: AsRef<Path>>(crate_name: S, project_base_path: P, module_path: P, interface: Option<SimicsModuleInterface>) -> Result<Self> {
         let original_path = module_path.as_ref().to_path_buf();
         let project_base_path = project_base_path.as_ref().to_path_buf();
         let username = username();
@@ -63,16 +70,70 @@ impl SimicsModule {
         let module_dir = project_base_path.join("linux64").join("lib");
         let path = module_dir.join(original_path.file_name().context("No filename in module path")?);
 
+        if let Some(interface) = interface {
+            let interface_module_path = project_base_path.join("modules").join(&interface.name);
+            create_dir_all(&interface_module_path)?;
+
+            let interface_header_path = interface_module_path.join(interface.name.replace('_', "-") + ".h");
+            let interface_dml_path = interface_module_path.join(interface.name.replace('_', "-") + ".dml");
+            let interface_makefile_path = interface_module_path.join("Makefile");
+
+            let mut interface_header_file = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open(&interface_header_path)?;
+
+
+            let mut interface_dml_file = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open(interface_dml_path)?;
+
+            let mut interface_makefile_file = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open(interface_makefile_path)?;
+
+            write!(interface_header_file, "{}", interface.c_binding)?;
+            write!(interface_dml_file, "{}", interface.dml_binding)?;
+
+            let interface_makefile_filename = interface_header_path.file_name().context("No header path filename")?;
+
+            let interface_makefile_contents = format!(r#"
+                    IFACE_FILES := {}
+                    SIMICS_API := 6
+                    THREAD_SAFE := yes
+                    include $(MODULE_MAKEFILE)
+                "#,
+                interface_makefile_filename.to_string_lossy(),
+            );
+
+            write!(interface_makefile_file, "{}", interface_makefile_contents)?;
+
+            let res = Command::new("make")
+                .current_dir(&project_base_path)
+                .output()?;
+
+            ensure!(res.status.success(), "Failed to build interface");
+
+
+        }
+
         let module = SimicsModule {
             original_path,
             path,
             project_base_path,
             name,
-            class_name
+            class_name,
         };
 
         create_dir_all(&module_dir)?;
         sign_move_simics_module_as(username,  &module.original_path, &module.path)?;
+
+
 
         Ok(module)
     }
@@ -98,7 +159,6 @@ pub fn find_module<S: AsRef<str>>(crate_name: S) -> Result<PathBuf> {
         .iter()
         .filter(|p| p.name == crate_name.as_ref() && p.targets.iter().any(|t| t.is_lib()))
         .filter_map(|p| p.targets.iter().find(|t| t.is_lib()))
-        .take(1)
         .next()
         .context("No package with given crate name.")?;
 

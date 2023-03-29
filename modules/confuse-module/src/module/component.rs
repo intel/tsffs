@@ -3,38 +3,12 @@
 //! This module defines common traits of each component, because we need to be checkpointable which
 //! introduces some constraints.
 
+use super::{
+    config::{InitializeConfig, InitializedConfig},
+    stop_reason::StopReason,
+};
 use anyhow::Result;
-use once_cell::sync::Lazy;
-
-use super::config::{InitializeConfig, InitializedConfig};
-
-#[macro_export]
-/// Submit an init function like:
-/// ```text
-/// component_initializer!(init);
-///
-/// pub fn init() {}
-/// ```
-/// as a component initializer such that the init function will be called when the module is
-/// loaded.
-macro_rules! component_initializer {
-    ($i:expr) => {
-        submit! {
-            static initializer: Lazy<Box<dyn Fn() + Send + Sync>> = Lazy::new(|| {
-                Box::new($i)
-            });
-            ComponentInitializer(&initializer)
-        }
-    };
-}
-
-pub struct ComponentInitializer(pub &'static Lazy<Box<dyn Fn() + Send + Sync>>);
-
-impl ComponentInitializer {
-    pub fn init(&self) {
-        self.0();
-    }
-}
+use confuse_simics_api::{attr_value_t, conf_object_t};
 
 pub trait Component {
     /// Called when a `ClientMessage::Initialize` message is received. A component can use any
@@ -43,9 +17,9 @@ pub trait Component {
     /// the client
     fn on_initialize(
         &mut self,
-        initialize_config: InitializeConfig,
-        initialized_config: &mut InitializedConfig,
-    ) -> Result<()>;
+        initialize_config: &InitializeConfig,
+        initialized_config: InitializedConfig,
+    ) -> Result<InitializedConfig>;
     /// Called prior to running the simulator with a given input. Components do not need to do
     /// anything with this information, but they can. For example, the redqueen component needs
     /// to inspect the input to establish an I2S (Input-To-State) correspondence.
@@ -55,5 +29,11 @@ pub trait Component {
     fn on_reset(&mut self) -> Result<()>;
     /// Called when a `ClientMessage::Stop` message is received. The component should clean itself
     /// up and do any pre-exit work it needs to do.
-    fn on_stop(&mut self) -> Result<()>;
+    fn on_stop(&mut self, reason: &Option<StopReason>) -> Result<()>;
+    /// Called when a processor is added via the external interface
+    unsafe fn on_add_processor(
+        &mut self,
+        obj: *mut conf_object_t,
+        processor: *mut attr_value_t,
+    ) -> Result<()>;
 }

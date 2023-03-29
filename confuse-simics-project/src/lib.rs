@@ -19,7 +19,7 @@ use indoc::formatdoc;
 use log::{error, info};
 
 use confuse_simics_manifest::{package_infos, simics_base_version, PackageNumber};
-use confuse_simics_module::SimicsModule;
+use confuse_simics_module::{SimicsModule, SimicsModuleInterface};
 use regex::Regex;
 use tempdir::TempDir;
 use version_tools::VersionConstraint;
@@ -408,7 +408,33 @@ impl SimicsProject {
         module: P,
     ) -> Result<Self> {
         let module_path = module.as_ref().to_path_buf();
-        let module = SimicsModule::try_new(module_crate_name, &self.base_path, &module_path)?;
+        let module = SimicsModule::try_new(module_crate_name, &self.base_path, &module_path, None)?;
+        self.modules.insert(module);
+        Ok(self)
+    }
+
+    /// Try to add a shared object module to the simics project. This module may or may not already
+    /// be signed using `sign_simics_module` but will be re-signed in all cases. This will fail if
+    /// the module does not correctly include the symbols needed for simics to load it.
+    pub fn try_with_module_interface<S: AsRef<str>, P: AsRef<Path>>(
+        mut self,
+        module_crate_name: S,
+        module: P,
+        c_binding: S,
+        dml_binding: S,
+        name: S,
+    ) -> Result<Self> {
+        let module_path = module.as_ref().to_path_buf();
+        let module = SimicsModule::try_new(
+            module_crate_name,
+            &self.base_path,
+            &module_path,
+            Some(SimicsModuleInterface {
+                c_binding: c_binding.as_ref().to_string(),
+                dml_binding: dml_binding.as_ref().to_string(),
+                name: name.as_ref().to_string(),
+            }),
+        )?;
         self.modules.insert(module);
         Ok(self)
     }

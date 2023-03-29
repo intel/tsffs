@@ -8,10 +8,14 @@ use std::{
 
 use anyhow::{bail, Result};
 use confuse_module::{
-    interface::BOOTSTRAP_SOCKNAME as CONFUSE_MODULE_BOOTSTRAP_SOCKNAME,
-    interface::CRATE_NAME as CONFUSE_MODULE_CRATE_NAME,
-    interface::LOGLEVEL_VARNAME as CONFUSE_MODULE_LOGLEVEL_VARNAME,
-    messages::{FuzzerEvent, InitInfo, SimicsEvent, StopType},
+    module::controller::messages::{client::ClientMessage, module::ModuleMessage},
+    module::entrypoint::BOOTSTRAP_SOCKNAME as CONFUSE_MODULE_BOOTSTRAP_SOCKNAME,
+    module::stop_reason::StopReason,
+    module::{config::InitializeConfig, entrypoint::CRATE_NAME as CONFUSE_MODULE_CRATE_NAME},
+    module::{
+        controller::confuse_module_controller_interface_t,
+        entrypoint::LOGLEVEL_VARNAME as CONFUSE_MODULE_LOGLEVEL_VARNAME,
+    },
 };
 use confuse_simics_module::find_module;
 use confuse_simics_project::SimicsProject;
@@ -32,8 +36,8 @@ use log::{debug, error, info, warn, Level};
 /// Customizable fuzzer for SIMICS
 pub struct Fuzzer {
     simics_project: SimicsProject,
-    tx: IpcSender<FuzzerEvent>,
-    rx: IpcReceiver<SimicsEvent>,
+    tx: IpcSender<ClientMessage>,
+    rx: IpcReceiver<ModuleMessage>,
     simics: Child,
     _shm: IpcShm,
     shm_writer: IpcShmWriter,
@@ -45,14 +49,20 @@ pub struct Fuzzer {
 impl Fuzzer {
     pub fn try_new<S: AsRef<OsStr>>(
         input_corpus: PathBuf,
-        init_info: InitInfo,
+        init_info: InitializeConfig,
         app_yml_path: S,
         simics_project: SimicsProject,
         simics_log_level: Level,
     ) -> Result<Self> {
         let confuse_module = find_module(CONFUSE_MODULE_CRATE_NAME)?;
-        let simics_project =
-            simics_project.try_with_module(CONFUSE_MODULE_CRATE_NAME, confuse_module)?;
+        let mut simics_project = simics_project.try_with_module_interface(
+            CONFUSE_MODULE_CRATE_NAME,
+            confuse_module,
+            confuse_module_controller_interface_t::C_HEADER_BINDING,
+            confuse_module_controller_interface_t::DML_BINDING,
+            confuse_module_controller_interface_t::INTERFACE_NAME,
+        )?;
+        simics_project.persist();
         let (bootstrap, bootstrap_name) = IpcOneShotServer::new()?;
         let mut simics_command = simics_project.command();
         let simics_command = simics_command
@@ -106,15 +116,15 @@ impl Fuzzer {
             info!("Err reader exited.");
         });
 
-        let (_, (tx, rx)): (_, (IpcSender<FuzzerEvent>, IpcReceiver<SimicsEvent>)) =
+        let (_, (tx, rx)): (_, (IpcSender<ClientMessage>, IpcReceiver<ModuleMessage>)) =
             bootstrap.accept()?;
 
-        tx.send(FuzzerEvent::Initialize(init_info))?;
+        tx.send(ClientMessage::Initialize(init_info))?;
 
         info!("Receiving ipc shm");
 
         let mut shm = match rx.recv()? {
-            SimicsEvent::SharedMem(shm) => shm,
+            ModuleMessage::Initialized(mut config) => config.coverage()?,
             _ => bail!("Unexpected message received"),
         };
 
@@ -124,7 +134,7 @@ impl Fuzzer {
 
         info!("Sending initial reset signal");
 
-        tx.send(FuzzerEvent::Reset)?;
+        tx.send(ClientMessage::Reset)?;
 
         Ok(Self {
             simics_project,
@@ -175,7 +185,7 @@ impl Fuzzer {
 
             info!("Running with input '{:?}'", run_input);
             match self.rx.recv().expect("Failed to receive message") {
-                SimicsEvent::Ready => {
+                ModuleMessage::Ready => {
                     debug!("Received ready signal");
                 }
                 _ => {
@@ -185,23 +195,26 @@ impl Fuzzer {
 
             info!("Sending run signal");
             self.tx
-                .send(FuzzerEvent::Run(run_input))
+                .send(ClientMessage::Run(run_input))
                 .expect("Failed to send message");
 
             match self.rx.recv().expect("Failed to receive message") {
-                SimicsEvent::Stopped(stop_type) => match stop_type {
-                    StopType::Crash(fault) => {
+                ModuleMessage::Stopped(stop_type) => match stop_type {
+                    StopReason::Crash(fault) => {
                         error!("Target crashed with fault {:?}, yeehaw!", fault);
                         exit_kind = ExitKind::Crash;
                     }
-                    StopType::Normal => {
+                    StopReason::SimulationExit => {
                         info!("Target stopped normally ;_;");
 
                         exit_kind = ExitKind::Ok;
                     }
-                    StopType::TimeOut => {
+                    StopReason::TimeOut => {
                         warn!("Target timed out, yeehaw(???)");
                         exit_kind = ExitKind::Timeout;
+                    }
+                    StopReason::Magic(_) => {
+                        exit_kind = ExitKind::Ok;
                     }
                 },
                 _ => {
@@ -214,7 +227,7 @@ impl Fuzzer {
             debug!("Sending reset signal");
 
             self.tx
-                .send(FuzzerEvent::Reset)
+                .send(ClientMessage::Reset)
                 .expect("Failed to send message");
 
             debug!("Harness done");
@@ -277,7 +290,7 @@ impl Fuzzer {
         // kill?
 
         // match self.rx.recv()? {
-        //     SimicsEvent::Ready => {
+        //     ModuleMessage::Ready => {
         //         info!("Received ready signal");
         //     }
         //     _ => {
@@ -285,7 +298,7 @@ impl Fuzzer {
         //     }
         // }
 
-        // self.tx.send(FuzzerEvent::Stop)?;
+        // self.tx.send(ClientMessage::Stop)?;
 
         self.simics.kill()?;
 
