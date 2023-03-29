@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use anyhow::{Error, Result};
 use clap::Parser;
 use confuse_fuzz::fuzzer::Fuzzer;
@@ -26,6 +24,7 @@ use log4rs::{
     encode::pattern::PatternEncoder,
     init_config, Config,
 };
+use std::path::PathBuf;
 use tempfile::Builder as NamedTempFileBuilder;
 
 #[derive(Parser)]

@@ -235,10 +235,13 @@ impl Component for Controller {
             "Could not register controller interface"
         );
 
-        unsafe {
-            // Free interface
-            Box::from_raw(interface)
-        };
+        // Note: We do *NOT* want to free the interface, the allocated pointers are used directly
+        // by simics, not copied
+
+        info!(
+            "Registered interface {}",
+            confuse_module_controller_interface_t::INTERFACE_NAME
+        );
 
         // Next, we register callbacks for the two events we care about for this component:
         // - Core_Magic_Instruction: this lets us catch when we should pause to prep fuzzing
@@ -313,6 +316,7 @@ impl Component for Controller {
         obj: *mut conf_object_t,
         processor: *mut attr_value_t,
     ) -> Result<()> {
+        info!("Adding a processor");
         let mut tracer = AFLCoverageTracer::get().expect("Could not get tracer");
         tracer.on_add_processor(obj, processor)?;
 
@@ -331,7 +335,11 @@ pub struct confuse_module_controller_interface_t {
 impl confuse_module_controller_interface_t {
     // TODO: Can we autogenerate this with bindgen and tree-sitter?
     /// Write the C binding for this interface here
-    pub const INTERFACE_NAME: &str = concatcp!(CLASS_NAME, "_controller_interface");
+    pub const INTERFACE_NAME: &str = concatcp!(CLASS_NAME, "_controller");
+    pub const INTERFACE_TYPENAME: &str = concatcp!(
+        confuse_module_controller_interface_t::INTERFACE_NAME,
+        "_interface_t"
+    );
     pub const C_HEADER_BINDING: &str = formatcp!(
         r#"
             #ifndef CONFUSE_CONTROLLER_INTERFACE_H
@@ -341,14 +349,15 @@ impl confuse_module_controller_interface_t {
             #include <simics/pywrap.h>
             #include <simics/simulator-api.h> 
 
-            SIM_INTERFACE(confuse_controller) {{
+            SIM_INTERFACE({}) {{
                 void (*run)(conf_object_t *obj);
                 void (*add_processor)(conf_object_t *obj, attr_value_t *processor);
             }};
-            #define CONFUSE_CONTROLLER_INTERFACE "{}"
+            #define CONFUSE_MODULE_CONTROLLER_INTERFACE "{}"
 
             #endif /* ! CONFUSE_CONTROLLER_INTERFACE_H */
         "#,
+        confuse_module_controller_interface_t::INTERFACE_NAME,
         confuse_module_controller_interface_t::INTERFACE_NAME
     );
     pub const DML_BINDING: &str = formatcp!(
@@ -361,16 +370,16 @@ impl confuse_module_controller_interface_t {
             extern typedef struct {{
                 void (*run)(conf_object_t *obj);
                 void (*add_processor)(conf_object_t *obj, attr_value_t *processor);
-            }} {}_t
+            }} {};
         "#,
         confuse_module_controller_interface_t::INTERFACE_NAME,
-        confuse_module_controller_interface_t::INTERFACE_NAME
+        confuse_module_controller_interface_t::INTERFACE_TYPENAME,
     );
 
     pub fn new() -> Self {
         Self {
             run: simics::controller_interface_run,
-            add_processor: simics::add_processor_cb,
+            add_processor: simics::controller_interface_add_processor,
         }
     }
 }
@@ -383,12 +392,28 @@ mod simics {
 
     use super::{magic::Magic, Controller};
     use confuse_simics_api::{attr_value_t, conf_object_t};
+    use log::info;
 
     #[no_mangle]
     /// Invoked by SIMICs through the interface binding. This function signals the module to run
     pub extern "C" fn controller_interface_run(obj: *mut conf_object_t) {
+        info!("Interface call: run");
         let mut controller = Controller::get().expect("Could not get controller");
         unsafe { controller.continue_simulation() };
+    }
+
+    #[no_mangle]
+    pub extern "C" fn controller_interface_add_processor(
+        obj: *mut conf_object_t,
+        processor: *mut attr_value_t,
+    ) {
+        info!("Interface call: add_processor");
+        let mut controller = Controller::get().expect("Could not get controller");
+        unsafe {
+            controller
+                .add_processor(obj, processor)
+                .expect("Failed to add processor")
+        };
     }
 
     #[no_mangle]
@@ -425,15 +450,5 @@ mod simics {
         controller
             .on_stop_callback()
             .expect("Failed to handle stop callback");
-    }
-
-    #[no_mangle]
-    pub extern "C" fn add_processor_cb(obj: *mut conf_object_t, processor: *mut attr_value_t) {
-        let mut controller = Controller::get().expect("Could not get controller");
-        unsafe {
-            controller
-                .add_processor(obj, processor)
-                .expect("Failed to add processor")
-        };
     }
 }

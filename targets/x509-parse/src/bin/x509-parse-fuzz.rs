@@ -3,7 +3,10 @@ use std::path::PathBuf;
 use anyhow::{Error, Result};
 use clap::Parser;
 use confuse_fuzz::fuzzer::Fuzzer;
-use confuse_module::messages::{Fault, InitInfo};
+use confuse_module::module::{
+    components::detector::fault::{Fault, X86_64Fault},
+    config::InitializeConfig,
+};
 use confuse_simics_manifest::PublicPackageNumber;
 use confuse_simics_project::{
     bool_param, file_param, int_param, simics_app, simics_path, str_param, SimicsApp,
@@ -151,7 +154,6 @@ fn main() -> Result<()> {
         )
 
         SIM_create_object('confuse_module', 'confuse_module', [])
-        conf.confuse_module.processor = SIM_get_object(simenv.system).mb.cpu0.core[0][0]
 
 
         if SIM_get_batch_mode():
@@ -163,7 +165,11 @@ fn main() -> Result<()> {
             )
             conf.board.mb.gpu.vga.console=None
 
-        conf.confuse_module.signal = 1
+        print("Controller interface:", conf.confuse_module.iface.confuse_module_controller)
+        print("run function:", help(conf.confuse_module.iface.confuse_module_controller.run))
+        conf.confuse_module.iface.confuse_module_controller.add_processor(SIM_get_object(simenv.system).mb.cpu0.core[0][0])
+        conf.confuse_module.iface.confuse_module_controller.run()
+
     "#,
             // simics.SIM_lookup_file("%simics%/targets/qsp-x86-fuzzing/run-uefi-app.simics"),
           &simics_path!(STARTUP_SIMICS_PATH),
@@ -292,17 +298,12 @@ fn main() -> Result<()> {
         .try_with_file_contents(run_uefi_app_nsh_script, STARTUP_NSH_PATH)?
         .try_with_file_contents(run_uefi_app_simics_script.as_bytes(), STARTUP_SIMICS_PATH)?;
 
-    let mut init_info = InitInfo::default();
-
-    init_info.add_faults([
-        Fault::Triple,
-        Fault::InvalidOpcode,
-        Fault::Double,
-        Fault::GeneralProtection,
-        Fault::Page,
-    ]);
-
-    init_info.set_timeout_seconds(3.0);
+    let init_info = InitializeConfig::default()
+        .with_faults([
+            Fault::X86_64(X86_64Fault::Page),
+            Fault::X86_64(X86_64Fault::InvalidOpcode),
+        ])
+        .with_timeout_seconds(3.0);
 
     let mut fuzzer = Fuzzer::try_new(
         args.input,
