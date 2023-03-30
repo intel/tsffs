@@ -1,5 +1,5 @@
 use self::{
-    magic::Magic,
+    magic::{Magic, MagicCode},
     messages::{client::ClientMessage, module::ModuleMessage},
     target_buffer::TargetBuffer,
 };
@@ -28,7 +28,7 @@ use confuse_simics_api::{
 use const_format::{concatcp, formatcp};
 use ipc_channel::ipc::{channel, IpcReceiver, IpcSender};
 use lazy_static::lazy_static;
-use log::{info, Level, LevelFilter};
+use log::{info, trace, Level, LevelFilter};
 use log4rs::{
     append::console::{ConsoleAppender, Target},
     config::{Appender, Config, Root},
@@ -46,8 +46,8 @@ use std::{
     sync::{Arc, Mutex, MutexGuard},
 };
 
+pub mod fault;
 pub mod magic;
-pub mod message;
 pub mod messages;
 mod target_buffer;
 
@@ -191,6 +191,7 @@ impl Controller {
 
     /// Stop the simulation with some reason for stopping
     pub unsafe fn stop_simulation(&mut self, reason: StopReason) {
+        trace!("Stopped with reason: {:?}", reason);
         self.stop_reason = Some(reason.clone());
         let reason_string = raw_cstr!(format!("{:?}", reason));
         SIM_break_simulation(reason_string);
@@ -410,7 +411,7 @@ impl Component for Controller {
         match reason {
             None => {}
             Some(StopReason::Magic(magic)) => match magic {
-                Magic::Start => {
+                Magic::Start(_) => {
                     if self.first_time_init_done {
                         unsafe { self.continue_simulation() };
                     } else {
@@ -418,9 +419,17 @@ impl Component for Controller {
                         self.on_reset()?;
                     }
                 }
-                Magic::Stop => {
+                Magic::Stop((code, _)) => {
+                    let val = self
+                        .cpus
+                        .first()
+                        .context("No cpu available")?
+                        .borrow()
+                        .get_reg_value("rsi")?;
+                    let magic = Magic::Stop((code, Some(val)));
+                    trace!("Stopped with magic: {:?}", magic);
                     self.tx
-                        .send(ModuleMessage::Stopped(StopReason::Magic(Magic::Stop)))?;
+                        .send(ModuleMessage::Stopped(StopReason::Magic(magic)))?;
                     self.on_reset()?;
                 }
             },
@@ -580,17 +589,20 @@ impl Default for confuse_module_controller_interface_t {
 
 /// This module contains all code that is invoked by SIMICS
 mod callbacks {
-    use super::{magic::Magic, Controller};
+    use super::{
+        magic::{Magic, MagicCode},
+        Controller,
+    };
     use confuse_simics_api::{attr_value_t, conf_object_t};
-    use log::info;
+    use log::{info, trace};
     use std::ffi::{c_char, c_void};
 
     #[no_mangle]
     /// Invoked by SIMICs through the interface binding. This function signals the module to run
     pub extern "C" fn controller_interface_run(_obj: *mut conf_object_t) {
-        info!("Interface call: run");
+        trace!("Interface call: run");
         let mut controller = Controller::get().expect("Could not get controller");
-        unsafe { controller.interface_run() };
+        unsafe { controller.interface_run() }.expect("Failed to trigger run");
     }
 
     #[no_mangle]
@@ -598,7 +610,7 @@ mod callbacks {
         obj: *mut conf_object_t,
         processor: *mut attr_value_t,
     ) {
-        info!("Interface call: add_processor");
+        trace!("Interface call: add_processor");
         let mut controller = Controller::get().expect("Could not get controller");
         unsafe {
             controller
@@ -609,7 +621,7 @@ mod callbacks {
 
     #[no_mangle]
     pub extern "C" fn controller_interface_add_fault(obj: *mut conf_object_t, fault: i64) {
-        info!("Interface call: add_fault");
+        trace!("Interface call: add_fault");
         let mut controller = Controller::get().expect("Could not get controller");
         unsafe {
             controller
@@ -625,6 +637,7 @@ mod callbacks {
         parameter: i64,
     ) {
         if let Ok(magic) = Magic::try_from(parameter) {
+            trace!("Got magic: {:?}", magic);
             let mut controller = Controller::get().expect("Could not get controller");
             controller
                 .on_magic_instruction_cb(magic)
@@ -641,6 +654,7 @@ mod callbacks {
         // Error string is always NULL
         _error_string: *mut c_char,
     ) {
+        trace!("Simulation stopped");
         let mut controller = Controller::get().expect("Could not get controller");
         controller
             .on_simulation_stopped_cb()

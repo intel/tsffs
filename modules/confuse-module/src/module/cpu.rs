@@ -5,11 +5,11 @@ use confuse_simics_api::{
     cpu_cached_instruction_interface_t, cpu_instruction_query_interface_t,
     cpu_instrumentation_subscribe_interface_t, exception_interface_t, instruction_handle_t,
     int_register_interface_t, physical_block_t, processor_info_v2_interface_t,
-    x86_access_type_X86_Vanilla, SIM_attr_object_or_nil, SIM_c_get_interface, SIM_write_byte,
-    CPU_CACHED_INSTRUCTION_INTERFACE, CPU_INSTRUCTION_QUERY_INTERFACE,
+    x86_access_type_X86_Vanilla, SIM_attr_object_or_nil, SIM_c_get_interface, SIM_read_byte,
+    SIM_write_byte, CPU_CACHED_INSTRUCTION_INTERFACE, CPU_INSTRUCTION_QUERY_INTERFACE,
     CPU_INSTRUMENTATION_SUBSCRIBE_INTERFACE, INT_REGISTER_INTERFACE, PROCESSOR_INFO_V2_INTERFACE,
 };
-use log::{error, info};
+use log::{error, info, trace};
 use raw_cstr::raw_cstr;
 use std::ffi::CString;
 use std::{ffi::c_void, ptr::null_mut, slice::from_raw_parts};
@@ -225,10 +225,12 @@ impl Cpu {
             _ => bail!("No function get_physical_memory in interface"),
         };
 
-        for (i, byte) in bytes.into_iter().enumerate() {
+        for (i, byte) in bytes.iter().enumerate() {
             let logical_addr = logical_addr_start + i as u64;
             let physical_addr = self.logical_to_physical(logical_addr)?.address;
             unsafe { SIM_write_byte(physical_memory, physical_addr, *byte) };
+            let written = unsafe { SIM_read_byte(physical_memory, physical_addr) };
+            ensure!(written == *byte, "Did not read back same written byte");
         }
 
         Ok(())

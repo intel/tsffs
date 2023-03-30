@@ -150,8 +150,6 @@ fn main() -> Result<()> {
             True, args
         )
 
-
-
         if SIM_get_batch_mode():
             SIM_log_info(
                 1,
@@ -162,8 +160,8 @@ fn main() -> Result<()> {
             conf.board.mb.gpu.vga.console=None
 
         SIM_create_object('confuse_module', 'confuse_module', [])
-        conf.confuse_module.add_processor(SIM_get_object(simenv.system).mb.cpu0.core[0][0])
-        conf.confuse_module.run()
+        conf.confuse_module.iface.confuse_module_controller.add_processor(SIM_get_object(simenv.system).mb.cpu0.core[0][0])
+        conf.confuse_module.iface.confuse_module_controller.run()
     "#,
             // simics.SIM_lookup_file("%simics%/targets/qsp-x86-fuzzing/run-uefi-app.simics"),
           &simics_path!(STARTUP_SIMICS_PATH),

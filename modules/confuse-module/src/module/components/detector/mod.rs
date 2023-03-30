@@ -7,6 +7,7 @@ use crate::module::{
 };
 use anyhow::Result;
 use confuse_simics_api::{attr_value_t, conf_object_t, SIM_hap_add_callback};
+use log::{info, trace};
 use raw_cstr::raw_cstr;
 use std::ffi::CString;
 use std::{collections::HashSet, mem::transmute, ptr::null_mut, sync::MutexGuard};
@@ -47,6 +48,7 @@ impl FaultDetector {
         // TODO: Arch independent
         if let Ok(fault) = X86_64Fault::try_from(exception) {
             let fault = Fault::X86_64(fault);
+            info!("Got exception with fault: {:?}", fault);
             if self.faults.contains(&fault) {
                 let mut controller = Controller::get()?;
                 unsafe { controller.stop_simulation(StopReason::Crash(fault)) };
@@ -62,6 +64,8 @@ impl Component for FaultDetector {
         initialize_config: &InitializeConfig,
         initialized_config: InitializedConfig,
     ) -> Result<InitializedConfig> {
+        self.faults = initialize_config.faults.clone();
+
         unsafe {
             SIM_hap_add_callback(
                 raw_cstr!("Core_Exception"),

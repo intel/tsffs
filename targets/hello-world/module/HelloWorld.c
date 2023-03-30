@@ -48,7 +48,6 @@ UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable) {
 
             // NOTE: gBS is the global Boot Services table
             gBS->Stall(10 * 1000 * 1000);
-
         }
         case 'C': {
             // This should double or triple fault (or both)
@@ -61,7 +60,7 @@ UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable) {
         }
     }
 
-    HARNESS_STOP();
+    HARNESS_STOP_EXTENDED(input);
 
     if (input) {
         FreePages(input, EFI_SIZE_TO_PAGES(input_max_size));

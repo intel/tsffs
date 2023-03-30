@@ -12,7 +12,7 @@ use anyhow::{ensure, Result};
 use confuse_simics_api::{attr_value_t, conf_object_t, instruction_handle_t};
 use crc32fast::hash;
 use ipc_shm::{IpcShm, IpcShmWriter};
-use log::{debug, info};
+use log::{debug, info, trace};
 use rand::{thread_rng, Rng};
 use std::{cell::RefCell, num::Wrapping, sync::MutexGuard};
 
@@ -20,7 +20,7 @@ pub struct AFLCoverageTracer {
     afl_coverage_map: IpcShm,
     afl_coverage_map_writer: IpcShmWriter,
     afl_prev_loc: u64,
-    cpus: Vec<Box<RefCell<Cpu>>>,
+    cpus: Vec<RefCell<Cpu>>,
 }
 
 impl AFLCoverageTracer {
@@ -96,13 +96,13 @@ impl Component for AFLCoverageTracer {
     }
 
     fn on_reset(&mut self) -> Result<()> {
-        let map = self.afl_coverage_map_writer.read_all()?;
-        let map_csum = hash(&map);
-        debug!("Map checksum: {}", map_csum);
         Ok(())
     }
 
     fn on_stop(&mut self, _reason: Option<StopReason>) -> Result<()> {
+        let map = self.afl_coverage_map_writer.read_all()?;
+        let map_csum = hash(&map);
+        trace!("Map checksum: {:#x}", map_csum);
         Ok(())
     }
 
@@ -118,7 +118,7 @@ impl ComponentInterface for AFLCoverageTracer {
         processor: *mut attr_value_t,
     ) -> Result<()> {
         info!("Adding processor to context");
-        let cpu = Box::new(RefCell::new(Cpu::try_new(processor)?));
+        let cpu = RefCell::new(Cpu::try_new(processor)?);
 
         cpu.borrow()
             .register_cached_instruction_cb(callbacks::cached_instruction_cb)?;
