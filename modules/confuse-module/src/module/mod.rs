@@ -5,6 +5,7 @@ pub mod component;
 pub mod components;
 pub mod config;
 pub mod controller;
+pub mod cpu;
 pub mod entrypoint;
 pub mod map_type;
 pub mod stop_reason;

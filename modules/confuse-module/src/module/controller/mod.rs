@@ -4,23 +4,26 @@ use self::{
     target_buffer::TargetBuffer,
 };
 use super::{
-    component::Component,
+    component::{Component, ComponentInterface},
     config::{InitializeConfig, InitializedConfig},
+    cpu::Cpu,
     stop_reason::StopReason,
 };
 use crate::{
     module::{
-        components::tracer::AFLCoverageTracer,
+        components::{detector::FaultDetector, tracer::AFLCoverageTracer},
         entrypoint::{BOOTSTRAP_SOCKNAME, CLASS_NAME, LOGLEVEL_VARNAME},
     },
     nonnull,
 };
-use anyhow::{bail, ensure, Result};
+use anyhow::{bail, ensure, Context, Result};
 use confuse_simics_api::{
     attr_value_t, class_data_t, class_info_t, class_kind_t_Sim_Class_Kind_Pseudo,
-    class_kind_t_Sim_Class_Kind_Session, conf_object_t, SIM_break_simulation, SIM_continue,
-    SIM_create_class, SIM_get_class, SIM_hap_add_callback, SIM_register_class,
-    SIM_register_interface, SIM_run_alone,
+    class_kind_t_Sim_Class_Kind_Session, conf_object_t, micro_checkpoint_flags_t_Sim_MC_ID_User,
+    micro_checkpoint_flags_t_Sim_MC_Persistent, CORE_discard_future, SIM_attr_list_size,
+    SIM_break_simulation, SIM_continue, SIM_create_class, SIM_get_attribute, SIM_get_class,
+    SIM_get_object, SIM_hap_add_callback, SIM_quit, SIM_register_class, SIM_register_interface,
+    SIM_run_alone, VT_restore_micro_checkpoint, VT_save_micro_checkpoint,
 };
 use const_format::{concatcp, formatcp};
 use ipc_channel::ipc::{channel, IpcReceiver, IpcSender};
@@ -55,6 +58,9 @@ lazy_static! {
     pub static ref TRACER: Arc<Mutex<AFLCoverageTracer>> = Arc::new(Mutex::new(
         AFLCoverageTracer::try_new().expect("Could not initialize AFLCoverageTracer")
     ));
+    pub static ref DETECTOR: Arc<Mutex<FaultDetector>> = Arc::new(Mutex::new(
+        FaultDetector::try_new().expect("Could not initialize fault detector")
+    ));
 }
 
 /// Controller for the Confuse simics module. The controller is reponsible for communicating with
@@ -64,7 +70,9 @@ pub struct Controller {
     rx: IpcReceiver<ClientMessage>,
     log_handle: Handle,
     stop_reason: Option<StopReason>,
-    buffer: Option<TargetBuffer>,
+    buffer: TargetBuffer,
+    first_time_init_done: bool,
+    cpus: Vec<Box<RefCell<Cpu>>>,
 }
 
 impl Controller {
@@ -112,17 +120,10 @@ impl Controller {
             rx,
             log_handle,
             stop_reason: None,
-            buffer: None,
+            buffer: TargetBuffer::default(),
+            first_time_init_done: false,
+            cpus: vec![],
         })
-    }
-
-    /// Add a processor to the controller
-    pub unsafe fn add_processor(
-        &mut self,
-        obj: *mut conf_object_t,
-        processor: *mut attr_value_t,
-    ) -> Result<()> {
-        unsafe { self.on_add_processor(obj, processor) }
     }
 
     /// Initialize the controller. This is called during module initialization after all
@@ -141,22 +142,42 @@ impl Controller {
         Ok(())
     }
 
-    /// Called by SIMICS when the simulation stops
-    pub fn on_stop_callback(&mut self) -> Result<()> {
-        let reason = self.stop_reason.clone();
-        self.on_stop(&reason)
+    pub unsafe fn take_snapshot(&mut self) -> Result<()> {
+        unsafe {
+            VT_save_micro_checkpoint(
+                raw_cstr!("origin"),
+                micro_checkpoint_flags_t_Sim_MC_ID_User
+                    | micro_checkpoint_flags_t_Sim_MC_Persistent,
+            )
+        };
+
+        info!("Took snapshot");
+
+        let rexec = unsafe { SIM_get_object(raw_cstr!("sim.rexec")) };
+
+        let sinfo = unsafe { SIM_get_attribute(rexec, raw_cstr!("state_info")) };
+
+        let sinfo_size = SIM_attr_list_size(sinfo)?;
+
+        ensure!(
+            sinfo_size == 1,
+            "Invalid size of state_info: {}",
+            sinfo_size
+        );
+
+        Ok(())
     }
 
-    /// Called when the stop reason is `StopReason::Magic`
-    pub fn on_stop_magic(&mut self, magic: &Magic) -> Result<()> {
-        match magic {
-            Magic::Start => {
-                // if self.buffer.is_none() {
-                // } else {
-                // }
-            }
-            Magic::Stop => {}
+    pub unsafe fn quit_simulation(&mut self) {
+        SIM_quit(0);
+    }
+
+    pub unsafe fn restore_snapshot(&mut self) -> Result<()> {
+        unsafe {
+            VT_restore_micro_checkpoint(0);
+            CORE_discard_future();
         }
+
         Ok(())
     }
 
@@ -170,9 +191,51 @@ impl Controller {
 
     /// Stop the simulation with some reason for stopping
     pub unsafe fn stop_simulation(&mut self, reason: StopReason) {
+        self.stop_reason = Some(reason.clone());
         let reason_string = raw_cstr!(format!("{:?}", reason));
         SIM_break_simulation(reason_string);
-        self.stop_reason = Some(reason);
+    }
+}
+
+/// Implementation for methods the interface calls on us
+impl Controller {
+    /// Run the module
+    pub unsafe fn interface_run(&mut self) -> Result<()> {
+        self.continue_simulation();
+        Ok(())
+    }
+
+    /// Add a processor to the controller
+    pub unsafe fn interface_add_processor(
+        &mut self,
+        obj: *mut conf_object_t,
+        processor: *mut attr_value_t,
+    ) -> Result<()> {
+        unsafe { self.on_add_processor(obj, processor) }
+    }
+
+    /// Add a fault to the controller
+    pub unsafe fn interface_add_fault(
+        &mut self,
+        obj: *mut conf_object_t,
+        fault: i64,
+    ) -> Result<()> {
+        unsafe { self.on_add_fault(obj, fault) }
+    }
+}
+
+/// Implementation for methods callbacks call on us
+impl Controller {
+    /// Called by SIMICS when the simulation stops
+    pub fn on_magic_instruction_cb(&mut self, magic: Magic) -> Result<()> {
+        unsafe { self.stop_simulation(StopReason::Magic(magic)) };
+        Ok(())
+    }
+
+    /// Called by SIMICS on magic instruction
+    pub fn on_simulation_stopped_cb(&mut self) -> Result<()> {
+        let reason = self.stop_reason.clone();
+        self.on_stop(reason)
     }
 }
 
@@ -184,19 +247,21 @@ impl Component for Controller {
         initialize_config: &InitializeConfig,
         mut initialized_config: InitializedConfig,
     ) -> Result<InitializedConfig> {
-        // On initialize, the controller registers a class and an interface for configuration
-        // through SIMICS scripting
-        // let class_info = class_info_t {
-        //     alloc: None,
-        //     init: None,
-        //     finalize: None,
-        //     objects_finalized: None,
-        //     deinit: None,
-        //     dealloc: None,
-        //     description: raw_cstr!(Controller::CLASS_DESCRIPTION),
-        //     short_desc: raw_cstr!(Controller::CLASS_SHORT_DESCRIPTION),
-        //     kind: class_kind_t_Sim_Class_Kind_Pseudo,
-        // };
+        // Before initializing ourself, we go ahead and initialize all of our components
+
+        let mut tracer = AFLCoverageTracer::get()?;
+
+        initialized_config = tracer.on_initialize(initialize_config, initialized_config)?;
+
+        drop(tracer);
+
+        let mut detector = FaultDetector::get()?;
+
+        initialized_config = detector.on_initialize(initialize_config, initialized_config)?;
+
+        drop(detector);
+
+        // Now we register our class and interface
 
         let class_data = class_data_t {
             alloc_object: None,
@@ -221,7 +286,7 @@ impl Component for Controller {
         ensure!(!cls.is_null(), "Unable to register class");
 
         // Create the interface to access this component through simics scripting
-        let interface = Box::new(confuse_module_controller_interface_t::new());
+        let interface = Box::<confuse_module_controller_interface_t>::default();
         let interface = Box::into_raw(interface);
 
         ensure!(
@@ -252,7 +317,7 @@ impl Component for Controller {
         unsafe {
             SIM_hap_add_callback(
                 raw_cstr!("Core_Magic_Instruction"),
-                transmute(simics::core_magic_instruction_cb as unsafe extern "C" fn(_, _, _)),
+                transmute(callbacks::core_magic_instruction_cb as unsafe extern "C" fn(_, _, _)),
                 null_mut(),
             )
         };
@@ -260,19 +325,15 @@ impl Component for Controller {
         unsafe {
             SIM_hap_add_callback(
                 raw_cstr!("Core_Simulation_Stopped"),
-                transmute(simics::core_simulation_stopped_cb as unsafe extern "C" fn(_, _, _, _)),
+                transmute(
+                    callbacks::core_simulation_stopped_cb as unsafe extern "C" fn(_, _, _, _),
+                ),
                 null_mut(),
             )
         };
 
-        // Finally, after initializing ourself, we go ahead and initialize all of our components
-
-        let mut tracer = AFLCoverageTracer::get().expect("Could not get tracer");
-
-        initialized_config = tracer.on_initialize(initialize_config, initialized_config)?;
-
-        // The components may modify the initialized config, and after all of them have a chance
-        // to do so we send the final config back to the client
+        // The components initialized above may modify the initialized config, and after all of
+        // them have a chance to do so we send the final config back to the client
 
         self.tx
             .send(ModuleMessage::Initialized(initialized_config))?;
@@ -282,44 +343,171 @@ impl Component for Controller {
     }
 
     fn pre_run(&mut self, data: &[u8]) -> Result<()> {
-        todo!()
+        let mut tracer = AFLCoverageTracer::get()?;
+        tracer.pre_run(data)?;
+        drop(tracer);
+
+        let mut detector = FaultDetector::get()?;
+        detector.pre_run(data)?;
+        drop(detector);
+
+        Ok(())
     }
 
     fn on_reset(&mut self) -> Result<()> {
-        todo!()
+        // Before we tell our components we have reset, we need to actually do it
+        match self.rx.recv()? {
+            ClientMessage::Reset => {
+                unsafe { self.restore_snapshot() }?;
+            }
+            ClientMessage::Stop => {
+                unsafe { self.quit_simulation() };
+            }
+            _ => bail!("Unexpected message. Expected Reset"),
+        }
+
+        let mut tracer = AFLCoverageTracer::get()?;
+        tracer.on_reset()?;
+        drop(tracer);
+
+        let mut detector = FaultDetector::get()?;
+        detector.on_reset()?;
+        drop(detector);
+
+        self.tx.send(ModuleMessage::Ready)?;
+
+        match self.rx.recv()? {
+            ClientMessage::Run(mut input) => {
+                let buffer = &self.buffer;
+                input.truncate(buffer.size as usize);
+                self.cpus
+                    .first()
+                    .context("No cpu available")?
+                    .borrow()
+                    .write_bytes(&buffer.address, &input)?;
+            }
+            ClientMessage::Stop => {
+                unsafe { self.quit_simulation() };
+            }
+            _ => bail!("Unexpected message. Expected Run"),
+        }
+
+        unsafe { self.continue_simulation() };
+
+        Ok(())
     }
 
     /// Callback when the simulation stops.
-    fn on_stop(&mut self, reason: &Option<StopReason>) -> Result<()> {
+    fn on_stop(&mut self, reason: Option<StopReason>) -> Result<()> {
+        let mut tracer = AFLCoverageTracer::get()?;
+        tracer.on_stop(reason.clone())?;
+        drop(tracer);
+
+        let mut detector = FaultDetector::get()?;
+        detector.on_stop(reason.clone())?;
+        drop(detector);
+
         match reason {
             None => {}
-            Some(StopReason::Magic(magic)) => {
-                self.on_stop_magic(magic)?;
-            }
+            Some(StopReason::Magic(magic)) => match magic {
+                Magic::Start => {
+                    if self.first_time_init_done {
+                        unsafe { self.continue_simulation() };
+                    } else {
+                        self.pre_first_run()?;
+                        self.on_reset()?;
+                    }
+                }
+                Magic::Stop => {
+                    self.tx
+                        .send(ModuleMessage::Stopped(StopReason::Magic(Magic::Stop)))?;
+                    self.on_reset()?;
+                }
+            },
             Some(StopReason::Crash(fault)) => {
                 self.tx
-                    .send(ModuleMessage::Stopped(StopReason::Crash(*fault)))?;
+                    .send(ModuleMessage::Stopped(StopReason::Crash(fault)))?;
+                self.on_reset()?;
             }
             Some(StopReason::SimulationExit) => {
                 self.tx
                     .send(ModuleMessage::Stopped(StopReason::SimulationExit))?;
+                self.on_reset()?;
             }
             Some(StopReason::TimeOut) => {
                 self.tx.send(ModuleMessage::Stopped(StopReason::TimeOut))?;
+                self.on_reset()?;
             }
         }
+
+        self.stop_reason = None;
+
         Ok(())
     }
 
+    fn pre_first_run(&mut self) -> Result<()> {
+        let mut tracer = AFLCoverageTracer::get()?;
+        tracer.pre_first_run()?;
+        drop(tracer);
+
+        let mut detector = FaultDetector::get()?;
+        detector.pre_first_run()?;
+        drop(detector);
+
+        // We need to get our buffer information before we run for the first time so we can write
+        // our testcases to it
+        self.buffer = TargetBuffer {
+            address: self
+                .cpus
+                .first()
+                .context("No cpu present")?
+                .borrow()
+                .get_reg_value("rsi")?,
+            size: self
+                .cpus
+                .first()
+                .context("No cpu present")?
+                .borrow()
+                .get_reg_value("rdi")?,
+        };
+
+        unsafe { self.take_snapshot() }?;
+
+        self.first_time_init_done = true;
+
+        Ok(())
+    }
+}
+
+impl ComponentInterface for Controller {
     unsafe fn on_add_processor(
         &mut self,
         obj: *mut conf_object_t,
         processor: *mut attr_value_t,
     ) -> Result<()> {
-        info!("Adding a processor");
-        let mut tracer = AFLCoverageTracer::get().expect("Could not get tracer");
+        let mut tracer = AFLCoverageTracer::get()?;
         tracer.on_add_processor(obj, processor)?;
 
+        let mut detector = FaultDetector::get()?;
+        detector.on_add_processor(obj, processor)?;
+
+        ensure!(
+            self.cpus.is_empty(),
+            "A CPU has already been added! This module only supports 1 vCPU at this time."
+        );
+
+        self.cpus
+            .push(Box::new(RefCell::new(Cpu::try_new(processor)?)));
+
+        Ok(())
+    }
+
+    unsafe fn on_add_fault(&mut self, obj: *mut conf_object_t, fault: i64) -> Result<()> {
+        let mut tracer = AFLCoverageTracer::get()?;
+        tracer.on_add_fault(obj, fault)?;
+
+        let mut detector = FaultDetector::get()?;
+        detector.on_add_fault(obj, fault)?;
         Ok(())
     }
 }
@@ -330,6 +518,7 @@ impl Component for Controller {
 pub struct confuse_module_controller_interface_t {
     run: unsafe extern "C" fn(obj: *mut conf_object_t),
     add_processor: unsafe extern "C" fn(obj: *mut conf_object_t, processor: *mut attr_value_t),
+    add_fault: unsafe extern "C" fn(obj: *mut conf_object_t, fault: i64),
 }
 
 impl confuse_module_controller_interface_t {
@@ -352,6 +541,7 @@ impl confuse_module_controller_interface_t {
             SIM_INTERFACE({}) {{
                 void (*run)(conf_object_t *obj);
                 void (*add_processor)(conf_object_t *obj, attr_value_t *processor);
+                void (*add_fault)(conf_object_t *obj, int64 fault);
             }};
             #define CONFUSE_MODULE_CONTROLLER_INTERFACE "{}"
 
@@ -370,36 +560,37 @@ impl confuse_module_controller_interface_t {
             extern typedef struct {{
                 void (*run)(conf_object_t *obj);
                 void (*add_processor)(conf_object_t *obj, attr_value_t *processor);
+                void (*add_fault)(conf_object_t *obj, int64 fault);
             }} {};
         "#,
         confuse_module_controller_interface_t::INTERFACE_NAME,
         confuse_module_controller_interface_t::INTERFACE_TYPENAME,
     );
+}
 
-    pub fn new() -> Self {
+impl Default for confuse_module_controller_interface_t {
+    fn default() -> Self {
         Self {
-            run: simics::controller_interface_run,
-            add_processor: simics::controller_interface_add_processor,
+            run: callbacks::controller_interface_run,
+            add_processor: callbacks::controller_interface_add_processor,
+            add_fault: callbacks::controller_interface_add_fault,
         }
     }
 }
 
 /// This module contains all code that is invoked by SIMICS
-mod simics {
-    use std::ffi::{c_char, c_void};
-
-    use crate::module::{component::Component, stop_reason::StopReason};
-
+mod callbacks {
     use super::{magic::Magic, Controller};
     use confuse_simics_api::{attr_value_t, conf_object_t};
     use log::info;
+    use std::ffi::{c_char, c_void};
 
     #[no_mangle]
     /// Invoked by SIMICs through the interface binding. This function signals the module to run
-    pub extern "C" fn controller_interface_run(obj: *mut conf_object_t) {
+    pub extern "C" fn controller_interface_run(_obj: *mut conf_object_t) {
         info!("Interface call: run");
         let mut controller = Controller::get().expect("Could not get controller");
-        unsafe { controller.continue_simulation() };
+        unsafe { controller.interface_run() };
     }
 
     #[no_mangle]
@@ -411,8 +602,19 @@ mod simics {
         let mut controller = Controller::get().expect("Could not get controller");
         unsafe {
             controller
-                .add_processor(obj, processor)
+                .interface_add_processor(obj, processor)
                 .expect("Failed to add processor")
+        };
+    }
+
+    #[no_mangle]
+    pub extern "C" fn controller_interface_add_fault(obj: *mut conf_object_t, fault: i64) {
+        info!("Interface call: add_fault");
+        let mut controller = Controller::get().expect("Could not get controller");
+        unsafe {
+            controller
+                .interface_add_fault(obj, fault)
+                .expect("Failed to add fault")
         };
     }
 
@@ -422,18 +624,11 @@ mod simics {
         _trigger_obj: *const conf_object_t,
         parameter: i64,
     ) {
-        match Magic::try_from(parameter) {
-            Ok(Magic::Start) => {
-                let mut controller = Controller::get().expect("Could not get controller");
-                unsafe { controller.stop_simulation(StopReason::Magic(Magic::Start)) };
-            }
-            Ok(Magic::Stop) => {
-                let mut controller = Controller::get().expect("Could not get controller");
-                unsafe { controller.stop_simulation(StopReason::Magic(Magic::Start)) };
-            }
-            _ => {
-                // Do nothing, there are lots of CPUID uses
-            }
+        if let Ok(magic) = Magic::try_from(parameter) {
+            let mut controller = Controller::get().expect("Could not get controller");
+            controller
+                .on_magic_instruction_cb(magic)
+                .expect("Failed to handle magic instruction callback");
         }
     }
 
@@ -448,7 +643,7 @@ mod simics {
     ) {
         let mut controller = Controller::get().expect("Could not get controller");
         controller
-            .on_stop_callback()
-            .expect("Failed to handle stop callback");
+            .on_simulation_stopped_cb()
+            .expect("Failed to handle simulation stopped callback");
     }
 }

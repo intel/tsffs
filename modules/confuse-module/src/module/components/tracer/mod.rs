@@ -1,36 +1,20 @@
 //! Tracer object
 
 use crate::module::{
-    component::Component,
+    component::{Component, ComponentInterface},
     config::{InitializeConfig, InitializedConfig},
     controller::TRACER,
+    cpu::Cpu,
     map_type::MapType,
     stop_reason::StopReason,
 };
 use anyhow::{ensure, Result};
-use confuse_simics_api::{
-    attr_value_t, conf_object, conf_object_t, cpu_cached_instruction_interface_t,
-    cpu_instruction_query_interface_t, cpu_instrumentation_subscribe_interface_t,
-    instruction_handle_t, int_register_interface_t, processor_info_v2_interface_t,
-    SIM_attr_object_or_nil, SIM_c_get_interface, CPU_CACHED_INSTRUCTION_INTERFACE,
-    CPU_INSTRUCTION_QUERY_INTERFACE, CPU_INSTRUMENTATION_SUBSCRIBE_INTERFACE,
-    INT_REGISTER_INTERFACE, PROCESSOR_INFO_V2_INTERFACE,
-};
+use confuse_simics_api::{attr_value_t, conf_object_t, instruction_handle_t};
 use crc32fast::hash;
 use ipc_shm::{IpcShm, IpcShmWriter};
 use log::{debug, info};
 use rand::{thread_rng, Rng};
-use std::{
-    cell::RefCell,
-    num::Wrapping,
-    os::raw::c_char,
-    ptr::null_mut,
-    sync::{Arc, MutexGuard},
-};
-
-use self::cpu::Cpu;
-
-mod cpu;
+use std::{cell::RefCell, num::Wrapping, sync::MutexGuard};
 
 pub struct AFLCoverageTracer {
     afl_coverage_map: IpcShm,
@@ -76,14 +60,16 @@ impl AFLCoverageTracer {
         Ok(())
     }
 
-    pub fn on_instruction(
+    pub unsafe fn on_instruction(
         &mut self,
         cpu: *mut conf_object_t,
         instruction_query: *mut instruction_handle_t,
     ) -> Result<()> {
         let mut pcs = Vec::new();
         for processor in &self.cpus {
-            if let Ok(Some(pc)) = processor.borrow_mut().is_branch(cpu, instruction_query) {
+            if let Ok(Some(pc)) =
+                unsafe { processor.borrow_mut().is_branch(cpu, instruction_query) }
+            {
                 pcs.push(pc);
             }
         }
@@ -116,79 +102,26 @@ impl Component for AFLCoverageTracer {
         Ok(())
     }
 
-    fn on_stop(&mut self, reason: &Option<StopReason>) -> Result<()> {
+    fn on_stop(&mut self, _reason: Option<StopReason>) -> Result<()> {
         Ok(())
     }
 
+    fn pre_first_run(&mut self) -> Result<()> {
+        Ok(())
+    }
+}
+
+impl ComponentInterface for AFLCoverageTracer {
     unsafe fn on_add_processor(
         &mut self,
-        obj: *mut conf_object_t,
+        _obj: *mut conf_object_t,
         processor: *mut attr_value_t,
     ) -> Result<()> {
         info!("Adding processor to context");
-        let cpu: *mut conf_object =
-            unsafe { SIM_attr_object_or_nil(*processor) }.expect("Attribute object expected");
+        let cpu = Box::new(RefCell::new(Cpu::try_new(processor)?));
 
-        info!("Got CPU");
-
-        let cpu_instrumentation_subscribe: *mut cpu_instrumentation_subscribe_interface_t = unsafe {
-            SIM_c_get_interface(
-                cpu,
-                CPU_INSTRUMENTATION_SUBSCRIBE_INTERFACE.as_ptr() as *const i8,
-            ) as *mut cpu_instrumentation_subscribe_interface_t
-        };
-
-        info!("Subscribed to CPU instrumentation");
-
-        let cpu_instruction_query: *mut cpu_instruction_query_interface_t = unsafe {
-            SIM_c_get_interface(cpu, CPU_INSTRUCTION_QUERY_INTERFACE.as_ptr() as *const i8)
-                as *mut cpu_instruction_query_interface_t
-        };
-
-        info!("Got CPU query interface");
-
-        let cpu_cached_instruction: *mut cpu_cached_instruction_interface_t = unsafe {
-            SIM_c_get_interface(cpu, CPU_CACHED_INSTRUCTION_INTERFACE.as_ptr() as *const i8)
-                as *mut cpu_cached_instruction_interface_t
-        };
-
-        info!("Subscribed to cached instructions");
-
-        let processor_info_v2: *mut processor_info_v2_interface_t = unsafe {
-            SIM_c_get_interface(cpu, PROCESSOR_INFO_V2_INTERFACE.as_ptr() as *const i8)
-                as *mut processor_info_v2_interface_t
-        };
-
-        info!("Subscribed to processor info");
-
-        let int_register: *mut int_register_interface_t = unsafe {
-            SIM_c_get_interface(cpu, INT_REGISTER_INTERFACE.as_ptr() as *const i8)
-                as *mut int_register_interface_t
-        };
-
-        info!("Subscribed to internal register queries");
-
-        if let Some(register) =
-            unsafe { *cpu_instrumentation_subscribe }.register_cached_instruction_cb
-        {
-            unsafe {
-                register(
-                    cpu,
-                    null_mut(),
-                    Some(simics::cached_instruction_cb),
-                    null_mut(),
-                )
-            };
-        }
-
-        let cpu = Box::new(RefCell::new(Cpu::try_new(
-            cpu,
-            cpu_instrumentation_subscribe,
-            cpu_instruction_query,
-            cpu_cached_instruction,
-            processor_info_v2,
-            int_register,
-        )?));
+        cpu.borrow()
+            .register_cached_instruction_cb(callbacks::cached_instruction_cb)?;
 
         ensure!(
             self.cpus.is_empty(),
@@ -199,12 +132,18 @@ impl Component for AFLCoverageTracer {
 
         Ok(())
     }
+
+    unsafe fn on_add_fault(&mut self, obj: *mut conf_object_t, fault: i64) -> Result<()> {
+        Ok(())
+    }
 }
 
-mod simics {
+mod callbacks {
     use std::ffi::c_void;
 
     use confuse_simics_api::{cached_instruction_handle_t, conf_object_t, instruction_handle_t};
+
+    use super::AFLCoverageTracer;
 
     #[no_mangle]
     pub extern "C" fn cached_instruction_cb(
@@ -214,5 +153,11 @@ mod simics {
         instruction_query: *mut instruction_handle_t,
         _user_data: *mut c_void,
     ) {
+        let mut tracer = AFLCoverageTracer::get().expect("Could not get tracer");
+        unsafe {
+            tracer
+                .on_instruction(cpu, instruction_query)
+                .expect("Failed to handle cached instruction callback")
+        };
     }
 }
