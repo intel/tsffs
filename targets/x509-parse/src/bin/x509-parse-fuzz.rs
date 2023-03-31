@@ -3,10 +3,10 @@ use std::path::PathBuf;
 use anyhow::{Error, Result};
 use clap::Parser;
 use confuse_fuzz::fuzzer::Fuzzer;
-use confuse_module::module::{
-    components::detector::fault::{Fault, X86_64Fault},
-    config::InitializeConfig,
-};
+// use confuse_module::module::{
+//     components::detector::fault::{Fault, X86_64Fault},
+//     config::InitializeConfig,
+// };
 use confuse_simics_manifest::PublicPackageNumber;
 use confuse_simics_project::{
     bool_param, file_param, int_param, simics_app, simics_path, str_param, SimicsApp,
@@ -293,30 +293,30 @@ fn main() -> Result<()> {
         .try_with_file_contents(run_uefi_app_nsh_script, STARTUP_NSH_PATH)?
         .try_with_file_contents(run_uefi_app_simics_script.as_bytes(), STARTUP_SIMICS_PATH)?;
 
-    let init_info = InitializeConfig::default()
-        .with_faults([
-            Fault::X86_64(X86_64Fault::Page),
-            Fault::X86_64(X86_64Fault::InvalidOpcode),
-        ])
-        .with_timeout_seconds(3.0);
+    // let init_info = InitializeConfig::default()
+    //     .with_faults([
+    //         Fault::X86_64(X86_64Fault::Page),
+    //         Fault::X86_64(X86_64Fault::InvalidOpcode),
+    //     ])
+    //     .with_timeout_seconds(3.0);
 
-    let mut fuzzer = Fuzzer::try_new(
-        args.input,
-        init_info,
-        APP_YML_PATH,
-        simics_project,
-        args.log_level,
-    )?;
+    // let mut fuzzer = Fuzzer::try_new(
+    //     args.input,
+    //     init_info,
+    //     APP_YML_PATH,
+    //     simics_project,
+    //     args.log_level,
+    // )?;
 
-    // Workaround to make sure we always stop even if we get a failure
-    fuzzer
-        .run_cycles(args.cycles)
-        .or_else(|e| {
-            error!("Error running cycles: {}", e);
-            Ok::<(), Error>(())
-        })
-        .ok();
-    fuzzer.stop()?;
+    // // Workaround to make sure we always stop even if we get a failure
+    // fuzzer
+    //     .run_cycles(args.cycles)
+    //     .or_else(|e| {
+    //         error!("Error running cycles: {}", e);
+    //         Ok::<(), Error>(())
+    //     })
+    //     .ok();
+    // fuzzer.stop()?;
 
     Ok(())
 }

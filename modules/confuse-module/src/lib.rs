@@ -1,3 +1,2 @@
-pub mod client;
-pub mod module;
-pub mod util;
+#[no_mangle]
+pub extern "C" fn init() {}

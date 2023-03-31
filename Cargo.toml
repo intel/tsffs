@@ -5,18 +5,10 @@ members = [
     "confuse-simics-api",
     # Just provides common simics manifest tools for parsing/managing simics
     "confuse-simics-manifest",
-    # Provides module signing utilities for creating simics modules
-    "confuse-simics-module",
     # Fuzzer
     "confuse-fuzz",
     # Modules
-    "modules/minimal-simics-module",
-    "modules/ipc-test-module",
-    # The new version of the confuse module using a dynamic state
     "modules/confuse-module",
-    # The old version of the confuse module using a static global state
-    "modules/confuse-module-static",
-    "modules/simics-cmd-module",
     # Targets
     "targets/hello-world",
     "targets/x509-parse",
@@ -31,9 +23,7 @@ members = [
 confuse-simics-api = { path = "./confuse-simics-api" }
 confuse-simics-project = { path = "./confuse-simics-project" }
 confuse-simics-manifest = { path = "./confuse-simics-manifest" }
-confuse-simics-module = { path = "./confuse-simics-module" }
 confuse-fuzz = { path = "./confuse-fuzz" }
-confuse-module = { path = "./modules/confuse-module" }
 ipc-shm = { path = "./util/ipc-shm" }
 raw-cstr = { path = "./util/raw-cstr" }
 version-tools = { path = "./util/version-tools" }

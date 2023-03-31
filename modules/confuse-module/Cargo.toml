@@ -1,11 +1,11 @@
 [package]
-name = "confuse-module"
+name = "confuse_module"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
-crate-type = ["cdylib", "lib"]
+crate-type = ["staticlib"]
 
 [dependencies]
 serde = { version = "1.0.156", features = ["derive"] }
@@ -48,6 +48,5 @@ anyhow = "1.0.69"
 dotenvy_macro = "0.15.1"
 confuse-simics-project = { workspace = true }
 confuse-simics-manifest = { workspace = true }
-confuse-simics-module = { workspace = true }
 dockerfile-rs = "0.3.0"
 chrono = "0.4.23"

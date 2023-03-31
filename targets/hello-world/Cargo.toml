@@ -4,8 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-confuse-simics-module = { workspace = true }
-confuse-module = { workspace = true }
 confuse-simics-project = { workspace = true }
 confuse-fuzz = { workspace = true }
 anyhow = "1.0.69"

@@ -1,0 +1,4 @@
+Simics provides a simple way to create tests for devices developed in
+a project. This directory contains sample code that will help you
+understand how this test framework works. For a complete description
+of the framework's capabilities, refer to the Simics Reference Manual.

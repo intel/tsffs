@@ -22,6 +22,4 @@ num-traits = "0.2.15"
 num = "0.4.0"
 log4rs = "1.2.0"
 confuse-simics-project = { workspace = true }
-confuse-simics-module = { workspace = true }
-confuse-module = { workspace = true }
 crossterm = "0.26.1"

@@ -1,0 +1,32 @@
+/*
+  © 2017 Intel Corporation
+*/
+
+// confuse_module-interface.dml - Skeleton code to base new DML interface types on
+
+// This is the DML definition of the confuse_module interface. See
+// the "Defining a New Interface Type" section of the
+// "Simics Model Builder User's Guide" for further documentation.
+// The corresponding C definition can be found in
+// confuse_module-interface.h.
+
+dml 1.4;
+
+header %{
+#include "confuse_module-interface.h"
+%}
+
+// Add any data types used by the interface here
+extern typedef struct {
+    int level;
+    char *name;
+} confuse_module_data_t;
+
+// Define the new interface type
+extern typedef struct {
+    bool (*example_method)(conf_object_t *obj, int id,
+                           confuse_module_data_t *data);
+    void (*no_python_method)(conf_object_t *obj, size_t bufsize, void *buf);
+} confuse_module_interface_t;
+
+extern const char *const CONFUSE_MODULE_INTERFACE;

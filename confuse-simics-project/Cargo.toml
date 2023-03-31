@@ -11,7 +11,6 @@ dotenvy_macro = "0.15.1"
 serde = "1.0.152"
 serde_yaml = "0.9.17"
 confuse-simics-manifest = { workspace = true }
-confuse-simics-module = { workspace = true }
 log = "0.4.17"
 tempdir = "0.3.7"
 walkdir = "2.3.2"
@@ -19,6 +18,7 @@ indoc = "2.0.1"
 versions = "4.1.0"
 version-tools.workspace = true
 regex = "1.7.2"
+cargo_metadata = "0.15.3"
 
 [build-dependencies]
 confuse-simics-manifest = { workspace = true }
