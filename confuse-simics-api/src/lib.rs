@@ -16,8 +16,12 @@
 include!(concat!(env!("OUT_DIR"), "/simics_bindings.rs"));
 
 mod attr_value_bindings;
+mod conf_object_bindings;
+mod sobject_bindings;
 
 pub use attr_value_bindings::*;
+pub use conf_object_bindings::*;
+pub use sobject_bindings::*;
 
 // internal.h exports are non public but we need to use some of them
 extern "C" {
