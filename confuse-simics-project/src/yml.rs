@@ -244,7 +244,7 @@ macro_rules! simics_app {
 ///
 /// # Examples
 ///
-/// ```
+/// ```text
 /// const SCRIPT_PATH: &str = "scripts/app.py";
 /// let app = SimicsApp::new("An app", &simics_path!(SCRIPT_PATH));
 /// assert_eq!(app.script, "%simics%/scripts/app.py");

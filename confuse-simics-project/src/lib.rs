@@ -13,7 +13,6 @@ use confuse_simics_manifest::{package_infos, simics_base_version, PackageNumber}
 use dotenvy_macro::dotenv;
 use log::{error, info};
 use module::SimicsModule;
-use regex::Regex;
 use std::{
     collections::HashSet,
     fs::{copy, create_dir_all, remove_dir_all, OpenOptions},
@@ -27,7 +26,6 @@ use tempdir::TempDir;
 use util::copy_dir_contents;
 use version_tools::VersionConstraint;
 use versions::Versioning;
-use walkdir::WalkDir;
 /// The SIMICS home installation directory. A `.env` file containing a line like:
 /// SIMICS_HOME=/home/username/simics/ must be present in the workspace tree
 const SIMICS_HOME: &str = dotenv!("SIMICS_HOME");
@@ -48,49 +46,6 @@ pub fn simics_home() -> Result<PathBuf> {
             )
         }
     }
-}
-
-/// Locate a file recursively using a regex pattern in the simics base directory. If there are
-/// multiple occurrences of a filename, it is undefined which will be returned.
-fn find_file_in_simics_base<P: AsRef<Path>, S: AsRef<str>>(
-    simics_base_dir: P,
-    file_name_pattern: S,
-) -> Result<PathBuf> {
-    let file_name_regex = Regex::new(file_name_pattern.as_ref())?;
-    let found_file = WalkDir::new(&simics_base_dir)
-        .into_iter()
-        .filter_map(|de| de.ok())
-        // is_ok_and is unstable ;_;
-        .filter(|de| {
-            if let Ok(m) = de.metadata() {
-                m.is_file()
-            } else {
-                false
-            }
-        })
-        .find(|de| {
-            if let Some(name) = de.path().file_name() {
-                file_name_regex.is_match(&name.to_string_lossy())
-            } else {
-                false
-            }
-        })
-        .context(format!(
-            "Could not find {} in {}",
-            file_name_pattern.as_ref(),
-            simics_base_dir.as_ref().display()
-        ))?
-        .path()
-        .to_path_buf();
-
-    ensure!(
-        found_file.is_file(),
-        "No file {} found in {}",
-        file_name_pattern.as_ref(),
-        simics_base_dir.as_ref().display()
-    );
-
-    Ok(found_file)
 }
 
 /// Structure for managing simics projects on disk, including the packages added to the project
@@ -171,6 +126,10 @@ impl SimicsProject {
     /// Build this project, including any modules, and return the simics executable for this project
     /// as a command ready to run with arguments
     pub fn build(&self) -> Result<Command> {
+        for module in &self.modules {
+            module.install(&self.base_path)?;
+        }
+
         let res = Command::new("make")
             .current_dir(&self.base_path)
             .stdout(Stdio::piped())
@@ -198,23 +157,8 @@ impl SimicsProject {
     /// Try to add a shared object module to the simics project. This module may or may not already
     /// be signed using `sign_simics_module` but will be re-signed in all cases. This will fail if
     /// the module does not correctly include the symbols needed for simics to load it.
-    pub fn try_with_module<S: AsRef<str>, P: AsRef<Path>>(
-        mut self,
-        module_crate_name: S,
-    ) -> Result<Self> {
-        let module = SimicsModule::try_new(module_crate_name, &self.base_path)?;
-        self.modules.insert(module);
-        Ok(self)
-    }
-
-    /// Try to add a shared object module to the simics project. This module may or may not already
-    /// be signed using `sign_simics_module` but will be re-signed in all cases. This will fail if
-    /// the module does not correctly include the symbols needed for simics to load it.
-    pub fn try_with_module_interface<S: AsRef<str>, P: AsRef<Path>>(
-        mut self,
-        module_crate_name: S,
-    ) -> Result<Self> {
-        let module = SimicsModule::try_new(module_crate_name, &self.base_path)?;
+    pub fn try_with_module<S: AsRef<str>>(mut self, module_crate_name: S) -> Result<Self> {
+        let module = SimicsModule::try_new(module_crate_name)?;
         self.modules.insert(module);
         Ok(self)
     }

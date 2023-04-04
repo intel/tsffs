@@ -9,8 +9,7 @@ use confuse_fuzz::fuzzer::Fuzzer;
 // };
 use confuse_simics_manifest::PublicPackageNumber;
 use confuse_simics_project::{
-    bool_param, file_param, int_param, simics_app, simics_path, str_param, SimicsApp,
-    SimicsAppParam, SimicsAppParamType, SimicsProject,
+    bool_param, file_param, int_param, simics_app, simics_path, str_param, SimicsProject,
 };
 use indoc::{formatdoc, indoc};
 use log::{error, Level};
@@ -170,7 +169,7 @@ fn main() -> Result<()> {
           &simics_path!(STARTUP_SIMICS_PATH),
     };
 
-    let boot_disk = include_bytes!("resource/test_load/minimal_boot_disk.craff");
+    let boot_disk = include_bytes!("resource/minimal_boot_disk.craff");
 
     let run_uefi_app_nsh_script = indoc! {br#"
         #Get kernel image

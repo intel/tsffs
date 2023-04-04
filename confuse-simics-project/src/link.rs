@@ -3,7 +3,7 @@ use std::{
     process::{Command, Stdio},
 };
 
-use crate::{find_file_in_simics_base, simics_home};
+use crate::{simics_home, util::find_file_in_simics_base};
 use anyhow::{ensure, Context, Result};
 use confuse_simics_manifest::simics_base_version;
 use log::info;

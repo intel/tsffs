@@ -34,12 +34,12 @@ EXTRA_VPATH :=
 IFACE_FILES :=
 
 # (optional) Parameters for the C and C++ preprocessor and compiler
-MODULE_CFLAGS :=
+MODULE_CFLAGS := 
 
 # Space-separated list of configuration classes that this module registers. This
 # information is used by SIM_get_class() to determine that this module should be
 # automatically loaded when one of the listed classes is requested.
-MODULE_CLASSES :=
+MODULE_CLASSES := confuse_module
 
 # Space-separated list of components that this module registers.
 MODULE_COMPONENTS :=
@@ -49,7 +49,7 @@ MODULE_COMPONENTS :=
 # be included here. If the module has dependencies on LD_MODULE_PATH, it is possible
 # to specify -rpath so that the module will contain the paths that were valid at
 # compilation time.
-MODULE_LDFLAGS :=
+MODULE_LDFLAGS := -Wl,-rpath,$(strip $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST)))))/../../lib/ -L $(strip $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST)))))/../../lib/ -lconfuse_module
 
 # Space-separated list of Python source files to include. These Python files will be
 # copied and potentially compiled (see COMPILE_PYC) and placed in a Python package
@@ -61,7 +61,7 @@ MODULE_LDFLAGS :=
 #   - module_load.py is imported by Simics when the Simics module is loaded.
 # The names checkpoint_update.py and __init__.py are reserved for future use, and not
 # allowed in the list of files.
-PYTHON_FILES :=
+PYTHON_FILES := simics_start.py module_load.py
 
 # (optional) User supplied free-text string describing the module version. The version
 # string is available in Simics even without loading the module, through the
@@ -78,7 +78,7 @@ SIMICS_API :=
 # Windows). DML file names must have a .dml suffix. Any .py files should be listed in
 # the PYTHON_FILES variable. For backward compatibility, modules using Simics API 4.8
 # or older may still list Python files in the SRC_FILES variable.
-SRC_FILES :=
+SRC_FILES := confuse_module.c
 
 # (optional) Images to copy directly in the images subdirectory in $(TARGET_DIR)
 SRC_IMAGES :=
@@ -101,7 +101,7 @@ SYSTEMC_CORE_LDFLAGS :=
 SYSTEMC_MODULE_CFLAGS :=
 
 # If set to yes, declare that the module is thread-safe.
-THREAD_SAFE :=
+THREAD_SAFE := yes
 
 # If set to 'yes', enable support for the default C++ Device API. It can also be set
 # to a specific version to select which version of C++ Device API to use. Current
@@ -118,7 +118,7 @@ SUPRESS_DEVICE_INFO :=
 COMPILERS :=
 
 # If this is set to 1, then the files listed in PYTHON_FILES are compiled, not copied.
-COMPILE_PYC :=
+COMPILE_PYC := 0
 
 ifeq ($(MODULE_MAKEFILE),)
 $(error Make sure you compile your module from the project directory)

@@ -31,7 +31,7 @@ EXTRA_VPATH :=
 # 
 # See also section Restrictions in Defining New Interface Types in Model Builder User's
 # Guide for restrictions and usage of Python bindings.
-IFACE_FILES :=
+IFACE_FILES := confuse_module-interface.h
 
 # (optional) Parameters for the C and C++ preprocessor and compiler
 MODULE_CFLAGS :=
@@ -71,7 +71,7 @@ MODULE_USER_VERSION :=
 # (optional) Simics API to use when compiling the module. See the Simics Migration
 # Guide for a description on how to compile old modules with a new Simics version.
 # Valid API settings are listed in [simics]/[host]/include/api-versions.mk.
-SIMICS_API :=
+SIMICS_API := 6
 
 # Source files to compile in the module. C source file names must end in .c; C++
 # source file names must end in .cc, .cpp, .cxx or .C (the last not allowed on
@@ -101,7 +101,7 @@ SYSTEMC_CORE_LDFLAGS :=
 SYSTEMC_MODULE_CFLAGS :=
 
 # If set to yes, declare that the module is thread-safe.
-THREAD_SAFE :=
+THREAD_SAFE := yes
 
 # If set to 'yes', enable support for the default C++ Device API. It can also be set
 # to a specific version to select which version of C++ Device API to use. Current

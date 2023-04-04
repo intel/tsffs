@@ -8,7 +8,7 @@ members = [
     # Fuzzer
     "confuse-fuzz",
     # Modules
-    "modules/confuse-module",
+    "modules/confuse_module",
     # Targets
     "targets/hello-world",
     "targets/x509-parse",
@@ -24,6 +24,7 @@ confuse-simics-api = { path = "./confuse-simics-api" }
 confuse-simics-project = { path = "./confuse-simics-project" }
 confuse-simics-manifest = { path = "./confuse-simics-manifest" }
 confuse-fuzz = { path = "./confuse-fuzz" }
+confuse_module = { path = "./modules/confuse_module" }
 ipc-shm = { path = "./util/ipc-shm" }
 raw-cstr = { path = "./util/raw-cstr" }
 version-tools = { path = "./util/version-tools" }

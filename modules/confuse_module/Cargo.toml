@@ -3,9 +3,19 @@ name = "confuse_module"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+# This metadata table configures the `SimicsProject` we'll eventually add this module to
+[package.metadata.confuse]
+# The relative path in this crate's root to the directory containing the Makefile for this module
+module = "./stubs/confuse_module"
+# The relative path in the resulting SIMICS project where the built library should be placed so the
+# Makefile(s) can find it (any subdirectories will be created if they do not exist)
+lib = "./lib/libconfuse_module.so"
+# The relative path in this crate's root to the directory containing the Makefile for this
+# module's DML/C/Python interface specification
+interface = "./stubs/confuse_module-interface"
+
 [lib]
-crate-type = ["staticlib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 serde = { version = "1.0.156", features = ["derive"] }
