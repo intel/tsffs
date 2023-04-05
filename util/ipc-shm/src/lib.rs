@@ -13,6 +13,13 @@ pub struct IpcShm {
     pub memfd: Memfd,
 }
 
+impl Clone for IpcShm {
+    /// Clone this IPC SHM. Panics on failure
+    fn clone(&self) -> Self {
+        self.try_clone().expect("Failed to clone IpcShm")
+    }
+}
+
 impl IpcShm {
     pub fn is_empty(&self) -> bool {
         self.size == 0

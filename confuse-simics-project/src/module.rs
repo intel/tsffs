@@ -65,7 +65,7 @@ use std::{
 /// Represents a simics module that can be added to a project
 pub struct SimicsModule {
     /// The crate name of the crate implementing the module
-    crate_name: String,
+    pub crate_name: String,
     /// The metadata provided in the crate's Cargo.toml file
     metadata: SimicsModuleMetadata,
     /// An absolute path to the directory containing the module Makefile for the module

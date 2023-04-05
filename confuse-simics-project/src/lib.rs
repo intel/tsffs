@@ -6,7 +6,6 @@
 pub mod link;
 pub mod module;
 mod util;
-pub mod yml;
 
 use anyhow::{bail, ensure, Context, Result};
 use confuse_simics_manifest::{package_infos, simics_base_version, PackageNumber};
@@ -14,13 +13,15 @@ use dotenvy_macro::dotenv;
 use log::{error, info};
 use module::SimicsModule;
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     fs::{copy, create_dir_all, remove_dir_all, OpenOptions},
     io::Write,
     os::unix::fs::symlink,
     path::{Component, Path, PathBuf},
-    process::{Command, Stdio},
+    process::{Child, ChildStderr, ChildStdin, ChildStdout, Command, Stdio},
     str::FromStr,
+    sync::Arc,
+    thread::{spawn, JoinHandle},
 };
 use tempdir::TempDir;
 use util::copy_dir_contents;
@@ -48,6 +49,173 @@ pub fn simics_home() -> Result<PathBuf> {
     }
 }
 
+struct SimicsCommand {
+    /// Whether SIMICS runs in batch mode. Defaults to `true`.
+    pub batch_mode: bool,
+    /// Configuration files. Defaults to no configuration files.
+    pub configurations: Vec<PathBuf>,
+    /// CLI Commands that will be executed in order they were added. Defaults to no commands.
+    pub commands: Vec<String>,
+    /// Whether to enable the GUI. Defaults to `false`.
+    pub gui: bool,
+    /// An optional license file path.
+    pub license: Option<PathBuf>,
+    /// Whether to open any windows. Defaults to `false`.
+    pub win: bool,
+    /// Whether to run in quiet mode. Defaults to `false`. You can set this to `true` if you
+    /// know you're running bug-free and want a slight cleanup of initial logs.
+    pub quiet: bool,
+    /// Files to run Python code from.
+    pub python_files: Vec<PathBuf>,
+    /// Directories to search for SIMICS modules in
+    pub library_paths: Vec<PathBuf>,
+    /// Whether the STC (Simulator Translation Cache) is enabled. Defaults to `true`.
+    pub stc: bool,
+    // Below here are non-simics settings that we use internally
+    /// Environment variables to set for the SIMICS command
+    pub simics: Option<PathBuf>,
+    pub env: HashMap<String, String>,
+    pub simics_process: Option<Child>,
+    pub stdin_function: Option<Arc<dyn Fn(ChildStdin) + Send + Sync + 'static>>,
+    pub stdout_function: Option<Arc<dyn Fn(ChildStdout) + Send + Sync + 'static>>,
+    pub stderr_function: Option<Arc<dyn Fn(ChildStderr) + Send + Sync + 'static>>,
+    pub stdin_thread: Option<JoinHandle<()>>,
+    pub stdout_thread: Option<JoinHandle<()>>,
+    pub stderr_thread: Option<JoinHandle<()>>,
+}
+
+impl SimicsCommand {
+    pub fn run<P: AsRef<Path>>(&mut self, base_path: P) -> Result<()> {
+        let simics = base_path.as_ref().to_path_buf().join("simics");
+        ensure!(
+            simics.is_file(),
+            "Simics executable does not exist at {}",
+            simics.display()
+        );
+
+        let mut args = Vec::new();
+        if self.batch_mode {
+            args.push("-batch-mode".to_string());
+        }
+
+        for configuration in &self.configurations {
+            args.push("-c".to_string());
+            args.push(configuration.to_string_lossy().to_string());
+        }
+
+        for command in &self.commands {
+            args.push("-e".to_string());
+            args.push(command.to_string());
+        }
+
+        if self.gui {
+            args.push("-gui".to_string());
+        } else {
+            args.push("-no-gui".to_string());
+        }
+
+        if let Some(license) = &self.license {
+            args.push("-l".to_string());
+            args.push(license.to_string_lossy().to_string());
+        }
+
+        if !self.win {
+            args.push("-no-win".to_string());
+        }
+
+        if self.quiet {
+            args.push("-q".to_string());
+        }
+
+        for python_file in &self.python_files {
+            args.push("-p".to_string());
+            args.push(python_file.to_string_lossy().to_string());
+        }
+
+        for library_path in &self.library_paths {
+            args.push("-L".to_string());
+            args.push(library_path.to_string_lossy().to_string());
+        }
+
+        if self.stc {
+            args.push("-istc".to_string());
+            args.push("-dstc".to_string());
+        } else {
+            args.push("-no-istc".to_string());
+            args.push("-no-dstc".to_string());
+        }
+
+        let mut command = Command::new(simics);
+
+        let mut simics_command = command
+            .args(args)
+            .envs(self.env.clone())
+            .current_dir(base_path);
+
+        if self.stdout_function.is_some() {
+            simics_command = simics_command.stdout(Stdio::piped());
+        }
+
+        if self.stderr_function.is_some() {
+            simics_command = simics_command.stderr(Stdio::piped());
+        }
+
+        if self.stdin_function.is_some() {
+            simics_command = simics_command.stdin(Stdio::piped());
+        }
+
+        let mut simics_process = simics_command.spawn()?;
+
+        if let Some(stdout_function) = &self.stdout_function {
+            let simics_stdout = simics_process.stdout.take().context("No child stdout")?;
+            let function = stdout_function.clone();
+            self.stdout_thread = Some(spawn(move || function(simics_stdout)));
+        }
+
+        if let Some(stdin_function) = &self.stdin_function {
+            let simics_stdin = simics_process.stdin.take().context("No child stdin")?;
+            let function = stdin_function.clone();
+            self.stdin_thread = Some(spawn(move || function(simics_stdin)));
+        }
+
+        if let Some(stderr_function) = &self.stderr_function {
+            let simics_stderr = simics_process.stderr.take().context("No child stdin")?;
+            let function = stderr_function.clone();
+            self.stderr_thread = Some(spawn(move || function(simics_stderr)));
+        }
+
+        self.simics_process = Some(simics_process);
+
+        Ok(())
+    }
+}
+
+impl Default for SimicsCommand {
+    fn default() -> Self {
+        Self {
+            simics: None,
+            batch_mode: true,
+            configurations: vec![],
+            commands: vec![],
+            gui: false,
+            license: None,
+            win: false,
+            quiet: false,
+            python_files: vec![],
+            library_paths: vec![],
+            stc: true,
+            env: HashMap::new(),
+            stdin_function: None,
+            stdin_thread: None,
+            stdout_function: None,
+            stdout_thread: None,
+            stderr_function: None,
+            stderr_thread: None,
+            simics_process: None,
+        }
+    }
+}
+
 /// Structure for managing simics projects on disk, including the packages added to the project
 /// and the modules loaded in it.
 pub struct SimicsProject {
@@ -56,6 +224,7 @@ pub struct SimicsProject {
     packages: HashSet<PackageNumber>,
     modules: HashSet<SimicsModule>,
     tmp: bool,
+    command: SimicsCommand,
 }
 
 impl SimicsProject {
@@ -108,24 +277,12 @@ impl SimicsProject {
             packages: HashSet::new(),
             modules: HashSet::new(),
             tmp: false,
+            command: SimicsCommand::default(),
         })
     }
 
-    /// Retrieve the arguments for loading all the modules that are added to the project. The order
-    /// is arbitrary, so if there is an ordering dependency you should specify these arguments
-    /// manually
-    pub fn module_load_args(&self) -> Vec<String> {
-        // self.modules
-        //     .iter()
-        //     .flat_map(|sm| ["-e".to_string(), format!("load-module {}", sm.name)])
-        //     .collect()
-        // TODO
-        vec![]
-    }
-
-    /// Build this project, including any modules, and return the simics executable for this project
-    /// as a command ready to run with arguments
-    pub fn build(&self) -> Result<Command> {
+    /// Build this project, including any modules.
+    pub fn build(self) -> Result<Self> {
         for module in &self.modules {
             module.install(&self.base_path)?;
         }
@@ -143,7 +300,19 @@ impl SimicsProject {
             String::from_utf8_lossy(&res.stderr)
         );
 
-        Ok(Command::new(self.base_path.join("simics")))
+        Ok(self)
+    }
+
+    pub fn run(&mut self) -> Result<()> {
+        self.command.run(self.base_path.clone())?;
+        Ok(())
+    }
+
+    /// Check if a particular module is present
+    pub fn has_module<S: AsRef<str>>(&self, crate_name: S) -> bool {
+        self.modules
+            .iter()
+            .any(|m| m.crate_name == crate_name.as_ref())
     }
 
     /// Make this project persistent (ie it will not be deleted when dropped)
@@ -340,6 +509,153 @@ impl SimicsProject {
         let dst_path = self.base_path.join(dst_relative_path.as_ref());
         symlink(src_path, dst_path)?;
         Ok(self)
+    }
+
+    /// Set the command to run in batch mode once it is invoked
+    pub fn with_batch_mode(mut self, mode: bool) -> Self {
+        self.command.batch_mode = mode;
+        self
+    }
+
+    /// Add a simics configuration file to pass to the simics command. This file path can
+    /// either be absolute (begin with a `/`) or relative (begin with `./` or any other character).
+    /// This is equivalent to the `-c` flag.
+    ///
+    /// The file must exist. If you expect this file to be created by a `try_with` method on this
+    /// project, be sure to call that method *before* this one.
+    pub fn try_with_configuration<S: AsRef<str>>(mut self, configuration: S) -> Result<Self> {
+        let abspath = PathBuf::from(configuration.as_ref());
+        let relpath = self.base_path.join(configuration.as_ref());
+        if abspath.is_file() || (abspath.is_symlink() && abspath.canonicalize()?.is_file()) {
+            self.command.configurations.push(abspath);
+        } else if relpath.is_file() || (relpath.is_symlink() && relpath.canonicalize()?.is_file()) {
+            self.command.configurations.push(relpath);
+        } else {
+            bail!("Configuration file not found. Do you need to add it with `try_with_file` or similar?");
+        }
+        Ok(self)
+    }
+
+    /// Add a command to execute by passing it to the simics command. This is equivalent to
+    /// the `-e` flag.
+    pub fn with_command<S: AsRef<str>>(mut self, command: S) -> Self {
+        self.command.commands.push(command.as_ref().to_string());
+        self
+    }
+
+    /// Set whether to show the GUI when SIMICS runs
+    pub fn with_gui(mut self, gui: bool) -> Self {
+        self.command.gui = gui;
+        self
+    }
+
+    /// Set a different license file than the default (no license). This is probably not necessary.
+    pub fn with_license(mut self, license: PathBuf) -> Result<Self> {
+        ensure!(
+            license.is_file(),
+            "License at {} does not exist",
+            license.display()
+        );
+        self.command.license = Some(license);
+        Ok(self)
+    }
+
+    /// Set whether to open any windows. Defaults to false, this is probably not necessary.
+    pub fn with_win(mut self, win: bool) -> Self {
+        self.command.win = win;
+        self
+    }
+
+    pub fn with_quiet(mut self, quiet: bool) -> Self {
+        self.command.quiet = quiet;
+        self
+    }
+
+    /// Add a python file to pass to the simics command to execute. This file path can
+    /// either be absolute (begin with a `/`) or relative (begin with `./` or any other character).
+    /// This is equivalent to the `-p` flag.
+    ///
+    /// The file must exist. If you expect this file to be created by a `try_with` method on this
+    /// project, be sure to call that method *before* this one.
+    pub fn try_with_python_file<S: AsRef<str>>(mut self, python_file: S) -> Result<Self> {
+        let abspath = PathBuf::from(python_file.as_ref());
+        let relpath = self.base_path.join(python_file.as_ref());
+        if abspath.is_file() || (abspath.is_symlink() && abspath.canonicalize()?.is_file()) {
+            self.command.python_files.push(abspath);
+        } else if relpath.is_file() || (relpath.is_symlink() && relpath.canonicalize()?.is_file()) {
+            self.command.python_files.push(relpath);
+        } else {
+            bail!("Python file not found. Do you need to add it with `try_with_file` or similar?");
+        }
+        Ok(self)
+    }
+
+    /// Add a library path to pass to the simics command to execute to search for
+    /// modules. This path can either be absolute or relative. This is equivalent to the
+    /// -L flag.
+    ///
+    ///
+    /// The directory must exist. If you expect this file to be created by a `try_with` method on this
+    /// project, be sure to call that method *before* this one.
+    pub fn try_with_library_path<S: AsRef<str>>(mut self, library_path: S) -> Result<Self> {
+        let abspath = PathBuf::from(library_path.as_ref());
+        let relpath = self.base_path.join(library_path.as_ref());
+        if abspath.is_file() || (abspath.is_symlink() && abspath.canonicalize()?.is_file()) {
+            self.command.library_paths.push(abspath);
+        } else if relpath.is_file() || (relpath.is_symlink() && relpath.canonicalize()?.is_file()) {
+            self.command.library_paths.push(relpath);
+        } else {
+            bail!("Library path not found. Do you need to add it with `try_with_file` or similar?");
+        }
+        Ok(self)
+    }
+
+    /// Set whether the STC (Simulator Translation Cache) is enabled. This is equivalent to the
+    /// `-istc` and `-dstc` flags.
+    pub fn with_stc(mut self, stc: bool) -> Self {
+        self.command.stc = stc;
+        self
+    }
+
+    /// Add an environment variable to the simics project command.
+    pub fn with_env<S: AsRef<str>>(mut self, name: S, value: S) -> Self {
+        self.command
+            .env
+            .insert(name.as_ref().to_string(), value.as_ref().to_string());
+        self
+    }
+
+    /// Supply a function that will run in a separate thread with the ChildStdout from the simics
+    /// process passed to it when it starts. For example, this is useful for directing the SIMICS
+    /// output to a log.
+    pub fn with_out_function<F>(mut self, function: F) -> Self
+    where
+        F: Fn(ChildStdout) + Send + Sync + 'static,
+    {
+        self.command.stdout_function = Some(Arc::new(function));
+        self
+    }
+
+    /// Supply a function that will run in a separate thread with the ChildStderr from the simics
+    /// process passed to it when it starts. For example, this is useful for directing the SIMICS
+    /// output to a log.
+    pub fn with_err_function<F>(mut self, function: F) -> Self
+    where
+        F: Fn(ChildStderr) + Send + Sync + 'static,
+    {
+        self.command.stderr_function = Some(Arc::new(function));
+        self
+    }
+
+    /// Supply a function that will run in a separate thread with the ChildStdin from the simics
+    /// process passed to it when it starts. For example, this is useful for sending commands to
+    /// a simics process from a channel
+    pub fn with_in_function<F>(mut self, function: F) -> Self
+    where
+        F: Fn(ChildStdin) + Send + Sync + 'static,
+    {
+        self.command.stdin_function = Some(Arc::new(function));
+        self
     }
 }
 

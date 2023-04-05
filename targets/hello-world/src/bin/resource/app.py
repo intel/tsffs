@@ -1,26 +1,26 @@
 from sim_params import params
-    import simics
-    import commands
-    import io, contextlib
+import simics
+import commands
+import io, contextlib
 
-    args = [
-        [name, commands.param_val_to_str(value)] for (name, value) in params.items()
-    ]
+args = [
+    [name, commands.param_val_to_str(value)] for (name, value) in params.items()
+]
 
-    simics.SIM_run_command_file_params(
-        simics.SIM_lookup_file("%simics%/targets/hello-world/run-uefi-app.simics"),
-        True, args
+simics.SIM_run_command_file_params(
+    simics.SIM_lookup_file("%simics%/targets/hello-world/run-uefi-app.simics"),
+    True, args
+)
+
+if SIM_get_batch_mode():
+    SIM_log_info(
+        1,
+        conf.sim,
+        0,
+        'Batch mode detected. Disconnecting console from VGA'
     )
+    conf.board.mb.gpu.vga.console=None
 
-    if SIM_get_batch_mode():
-        SIM_log_info(
-            1,
-            conf.sim,
-            0,
-            'Batch mode detected. Disconnecting console from VGA'
-        )
-        conf.board.mb.gpu.vga.console=None
-
-    SIM_create_object('confuse_module', 'confuse_module', [])
-    conf.confuse_module.iface.confuse_module_controller.add_processor(SIM_get_object(simenv.system).mb.cpu0.core[0][0])
-    conf.confuse_module.iface.confuse_module_controller.run()
+SIM_create_object('confuse_module', 'confuse_module', [])
+conf.confuse_module.iface.confuse_module_controller.add_processor(SIM_get_object(simenv.system).mb.cpu0.core[0][0])
+conf.confuse_module.iface.confuse_module_controller.run()

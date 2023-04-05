@@ -2,9 +2,14 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::module::{config::InitializedConfig, stop_reason::StopReason};
+use crate::{
+    module::{config::InitializedConfig, stop_reason::StopReason},
+    state::ConfuseModuleInput,
+};
 
-#[derive(Debug, Serialize, Deserialize)]
+use super::Message;
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ModuleMessage {
     /// Mesage
     Initialized(InitializedConfig),
