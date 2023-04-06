@@ -10,12 +10,12 @@ use super::{components::detector::fault::Fault, map_type::MapType};
 #[derive(Debug, Serialize, Deserialize, Clone)]
 /// Contains parameters for the module to configure things like timeout duration, which faults
 /// indicate a crash, etc. This is sent by the client in `ClientMessage::Initialize`
-pub struct InitializeConfig {
+pub struct InputConfig {
     pub faults: HashSet<Fault>,
     pub timeout: f64,
 }
 
-impl Default for InitializeConfig {
+impl Default for InputConfig {
     fn default() -> Self {
         Self {
             faults: HashSet::new(),
@@ -24,7 +24,7 @@ impl Default for InitializeConfig {
     }
 }
 
-impl InitializeConfig {
+impl InputConfig {
     /// Add a fault to the set of faults considered crashes for a given fuzzing campaign
     pub fn with_fault(mut self, fault: Fault) -> Self {
         self.faults.insert(fault);
@@ -59,13 +59,13 @@ impl InitializeConfig {
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 /// Contains the resulting configuration of the module after initialization with the provided
-/// `InitializeConfig`. This is used to pass memory maps back to the client for things like
+/// `InputConfig`. This is used to pass memory maps back to the client for things like
 /// coverage and cmplog data, but can be extended.
-pub struct InitializedConfig {
+pub struct OutputConfig {
     maps: Vec<MapType>,
 }
 
-impl InitializedConfig {
+impl OutputConfig {
     pub fn with_map(mut self, map: MapType) -> Self {
         self.maps.push(map);
         self

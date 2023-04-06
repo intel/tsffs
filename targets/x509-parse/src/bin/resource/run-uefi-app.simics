@@ -15,7 +15,7 @@ decl {
     param auto_start_uefi_shell : bool = TRUE
 
     # NSH script that controls things. 
-    param startup_nsh : file("*") or nil = "%simics%/targets/hello-world/run_uefi_app.nsh"
+    param startup_nsh : file("*") or nil = "%simics%/targets/x509-parse/run_uefi_app.nsh"
 
     # UEFI app you wanna start. 
     param uefi_app : file("*")
@@ -29,7 +29,7 @@ echo "Loaded simics declaration"
 
 echo "Running command file"
 
-run-command-file "%simics%/targets/qsp-x86/qsp-hdd-boot.simics"
+run-command-file %simics%/targets/qsp-x86/qsp-hdd-boot.simics 
 
 @import os
 @simenv.startup_nsh_nodir = os.path.basename(simenv.startup_nsh)

@@ -6,7 +6,7 @@ use self::{
 };
 use super::{
     component::{Component, ComponentInterface},
-    config::{InitializeConfig, InitializedConfig},
+    config::{InputConfig, OutputConfig},
     cpu::Cpu,
     stop_reason::StopReason,
 };
@@ -20,16 +20,19 @@ use crate::{
         entrypoint::{BOOTSTRAP_SOCKNAME, CLASS_NAME, LOGLEVEL_VARNAME},
     },
     nonnull,
+    state::State,
 };
 use anyhow::{bail, ensure, Context, Result};
 use confuse_simics_api::{
     attr_value_t, class_data_t, class_info_t, class_kind_t_Sim_Class_Kind_Pseudo,
     class_kind_t_Sim_Class_Kind_Session, class_kind_t_Sim_Class_Kind_Vanilla, conf_class_t,
     conf_object_t, micro_checkpoint_flags_t_Sim_MC_ID_User,
-    micro_checkpoint_flags_t_Sim_MC_Persistent, CORE_discard_future, SIM_attr_list_size,
-    SIM_break_simulation, SIM_continue, SIM_create_class, SIM_get_attribute, SIM_get_class,
-    SIM_get_object, SIM_hap_add_callback, SIM_object_class, SIM_quit, SIM_register_class,
-    SIM_register_interface, SIM_run_alone, VT_restore_micro_checkpoint, VT_save_micro_checkpoint,
+    micro_checkpoint_flags_t_Sim_MC_Persistent,
+    safe::{self, common::count_micro_checkpoints},
+    CORE_discard_future, SIM_attr_list_size, SIM_break_simulation, SIM_continue, SIM_create_class,
+    SIM_get_attribute, SIM_get_class, SIM_get_object, SIM_hap_add_callback, SIM_object_class,
+    SIM_quit, SIM_register_class, SIM_register_interface, SIM_run_alone,
+    VT_restore_micro_checkpoint, VT_save_micro_checkpoint,
 };
 use const_format::{concatcp, formatcp};
 use ipc_channel::ipc::{channel, IpcReceiver, IpcSender};
@@ -73,6 +76,7 @@ lazy_static! {
 /// Controller for the Confuse simics module. The controller is reponsible for communicating with
 /// the client, dispatching messages, and implementing the overall state machine for the module
 pub struct Controller {
+    state: State,
     tx: IpcSender<ModuleMessage>,
     rx: IpcReceiver<ClientMessage>,
     log_handle: Handle,
@@ -95,7 +99,7 @@ impl Controller {
 }
 
 impl Controller {
-    pub const CLASS_NAME: &str = concatcp!(CLASS_NAME, "_controller");
+    pub const CLASS_NAME: &str = CLASS_NAME;
     pub const CLASS_DESCRIPTION: &str = r#"CONFUSE module controller class. This class controls general actions for the
         CONFUSE SIMICS module including configuration and run controls."#;
     pub const CLASS_SHORT_DESCRIPTION: &str = "CONFUSE controller";
@@ -127,6 +131,7 @@ impl Controller {
         bootstrap.send((otx, orx))?;
 
         Ok(Self {
+            state: State::new(),
             tx,
             rx,
             log_handle,
@@ -138,38 +143,41 @@ impl Controller {
         })
     }
 
+    /// Send a message to the module
+    fn send_msg(&mut self, msg: ModuleMessage) -> Result<()> {
+        self.state.consume(&msg)?;
+        self.send_msg(msg)?;
+        Ok(())
+    }
+
+    /// Receive a message from the module
+    fn recv_msg(&mut self) -> Result<ClientMessage> {
+        let msg = self.rx.recv()?;
+        self.state.consume(&msg)?;
+        Ok(msg)
+    }
+
     /// Initialize the controller. This is called during module initialization after all
     /// components have been added
     pub fn initialize(&mut self) -> Result<()> {
-        // Wait for an initialize message
-        let initialize_config = match self.rx.recv()? {
+        let input_config = match self.recv_msg()? {
             ClientMessage::Initialize(config) => config,
             _ => bail!("Expected initialize command"),
         };
 
-        let initialized_config = InitializedConfig::default();
+        let output_config = OutputConfig::default();
 
-        _ = self.on_initialize(&initialize_config, initialized_config, None)?;
+        _ = self.on_initialize(&input_config, output_config, None)?;
 
         Ok(())
     }
 
-    pub unsafe fn take_snapshot(&mut self) -> Result<()> {
-        unsafe {
-            VT_save_micro_checkpoint(
-                raw_cstr!("origin"),
-                micro_checkpoint_flags_t_Sim_MC_ID_User
-                    | micro_checkpoint_flags_t_Sim_MC_Persistent,
-            )
-        };
+    pub fn take_snapshot(&mut self) -> Result<()> {
+        safe::wrapper::save_micro_checkpoint("origin");
+
+        let sinfo_size = count_micro_checkpoints()?;
 
         info!("Took snapshot");
-
-        let rexec = unsafe { SIM_get_object(raw_cstr!("sim.rexec")) };
-
-        let sinfo = unsafe { SIM_get_attribute(rexec, raw_cstr!("state_info")) };
-
-        let sinfo_size = SIM_attr_list_size(sinfo)?;
 
         ensure!(
             sinfo_size == 1,
@@ -180,25 +188,15 @@ impl Controller {
         Ok(())
     }
 
-    pub unsafe fn quit_simulation(&mut self) {
-        SIM_quit(0);
+    pub fn quit_simulation(&mut self) {
+        safe::wrapper::quit();
     }
 
-    pub unsafe fn restore_snapshot(&mut self) -> Result<()> {
-        unsafe {
-            VT_restore_micro_checkpoint(0);
-            CORE_discard_future();
-        }
+    pub fn restore_snapshot(&mut self) -> Result<()> {
+        safe::wrapper::restore_micro_checkpoint(0);
+        safe::wrapper::discard_future();
 
         Ok(())
-    }
-
-    /// Continue the simulation
-    pub unsafe fn continue_simulation(&mut self) {
-        SIM_run_alone(
-            Some(transmute(SIM_continue as unsafe extern "C" fn(_) -> _)),
-            null_mut(),
-        );
     }
 
     /// Stop the simulation with some reason for stopping
@@ -216,7 +214,8 @@ impl Controller {
     pub unsafe fn interface_run(&mut self, obj: *mut conf_object_t) -> Result<()> {
         self.instance = RefCell::new(ControllerInstance::try_from_obj(obj)?);
 
-        self.continue_simulation();
+        safe::common::continue_simulation();
+
         Ok(())
     }
 
@@ -259,10 +258,10 @@ impl Component for Controller {
     /// the on_initialize callbacks for all the other `Component`s
     fn on_initialize(
         &mut self,
-        initialize_config: &InitializeConfig,
-        mut initialized_config: InitializedConfig,
+        input_config: &InputConfig,
+        mut output_config: OutputConfig,
         controller_cls: Option<*mut conf_class_t>,
-    ) -> Result<InitializedConfig> {
+    ) -> Result<OutputConfig> {
         // First we register our class and interface
 
         let class_data = class_data_t {
@@ -300,13 +299,11 @@ impl Component for Controller {
         //     nonnull!(unsafe { SIM_create_class(raw_cstr!(Controller::CLASS_NAME), &class_info) });
 
         let mut tracer = AFLCoverageTracer::get()?;
-        initialized_config =
-            tracer.on_initialize(initialize_config, initialized_config, Some(cls))?;
+        output_config = tracer.on_initialize(input_config, output_config, Some(cls))?;
         drop(tracer);
 
         let mut detector = FaultDetector::get()?;
-        initialized_config =
-            detector.on_initialize(initialize_config, initialized_config, Some(cls))?;
+        output_config = detector.on_initialize(input_config, output_config, Some(cls))?;
         drop(detector);
 
         // Create the interface to access this component through simics scripting
@@ -359,11 +356,10 @@ impl Component for Controller {
         // The components initialized above may modify the initialized config, and after all of
         // them have a chance to do so we send the final config back to the client
 
-        self.tx
-            .send(ModuleMessage::Initialized(initialized_config))?;
+        self.send_msg(ModuleMessage::Initialized(output_config))?;
 
         // We're the controller, so our config isn't used - we send it ourself just above
-        Ok(InitializedConfig::default())
+        Ok(OutputConfig::default())
     }
 
     unsafe fn pre_run(
@@ -384,11 +380,11 @@ impl Component for Controller {
 
     unsafe fn on_reset(&mut self, controller_instance: &ControllerInstance) -> Result<()> {
         // Before we tell our components we have reset, we need to actually do it
-        match self.rx.recv()? {
+        match self.recv_msg()? {
             ClientMessage::Reset => {
                 unsafe { self.restore_snapshot() }?;
             }
-            ClientMessage::Stop => {
+            ClientMessage::Exit => {
                 unsafe { self.quit_simulation() };
             }
             _ => bail!("Unexpected message. Expected Reset"),
@@ -402,9 +398,9 @@ impl Component for Controller {
         detector.on_reset(controller_instance)?;
         drop(detector);
 
-        self.tx.send(ModuleMessage::Ready)?;
+        self.send_msg(ModuleMessage::Ready)?;
 
-        match self.rx.recv()? {
+        match self.recv_msg()? {
             ClientMessage::Run(mut input) => {
                 let buffer = self.buffer;
                 input.truncate(buffer.size as usize);
@@ -415,13 +411,13 @@ impl Component for Controller {
                     .borrow()
                     .write_bytes(&buffer.address, &input)?;
             }
-            ClientMessage::Stop => {
+            ClientMessage::Exit => {
                 unsafe { self.quit_simulation() };
             }
             _ => bail!("Unexpected message. Expected Run"),
         }
 
-        unsafe { self.continue_simulation() };
+        safe::common::continue_simulation();
 
         Ok(())
     }
@@ -445,7 +441,7 @@ impl Component for Controller {
             Some(StopReason::Magic(magic)) => match magic {
                 Magic::Start(_) => {
                     if self.first_time_init_done {
-                        unsafe { self.continue_simulation() };
+                        safe::common::continue_simulation();
                     } else {
                         self.pre_first_run(controller_instance)?;
                         self.on_reset(controller_instance)?;
@@ -460,23 +456,20 @@ impl Component for Controller {
                         .get_reg_value("rsi")?;
                     let magic = Magic::Stop((code, Some(val)));
                     trace!("Stopped with magic: {:?}", magic);
-                    self.tx
-                        .send(ModuleMessage::Stopped(StopReason::Magic(magic)))?;
+                    self.send_msg(ModuleMessage::Stopped(StopReason::Magic(magic)))?;
                     self.on_reset(controller_instance)?;
                 }
             },
             Some(StopReason::Crash(fault)) => {
-                self.tx
-                    .send(ModuleMessage::Stopped(StopReason::Crash(fault)))?;
+                self.send_msg(ModuleMessage::Stopped(StopReason::Crash(fault)))?;
                 self.on_reset(controller_instance)?;
             }
             Some(StopReason::SimulationExit) => {
-                self.tx
-                    .send(ModuleMessage::Stopped(StopReason::SimulationExit))?;
+                self.send_msg(ModuleMessage::Stopped(StopReason::SimulationExit))?;
                 self.on_reset(controller_instance)?;
             }
             Some(StopReason::TimeOut) => {
-                self.tx.send(ModuleMessage::Stopped(StopReason::TimeOut))?;
+                self.send_msg(ModuleMessage::Stopped(StopReason::TimeOut))?;
                 self.on_reset(controller_instance)?;
             }
         }
@@ -564,47 +557,10 @@ pub struct confuse_module_controller_interface_t {
 impl confuse_module_controller_interface_t {
     // TODO: Can we autogenerate this with bindgen and tree-sitter?
     /// Write the C binding for this interface here
-    pub const INTERFACE_NAME: &str = concatcp!(CLASS_NAME, "_controller_interface");
+    pub const INTERFACE_NAME: &str = CLASS_NAME;
     pub const INTERFACE_TYPENAME: &str = concatcp!(
         confuse_module_controller_interface_t::INTERFACE_NAME,
         "_interface_t"
-    );
-    pub const C_HEADER_BINDING: &str = formatcp!(
-        r#"
-            #ifndef CONFUSE_CONTROLLER_INTERFACE_INTERFACE_H
-            #define CONFUSE_CONTROLLER_INTERFACE_INTERFACE_H
-
-            #include <simics/device-api.h>
-            #include <simics/pywrap.h>
-            #include <simics/simulator-api.h> 
-
-            SIM_INTERFACE({}) {{
-                void (*run)(conf_object_t *obj);
-                void (*add_processor)(conf_object_t *obj, attr_value_t *processor);
-                void (*add_fault)(conf_object_t *obj, int64 fault);
-            }};
-            #define CONFUSE_MODULE_CONTROLLER_INTERFACE_INTERFACE "{}"
-
-            #endif /* ! CONFUSE_CONTROLLER_INTERFACE_INTERFACE_H */
-        "#,
-        confuse_module_controller_interface_t::INTERFACE_NAME,
-        confuse_module_controller_interface_t::INTERFACE_NAME
-    );
-    pub const DML_BINDING: &str = formatcp!(
-        r#"
-            dml 1.4;
-            header %{{
-                #include "{}.h"
-            }}
-
-            extern typedef struct {{
-                void (*run)(conf_object_t *obj);
-                void (*add_processor)(conf_object_t *obj, attr_value_t *processor);
-                void (*add_fault)(conf_object_t *obj, int64 fault);
-            }} {};
-        "#,
-        confuse_module_controller_interface_t::INTERFACE_NAME,
-        confuse_module_controller_interface_t::INTERFACE_TYPENAME,
     );
 }
 

@@ -8,7 +8,7 @@ args = [
 ]
 
 simics.SIM_run_command_file_params(
-    simics.SIM_lookup_file("%simics%/targets/hello-world/run-uefi-app.simics"),
+    simics.SIM_lookup_file("%simics%/targets/x509-parse/run-uefi-app.simics"),
     True, args
 )
 
@@ -21,7 +21,6 @@ if SIM_get_batch_mode():
     )
     conf.board.mb.gpu.vga.console=None
 
-SIM_load_module("confuse_module")
 SIM_create_object('confuse_module', 'confuse_module', [])
 conf.confuse_module.iface.confuse_module_controller.add_processor(SIM_get_object(simenv.system).mb.cpu0.core[0][0])
 conf.confuse_module.iface.confuse_module_controller.run()

@@ -17,6 +17,7 @@ include!(concat!(env!("OUT_DIR"), "/simics_bindings.rs"));
 
 mod attr_value_bindings;
 mod conf_object_bindings;
+pub mod safe;
 mod sobject_bindings;
 
 pub use attr_value_bindings::*;

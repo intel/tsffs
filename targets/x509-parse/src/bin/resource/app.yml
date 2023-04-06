@@ -55,7 +55,7 @@ params:
     default: "sata"
   disk0_image:
     type: file
-    default: "%simics%/targets/hello-world/minimal_boot_disk.craff"
+    default: "%simics%/targets/x509-parse/minimal_boot_disk.craff"
   disk0_size:
     type: int
     default: 209715200
@@ -139,10 +139,10 @@ params:
     default: "2021-06-10 10:41:54"
   startup_nsh:
     type: file
-    default: "%simics%/targets/hello-world/run_uefi_app.nsh"
+    default: "%simics%/targets/x509-parse/run_uefi_app.nsh"
   uefi_app:
     type: file
-    default: "%simics%/targets/hello-world/HelloWorld.efi"
+    default: "%simics%/X509Parse.efi"
   eth_link:
     type: str
     output: true

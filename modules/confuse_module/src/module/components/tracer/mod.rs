@@ -2,7 +2,7 @@
 
 use crate::module::{
     component::{Component, ComponentInterface},
-    config::{InitializeConfig, InitializedConfig},
+    config::{InputConfig, OutputConfig},
     controller::{instance::ControllerInstance, TRACER},
     cpu::Cpu,
     map_type::MapType,
@@ -85,11 +85,11 @@ impl AFLCoverageTracer {
 impl Component for AFLCoverageTracer {
     fn on_initialize(
         &mut self,
-        _initialize_config: &InitializeConfig,
-        initialized_config: InitializedConfig,
+        _input_config: &InputConfig,
+        output_config: OutputConfig,
         controller_cls: Option<*mut conf_class_t>,
-    ) -> Result<InitializedConfig> {
-        Ok(initialized_config.with_map(MapType::Coverage(self.afl_coverage_map.try_clone()?)))
+    ) -> Result<OutputConfig> {
+        Ok(output_config.with_map(MapType::Coverage(self.afl_coverage_map.try_clone()?)))
     }
 
     unsafe fn pre_run(

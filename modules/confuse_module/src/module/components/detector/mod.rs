@@ -2,7 +2,7 @@ use self::fault::{Fault, X86_64Fault};
 use crate::{
     module::{
         component::{Component, ComponentInterface},
-        config::{InitializeConfig, InitializedConfig},
+        config::{InputConfig, OutputConfig},
         controller::{instance::ControllerInstance, Controller, DETECTOR},
         cpu::Cpu,
         stop_reason::StopReason,
@@ -91,12 +91,12 @@ impl FaultDetector {
 impl Component for FaultDetector {
     fn on_initialize(
         &mut self,
-        initialize_config: &InitializeConfig,
-        initialized_config: InitializedConfig,
+        input_config: &InputConfig,
+        output_config: OutputConfig,
         controller_cls: Option<*mut conf_class_t>,
-    ) -> Result<InitializedConfig> {
-        self.faults = initialize_config.faults.clone();
-        self.timeout = Some(initialize_config.timeout);
+    ) -> Result<OutputConfig> {
+        self.faults = input_config.faults.clone();
+        self.timeout = Some(input_config.timeout);
 
         unsafe {
             SIM_hap_add_callback(
@@ -106,7 +106,7 @@ impl Component for FaultDetector {
             )
         };
 
-        Ok(initialized_config)
+        Ok(output_config)
     }
 
     unsafe fn pre_run(

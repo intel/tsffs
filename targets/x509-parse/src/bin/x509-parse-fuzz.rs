@@ -5,7 +5,7 @@ use clap::Parser;
 use confuse_fuzz::fuzzer::Fuzzer;
 // use confuse_module::module::{
 //     components::detector::fault::{Fault, X86_64Fault},
-//     config::InitializeConfig,
+//     config::InputConfig,
 // };
 use confuse_simics_manifest::PublicPackageNumber;
 use confuse_simics_project::SimicsProject;
@@ -99,7 +99,7 @@ fn main() -> Result<()> {
         .try_with_file_contents(run_uefi_app_nsh_script, STARTUP_NSH_PATH)?
         .try_with_file_contents(run_uefi_app_simics_script, STARTUP_SIMICS_PATH)?;
 
-    // let init_info = InitializeConfig::default()
+    // let init_info = InputConfig::default()
     //     .with_faults([
     //         Fault::X86_64(X86_64Fault::Page),
     //         Fault::X86_64(X86_64Fault::InvalidOpcode),

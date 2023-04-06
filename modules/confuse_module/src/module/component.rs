@@ -4,7 +4,7 @@
 //! introduces some constraints.
 
 use super::{
-    config::{InitializeConfig, InitializedConfig},
+    config::{InputConfig, OutputConfig},
     controller::instance::ControllerInstance,
     stop_reason::StopReason,
 };
@@ -15,15 +15,15 @@ use confuse_simics_api::{attr_value_t, conf_class_t, conf_object_t};
 /// from the global configuration and react to events that happen
 pub trait Component {
     /// Called when a `ClientMessage::Initialize` message is received. A component can use any
-    /// necessary info in `initialize_config` to initialize itself and modify the
-    /// `initialized_config` as necessary, for example by adding a memory map to share with
+    /// necessary info in `input_config` to initialize itself and modify the
+    /// `output_config` as necessary, for example by adding a memory map to share with
     /// the client
     fn on_initialize(
         &mut self,
-        initialize_config: &InitializeConfig,
-        initialized_config: InitializedConfig,
+        input_config: &InputConfig,
+        output_config: OutputConfig,
         controller_cls: Option<*mut conf_class_t>,
-    ) -> Result<InitializedConfig>;
+    ) -> Result<OutputConfig>;
     /// Called prior to the first time run of the simulator. This function allows components to
     /// do any last-minute configuration that depends on possible user configurations. For example
     /// the fault detector may need the list of faults to be fully set up before registering

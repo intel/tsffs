@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{module::config::InitializeConfig, state::ConfuseModuleInput};
+use crate::{module::config::InputConfig, state::ConfuseModuleInput};
 
 use super::Message;
 
@@ -10,7 +10,7 @@ use super::Message;
 pub enum ClientMessage {
     /// Initialize event, the fuzzer signals the Confuse SIMICS module to initialize itself with
     /// a given set of global campaign settings
-    Initialize(InitializeConfig),
+    Initialize(InputConfig),
     /// The fuzzer signals the Confuse SIMICS module to run with a given input of bytes
     Run(Vec<u8>),
     /// The fuzzer signals the Confuse SIMICS module to reset to the start snapshot

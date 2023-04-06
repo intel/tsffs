@@ -10,12 +10,12 @@ mod util;
 use anyhow::{bail, ensure, Context, Result};
 use confuse_simics_manifest::{package_infos, simics_base_version, PackageNumber};
 use dotenvy_macro::dotenv;
-use log::{error, info};
+use log::{error, info, Level};
 use module::SimicsModule;
 use std::{
     collections::{HashMap, HashSet},
     fs::{copy, create_dir_all, remove_dir_all, OpenOptions},
-    io::Write,
+    io::{stdout, Write},
     os::unix::fs::symlink,
     path::{Component, Path, PathBuf},
     process::{Child, ChildStderr, ChildStdin, ChildStdout, Command, Stdio},
@@ -24,7 +24,7 @@ use std::{
     thread::{spawn, JoinHandle},
 };
 use tempdir::TempDir;
-use util::copy_dir_contents;
+use util::{abs_or_rel_base_relpath, copy_dir_contents, diff_paths};
 use version_tools::VersionConstraint;
 use versions::Versioning;
 /// The SIMICS home installation directory. A `.env` file containing a line like:
@@ -67,6 +67,8 @@ struct SimicsCommand {
     pub quiet: bool,
     /// Files to run Python code from.
     pub python_files: Vec<PathBuf>,
+    /// Files to run additional scripts or configs from, for example `.yml` configurations
+    pub files: Vec<PathBuf>,
     /// Directories to search for SIMICS modules in
     pub library_paths: Vec<PathBuf>,
     /// Whether the STC (Simulator Translation Cache) is enabled. Defaults to `true`.
@@ -86,11 +88,11 @@ struct SimicsCommand {
 
 impl SimicsCommand {
     pub fn run<P: AsRef<Path>>(&mut self, base_path: P) -> Result<()> {
-        let simics = base_path.as_ref().to_path_buf().join("simics");
+        self.simics = Some(base_path.as_ref().to_path_buf().join("simics"));
         ensure!(
-            simics.is_file(),
+            self.simics.clone().context("No simics path")?.is_file(),
             "Simics executable does not exist at {}",
-            simics.display()
+            self.simics.clone().context("No simics path")?.display()
         );
 
         let mut args = Vec::new();
@@ -101,11 +103,6 @@ impl SimicsCommand {
         for configuration in &self.configurations {
             args.push("-c".to_string());
             args.push(configuration.to_string_lossy().to_string());
-        }
-
-        for command in &self.commands {
-            args.push("-e".to_string());
-            args.push(command.to_string());
         }
 
         if self.gui {
@@ -138,14 +135,26 @@ impl SimicsCommand {
         }
 
         if self.stc {
-            args.push("-istc".to_string());
-            args.push("-dstc".to_string());
+            // These are defaults, so we do not set them
+            // args.push("-istc".to_string());
+            // args.push("-dstc".to_string());
         } else {
             args.push("-no-istc".to_string());
             args.push("-no-dstc".to_string());
         }
 
-        let mut command = Command::new(simics);
+        for file in &self.files {
+            args.push(file.to_string_lossy().to_string());
+        }
+
+        for command in &self.commands {
+            args.push("-e".to_string());
+            args.push(command.to_string());
+        }
+
+        let mut command = Command::new(self.simics.clone().context("No simics path")?);
+
+        info!("Running SIMICS with args '{}'", args.join(" "));
 
         let mut simics_command = command
             .args(args)
@@ -188,6 +197,37 @@ impl SimicsCommand {
 
         Ok(())
     }
+
+    pub fn kill(&mut self) -> Result<()> {
+        info!("Killing simics process");
+
+        if let Some(ref mut simics_process) = self.simics_process {
+            simics_process.kill()?;
+        }
+
+        if let Some(r) = self.stdout_thread.take().map(JoinHandle::join) {
+            r.map_err(|e| {
+                error!("Error joining stdout thread: {:?}", e);
+            })
+            .ok();
+        }
+
+        if let Some(r) = self.stdin_thread.take().map(JoinHandle::join) {
+            r.map_err(|e| {
+                error!("Error joining stdin thread: {:?}", e);
+            })
+            .ok();
+        }
+
+        if let Some(r) = self.stderr_thread.take().map(JoinHandle::join) {
+            r.map_err(|e| {
+                error!("Error joining stderr thread: {:?}", e);
+            })
+            .ok();
+        }
+
+        Ok(())
+    }
 }
 
 impl Default for SimicsCommand {
@@ -202,6 +242,7 @@ impl Default for SimicsCommand {
             win: false,
             quiet: false,
             python_files: vec![],
+            files: vec![],
             library_paths: vec![],
             stc: true,
             env: HashMap::new(),
@@ -225,26 +266,28 @@ pub struct SimicsProject {
     modules: HashSet<SimicsModule>,
     tmp: bool,
     command: SimicsCommand,
+    pub loglevel: Level,
+    built: bool,
 }
 
 impl SimicsProject {
-    /// Try to create a new temporary simics project. If a project is created this way, it is
+    /// Try to create a new simics project. If a project is created this way, it is
     /// removed from disk when this object is dropped. Creates the project using the newest
     /// Simics-Base package it finds in SIMICS_HOME
     pub fn try_new_latest() -> Result<Self> {
         let base_path = TempDir::new(SIMICS_PROJECT_PREFIX)?;
         let base_path = base_path.into_path();
         let mut project = SimicsProject::try_new_at(base_path, "*")?;
-        project.tmp = true;
+        project.tmp = false;
         Ok(project)
     }
 
-    /// Try to create a new temporary simics project, with a particular simics base version.
+    /// Try to create a new simics project, with a particular simics base version.
     pub fn try_new<S: AsRef<str>>(base_version_constraint: S) -> Result<Self> {
         let base_path = TempDir::new(SIMICS_PROJECT_PREFIX)?;
         let base_path = base_path.into_path();
         let mut project = SimicsProject::try_new_at(base_path, base_version_constraint)?;
-        project.tmp = true;
+        project.tmp = false;
         Ok(project)
     }
 
@@ -259,17 +302,24 @@ impl SimicsProject {
         if !base_path.exists() {
             create_dir_all(&base_path)?;
         }
+
+        info!("Created new simics project at {}", base_path.display());
+
         let simics_home = PathBuf::from(SIMICS_HOME).canonicalize()?;
         let simics_manifest = simics_base_version(&simics_home, &base_version_constraint)?;
         let simics_base_dir = simics_home.join(format!("simics-{}", simics_manifest.version));
 
         let simics_base_project_setup = simics_base_dir.join("bin").join("project-setup");
 
+        info!("Installing simics packages to project");
+
         Command::new(simics_base_project_setup)
             .arg("--ignore-existing-files")
             .arg(&base_path)
             .current_dir(&base_path)
             .output()?;
+
+        info!("Project setup complete");
 
         Ok(Self {
             base_path,
@@ -278,20 +328,27 @@ impl SimicsProject {
             modules: HashSet::new(),
             tmp: false,
             command: SimicsCommand::default(),
+            loglevel: Level::Error,
+            built: false,
         })
     }
 
     /// Build this project, including any modules.
-    pub fn build(self) -> Result<Self> {
+    pub fn build(mut self) -> Result<Self> {
         for module in &self.modules {
+            info!("Installing module {}", module.crate_name);
             module.install(&self.base_path)?;
         }
+
+        info!("Building simics project");
 
         let res = Command::new("make")
             .current_dir(&self.base_path)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()?;
+
+        info!("Finished building simics project");
 
         ensure!(
             res.status.success(),
@@ -300,12 +357,20 @@ impl SimicsProject {
             String::from_utf8_lossy(&res.stderr)
         );
 
+        self.built = true;
+
         Ok(self)
     }
 
     pub fn run(&mut self) -> Result<()> {
+        info!("Running simics");
         self.command.run(self.base_path.clone())?;
         Ok(())
+    }
+
+    pub fn kill(&mut self) -> Result<()> {
+        info!("Killing simics");
+        self.command.kill()
     }
 
     /// Check if a particular module is present
@@ -317,6 +382,11 @@ impl SimicsProject {
 
     /// Make this project persistent (ie it will not be deleted when dropped)
     pub fn persist(&mut self) {
+        info!(
+            "Persisting simics project at '{}'",
+            self.base_path.display()
+        );
+
         self.tmp = false;
     }
 }
@@ -345,6 +415,9 @@ impl SimicsProject {
         version_constraint: S,
     ) -> Result<Self> {
         let package = package.into();
+
+        info!("Adding package {}", package);
+
         if self.packages.contains(&package) {
             return Ok(self);
         }
@@ -387,13 +460,18 @@ impl SimicsProject {
 
         let simics_project_project_setup = self.base_path.join("bin").join("project-setup");
 
-        info!("Running {:?}", simics_project_project_setup);
+        info!(
+            "Running project setup command {:?}",
+            simics_project_project_setup
+        );
 
         Command::new(&simics_project_project_setup)
             .current_dir(&self.base_path)
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .status()?;
+
+        info!("Finished running project setup command");
 
         self.packages.insert(package);
 
@@ -489,6 +567,8 @@ impl SimicsProject {
 
         file.write_all(contents)?;
 
+        info!("Added contents to file {}", dst_relative_path.as_ref());
+
         Ok(self)
     }
 
@@ -524,15 +604,9 @@ impl SimicsProject {
     /// The file must exist. If you expect this file to be created by a `try_with` method on this
     /// project, be sure to call that method *before* this one.
     pub fn try_with_configuration<S: AsRef<str>>(mut self, configuration: S) -> Result<Self> {
-        let abspath = PathBuf::from(configuration.as_ref());
-        let relpath = self.base_path.join(configuration.as_ref());
-        if abspath.is_file() || (abspath.is_symlink() && abspath.canonicalize()?.is_file()) {
-            self.command.configurations.push(abspath);
-        } else if relpath.is_file() || (relpath.is_symlink() && relpath.canonicalize()?.is_file()) {
-            self.command.configurations.push(relpath);
-        } else {
-            bail!("Configuration file not found. Do you need to add it with `try_with_file` or similar?");
-        }
+        self.command
+            .configurations
+            .push(abs_or_rel_base_relpath(&self.base_path, configuration)?);
         Ok(self)
     }
 
@@ -578,15 +652,22 @@ impl SimicsProject {
     /// The file must exist. If you expect this file to be created by a `try_with` method on this
     /// project, be sure to call that method *before* this one.
     pub fn try_with_python_file<S: AsRef<str>>(mut self, python_file: S) -> Result<Self> {
-        let abspath = PathBuf::from(python_file.as_ref());
-        let relpath = self.base_path.join(python_file.as_ref());
-        if abspath.is_file() || (abspath.is_symlink() && abspath.canonicalize()?.is_file()) {
-            self.command.python_files.push(abspath);
-        } else if relpath.is_file() || (relpath.is_symlink() && relpath.canonicalize()?.is_file()) {
-            self.command.python_files.push(relpath);
-        } else {
-            bail!("Python file not found. Do you need to add it with `try_with_file` or similar?");
-        }
+        self.command
+            .python_files
+            .push(abs_or_rel_base_relpath(&self.base_path, python_file)?);
+        Ok(self)
+    }
+
+    /// Add a file path to pass to the simics command to execute. This file path can
+    /// either be absolute (begin with a `/`) or relative (begin with `./` or any other character).
+    /// This is equivalent to passing this path as an additional positional argument
+    ///
+    /// The file must exist. If you expect this file to be created by a `try_with` method on this
+    /// project, be sure to call that method *before* this one.
+    pub fn try_with_file_argument<S: AsRef<str>>(mut self, file: S) -> Result<Self> {
+        self.command
+            .files
+            .push(abs_or_rel_base_relpath(&self.base_path, file)?);
         Ok(self)
     }
 
@@ -598,15 +679,9 @@ impl SimicsProject {
     /// The directory must exist. If you expect this file to be created by a `try_with` method on this
     /// project, be sure to call that method *before* this one.
     pub fn try_with_library_path<S: AsRef<str>>(mut self, library_path: S) -> Result<Self> {
-        let abspath = PathBuf::from(library_path.as_ref());
-        let relpath = self.base_path.join(library_path.as_ref());
-        if abspath.is_file() || (abspath.is_symlink() && abspath.canonicalize()?.is_file()) {
-            self.command.library_paths.push(abspath);
-        } else if relpath.is_file() || (relpath.is_symlink() && relpath.canonicalize()?.is_file()) {
-            self.command.library_paths.push(relpath);
-        } else {
-            bail!("Library path not found. Do you need to add it with `try_with_file` or similar?");
-        }
+        self.command
+            .library_paths
+            .push(abs_or_rel_base_relpath(&self.base_path, library_path)?);
         Ok(self)
     }
 
@@ -628,7 +703,7 @@ impl SimicsProject {
     /// Supply a function that will run in a separate thread with the ChildStdout from the simics
     /// process passed to it when it starts. For example, this is useful for directing the SIMICS
     /// output to a log.
-    pub fn with_out_function<F>(mut self, function: F) -> Self
+    pub fn with_stdout_function<F>(mut self, function: F) -> Self
     where
         F: Fn(ChildStdout) + Send + Sync + 'static,
     {
@@ -639,7 +714,7 @@ impl SimicsProject {
     /// Supply a function that will run in a separate thread with the ChildStderr from the simics
     /// process passed to it when it starts. For example, this is useful for directing the SIMICS
     /// output to a log.
-    pub fn with_err_function<F>(mut self, function: F) -> Self
+    pub fn with_stderr_function<F>(mut self, function: F) -> Self
     where
         F: Fn(ChildStderr) + Send + Sync + 'static,
     {
@@ -650,11 +725,18 @@ impl SimicsProject {
     /// Supply a function that will run in a separate thread with the ChildStdin from the simics
     /// process passed to it when it starts. For example, this is useful for sending commands to
     /// a simics process from a channel
-    pub fn with_in_function<F>(mut self, function: F) -> Self
+    pub fn with_stdin_function<F>(mut self, function: F) -> Self
     where
         F: Fn(ChildStdin) + Send + Sync + 'static,
     {
         self.command.stdin_function = Some(Arc::new(function));
+        self
+    }
+
+    /// Set the log level for the simics project. This won't be used for anything by default, but
+    /// it can be accessed to set readers
+    pub fn with_loglevel(mut self, level: Level) -> Self {
+        self.loglevel = level;
         self
     }
 }
@@ -664,6 +746,7 @@ impl Drop for SimicsProject {
     /// does nothing otherwise.
     fn drop(&mut self) {
         if self.tmp {
+            info!("Removing SIMICS project from disk");
             remove_dir_all(&self.base_path).ok();
         }
     }
