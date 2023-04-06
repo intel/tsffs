@@ -4,7 +4,5 @@ void confuse_init_local(void);
 ///
 /// We use this as a stub to call the real initialize function in our linked library
 void init_local() {
-    printf("Loading confuse module...\n");
     confuse_init_local();
-    printf("Loaded confuse module...\n");
 }

@@ -16,17 +16,11 @@ header %{
 #include "confuse_module-interface.h"
 %}
 
-// Add any data types used by the interface here
-extern typedef struct {
-    int level;
-    char *name;
-} confuse_module_data_t;
-
 // Define the new interface type
 extern typedef struct {
-    bool (*example_method)(conf_object_t *obj, int id,
-                           confuse_module_data_t *data);
-    void (*no_python_method)(conf_object_t *obj, size_t bufsize, void *buf);
+    void (*run)(conf_object_t *obj);
+    void (*add_processor)(conf_object_t *obj, attr_value_t *processor);
+    void (*add_fault)(conf_object_t *obj, int64 fault);
 } confuse_module_interface_t;
 
 extern const char *const CONFUSE_MODULE_INTERFACE;

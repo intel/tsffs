@@ -15,7 +15,7 @@ use module::SimicsModule;
 use std::{
     collections::{HashMap, HashSet},
     fs::{copy, create_dir_all, remove_dir_all, OpenOptions},
-    io::{stdout, Write},
+    io::Write,
     os::unix::fs::symlink,
     path::{Component, Path, PathBuf},
     process::{Child, ChildStderr, ChildStdin, ChildStdout, Command, Stdio},
@@ -24,7 +24,7 @@ use std::{
     thread::{spawn, JoinHandle},
 };
 use tempdir::TempDir;
-use util::{abs_or_rel_base_relpath, copy_dir_contents, diff_paths};
+use util::{abs_or_rel_base_relpath, copy_dir_contents};
 use version_tools::VersionConstraint;
 use versions::Versioning;
 /// The SIMICS home installation directory. A `.env` file containing a line like:

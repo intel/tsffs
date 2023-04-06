@@ -2,12 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    module::{config::OutputConfig, stop_reason::StopReason},
-    state::ConfuseModuleInput,
-};
-
-use super::Message;
+use crate::module::{config::OutputConfig, stop_reason::StopReason};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ModuleMessage {

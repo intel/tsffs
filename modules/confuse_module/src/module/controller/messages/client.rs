@@ -2,9 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{module::config::InputConfig, state::ConfuseModuleInput};
-
-use super::Message;
+use crate::module::config::InputConfig;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ClientMessage {

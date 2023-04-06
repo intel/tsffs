@@ -6,6 +6,7 @@ use std::cell::RefCell;
 
 use super::{components::tracer::AFLCoverageTracer, controller::Controller};
 use const_format::concatcp;
+use log::info;
 
 pub const CLASS_NAME: &str = "confuse_module";
 pub const BOOTSTRAP_SOCKNAME: &str = concatcp!(CLASS_NAME, "_SOCK");
@@ -16,6 +17,7 @@ pub const LOGLEVEL_VARNAME: &str = concatcp!(CLASS_NAME, "_LOGLEVEL");
 #[no_mangle]
 pub extern "C" fn confuse_init_local() {
     let mut controller = Controller::get().expect("Could not get controller");
+    info!("Initializing controller");
     controller
         .initialize()
         .expect("Could not initialize the controller");

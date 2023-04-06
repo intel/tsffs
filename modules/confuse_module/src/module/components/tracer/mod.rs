@@ -92,27 +92,19 @@ impl Component for AFLCoverageTracer {
         Ok(output_config.with_map(MapType::Coverage(self.afl_coverage_map.try_clone()?)))
     }
 
-    unsafe fn pre_run(
-        &mut self,
-        controller_instance: &ControllerInstance,
-        data: &[u8],
-    ) -> Result<()> {
+    unsafe fn pre_run(&mut self, data: &[u8]) -> Result<()> {
         Ok(())
     }
 
-    unsafe fn on_reset(&mut self, controller_instance: &ControllerInstance) -> Result<()> {
+    unsafe fn on_reset(&mut self) -> Result<()> {
         Ok(())
     }
 
-    unsafe fn on_stop(
-        &mut self,
-        controller_instance: &ControllerInstance,
-        _reason: Option<StopReason>,
-    ) -> Result<()> {
+    unsafe fn on_stop(&mut self, _reason: Option<StopReason>) -> Result<()> {
         Ok(())
     }
 
-    unsafe fn pre_first_run(&mut self, controller_instance: &ControllerInstance) -> Result<()> {
+    unsafe fn pre_first_run(&mut self) -> Result<()> {
         Ok(())
     }
 }

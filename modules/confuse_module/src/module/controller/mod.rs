@@ -26,13 +26,18 @@ use anyhow::{bail, ensure, Context, Result};
 use confuse_simics_api::{
     attr_value_t, class_data_t, class_info_t, class_kind_t_Sim_Class_Kind_Pseudo,
     class_kind_t_Sim_Class_Kind_Session, class_kind_t_Sim_Class_Kind_Vanilla, conf_class_t,
-    conf_object_t, micro_checkpoint_flags_t_Sim_MC_ID_User,
+    conf_object_t, hap_handle_t, micro_checkpoint_flags_t_Sim_MC_ID_User,
     micro_checkpoint_flags_t_Sim_MC_Persistent,
-    safe::{self, common::count_micro_checkpoints},
-    CORE_discard_future, SIM_attr_list_size, SIM_break_simulation, SIM_continue, SIM_create_class,
-    SIM_get_attribute, SIM_get_class, SIM_get_object, SIM_hap_add_callback, SIM_object_class,
-    SIM_quit, SIM_register_class, SIM_register_interface, SIM_run_alone,
-    VT_restore_micro_checkpoint, VT_save_micro_checkpoint,
+    safe::{
+        common::{
+            continue_simulation, count_micro_checkpoints, hap_add_callback_magic_instruction,
+            hap_add_callback_simulation_stopped,
+        },
+        wrapper::{
+            break_simulation, discard_future, quit, register_class, register_interface,
+            restore_micro_checkpoint, save_micro_checkpoint,
+        },
+    },
 };
 use const_format::{concatcp, formatcp};
 use ipc_channel::ipc::{channel, IpcReceiver, IpcSender};
@@ -114,7 +119,7 @@ impl Controller {
             .target(Target::Stderr)
             // For SIMICS we just output the message because we're going to get stuck into a log
             // message anyway, and we need a newline or all the outputs will get buffered. lol
-            .encoder(Box::new(PatternEncoder::new("[SIMICS] {m}{n}")))
+            .encoder(Box::new(PatternEncoder::new("[{l:5}] {m}{n}")))
             .build();
         // let level = LevelFilter::Info;
         let config = Config::builder()
@@ -145,15 +150,22 @@ impl Controller {
 
     /// Send a message to the module
     fn send_msg(&mut self, msg: ModuleMessage) -> Result<()> {
-        self.state.consume(&msg)?;
-        self.send_msg(msg)?;
+        trace!("Sending module message {:?}", msg);
+        self.state
+            .consume(&msg)
+            .context(format!("Error consuming sent message {:?}", msg))?;
+        self.tx.send(msg)?;
         Ok(())
     }
 
     /// Receive a message from the module
     fn recv_msg(&mut self) -> Result<ClientMessage> {
+        trace!("Waiting to receive client message");
         let msg = self.rx.recv()?;
-        self.state.consume(&msg)?;
+        trace!("Received client message {:?}", msg);
+        self.state
+            .consume(&msg)
+            .context(format!("Error consuming received message {:?}", msg))?;
         Ok(msg)
     }
 
@@ -173,7 +185,7 @@ impl Controller {
     }
 
     pub fn take_snapshot(&mut self) -> Result<()> {
-        safe::wrapper::save_micro_checkpoint("origin");
+        save_micro_checkpoint("origin");
 
         let sinfo_size = count_micro_checkpoints()?;
 
@@ -189,12 +201,13 @@ impl Controller {
     }
 
     pub fn quit_simulation(&mut self) {
-        safe::wrapper::quit();
+        quit();
     }
 
     pub fn restore_snapshot(&mut self) -> Result<()> {
-        safe::wrapper::restore_micro_checkpoint(0);
-        safe::wrapper::discard_future();
+        restore_micro_checkpoint(0);
+        discard_future();
+        trace!("Restored snapshot");
 
         Ok(())
     }
@@ -203,8 +216,7 @@ impl Controller {
     pub unsafe fn stop_simulation(&mut self, reason: StopReason) {
         trace!("Stopped with reason: {:?}", reason);
         self.stop_reason = Some(reason.clone());
-        let reason_string = raw_cstr!(format!("{:?}", reason));
-        SIM_break_simulation(reason_string);
+        break_simulation(format!("{:?}", reason));
     }
 }
 
@@ -214,7 +226,7 @@ impl Controller {
     pub unsafe fn interface_run(&mut self, obj: *mut conf_object_t) -> Result<()> {
         self.instance = RefCell::new(ControllerInstance::try_from_obj(obj)?);
 
-        safe::common::continue_simulation();
+        continue_simulation();
 
         Ok(())
     }
@@ -249,6 +261,7 @@ impl Controller {
     /// Called by SIMICS on magic instruction
     pub fn on_simulation_stopped_cb(&mut self) -> Result<()> {
         let reason = self.stop_reason.clone();
+        unsafe { self.on_stop(reason) };
         Ok(())
     }
 }
@@ -288,15 +301,10 @@ impl Component for Controller {
 
         info!("Creating class {}", Controller::CLASS_NAME);
 
-        let cls = nonnull!(unsafe {
-            SIM_register_class(
-                raw_cstr!(Controller::CLASS_NAME),
-                &class_data as *const class_data_t,
-            )
-        });
-        ensure!(!cls.is_null(), "Failed to register class");
+        let cls = register_class(Controller::CLASS_NAME, class_data)?;
+
         // let cls =
-        //     nonnull!(unsafe { SIM_create_class(raw_cstr!(Controller::CLASS_NAME), &class_info) });
+        //     create_class(Controller::CLASS_NAME, class_info);
 
         let mut tracer = AFLCoverageTracer::get()?;
         output_config = tracer.on_initialize(input_config, output_config, Some(cls))?;
@@ -306,27 +314,11 @@ impl Component for Controller {
         output_config = detector.on_initialize(input_config, output_config, Some(cls))?;
         drop(detector);
 
-        // Create the interface to access this component through simics scripting
-        let interface = Box::<confuse_module_controller_interface_t>::default();
-        let interface = Box::into_raw(interface);
-
-        ensure!(
-            unsafe {
-                SIM_register_interface(
-                    cls,
-                    raw_cstr!(confuse_module_controller_interface_t::INTERFACE_NAME),
-                    interface as *mut _,
-                )
-            } == 0,
-            "Could not register controller interface"
-        );
-
-        // Note: We do *NOT* want to free the interface, the allocated pointers are used directly
-        // by simics, not copied
+        register_interface::<_, confuse_module_interface_t>(cls, Controller::CLASS_NAME)?;
 
         info!(
             "Registered interface {}",
-            confuse_module_controller_interface_t::INTERFACE_NAME
+            confuse_module_interface_t::INTERFACE_NAME
         );
 
         // Next, we register callbacks for the two events we care about for this component:
@@ -335,23 +327,9 @@ impl Component for Controller {
         // - Core_Simulation_Stopped: If for some reason we don't get a magic stop, we need
         //   to know about other stops to handle simulation errors and normal exits.
 
-        unsafe {
-            SIM_hap_add_callback(
-                raw_cstr!("Core_Magic_Instruction"),
-                transmute(callbacks::core_magic_instruction_cb as unsafe extern "C" fn(_, _, _)),
-                null_mut(),
-            )
-        };
+        hap_add_callback_magic_instruction(callbacks::core_magic_instruction_cb)?;
 
-        unsafe {
-            SIM_hap_add_callback(
-                raw_cstr!("Core_Simulation_Stopped"),
-                transmute(
-                    callbacks::core_simulation_stopped_cb as unsafe extern "C" fn(_, _, _, _),
-                ),
-                null_mut(),
-            )
-        };
+        hap_add_callback_simulation_stopped(callbacks::core_simulation_stopped_cb)?;
 
         // The components initialized above may modify the initialized config, and after all of
         // them have a chance to do so we send the final config back to the client
@@ -362,130 +340,13 @@ impl Component for Controller {
         Ok(OutputConfig::default())
     }
 
-    unsafe fn pre_run(
-        &mut self,
-        controller_instance: &ControllerInstance,
-        data: &[u8],
-    ) -> Result<()> {
+    unsafe fn pre_first_run(&mut self) -> Result<()> {
         let mut tracer = AFLCoverageTracer::get()?;
-        tracer.pre_run(controller_instance, data)?;
+        tracer.pre_first_run()?;
         drop(tracer);
 
         let mut detector = FaultDetector::get()?;
-        detector.pre_run(controller_instance, data)?;
-        drop(detector);
-
-        Ok(())
-    }
-
-    unsafe fn on_reset(&mut self, controller_instance: &ControllerInstance) -> Result<()> {
-        // Before we tell our components we have reset, we need to actually do it
-        match self.recv_msg()? {
-            ClientMessage::Reset => {
-                unsafe { self.restore_snapshot() }?;
-            }
-            ClientMessage::Exit => {
-                unsafe { self.quit_simulation() };
-            }
-            _ => bail!("Unexpected message. Expected Reset"),
-        }
-
-        let mut tracer = AFLCoverageTracer::get()?;
-        tracer.on_reset(controller_instance)?;
-        drop(tracer);
-
-        let mut detector = FaultDetector::get()?;
-        detector.on_reset(controller_instance)?;
-        drop(detector);
-
-        self.send_msg(ModuleMessage::Ready)?;
-
-        match self.recv_msg()? {
-            ClientMessage::Run(mut input) => {
-                let buffer = self.buffer;
-                input.truncate(buffer.size as usize);
-                unsafe { self.pre_run(controller_instance, &input) }?;
-                self.cpus
-                    .first()
-                    .context("No cpu available")?
-                    .borrow()
-                    .write_bytes(&buffer.address, &input)?;
-            }
-            ClientMessage::Exit => {
-                unsafe { self.quit_simulation() };
-            }
-            _ => bail!("Unexpected message. Expected Run"),
-        }
-
-        safe::common::continue_simulation();
-
-        Ok(())
-    }
-
-    /// Callback when the simulation stops.
-    unsafe fn on_stop(
-        &mut self,
-        controller_instance: &ControllerInstance,
-        reason: Option<StopReason>,
-    ) -> Result<()> {
-        let mut tracer = AFLCoverageTracer::get()?;
-        tracer.on_stop(controller_instance, reason.clone())?;
-        drop(tracer);
-
-        let mut detector = FaultDetector::get()?;
-        detector.on_stop(controller_instance, reason.clone())?;
-        drop(detector);
-
-        match reason {
-            None => {}
-            Some(StopReason::Magic(magic)) => match magic {
-                Magic::Start(_) => {
-                    if self.first_time_init_done {
-                        safe::common::continue_simulation();
-                    } else {
-                        self.pre_first_run(controller_instance)?;
-                        self.on_reset(controller_instance)?;
-                    }
-                }
-                Magic::Stop((code, _)) => {
-                    let val = self
-                        .cpus
-                        .first()
-                        .context("No cpu available")?
-                        .borrow()
-                        .get_reg_value("rsi")?;
-                    let magic = Magic::Stop((code, Some(val)));
-                    trace!("Stopped with magic: {:?}", magic);
-                    self.send_msg(ModuleMessage::Stopped(StopReason::Magic(magic)))?;
-                    self.on_reset(controller_instance)?;
-                }
-            },
-            Some(StopReason::Crash(fault)) => {
-                self.send_msg(ModuleMessage::Stopped(StopReason::Crash(fault)))?;
-                self.on_reset(controller_instance)?;
-            }
-            Some(StopReason::SimulationExit) => {
-                self.send_msg(ModuleMessage::Stopped(StopReason::SimulationExit))?;
-                self.on_reset(controller_instance)?;
-            }
-            Some(StopReason::TimeOut) => {
-                self.send_msg(ModuleMessage::Stopped(StopReason::TimeOut))?;
-                self.on_reset(controller_instance)?;
-            }
-        }
-
-        self.stop_reason = None;
-
-        Ok(())
-    }
-
-    unsafe fn pre_first_run(&mut self, controller_instance: &ControllerInstance) -> Result<()> {
-        let mut tracer = AFLCoverageTracer::get()?;
-        tracer.pre_first_run(controller_instance)?;
-        drop(tracer);
-
-        let mut detector = FaultDetector::get()?;
-        detector.pre_first_run(controller_instance)?;
+        detector.pre_first_run()?;
         drop(detector);
 
         // We need to get our buffer information before we run for the first time so we can write
@@ -508,6 +369,117 @@ impl Component for Controller {
         unsafe { self.take_snapshot() }?;
 
         self.first_time_init_done = true;
+
+        Ok(())
+    }
+
+    unsafe fn pre_run(&mut self, data: &[u8]) -> Result<()> {
+        let mut tracer = AFLCoverageTracer::get()?;
+        tracer.pre_run(data)?;
+        drop(tracer);
+
+        let mut detector = FaultDetector::get()?;
+        detector.pre_run(data)?;
+        drop(detector);
+
+        Ok(())
+    }
+
+    unsafe fn on_reset(&mut self) -> Result<()> {
+        // Before we tell our components we have reset, we need to actually do it
+        match self.recv_msg()? {
+            ClientMessage::Reset => {
+                self.restore_snapshot()?;
+            }
+            ClientMessage::Exit => {
+                self.quit_simulation();
+            }
+            _ => bail!("Unexpected message. Expected Reset"),
+        }
+
+        let mut tracer = AFLCoverageTracer::get()?;
+        tracer.on_reset()?;
+        drop(tracer);
+
+        let mut detector = FaultDetector::get()?;
+        detector.on_reset()?;
+        drop(detector);
+
+        self.send_msg(ModuleMessage::Ready)?;
+
+        trace!("Sent ready message");
+
+        match self.recv_msg()? {
+            ClientMessage::Run(mut input) => {
+                let buffer = self.buffer;
+                input.truncate(buffer.size as usize);
+                unsafe { self.pre_run(&input) }?;
+                self.cpus
+                    .first()
+                    .context("No cpu available")?
+                    .borrow()
+                    .write_bytes(&buffer.address, &input)?;
+            }
+            ClientMessage::Exit => {
+                self.quit_simulation();
+            }
+            _ => bail!("Unexpected message. Expected Run"),
+        }
+
+        continue_simulation();
+
+        Ok(())
+    }
+
+    /// Callback when the simulation stops.
+    unsafe fn on_stop(&mut self, reason: Option<StopReason>) -> Result<()> {
+        let mut tracer = AFLCoverageTracer::get()?;
+        tracer.on_stop(reason.clone())?;
+        drop(tracer);
+
+        let mut detector = FaultDetector::get()?;
+        detector.on_stop(reason.clone())?;
+        drop(detector);
+
+        match reason {
+            None => {}
+            Some(StopReason::Magic(magic)) => match magic {
+                Magic::Start(_) => {
+                    if self.first_time_init_done {
+                        continue_simulation();
+                    } else {
+                        self.pre_first_run()?;
+                        self.on_reset()?;
+                    }
+                }
+                Magic::Stop((code, _)) => {
+                    let val = self
+                        .cpus
+                        .first()
+                        .context("No cpu available")?
+                        .borrow()
+                        .get_reg_value("rsi")?;
+                    let magic = Magic::Stop((code, Some(val)));
+                    trace!("Stopped with magic: {:?}", magic);
+                    self.send_msg(ModuleMessage::Stopped(StopReason::Magic(magic)))?;
+                    self.on_reset()?;
+                }
+            },
+            Some(StopReason::Crash(fault)) => {
+                self.send_msg(ModuleMessage::Stopped(StopReason::Crash(fault)))?;
+                self.on_reset()?;
+            }
+            Some(StopReason::SimulationExit) => {
+                self.send_msg(ModuleMessage::Stopped(StopReason::SimulationExit))?;
+                self.on_reset()?;
+            }
+            Some(StopReason::TimeOut) => {
+                self.send_msg(ModuleMessage::Stopped(StopReason::TimeOut))?;
+                self.on_reset()?;
+            }
+        }
+
+        self.stop_reason = None;
 
         Ok(())
     }
@@ -548,23 +520,21 @@ impl ComponentInterface for Controller {
 #[allow(non_camel_case_types)]
 #[repr(C)]
 /// The interface for the controller
-pub struct confuse_module_controller_interface_t {
+pub struct confuse_module_interface_t {
     run: unsafe extern "C" fn(obj: *mut conf_object_t),
     add_processor: unsafe extern "C" fn(obj: *mut conf_object_t, processor: *mut attr_value_t),
     add_fault: unsafe extern "C" fn(obj: *mut conf_object_t, fault: i64),
 }
 
-impl confuse_module_controller_interface_t {
+impl confuse_module_interface_t {
     // TODO: Can we autogenerate this with bindgen and tree-sitter?
     /// Write the C binding for this interface here
     pub const INTERFACE_NAME: &str = CLASS_NAME;
-    pub const INTERFACE_TYPENAME: &str = concatcp!(
-        confuse_module_controller_interface_t::INTERFACE_NAME,
-        "_interface_t"
-    );
+    pub const INTERFACE_TYPENAME: &str =
+        concatcp!(confuse_module_interface_t::INTERFACE_NAME, "_interface_t");
 }
 
-impl Default for confuse_module_controller_interface_t {
+impl Default for confuse_module_interface_t {
     fn default() -> Self {
         Self {
             run: callbacks::controller_interface_run,

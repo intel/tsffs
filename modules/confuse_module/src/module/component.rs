@@ -29,26 +29,18 @@ pub trait Component {
     /// the fault detector may need the list of faults to be fully set up before registering
     /// various additional functionality with SIMICS. A snapshot is not taken until after all
     /// components `pre_first_run` functions have been run.
-    unsafe fn pre_first_run(&mut self, controller_instance: &ControllerInstance) -> Result<()>;
+    unsafe fn pre_first_run(&mut self) -> Result<()>;
     /// Called prior to running the simulator with a given input. Components do not need to do
     /// anything with this information, but they can. For example, the redqueen component needs
     /// to inspect the input to establish an I2S (Input-To-State) correspondence. This function
     /// is called before every run.
-    unsafe fn pre_run(
-        &mut self,
-        controller_instance: &ControllerInstance,
-        data: &[u8],
-    ) -> Result<()>;
+    unsafe fn pre_run(&mut self, data: &[u8]) -> Result<()>;
     /// Called when a `ClientMessage::Reset` message is received. The component should do anything
     /// it needs in order to prepare for the next run during this call.
-    unsafe fn on_reset(&mut self, controller_instance: &ControllerInstance) -> Result<()>;
+    unsafe fn on_reset(&mut self) -> Result<()>;
     /// Called when a `ClientMessage::Stop` message is received. The component should clean itself
     /// up and do any pre-exit work it needs to do.
-    unsafe fn on_stop(
-        &mut self,
-        controller_instance: &ControllerInstance,
-        reason: Option<StopReason>,
-    ) -> Result<()>;
+    unsafe fn on_stop(&mut self, reason: Option<StopReason>) -> Result<()>;
 }
 
 /// A trait defining the functions a component needs to implement to react to functions called

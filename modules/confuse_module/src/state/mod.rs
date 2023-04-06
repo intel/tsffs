@@ -1,13 +1,14 @@
 //! Implements the state machine for this module. This state machine represents the different
 //! states the module (and through it, simics) can be in and the transitions between those states
 
-use anyhow::Result;
+use anyhow::{bail, Result};
+use log::{error, info};
 use rust_fsm::*;
 
 use crate::module::controller::messages::{client::ClientMessage, module::ModuleMessage};
 
 state_machine! {
-    derive(Debug)
+    derive(Debug, Clone)
     pub ConfuseModule(Uninitialized)
 
     Uninitialized => {
@@ -32,7 +33,7 @@ state_machine! {
     },
     Running(Stopped) => Stopped,
     Stopped => {
-        Reset => Ready,
+        Reset => HalfReady,
         Exit => Done,
     }
 }
@@ -77,7 +78,31 @@ impl State {
     /// keep this consistent, as they will call this method automatically
     pub fn consume<M: Into<ConfuseModuleInput>>(&mut self, message: M) -> Result<Option<()>> {
         let input: ConfuseModuleInput = message.into();
-        Ok(self.machine.consume(&input)?)
+        let pre_state = self.machine.state().clone();
+        let result = self.machine.consume(&input);
+        let post_state = self.machine.state().clone();
+
+        match result {
+            Ok(r) => {
+                info!(
+                    "Consumed {:?}: Transitioned from {:?} -> {:?}",
+                    input, pre_state, post_state
+                );
+                Ok(r)
+            }
+            Err(e) => {
+                error!(
+                    "Tried to consume {:?}: Failed to transition from {:?}: {}",
+                    input, pre_state, e
+                );
+                bail!(
+                    "Tried to consume {:?}: Failed to transition from {:?}: {}",
+                    input,
+                    pre_state,
+                    e
+                );
+            }
+        }
     }
 }
 

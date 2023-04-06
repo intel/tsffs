@@ -103,8 +103,10 @@ impl Client {
     }
 
     pub fn initialize(&mut self, config: InputConfig) -> Result<OutputConfig> {
+        info!("Sending initialize message");
         self.send_msg(ClientMessage::Initialize(config))?;
 
+        info!("Waiting for initialized message");
         if let ModuleMessage::Initialized(config) = self.recv_msg()? {
             Ok(config)
         } else {
@@ -113,8 +115,10 @@ impl Client {
     }
 
     pub fn reset(&mut self) -> Result<()> {
+        info!("Sending reset message");
         self.send_msg(ClientMessage::Reset)?;
 
+        info!("Waiting for ready message");
         if let ModuleMessage::Ready = self.recv_msg()? {
             Ok(())
         } else {
@@ -123,8 +127,10 @@ impl Client {
     }
 
     pub fn run(&mut self, input: Vec<u8>) -> Result<StopReason> {
+        info!("Sending run message");
         self.send_msg(ClientMessage::Run(input))?;
 
+        info!("Waiting for stopped message");
         if let ModuleMessage::Stopped(reason) = self.recv_msg()? {
             Ok(reason)
         } else {
@@ -133,8 +139,10 @@ impl Client {
     }
 
     pub fn exit(&mut self) -> Result<()> {
+        info!("Sending exit message");
         self.send_msg(ClientMessage::Exit)?;
 
+        info!("Killing SIMICS");
         self.project.kill()?;
 
         Ok(())
