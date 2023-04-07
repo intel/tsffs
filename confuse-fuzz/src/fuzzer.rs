@@ -1,17 +1,9 @@
-use std::{
-    ffi::OsStr,
-    io::{stdout, BufRead, BufReader},
-    path::PathBuf,
-    process::{Child, Stdio},
-    thread::{spawn, JoinHandle},
-};
+use std::{io::stdout, path::PathBuf};
 
-use anyhow::{bail, Result};
+use anyhow::Result;
 use confuse_module::{
     client::Client,
-    module::{
-        config::InputConfig, controller::messages::module::ModuleMessage, stop_reason::StopReason,
-    },
+    module::{config::InputConfig, stop_reason::StopReason},
 };
 use confuse_simics_project::SimicsProject;
 use crossterm::{
@@ -20,13 +12,12 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, Clear, ClearType, LeaveAlternateScreen},
 };
-use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender};
 use ipc_shm::{IpcShm, IpcShmWriter};
 use libafl::{
     prelude::{tui::TuiMonitor, *},
     Fuzzer as _,
 };
-use log::{debug, error, info, warn, Level};
+use log::{debug, error, info, Level};
 
 /// Customizable fuzzer for SIMICS
 pub struct Fuzzer {
@@ -119,7 +110,7 @@ impl Fuzzer {
                         exit_kind = ExitKind::Ok;
                     }
                     StopReason::TimeOut => {
-                        warn!("Target timed out, yeehaw(???)");
+                        error!("Target timed out, yeehaw(???)");
                         exit_kind = ExitKind::Timeout;
                     }
                     StopReason::Magic(_) => {

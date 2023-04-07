@@ -4,7 +4,7 @@
 
 use std::io::{BufRead, BufReader};
 
-use anyhow::{bail, ensure, Result};
+use anyhow::{bail, Result};
 use confuse_simics_project::SimicsProject;
 use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender};
 use log::{debug, info};

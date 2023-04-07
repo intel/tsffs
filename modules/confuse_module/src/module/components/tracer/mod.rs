@@ -9,10 +9,9 @@ use crate::module::{
     stop_reason::StopReason,
 };
 use anyhow::{ensure, Result};
-use confuse_simics_api::{attr_value_t, conf_class_t, conf_object_t, instruction_handle_t};
-use crc32fast::hash;
+use confuse_simics_api::{attr_value_t, conf_object_t, instruction_handle_t};
 use ipc_shm::{IpcShm, IpcShmWriter};
-use log::{debug, info, trace};
+use log::info;
 use rand::{thread_rng, Rng};
 use std::{cell::RefCell, num::Wrapping, sync::MutexGuard};
 
@@ -32,9 +31,10 @@ impl AFLCoverageTracer {
 }
 
 impl AFLCoverageTracer {
-    // 256kb
-    pub const AFL_COVERAGE_MAP_SIZE: usize = 0x40000;
+    // 264kb
+    pub const AFL_COVERAGE_MAP_SIZE: usize = 0x10000;
 
+    /// Try to instantiate a new AFL Coverage Tracer
     pub fn try_new() -> Result<Self> {
         let mut afl_coverage_map =
             IpcShm::try_new("afl_coverage_map", AFLCoverageTracer::AFL_COVERAGE_MAP_SIZE)?;
@@ -87,12 +87,15 @@ impl Component for AFLCoverageTracer {
         &mut self,
         _input_config: &InputConfig,
         output_config: OutputConfig,
-        controller_cls: Option<*mut conf_class_t>,
     ) -> Result<OutputConfig> {
         Ok(output_config.with_map(MapType::Coverage(self.afl_coverage_map.try_clone()?)))
     }
 
-    unsafe fn pre_run(&mut self, data: &[u8]) -> Result<()> {
+    unsafe fn pre_run(
+        &mut self,
+        _data: &[u8],
+        _instance: Option<&mut ControllerInstance>,
+    ) -> Result<()> {
         Ok(())
     }
 
@@ -100,7 +103,11 @@ impl Component for AFLCoverageTracer {
         Ok(())
     }
 
-    unsafe fn on_stop(&mut self, _reason: Option<StopReason>) -> Result<()> {
+    unsafe fn on_stop(
+        &mut self,
+        _reason: Option<StopReason>,
+        _instance: Option<&mut ControllerInstance>,
+    ) -> Result<()> {
         Ok(())
     }
 
@@ -110,6 +117,10 @@ impl Component for AFLCoverageTracer {
 }
 
 impl ComponentInterface for AFLCoverageTracer {
+    unsafe fn on_run(&mut self, _instance: &ControllerInstance) -> Result<()> {
+        Ok(())
+    }
+
     unsafe fn on_add_processor(
         &mut self,
         _obj: *mut conf_object_t,
@@ -131,7 +142,7 @@ impl ComponentInterface for AFLCoverageTracer {
         Ok(())
     }
 
-    unsafe fn on_add_fault(&mut self, obj: *mut conf_object_t, fault: i64) -> Result<()> {
+    unsafe fn on_add_fault(&mut self, _obj: *mut conf_object_t, _fault: i64) -> Result<()> {
         Ok(())
     }
 }

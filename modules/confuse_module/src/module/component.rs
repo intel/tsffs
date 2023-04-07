@@ -9,7 +9,7 @@ use super::{
     stop_reason::StopReason,
 };
 use anyhow::Result;
-use confuse_simics_api::{attr_value_t, conf_class_t, conf_object_t};
+use confuse_simics_api::{attr_value_t, conf_object_t};
 
 /// A trait defining the functions a component needs to implement so it can initialize itself
 /// from the global configuration and react to events that happen
@@ -22,7 +22,6 @@ pub trait Component {
         &mut self,
         input_config: &InputConfig,
         output_config: OutputConfig,
-        controller_cls: Option<*mut conf_class_t>,
     ) -> Result<OutputConfig>;
     /// Called prior to the first time run of the simulator. This function allows components to
     /// do any last-minute configuration that depends on possible user configurations. For example
@@ -34,18 +33,30 @@ pub trait Component {
     /// anything with this information, but they can. For example, the redqueen component needs
     /// to inspect the input to establish an I2S (Input-To-State) correspondence. This function
     /// is called before every run.
-    unsafe fn pre_run(&mut self, data: &[u8]) -> Result<()>;
+    ///
+    /// # Safety
+    ///
+    unsafe fn pre_run(
+        &mut self,
+        data: &[u8],
+        instance: Option<&mut ControllerInstance>,
+    ) -> Result<()>;
     /// Called when a `ClientMessage::Reset` message is received. The component should do anything
     /// it needs in order to prepare for the next run during this call.
     unsafe fn on_reset(&mut self) -> Result<()>;
     /// Called when a `ClientMessage::Stop` message is received. The component should clean itself
     /// up and do any pre-exit work it needs to do.
-    unsafe fn on_stop(&mut self, reason: Option<StopReason>) -> Result<()>;
+    unsafe fn on_stop(
+        &mut self,
+        reason: Option<StopReason>,
+        instance: Option<&mut ControllerInstance>,
+    ) -> Result<()>;
 }
 
 /// A trait defining the functions a component needs to implement to react to functions called
 /// on the component interface with the outside world.
 pub trait ComponentInterface {
+    unsafe fn on_run(&mut self, instance: &ControllerInstance) -> Result<()>;
     /// Called when a processor is added via the external interface
     unsafe fn on_add_processor(
         &mut self,

@@ -1,5 +1,5 @@
 //! The view SIMICS sees of the controller and the safe bindings to that view
-use anyhow::{ensure, Error, Result};
+use anyhow::{ensure, Result};
 use confuse_simics_api::{conf_class_t, conf_object_t, mm_zalloc};
 use confuse_simics_api::{SIM_get_class, SIM_object_class};
 use raw_cstr::raw_cstr;
@@ -31,7 +31,7 @@ impl controller_conf_object_t {
 
 #[no_mangle]
 /// Allocate a controler configuration object
-pub extern "C" fn alloc_controller_conf_object(cls: *mut c_void) -> *mut conf_object_t {
+pub extern "C" fn alloc_controller_conf_object(_cls: *mut c_void) -> *mut conf_object_t {
     unsafe {
         mm_zalloc(
             size_of::<controller_conf_object_t>(),
@@ -83,6 +83,14 @@ impl ControllerInstance {
         Ok(Self {
             ptr: unsafe { controller_conf_object_t::try_from_obj(obj)? },
         })
+    }
+
+    pub fn get(&self) -> *mut controller_conf_object_t {
+        self.ptr
+    }
+
+    pub fn get_as_obj(&mut self) -> &mut conf_object_t {
+        unsafe { &mut *(self.ptr as *mut conf_object_t) }
     }
 }
 

@@ -86,7 +86,6 @@ impl OutputConfig {
                 .context("No coverage map found")?,
         ) {
             MapType::Coverage(coverage) => Ok(coverage),
-            _ => bail!("Failed to get coverage map"),
         }
     }
 }

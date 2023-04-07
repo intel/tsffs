@@ -1,6 +1,6 @@
 use self::{
     instance::ControllerInstance,
-    magic::{Magic, MagicCode},
+    magic::Magic,
     messages::{client::ClientMessage, module::ModuleMessage},
     target_buffer::TargetBuffer,
 };
@@ -13,21 +13,14 @@ use super::{
 use crate::{
     module::{
         components::{detector::FaultDetector, tracer::AFLCoverageTracer},
-        controller::instance::{
-            alloc_controller_conf_object, alloc_controller_conf_object_for_create,
-            init_controller_conf_object, init_controller_conf_object_for_create,
-        },
+        controller::instance::{alloc_controller_conf_object, init_controller_conf_object},
         entrypoint::{BOOTSTRAP_SOCKNAME, CLASS_NAME, LOGLEVEL_VARNAME},
     },
-    nonnull,
     state::State,
 };
 use anyhow::{bail, ensure, Context, Result};
 use confuse_simics_api::{
-    attr_value_t, class_data_t, class_info_t, class_kind_t_Sim_Class_Kind_Pseudo,
-    class_kind_t_Sim_Class_Kind_Session, class_kind_t_Sim_Class_Kind_Vanilla, conf_class_t,
-    conf_object_t, hap_handle_t, micro_checkpoint_flags_t_Sim_MC_ID_User,
-    micro_checkpoint_flags_t_Sim_MC_Persistent,
+    attr_value_t, class_data_t, class_kind_t_Sim_Class_Kind_Vanilla, conf_object_t,
     safe::{
         common::{
             continue_simulation, count_micro_checkpoints, hap_add_callback_magic_instruction,
@@ -39,7 +32,7 @@ use confuse_simics_api::{
         },
     },
 };
-use const_format::{concatcp, formatcp};
+use const_format::concatcp;
 use ipc_channel::ipc::{channel, IpcReceiver, IpcSender};
 use lazy_static::lazy_static;
 use log::{info, trace, Level, LevelFilter};
@@ -53,9 +46,7 @@ use raw_cstr::raw_cstr;
 use std::{
     cell::RefCell,
     env::var,
-    ffi::{c_void, CString},
-    mem::transmute,
-    ptr::null_mut,
+    ffi::CString,
     str::FromStr,
     sync::{Arc, Mutex, MutexGuard},
 };
@@ -84,7 +75,7 @@ pub struct Controller {
     state: State,
     tx: IpcSender<ModuleMessage>,
     rx: IpcReceiver<ClientMessage>,
-    log_handle: Handle,
+    _log_handle: Handle,
     stop_reason: Option<StopReason>,
     buffer: TargetBuffer,
     first_time_init_done: bool,
@@ -139,7 +130,7 @@ impl Controller {
             state: State::new(),
             tx,
             rx,
-            log_handle,
+            _log_handle: log_handle,
             stop_reason: None,
             buffer: TargetBuffer::default(),
             first_time_init_done: false,
@@ -179,7 +170,7 @@ impl Controller {
 
         let output_config = OutputConfig::default();
 
-        _ = self.on_initialize(&input_config, output_config, None)?;
+        _ = self.on_initialize(&input_config, output_config)?;
 
         Ok(())
     }
@@ -213,7 +204,7 @@ impl Controller {
     }
 
     /// Stop the simulation with some reason for stopping
-    pub unsafe fn stop_simulation(&mut self, reason: StopReason) {
+    pub fn stop_simulation(&mut self, reason: StopReason) {
         trace!("Stopped with reason: {:?}", reason);
         self.stop_reason = Some(reason.clone());
         break_simulation(format!("{:?}", reason));
@@ -224,7 +215,16 @@ impl Controller {
 impl Controller {
     /// Run the module
     pub unsafe fn interface_run(&mut self, obj: *mut conf_object_t) -> Result<()> {
-        self.instance = RefCell::new(ControllerInstance::try_from_obj(obj)?);
+        let instance = ControllerInstance::try_from_obj(obj)?;
+        self.instance = RefCell::new(instance);
+
+        let mut tracer = AFLCoverageTracer::get()?;
+        tracer.on_run(&self.instance.borrow())?;
+        drop(tracer);
+
+        let mut detector = FaultDetector::get()?;
+        detector.on_run(&self.instance.borrow())?;
+        drop(detector);
 
         continue_simulation();
 
@@ -254,14 +254,14 @@ impl Controller {
 impl Controller {
     /// Called by SIMICS when the simulation stops
     pub fn on_magic_instruction_cb(&mut self, magic: Magic) -> Result<()> {
-        unsafe { self.stop_simulation(StopReason::Magic(magic)) };
+        self.stop_simulation(StopReason::Magic(magic));
         Ok(())
     }
 
     /// Called by SIMICS on magic instruction
     pub fn on_simulation_stopped_cb(&mut self) -> Result<()> {
         let reason = self.stop_reason.clone();
-        unsafe { self.on_stop(reason) };
+        unsafe { self.on_stop(reason, None) }?;
         Ok(())
     }
 }
@@ -273,7 +273,6 @@ impl Component for Controller {
         &mut self,
         input_config: &InputConfig,
         mut output_config: OutputConfig,
-        controller_cls: Option<*mut conf_class_t>,
     ) -> Result<OutputConfig> {
         // First we register our class and interface
 
@@ -307,11 +306,11 @@ impl Component for Controller {
         //     create_class(Controller::CLASS_NAME, class_info);
 
         let mut tracer = AFLCoverageTracer::get()?;
-        output_config = tracer.on_initialize(input_config, output_config, Some(cls))?;
+        output_config = tracer.on_initialize(input_config, output_config)?;
         drop(tracer);
 
         let mut detector = FaultDetector::get()?;
-        output_config = detector.on_initialize(input_config, output_config, Some(cls))?;
+        output_config = detector.on_initialize(input_config, output_config)?;
         drop(detector);
 
         register_interface::<_, confuse_module_interface_t>(cls, Controller::CLASS_NAME)?;
@@ -366,20 +365,24 @@ impl Component for Controller {
                 .get_reg_value("rdi")?,
         };
 
-        unsafe { self.take_snapshot() }?;
+        self.take_snapshot()?;
 
         self.first_time_init_done = true;
 
         Ok(())
     }
 
-    unsafe fn pre_run(&mut self, data: &[u8]) -> Result<()> {
+    unsafe fn pre_run(
+        &mut self,
+        data: &[u8],
+        _instance: Option<&mut ControllerInstance>,
+    ) -> Result<()> {
         let mut tracer = AFLCoverageTracer::get()?;
-        tracer.pre_run(data)?;
+        tracer.pre_run(data, Some(&mut self.instance.borrow_mut()))?;
         drop(tracer);
 
         let mut detector = FaultDetector::get()?;
-        detector.pre_run(data)?;
+        detector.pre_run(data, Some(&mut self.instance.borrow_mut()))?;
         drop(detector);
 
         Ok(())
@@ -413,7 +416,7 @@ impl Component for Controller {
             ClientMessage::Run(mut input) => {
                 let buffer = self.buffer;
                 input.truncate(buffer.size as usize);
-                unsafe { self.pre_run(&input) }?;
+                unsafe { self.pre_run(&input, None) }?;
                 self.cpus
                     .first()
                     .context("No cpu available")?
@@ -432,13 +435,17 @@ impl Component for Controller {
     }
 
     /// Callback when the simulation stops.
-    unsafe fn on_stop(&mut self, reason: Option<StopReason>) -> Result<()> {
+    unsafe fn on_stop(
+        &mut self,
+        reason: Option<StopReason>,
+        _instance: Option<&mut ControllerInstance>,
+    ) -> Result<()> {
         let mut tracer = AFLCoverageTracer::get()?;
-        tracer.on_stop(reason.clone())?;
+        tracer.on_stop(reason.clone(), Some(&mut self.instance.borrow_mut()))?;
         drop(tracer);
 
         let mut detector = FaultDetector::get()?;
-        detector.on_stop(reason.clone())?;
+        detector.on_stop(reason.clone(), Some(&mut self.instance.borrow_mut()))?;
         drop(detector);
 
         match reason {
@@ -486,6 +493,9 @@ impl Component for Controller {
 }
 
 impl ComponentInterface for Controller {
+    unsafe fn on_run(&mut self, _instance: &ControllerInstance) -> Result<()> {
+        Ok(())
+    }
     unsafe fn on_add_processor(
         &mut self,
         obj: *mut conf_object_t,
@@ -546,12 +556,9 @@ impl Default for confuse_module_interface_t {
 
 /// This module contains all code that is invoked by SIMICS
 mod callbacks {
-    use super::{
-        magic::{Magic, MagicCode},
-        Controller,
-    };
+    use super::{magic::Magic, Controller};
     use confuse_simics_api::{attr_value_t, conf_object_t};
-    use log::{info, trace};
+    use log::trace;
     use std::ffi::{c_char, c_void};
 
     #[no_mangle]

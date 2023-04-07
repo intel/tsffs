@@ -2,9 +2,8 @@
 //! `_simics_module_init` which is defined automatically by `generate_signature_header` and
 //! included in this file. `_simics_module_init` then calls `init_local`, which is where we
 //! perform our own initialization
-use std::cell::RefCell;
 
-use super::{components::tracer::AFLCoverageTracer, controller::Controller};
+use super::controller::Controller;
 use const_format::concatcp;
 use log::info;
 

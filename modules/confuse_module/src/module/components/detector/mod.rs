@@ -1,31 +1,54 @@
 use self::fault::{Fault, X86_64Fault};
-use crate::{
-    module::{
-        component::{Component, ComponentInterface},
-        config::{InputConfig, OutputConfig},
-        controller::{instance::ControllerInstance, Controller, DETECTOR},
-        cpu::Cpu,
-        stop_reason::StopReason,
-    },
-    nonnull,
+use crate::module::{
+    component::{Component, ComponentInterface},
+    config::{InputConfig, OutputConfig},
+    controller::{instance::ControllerInstance, Controller, DETECTOR},
+    cpu::Cpu,
+    stop_reason::StopReason,
 };
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{ensure, Context, Result};
 use confuse_simics_api::{
-    attr_value_t, conf_class_t, conf_object_t, event_class_flag_t_Sim_EC_Notsaved, event_class_t,
-    SIM_event_cancel_time, SIM_event_find_next_time, SIM_event_post_time, SIM_hap_add_callback,
-    SIM_object_class, SIM_object_clock, SIM_register_event,
+    attr_value_t, conf_object_t, event_class_t,
+    safe::{
+        common::hap_add_callback_core_exception,
+        wrapper::{
+            event_cancel_time, event_find_next_time, event_post_time, get_class, object_clock,
+            register_event,
+        },
+    },
 };
-use log::{info, trace};
-use raw_cstr::raw_cstr;
-use std::{
-    cell::RefCell,
-    ffi::CString,
-    sync::{Arc, Mutex},
-};
-use std::{collections::HashSet, mem::transmute, ptr::null_mut, sync::MutexGuard};
+use log::info;
+use std::{cell::RefCell, ptr::null_mut};
+use std::{collections::HashSet, sync::MutexGuard};
 
 pub mod fault;
 
+struct TimeoutEvent {
+    ptr: *mut event_class_t,
+}
+
+impl Default for TimeoutEvent {
+    fn default() -> Self {
+        Self { ptr: null_mut() }
+    }
+}
+
+impl TimeoutEvent {
+    pub unsafe fn from_ptr(ptr: *mut event_class_t) -> Self {
+        Self { ptr }
+    }
+
+    pub fn _get(&self) -> *mut event_class_t {
+        self.ptr
+    }
+
+    pub fn as_mut_ref(&mut self) -> &mut event_class_t {
+        unsafe { &mut *self.ptr }
+    }
+}
+
+#[derive(Default)]
+/// Component of the Confuse module that detects faults, timeouts, and other error conditions
 pub struct FaultDetector {
     /// The set of faults that are considered crashes for this fuzzing campaign
     pub faults: HashSet<Fault>,
@@ -34,29 +57,18 @@ pub struct FaultDetector {
     /// doing the math yourself!
     pub timeout: Option<f64>,
     /// The registered timeout event
-    pub timeout_event: *mut event_class_t,
+    timeout_event: RefCell<TimeoutEvent>,
     pub cpus: Vec<RefCell<Cpu>>,
-    pub processor_cb_obj: *mut conf_object_t,
-    pub processor_cb_cls: *mut conf_class_t,
 }
 
 unsafe impl Send for FaultDetector {}
 unsafe impl Sync for FaultDetector {}
 
-impl Default for FaultDetector {
-    fn default() -> Self {
-        Self {
-            faults: HashSet::new(),
-            timeout: None,
-            timeout_event: null_mut(),
-            cpus: vec![],
-            processor_cb_obj: null_mut(),
-            processor_cb_cls: null_mut(),
-        }
-    }
-}
-
 impl FaultDetector {
+    /// The name of the timeout event this component uses to post events to the SIMICS event queue
+    const TIMEOUT_EVENT_NAME: &str = "timeout_event";
+
+    /// Get the global instance of this component
     pub fn get<'a>() -> Result<MutexGuard<'a, Self>> {
         let detector = DETECTOR.lock().expect("Could not lock detector");
         Ok(detector)
@@ -64,26 +76,33 @@ impl FaultDetector {
 }
 
 impl FaultDetector {
+    /// Try to instantiate a new instance of this component
     pub fn try_new() -> Result<Self> {
         Ok(FaultDetector::default())
     }
 }
 
 impl FaultDetector {
+    /// Method triggered by the Core_Exception HAP. Checks if the exception is a fault we
+    /// care about (registered in the `InputConfig` or via the `add_fault` interface method)
+    /// and reports it to the controller if it is
     pub fn on_exception(&mut self, exception: i64) -> Result<()> {
-        // TODO: Arch independent
+        // TODO: Make arch independent
         if let Ok(fault) = X86_64Fault::try_from(exception) {
             let fault = Fault::X86_64(fault);
             info!("Got exception with fault: {:?}", fault);
             if self.faults.contains(&fault) {
                 let mut controller = Controller::get()?;
-                unsafe { controller.stop_simulation(StopReason::Crash(fault)) };
+                controller.stop_simulation(StopReason::Crash(fault));
             }
         }
         Ok(())
     }
 
+    /// Method triggered by a timeout event expiring.
     pub fn on_timeout_event(&mut self) -> Result<()> {
+        let mut controller = Controller::get()?;
+        controller.stop_simulation(StopReason::TimeOut);
         Ok(())
     }
 }
@@ -93,23 +112,39 @@ impl Component for FaultDetector {
         &mut self,
         input_config: &InputConfig,
         output_config: OutputConfig,
-        controller_cls: Option<*mut conf_class_t>,
     ) -> Result<OutputConfig> {
         self.faults = input_config.faults.clone();
         self.timeout = Some(input_config.timeout);
 
-        unsafe {
-            SIM_hap_add_callback(
-                raw_cstr!("Core_Exception"),
-                transmute(callbacks::core_exception_cb as unsafe extern "C" fn(_, _, _)),
-                null_mut(),
-            )
-        };
+        hap_add_callback_core_exception(callbacks::core_exception_cb)?;
 
         Ok(output_config)
     }
 
-    unsafe fn pre_run(&mut self, data: &[u8]) -> Result<()> {
+    unsafe fn pre_run(
+        &mut self,
+        _data: &[u8],
+        instance: Option<&mut ControllerInstance>,
+    ) -> Result<()> {
+        let clock = object_clock(
+            &mut *self
+                .cpus
+                .first()
+                .context("No cpu available")?
+                .borrow()
+                .get_cpu(),
+        )?;
+
+        let event = &mut self.timeout_event.borrow_mut();
+        let event = event.as_mut_ref();
+
+        event_post_time(
+            clock,
+            event,
+            instance.context("No instance available")?.get_as_obj(),
+            self.timeout.expect("No timeout set"),
+        );
+
         Ok(())
     }
 
@@ -117,7 +152,30 @@ impl Component for FaultDetector {
         Ok(())
     }
 
-    unsafe fn on_stop(&mut self, reason: Option<StopReason>) -> Result<()> {
+    unsafe fn on_stop(
+        &mut self,
+        _reason: Option<StopReason>,
+        instance: Option<&mut ControllerInstance>,
+    ) -> Result<()> {
+        let clock = object_clock(
+            &mut *self
+                .cpus
+                .first()
+                .context("No cpu available")?
+                .borrow()
+                .get_cpu(),
+        )?;
+
+        let event = &mut self.timeout_event.borrow_mut();
+        let event = event.as_mut_ref();
+        let obj = instance.context("No instance available")?.get_as_obj();
+
+        let remaining = event_find_next_time(clock, event, obj);
+
+        info!("Remaining time on stop: {}", remaining);
+
+        event_cancel_time(clock, event, obj);
+
         Ok(())
     }
 
@@ -127,9 +185,21 @@ impl Component for FaultDetector {
 }
 
 impl ComponentInterface for FaultDetector {
+    unsafe fn on_run(&mut self, _instance: &ControllerInstance) -> Result<()> {
+        let cls = get_class(Controller::CLASS_NAME)?;
+
+        self.timeout_event = RefCell::new(TimeoutEvent::from_ptr(register_event(
+            FaultDetector::TIMEOUT_EVENT_NAME,
+            cls,
+            callbacks::timeout_event_cb,
+        )?));
+
+        Ok(())
+    }
+
     unsafe fn on_add_processor(
         &mut self,
-        obj: *mut conf_object_t,
+        _obj: *mut conf_object_t,
         processor: *mut attr_value_t,
     ) -> Result<()> {
         ensure!(
@@ -137,17 +207,12 @@ impl ComponentInterface for FaultDetector {
             "A CPU has already been added! This module only supports 1 vCPU at this time."
         );
 
-        info!("Adding processor for fault detector");
-        let cls = nonnull!(unsafe { SIM_object_class(obj) });
-        self.processor_cb_obj = obj;
-        self.processor_cb_cls = cls;
-
         self.cpus.push(RefCell::new(Cpu::try_new(processor)?));
 
         Ok(())
     }
 
-    unsafe fn on_add_fault(&mut self, obj: *mut conf_object_t, fault: i64) -> Result<()> {
+    unsafe fn on_add_fault(&mut self, _obj: *mut conf_object_t, fault: i64) -> Result<()> {
         // TODO: Arch independent
         self.faults
             .insert(Fault::X86_64(X86_64Fault::try_from(fault)?));

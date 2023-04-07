@@ -3,15 +3,14 @@ use anyhow::{bail, ensure, Context, Result};
 use confuse_simics_api::{
     attr_value_t, cached_instruction_handle_t, conf_object, conf_object_t, cpu_bytes_t,
     cpu_cached_instruction_interface_t, cpu_instruction_query_interface_t,
-    cpu_instrumentation_subscribe_interface_t, cycle_interface_t, event_class_t,
-    exception_interface_t, instruction_handle_t, int_register_interface_t, physical_block_t,
-    processor_info_v2_interface_t, x86_access_type_X86_Vanilla, SIM_attr_object_or_nil,
-    SIM_c_get_interface, SIM_event_cancel_time, SIM_event_post_time, SIM_object_clock,
-    SIM_read_byte, SIM_write_byte, CPU_CACHED_INSTRUCTION_INTERFACE,
-    CPU_INSTRUCTION_QUERY_INTERFACE, CPU_INSTRUMENTATION_SUBSCRIBE_INTERFACE, CYCLE_INTERFACE,
-    INT_REGISTER_INTERFACE, PROCESSOR_INFO_V2_INTERFACE,
+    cpu_instrumentation_subscribe_interface_t, cycle_interface_t, instruction_handle_t,
+    int_register_interface_t, physical_block_t, processor_info_v2_interface_t,
+    x86_access_type_X86_Vanilla, SIM_attr_object_or_nil, SIM_c_get_interface, SIM_read_byte,
+    SIM_write_byte, CPU_CACHED_INSTRUCTION_INTERFACE, CPU_INSTRUCTION_QUERY_INTERFACE,
+    CPU_INSTRUMENTATION_SUBSCRIBE_INTERFACE, CYCLE_INTERFACE, INT_REGISTER_INTERFACE,
+    PROCESSOR_INFO_V2_INTERFACE,
 };
-use log::{error, info, trace};
+use log::info;
 use raw_cstr::raw_cstr;
 use std::ffi::CString;
 use std::{ffi::c_void, ptr::null_mut, slice::from_raw_parts};
@@ -115,7 +114,7 @@ pub struct Cpu {
     _cpu_cached_instruction: *mut cpu_cached_instruction_interface_t,
     processor_info_v2: *mut processor_info_v2_interface_t,
     int_register: *mut int_register_interface_t,
-    cycle: *mut cycle_interface_t,
+    _cycle: *mut cycle_interface_t,
 }
 
 impl Cpu {
@@ -172,7 +171,7 @@ impl Cpu {
             _cpu_cached_instruction: nonnull!(cpu_cached_instruction),
             processor_info_v2: nonnull!(processor_info_v2),
             int_register: nonnull!(int_register),
-            cycle: nonnull!(cycle),
+            _cycle: nonnull!(cycle),
         })
     }
 
