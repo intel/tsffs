@@ -1,7 +1,8 @@
 //! Confuse Simics Project
 //!
 //! This crate provides tools for managing simics projects, including linking to simics, loading
-//! modules, and creating and destroying temporary project directories
+//! modules, and creating and destroying temporary project directories, and actually running
+//! the SIMICS process after configuration
 
 pub mod link;
 pub mod module;
@@ -27,9 +28,11 @@ use tempdir::TempDir;
 use util::{abs_or_rel_base_relpath, copy_dir_contents};
 use version_tools::VersionConstraint;
 use versions::Versioning;
+
 /// The SIMICS home installation directory. A `.env` file containing a line like:
 /// SIMICS_HOME=/home/username/simics/ must be present in the workspace tree
 const SIMICS_HOME: &str = dotenv!("SIMICS_HOME");
+
 /// Prefix for naming temporary directories
 const SIMICS_PROJECT_PREFIX: &str = "simics_project";
 
@@ -49,6 +52,8 @@ pub fn simics_home() -> Result<PathBuf> {
     }
 }
 
+/// A SIMICS command, this struct holds the arguments to a SIMICS command as configured with the
+/// project builder API as well as its running state.
 struct SimicsCommand {
     /// Whether SIMICS runs in batch mode. Defaults to `true`.
     pub batch_mode: bool,
@@ -74,19 +79,38 @@ struct SimicsCommand {
     /// Whether the STC (Simulator Translation Cache) is enabled. Defaults to `true`.
     pub stc: bool,
     // Below here are non-simics settings that we use internally
-    /// Environment variables to set for the SIMICS command
+    /// The path to the SIMICS executable (which is probably actually a symlink to the executable
+    /// in SIMICS_HOME, but we don't need to account for that)
     pub simics: Option<PathBuf>,
+    /// Environment variables to set for the SIMICS command
     pub env: HashMap<String, String>,
+    /// The running simics process, if it has been started
     pub simics_process: Option<Child>,
+    /// The closure or function used as a callback after the simics process starts to send
+    /// input to its stdin. This should be rarely used for extenuating use cases where a
+    /// simics script or python script is insufficient
     pub stdin_function: Option<Arc<dyn Fn(ChildStdin) + Send + Sync + 'static>>,
+    /// The closure or function used as a callback after the simics process starts to
+    /// receive output from the SIMICS stdout. If the output needs analysis or (more likely)
+    /// should be directed somewhere for logging, this function should be used to do it.
     pub stdout_function: Option<Arc<dyn Fn(ChildStdout) + Send + Sync + 'static>>,
+    /// The closure or function used as a callback after the simics process starts to
+    /// receive output from the SIMICS stderr. If the output needs analysis or (more likely)
+    /// should be directed somewhere for logging, this function should be used to do it.
     pub stderr_function: Option<Arc<dyn Fn(ChildStderr) + Send + Sync + 'static>>,
+    /// The thread the `stdin_function` will run on
     pub stdin_thread: Option<JoinHandle<()>>,
+    /// The thread the `stdout_function` will run on
     pub stdout_thread: Option<JoinHandle<()>>,
+    /// The thread the `stderr_function` will run on
     pub stderr_thread: Option<JoinHandle<()>>,
 }
 
 impl SimicsCommand {
+    /// Run the simics command from a simics project base path. The base path will be
+    /// searched for the `simics` executable as well as be used for the relative directory
+    /// containing various files, configurations, and scripts which can't be run with
+    /// absolute paths.
     pub fn run<P: AsRef<Path>>(&mut self, base_path: P) -> Result<()> {
         self.simics = Some(base_path.as_ref().to_path_buf().join("simics"));
         ensure!(
@@ -198,6 +222,7 @@ impl SimicsCommand {
         Ok(())
     }
 
+    /// Forcibly kill the running SIMICS process and join out/input threads
     pub fn kill(&mut self) -> Result<()> {
         info!("Killing simics process");
 
@@ -231,6 +256,7 @@ impl SimicsCommand {
 }
 
 impl Default for SimicsCommand {
+    /// Instantiate a default (empty) Simics Command configuration
     fn default() -> Self {
         Self {
             simics: None,
@@ -283,6 +309,9 @@ impl SimicsProject {
     }
 
     /// Try to create a new simics project, with a particular simics base version.
+    /// A version constraint is any version in
+    /// [versions](https://docs.rs/versions/latest/versions/) format for example
+    /// `^6.0.150`.
     pub fn try_new<S: AsRef<str>>(base_version_constraint: S) -> Result<Self> {
         let base_path = TempDir::new(SIMICS_PROJECT_PREFIX)?;
         let base_path = base_path.into_path();
@@ -291,8 +320,11 @@ impl SimicsProject {
         Ok(project)
     }
 
-    /// Create a simics project at a specific path with a specific base version. When a project is
-    /// created this way, it is not deleted when it is dropped and will instead persist on disk.
+    /// Create a simics project at a specific path with a specific base version. When a
+    /// project is created this way, it is not deleted when it is dropped and will
+    /// instead persist on disk.  A version constraint is any version in
+    /// [versions](https://docs.rs/versions/latest/versions/) format for example
+    /// `^6.0.150`.
     pub fn try_new_at<P: AsRef<Path>, S: AsRef<str>>(
         base_path: P,
         base_version_constraint: S,
@@ -408,7 +440,9 @@ impl SimicsProject {
         self.try_with_package_version(package, "*")
     }
 
-    /// Try to add a package to this project by number and optional version constraint
+    /// Try to add a package to this project by number and optional version constraint. A version
+    /// constraint is any version in [versions](https://docs.rs/versions/latest/versions/) format
+    /// for example `^6.0.150`.
     pub fn try_with_package_version<S: AsRef<str>, P: Into<PackageNumber>>(
         mut self,
         package: P,

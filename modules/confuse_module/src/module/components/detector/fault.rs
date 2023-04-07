@@ -1,8 +1,15 @@
+//! Defines a Fault that is interpreted by the `FaultDetector` component of the CONFUSE
+//! module to determine what faults are "valid" i.e. are faults that we care about for a
+//! given run. For example, an x86_64 edk2 UEFI application dereferncing an unmapped
+//! pointer will generate a Page Fault (exception #14 on x86).
+//!
+//! The top-level `Fault` enum is designed to be platform-independent, and encapsulates a
+//! platform-specific fault enum. In general, additional sideband faults can be defined
+//! as negative numbers, although this may not be supported on all platforms
+
 extern crate num_traits;
-use num_derive::FromPrimitive;
-
 use anyhow::{Context, Error, Result};
-
+use num_derive::FromPrimitive;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, FromPrimitive, Hash, PartialEq, Eq, Copy, Clone)]

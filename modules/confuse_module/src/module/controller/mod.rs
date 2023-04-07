@@ -214,6 +214,10 @@ impl Controller {
 /// Implementation for methods the interface calls on us
 impl Controller {
     /// Run the module
+    ///
+    /// # Safety
+    ///
+    /// This function is safe as long as `obj` is actually a non-null pointer to a `conf_object_t`
     pub unsafe fn interface_run(&mut self, obj: *mut conf_object_t) -> Result<()> {
         let instance = ControllerInstance::try_from_obj(obj)?;
         self.instance = RefCell::new(instance);
@@ -232,6 +236,12 @@ impl Controller {
     }
 
     /// Add a processor to the controller
+    ///
+    /// # Safety
+    ///
+    /// This function is safe as long as `obj` is actually a pointer to a non-null `conf_object_t`
+    /// and `processor` is a pointer to an `attr_value_t`. If `processor` is not actually a
+    /// processor, an error will occur, but the result is safe
     pub unsafe fn interface_add_processor(
         &mut self,
         obj: *mut conf_object_t,
@@ -241,6 +251,10 @@ impl Controller {
     }
 
     /// Add a fault to the controller
+    ///
+    /// # Safety
+    ///
+    /// This function is safe as long as `obj` is actually a pointer to a non-null `conf_object_t`
     pub unsafe fn interface_add_fault(
         &mut self,
         obj: *mut conf_object_t,

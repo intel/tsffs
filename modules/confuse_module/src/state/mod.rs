@@ -1,5 +1,27 @@
 //! Implements the state machine for this module. This state machine represents the different
 //! states the module (and through it, simics) can be in and the transitions between those states
+//!
+//! The module starts in the `Uninitialized` state. This state is named slightly deceptively --
+//! the module will do any allocations it needs, set up its components, map memory, and more
+//! in this state.
+//!
+//! When the module is instructed to `Initialize`, it moves to a `HalfInitialized` state. In this
+//! state, it has received the `InputConfig` from the client, but it has not applied it. Only
+//! once the module sends back an `Initialized` message to the client is the module fully
+//! `Initialized`, which means it has taken its initial snapshot and is ready to begin the fuzzing
+//! process (in this state, the client has received any necessary shared information from the
+//! module as well).
+//!
+//! Next, the module will receive a `Reset` signal and will enter the `HalfReady` state. The
+//! module will internally reset the target state to the snapshot (on first run, this is
+//! essentially a no-op) and send back a `Ready` message. Only then is the module ready to actually
+//! run a test.
+//!
+//! Finally, the module will receive a `Run` signal, and will start running with the given input.
+//! When the module reaches a `Stopped` state, it will signal back that it has stopped as well
+//! as the reason. From this state, it can be `Reset` again before another `Run`.
+//!
+//! At any point, an `Exit` signal can be sent to cause the module to immediately exit cleanly.
 
 use anyhow::{bail, Result};
 use log::{error, info};

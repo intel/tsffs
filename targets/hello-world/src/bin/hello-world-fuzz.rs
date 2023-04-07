@@ -1,6 +1,6 @@
 use anyhow::{Error, Result};
 use clap::Parser;
-use confuse_fuzz::fuzzer::Fuzzer;
+use confuse_fuzz::Fuzzer;
 use confuse_module::module::{
     components::detector::fault::{Fault, X86_64Fault},
     config::InputConfig,

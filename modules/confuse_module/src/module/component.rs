@@ -28,6 +28,10 @@ pub trait Component {
     /// the fault detector may need the list of faults to be fully set up before registering
     /// various additional functionality with SIMICS. A snapshot is not taken until after all
     /// components `pre_first_run` functions have been run.
+    ///
+    /// # Safety
+    ///
+    /// This function is safe unless its implementation is unsafe
     unsafe fn pre_first_run(&mut self) -> Result<()>;
     /// Called prior to running the simulator with a given input. Components do not need to do
     /// anything with this information, but they can. For example, the redqueen component needs
@@ -36,6 +40,7 @@ pub trait Component {
     ///
     /// # Safety
     ///
+    /// This function is safe unless its implementation is unsafe
     unsafe fn pre_run(
         &mut self,
         data: &[u8],
@@ -43,9 +48,15 @@ pub trait Component {
     ) -> Result<()>;
     /// Called when a `ClientMessage::Reset` message is received. The component should do anything
     /// it needs in order to prepare for the next run during this call.
+    /// # Safety
+    ///
+    /// This function is safe unless its implementation is unsafe
     unsafe fn on_reset(&mut self) -> Result<()>;
     /// Called when a `ClientMessage::Stop` message is received. The component should clean itself
     /// up and do any pre-exit work it needs to do.
+    /// # Safety
+    ///
+    /// This function is safe unless its implementation is unsafe
     unsafe fn on_stop(
         &mut self,
         reason: Option<StopReason>,
@@ -56,13 +67,23 @@ pub trait Component {
 /// A trait defining the functions a component needs to implement to react to functions called
 /// on the component interface with the outside world.
 pub trait ComponentInterface {
+    /// # Safety
+    ///
+    /// This function is safe unless its implementation is unsafe
     unsafe fn on_run(&mut self, instance: &ControllerInstance) -> Result<()>;
+
     /// Called when a processor is added via the external interface
+    /// # Safety
+    ///
+    /// This function is safe unless its implementation is unsafe
     unsafe fn on_add_processor(
         &mut self,
         obj: *mut conf_object_t,
         processor: *mut attr_value_t,
     ) -> Result<()>;
     /// Called when a fault is added via the external interface
+    /// # Safety
+    ///
+    /// This function is safe unless its implementation is unsafe
     unsafe fn on_add_fault(&mut self, obj: *mut conf_object_t, fault: i64) -> Result<()>;
 }

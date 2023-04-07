@@ -42,6 +42,7 @@ fn hap_add_callback<S: AsRef<str>>(name: S, func: unsafe extern "C" fn()) -> Res
 const HAP_CORE_MAGIC_INSTRUCTION: &str = "Core_Magic_Instruction";
 const HAP_CORE_SIMULATION_STOPPED: &str = "Core_Simulation_Stopped";
 const HAP_CORE_EXCEPTION: &str = "Core_Exception";
+const HAP_X86_TRIPLE_FAULT: &str = "X86_Triple_Fault";
 
 pub fn hap_add_callback_magic_instruction(
     func: unsafe extern "C" fn(*mut c_void, *const conf_object_t, i64),
@@ -55,8 +56,14 @@ pub fn hap_add_callback_simulation_stopped(
     hap_add_callback(HAP_CORE_SIMULATION_STOPPED, unsafe { transmute(func) })
 }
 
-pub fn hap_add_callback_core_exception(
+pub fn hap_add_callback_exception(
     func: unsafe extern "C" fn(*mut c_void, *mut conf_object_t, i64),
 ) -> Result<HapHandle> {
     hap_add_callback(HAP_CORE_EXCEPTION, unsafe { transmute(func) })
+}
+
+pub fn hap_add_callback_triple_fault(
+    func: unsafe extern "C" fn(*mut c_void, *mut conf_object_t),
+) -> Result<HapHandle> {
+    hap_add_callback(HAP_X86_TRIPLE_FAULT, unsafe { transmute(func) })
 }

@@ -1,5 +1,8 @@
-//! The confuse module. This component is what actually runs inside of SIMICS using the entry
-//! point defined in `module::entrypoint::init_simics`
+//! The confuse module. The *module* module (ha) is what actually runs inside of SIMICS using the
+//! entry point defined in `module::entrypoint::init_simics`
+//!
+//! This module provides communications with a `Client` as well as a controller and
+//! several components that provide control and instrumentation necessary for fuzzing
 
 pub mod component;
 pub mod components;

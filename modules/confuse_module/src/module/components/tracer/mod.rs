@@ -60,6 +60,13 @@ impl AFLCoverageTracer {
         Ok(())
     }
 
+    /// Called when a callback for a cached instruction is triggered
+    ///
+    /// # Safety
+    ///
+    /// This function may dereference the `cpu` and `instruction_query` arguments, which is
+    /// safe because SIMICS guarantees that these arguments are present when the callback
+    /// is triggered.
     pub unsafe fn on_instruction(
         &mut self,
         cpu: *mut conf_object_t,

@@ -1,13 +1,46 @@
 //! The CONFUSE module client provides a common client-side controller for a fuzzer or other tool
 //! to communicate with the module while keeping consistent with the state machine the module
 //! implements.
-
-use std::io::{BufRead, BufReader};
-
-use anyhow::{bail, Result};
-use confuse_simics_project::SimicsProject;
-use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender};
-use log::{debug, info};
+//!
+//! This client is designed to be used with the [`confuse-fuzz`] crate, but can be used manually as
+//! well to implement bespoke systems.
+//!
+//! # Examples
+//!
+//! In this example, we show what an extremely basic fuzz loop might look like
+//! without using LibAFL. This loop is consistent with the state machine used
+//! internally by the client and module that keeps them in sync.
+//!
+//! ```
+//! let simics_script_path = PathBuf::from("./script.simics");
+//! let project = SimicsProject::try_new_latest()?
+//!     // Add a file to the created simics project at `PROJECT_ROOT/scripts/script.simics`
+//!     .try_with_file(&simics_script_path, "scripts/script.simics")?
+//!     // This script will be our entrypoint when we run SIMICS
+//!     .try_with_file_argument("scripts/script.simics")?;
+//!
+//! // Create a client that owns the project we just created
+//! let mut client = Client::try_new(project)?;
+//!
+//! // Create a blank configuration
+//! let config = InputConfig::default();
+//!
+//! // Initialize the client. This takes us up to the point where the module is ready
+//! // to start the fuzzing loop
+//! let output_config = client.initialize(config)?;
+//!
+//!
+//! for _ in 0..100 {
+//!     // Reset the target to its initial state once it has been initialized. We could also
+//!     client.reset()?;
+//!     // Run the target with the same input every time. In real life, we want to
+//!     // swap this out with a fuzzer, of course
+//!     let stop_reason = client.run(vec![0x41; 64])?;
+//! }
+//!
+//! // Cleanly exit SIMICS and stop the client
+//! client.exit()?;
+//! ```
 
 use crate::{
     module::{
@@ -18,6 +51,14 @@ use crate::{
     },
     state::State,
 };
+use anyhow::{bail, Result};
+use confuse_simics_project::SimicsProject;
+use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender};
+use log::{debug, info};
+use std::io::{BufRead, BufReader};
+
+/// The client for the CONFUSE module. Allows controlling the module over IPC using the child
+/// process spawned by a running project.
 pub struct Client {
     /// State machine to keep track of the current state between the client and module
     state: State,
@@ -25,13 +66,18 @@ pub struct Client {
     tx: IpcSender<ClientMessage>,
     /// Receive end of IPC message channel between client and module
     rx: IpcReceiver<ModuleMessage>,
-    /// The SIMICS project
+    /// The SIMICS project owned by this client
     pub project: SimicsProject,
 }
 
 impl Client {
     /// Try to initialize a `Client` from a built `SimicsProject` on disk, which should include
-    /// the CONFUSE module and may have additional configuration according to user needs
+    /// the CONFUSE module and may have additional configuration according to user needs. Creating
+    /// the client will start the SIMICS project, which should be configured as necessary *before*
+    /// passing it into this constructor.
+    ///
+    /// The CONFUSE Simics module will be added to the project for you if it is not present,
+    /// so
     pub fn try_new(mut project: SimicsProject) -> Result<Self> {
         // Make sure the project has our module loaded in it
         if !project.has_module(CLASS_NAME) {
@@ -43,6 +89,7 @@ impl Client {
 
         // Set a few environment variables for the project and add output loggers
         let loglevel_str = project.loglevel.as_str();
+
         project = project
             .with_batch_mode(true)
             .with_command("@SIM_main_loop()")
@@ -102,6 +149,11 @@ impl Client {
         })
     }
 
+    /// Initialize the client with a configuration. The client will return an output
+    /// configuration which contains various information the SIMICS module needs to
+    /// inform the client of, including memory maps for coverage. Changes the
+    /// internal state from [`Uninitialized`] to [`HalfInitialized`] and then from
+    /// [`HalfInitialized`] to [`ConfuseModuleState::Initialized`].
     pub fn initialize(&mut self, config: InputConfig) -> Result<OutputConfig> {
         info!("Sending initialize message");
         self.send_msg(ClientMessage::Initialize(config))?;

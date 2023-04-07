@@ -10,7 +10,7 @@ use anyhow::{ensure, Context, Result};
 use confuse_simics_api::{
     attr_value_t, conf_object_t, event_class_t,
     safe::{
-        common::hap_add_callback_core_exception,
+        common::{hap_add_callback_exception, hap_add_callback_triple_fault},
         wrapper::{
             event_cancel_time, event_find_next_time, event_post_time, get_class, object_clock,
             register_event,
@@ -116,7 +116,11 @@ impl Component for FaultDetector {
         self.faults = input_config.faults.clone();
         self.timeout = Some(input_config.timeout);
 
-        hap_add_callback_core_exception(callbacks::core_exception_cb)?;
+        hap_add_callback_exception(callbacks::core_exception_cb)?;
+
+        if self.faults.contains(&Fault::X86_64(X86_64Fault::Triple)) {
+            hap_add_callback_triple_fault(callbacks::x86_triple_fault_cb)?;
+        }
 
         Ok(output_config)
     }
@@ -245,5 +249,14 @@ mod callbacks {
         detector
             .on_timeout_event()
             .expect("Could not handle timeout event");
+    }
+
+    #[no_mangle]
+    pub extern "C" fn x86_triple_fault_cb(_data: *mut c_void, _trigger_obj: *mut conf_object_t) {
+        info!("Got triple fault");
+        let mut detector = FaultDetector::get().expect("Could not get detector");
+        detector
+            .on_exception(-1)
+            .expect("Could not handle triple fault");
     }
 }

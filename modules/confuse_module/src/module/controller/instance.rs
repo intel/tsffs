@@ -17,6 +17,12 @@ pub struct controller_conf_object_t {
 }
 
 impl controller_conf_object_t {
+    /// Instantiate a pointer to this struct from a pointer to an object
+    ///
+    /// # Safety
+    ///
+    /// This function is safe as long as `obj` is actually a pointer to a `conf_object_t`, and
+    /// will remain type safe as guaranteed by simics in this case
     pub unsafe fn try_from_obj(obj: *mut conf_object_t) -> Result<*mut controller_conf_object_t> {
         let cls = unsafe { SIM_get_class(raw_cstr!(Controller::CLASS_NAME)) };
         let obj_cls = unsafe { SIM_object_class(obj) };
@@ -79,6 +85,12 @@ pub struct ControllerInstance {
 }
 
 impl ControllerInstance {
+    /// Instantiate this struct from a pointer to an object
+    ///
+    /// # Safety
+    ///
+    /// This function is safe as long as `obj` is actually a pointer to a `conf_object_t`, and
+    /// will remain type safe as guaranteed by simics in this case
     pub unsafe fn try_from_obj(obj: *mut conf_object_t) -> Result<Self> {
         Ok(Self {
             ptr: unsafe { controller_conf_object_t::try_from_obj(obj)? },

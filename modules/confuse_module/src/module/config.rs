@@ -78,6 +78,7 @@ impl OutputConfig {
         self
     }
 
+    /// Retrieve the coverage map from an output config
     pub fn coverage(&mut self) -> Result<IpcShm> {
         match self.maps.remove(
             self.maps

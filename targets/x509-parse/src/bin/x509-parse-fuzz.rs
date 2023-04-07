@@ -2,11 +2,7 @@ use std::path::PathBuf;
 
 use anyhow::{Error, Result};
 use clap::Parser;
-use confuse_fuzz::fuzzer::Fuzzer;
-// use confuse_module::module::{
-//     components::detector::fault::{Fault, X86_64Fault},
-//     config::InputConfig,
-// };
+use confuse_fuzz::Fuzzer;
 use confuse_simics_manifest::PublicPackageNumber;
 use confuse_simics_project::SimicsProject;
 use indoc::{formatdoc, indoc};

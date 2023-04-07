@@ -118,6 +118,13 @@ pub struct Cpu {
 }
 
 impl Cpu {
+    /// Initialize a CPU object
+    ///
+    /// # Safety
+    ///
+    /// This function dereferences `cpu` which must be a non-null pointer. The `cpu` parameter
+    /// in the `add_processor` must actually be a CPU, otherwise this is unsafe and we have no
+    /// way of knowing this is the case.
     pub unsafe fn try_new(cpu: *mut attr_value_t) -> Result<Self> {
         let cpu: *mut conf_object = unsafe { SIM_attr_object_or_nil(*cpu) }?;
 
@@ -246,6 +253,11 @@ impl Cpu {
 
     /// Called in cached instruction callback to check if the current instruction is a branch and
     /// return the pc at the instruction
+    ///
+    /// # Safety
+    ///
+    /// This function is safe provided the `instruction_query` parameter comes from a SIMICS
+    /// callback and the cpu object was initialized correctly
     pub unsafe fn is_branch(
         &self,
         cpu: *mut conf_object_t,
@@ -278,7 +290,11 @@ impl Cpu {
         }
     }
 
-    /// checks if the current instruction is a compare and returns the set of constants it finds
+    /// Checks if the current instruction is a compare and returns the set of constants it finds
+    /// # Safety
+    ///
+    /// This function is safe provided the `instruction_query` parameter comes from a SIMICS
+    /// callback and the cpu object was initialized correctly
     pub unsafe fn is_cmp(
         &self,
         cpu: *mut conf_object_t,
