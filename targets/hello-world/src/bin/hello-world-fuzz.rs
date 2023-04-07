@@ -8,8 +8,7 @@ use confuse_module::module::{
 use confuse_simics_manifest::PublicPackageNumber;
 use confuse_simics_project::SimicsProject;
 use hello_world::HELLO_WORLD_EFI_MODULE;
-use indoc::{formatdoc, indoc};
-use log::{error, info, Level, LevelFilter};
+use log::{error, info, Level};
 use log4rs::{
     append::rolling_file::{
         policy::compound::{
