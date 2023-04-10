@@ -48,7 +48,6 @@ use std::{
     sync::{Arc, Mutex, MutexGuard},
 };
 
-pub mod fault;
 pub mod instance;
 pub mod magic;
 pub mod messages;
