@@ -29,7 +29,7 @@ echo "Loaded simics declaration"
 
 echo "Running command file"
 
-run-command-file %simics%/targets/qsp-x86/qsp-hdd-boot.simics 
+run-command-file "%simics%/targets/qsp-x86/qsp-hdd-boot.simics"
 
 @import os
 @simenv.startup_nsh_nodir = os.path.basename(simenv.startup_nsh)

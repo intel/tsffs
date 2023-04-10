@@ -3,10 +3,10 @@ use std::path::PathBuf;
 use anyhow::{Error, Result};
 use clap::Parser;
 use confuse_fuzz::Fuzzer;
+use confuse_module::module::{components::detector::fault::X86_64Fault, config::InputConfig};
 use confuse_simics_manifest::PublicPackageNumber;
 use confuse_simics_project::SimicsProject;
-use indoc::{formatdoc, indoc};
-use log::{error, Level};
+use log::{error, info, Level};
 use log4rs::{
     append::rolling_file::{
         policy::compound::{
@@ -74,7 +74,7 @@ fn main() -> Result<()> {
     const BOOT_DISK_PATH: &str = "targets/x509-parse/minimal_boot_disk.craff";
     const STARTUP_NSH_PATH: &str = "targets/x509-parse/run_uefi_app.nsh";
     const STARTUP_SIMICS_PATH: &str = "targets/x509-parse/run-uefi-app.simics";
-    const UEFI_APP_PATH: &str = "X509Parse.efi";
+    const UEFI_APP_PATH: &str = "targets/x509-parse/X509Parse.efi";
 
     let app = include_bytes!("resource/app.yml");
 
@@ -93,32 +93,25 @@ fn main() -> Result<()> {
         .try_with_file_contents(app_script, APP_SCRIPT_PATH)?
         .try_with_file_contents(boot_disk, BOOT_DISK_PATH)?
         .try_with_file_contents(run_uefi_app_nsh_script, STARTUP_NSH_PATH)?
-        .try_with_file_contents(run_uefi_app_simics_script, STARTUP_SIMICS_PATH)?;
+        .try_with_file_contents(run_uefi_app_simics_script, STARTUP_SIMICS_PATH)?
+        .try_with_file_argument(APP_YML_PATH)?;
 
-    // let init_info = InputConfig::default()
-    //     .with_faults([
-    //         Fault::X86_64(X86_64Fault::Page),
-    //         Fault::X86_64(X86_64Fault::InvalidOpcode),
-    //     ])
-    //     .with_timeout_seconds(3.0);
+    let config = InputConfig::default()
+        .with_faults(X86_64Fault::all())
+        .with_timeout_seconds(3.0);
 
-    // let mut fuzzer = Fuzzer::try_new(
-    //     args.input,
-    //     init_info,
-    //     APP_YML_PATH,
-    //     simics_project,
-    //     args.log_level,
-    // )?;
+    info!("Creating fuzzer");
 
-    // // Workaround to make sure we always stop even if we get a failure
-    // fuzzer
-    //     .run_cycles(args.cycles)
-    //     .or_else(|e| {
-    //         error!("Error running cycles: {}", e);
-    //         Ok::<(), Error>(())
-    //     })
-    //     .ok();
-    // fuzzer.stop()?;
+    let mut fuzzer = Fuzzer::try_new(args.input, config, simics_project, args.log_level)?;
 
+    // This should be enough cycles to hit a bug
+    fuzzer
+        .run_cycles(args.cycles)
+        .or_else(|e| {
+            error!("Error running cycles: {}", e);
+            Ok::<(), Error>(())
+        })
+        .ok();
+    fuzzer.stop()?;
     Ok(())
 }

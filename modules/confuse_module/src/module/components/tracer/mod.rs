@@ -1,7 +1,5 @@
-//! Tracer object
-
 use crate::module::{
-    component::{Component, ComponentInterface},
+    component::{Component, ComponentEvents, ComponentGlobal, ComponentInterface},
     config::{InputConfig, OutputConfig},
     controller::{instance::ControllerInstance, TRACER},
     cpu::Cpu,
@@ -13,25 +11,17 @@ use confuse_simics_api::{attr_value_t, conf_object_t, instruction_handle_t};
 use ipc_shm::{IpcShm, IpcShmWriter};
 use log::info;
 use rand::{thread_rng, Rng};
-use std::{cell::RefCell, num::Wrapping, sync::MutexGuard};
+use std::{num::Wrapping, sync::MutexGuard};
 
 pub struct AFLCoverageTracer {
     afl_coverage_map: IpcShm,
     afl_coverage_map_writer: IpcShmWriter,
     afl_prev_loc: u64,
-    cpus: Vec<RefCell<Cpu>>,
+    cpus: Vec<Cpu>,
 }
 
 impl AFLCoverageTracer {
-    /// Retrieve the global controller object
-    pub fn get<'a>() -> Result<MutexGuard<'a, Self>> {
-        let tracer = TRACER.lock().expect("Could not lock controller");
-        Ok(tracer)
-    }
-}
-
-impl AFLCoverageTracer {
-    // 264kb
+    // 64kb, we can increase this size if we want though
     pub const AFL_COVERAGE_MAP_SIZE: usize = 0x10000;
 
     /// Try to instantiate a new AFL Coverage Tracer
@@ -74,9 +64,7 @@ impl AFLCoverageTracer {
     ) -> Result<()> {
         let mut pcs = Vec::new();
         for processor in &self.cpus {
-            if let Ok(Some(pc)) =
-                unsafe { processor.borrow_mut().is_branch(cpu, instruction_query) }
-            {
+            if let Ok(Some(pc)) = unsafe { processor.is_branch(cpu, instruction_query) } {
                 pcs.push(pc);
             }
         }
@@ -88,8 +76,20 @@ impl AFLCoverageTracer {
         Ok(())
     }
 }
+impl AFLCoverageTracer {
+    pub fn get<'a>() -> Result<MutexGuard<'a, Self>> {
+        let tracer = TRACER.lock().expect("Could not lock controller");
+        Ok(tracer)
+    }
+}
 
-impl Component for AFLCoverageTracer {
+impl ComponentGlobal for AFLCoverageTracer {
+    fn get_component<'a>() -> Result<MutexGuard<'a, Box<dyn Component>>> {
+        todo!()
+    }
+}
+
+impl ComponentEvents for AFLCoverageTracer {
     fn on_initialize(
         &mut self,
         _input_config: &InputConfig,
@@ -98,11 +98,7 @@ impl Component for AFLCoverageTracer {
         Ok(output_config.with_map(MapType::Coverage(self.afl_coverage_map.try_clone()?)))
     }
 
-    unsafe fn pre_run(
-        &mut self,
-        _data: &[u8],
-        _instance: Option<&mut ControllerInstance>,
-    ) -> Result<()> {
+    unsafe fn pre_run(&mut self, _data: &[u8], _instance: &mut ControllerInstance) -> Result<()> {
         Ok(())
     }
 
@@ -112,8 +108,8 @@ impl Component for AFLCoverageTracer {
 
     unsafe fn on_stop(
         &mut self,
-        _reason: Option<StopReason>,
-        _instance: Option<&mut ControllerInstance>,
+        _reason: StopReason,
+        _instance: &mut ControllerInstance,
     ) -> Result<()> {
         Ok(())
     }
@@ -134,10 +130,9 @@ impl ComponentInterface for AFLCoverageTracer {
         processor: *mut attr_value_t,
     ) -> Result<()> {
         info!("Adding processor to context");
-        let cpu = RefCell::new(Cpu::try_new(processor)?);
+        let cpu = Cpu::try_new(processor)?;
 
-        cpu.borrow()
-            .register_cached_instruction_cb(callbacks::cached_instruction_cb)?;
+        cpu.register_cached_instruction_cb(callbacks::cached_instruction_cb)?;
 
         ensure!(
             self.cpus.is_empty(),
@@ -153,6 +148,8 @@ impl ComponentInterface for AFLCoverageTracer {
         Ok(())
     }
 }
+
+impl Component for AFLCoverageTracer {}
 
 mod callbacks {
     use std::ffi::c_void;

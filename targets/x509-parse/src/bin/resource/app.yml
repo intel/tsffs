@@ -142,7 +142,7 @@ params:
     default: "%simics%/targets/x509-parse/run_uefi_app.nsh"
   uefi_app:
     type: file
-    default: "%simics%/X509Parse.efi"
+    default: "%simics%/targets/x509-parse/X509Parse.efi"
   eth_link:
     type: str
     output: true

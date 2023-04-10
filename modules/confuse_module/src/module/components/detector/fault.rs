@@ -57,6 +57,37 @@ impl TryFrom<i64> for X86_64Fault {
     }
 }
 
+impl X86_64Fault {
+    pub fn all() -> Vec<Fault> {
+        vec![
+            Fault::X86_64(X86_64Fault::Triple),
+            Fault::X86_64(X86_64Fault::Division),
+            Fault::X86_64(X86_64Fault::Debug),
+            Fault::X86_64(X86_64Fault::NonMaskableInterrupt),
+            Fault::X86_64(X86_64Fault::Breakpoint),
+            Fault::X86_64(X86_64Fault::Overflow),
+            Fault::X86_64(X86_64Fault::BoundRangeExceeded),
+            Fault::X86_64(X86_64Fault::InvalidOpcode),
+            Fault::X86_64(X86_64Fault::DeviceNotAvailable),
+            Fault::X86_64(X86_64Fault::Double),
+            Fault::X86_64(X86_64Fault::InvalidTss),
+            Fault::X86_64(X86_64Fault::SegmentNotPresent),
+            Fault::X86_64(X86_64Fault::StackSegment),
+            Fault::X86_64(X86_64Fault::GeneralProtection),
+            Fault::X86_64(X86_64Fault::Page),
+            Fault::X86_64(X86_64Fault::X86Fpe),
+            Fault::X86_64(X86_64Fault::AlignmentCheck),
+            Fault::X86_64(X86_64Fault::MachineCheck),
+            Fault::X86_64(X86_64Fault::SimdFpen),
+            Fault::X86_64(X86_64Fault::Virtualization),
+            Fault::X86_64(X86_64Fault::ControlProtection),
+            Fault::X86_64(X86_64Fault::HypervisorInjection),
+            Fault::X86_64(X86_64Fault::VMMCommunication),
+            Fault::X86_64(X86_64Fault::Security),
+        ]
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Hash, PartialEq, Eq, Copy, Clone)]
 #[repr(i64)]
 /// An architecture independent container for faults on various architectures

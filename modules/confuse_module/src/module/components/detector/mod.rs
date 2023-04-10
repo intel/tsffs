@@ -1,6 +1,6 @@
 use self::fault::{Fault, X86_64Fault};
 use crate::module::{
-    component::{Component, ComponentInterface},
+    component::{Component, ComponentEvents, ComponentGlobal, ComponentInterface},
     config::{InputConfig, OutputConfig},
     controller::{instance::ControllerInstance, Controller, DETECTOR},
     cpu::Cpu,
@@ -18,7 +18,7 @@ use confuse_simics_api::{
     },
 };
 use log::info;
-use std::{cell::RefCell, ptr::null_mut};
+use std::ptr::null_mut;
 use std::{collections::HashSet, sync::MutexGuard};
 
 pub mod fault;
@@ -57,8 +57,8 @@ pub struct FaultDetector {
     /// doing the math yourself!
     pub timeout: Option<f64>,
     /// The registered timeout event
-    timeout_event: RefCell<TimeoutEvent>,
-    pub cpus: Vec<RefCell<Cpu>>,
+    timeout_event: TimeoutEvent,
+    pub cpus: Vec<Cpu>,
 }
 
 /// FaultDetector is Send despite having a registered timeout event because that event is only
@@ -71,12 +71,6 @@ unsafe impl Sync for FaultDetector {}
 impl FaultDetector {
     /// The name of the timeout event this component uses to post events to the SIMICS event queue
     const TIMEOUT_EVENT_NAME: &str = "timeout_event";
-
-    /// Get the global instance of this component
-    pub fn get<'a>() -> Result<MutexGuard<'a, Self>> {
-        let detector = DETECTOR.lock().expect("Could not lock detector");
-        Ok(detector)
-    }
 }
 
 impl FaultDetector {
@@ -111,7 +105,21 @@ impl FaultDetector {
     }
 }
 
-impl Component for FaultDetector {
+impl FaultDetector {
+    pub fn get<'a>() -> Result<MutexGuard<'a, Self>> {
+        let detector = DETECTOR.lock().expect("Could not lock detector");
+        Ok(detector)
+    }
+}
+
+impl ComponentGlobal for FaultDetector {
+    /// Get the global instance of this component
+    fn get_component<'a>() -> Result<MutexGuard<'a, Box<dyn Component>>> {
+        todo!()
+    }
+}
+
+impl ComponentEvents for FaultDetector {
     fn on_initialize(
         &mut self,
         input_config: &InputConfig,
@@ -129,27 +137,16 @@ impl Component for FaultDetector {
         Ok(output_config)
     }
 
-    unsafe fn pre_run(
-        &mut self,
-        _data: &[u8],
-        instance: Option<&mut ControllerInstance>,
-    ) -> Result<()> {
-        let clock = object_clock(
-            &mut *self
-                .cpus
-                .first()
-                .context("No cpu available")?
-                .borrow()
-                .get_cpu(),
-        )?;
+    unsafe fn pre_run(&mut self, _data: &[u8], instance: &mut ControllerInstance) -> Result<()> {
+        let clock = object_clock(&mut *self.cpus.first().context("No cpu available")?.get_cpu())?;
 
-        let event = &mut self.timeout_event.borrow_mut();
+        let event = &mut self.timeout_event;
         let event = event.as_mut_ref();
 
         event_post_time(
             clock,
             event,
-            instance.context("No instance available")?.get_as_obj(),
+            instance.get_as_obj(),
             self.timeout.expect("No timeout set"),
         );
 
@@ -162,21 +159,14 @@ impl Component for FaultDetector {
 
     unsafe fn on_stop(
         &mut self,
-        _reason: Option<StopReason>,
-        instance: Option<&mut ControllerInstance>,
+        _reason: StopReason,
+        instance: &mut ControllerInstance,
     ) -> Result<()> {
-        let clock = object_clock(
-            &mut *self
-                .cpus
-                .first()
-                .context("No cpu available")?
-                .borrow()
-                .get_cpu(),
-        )?;
+        let clock = object_clock(&mut *self.cpus.first().context("No cpu available")?.get_cpu())?;
 
-        let event = &mut self.timeout_event.borrow_mut();
+        let event = &mut self.timeout_event;
         let event = event.as_mut_ref();
-        let obj = instance.context("No instance available")?.get_as_obj();
+        let obj = instance.get_as_obj();
 
         let remaining = event_find_next_time(clock, event, obj);
 
@@ -196,11 +186,11 @@ impl ComponentInterface for FaultDetector {
     unsafe fn on_run(&mut self, _instance: &ControllerInstance) -> Result<()> {
         let cls = get_class(Controller::CLASS_NAME)?;
 
-        self.timeout_event = RefCell::new(TimeoutEvent::from_ptr(register_event(
+        self.timeout_event = TimeoutEvent::from_ptr(register_event(
             FaultDetector::TIMEOUT_EVENT_NAME,
             cls,
             callbacks::timeout_event_cb,
-        )?));
+        )?);
 
         Ok(())
     }
@@ -215,7 +205,7 @@ impl ComponentInterface for FaultDetector {
             "A CPU has already been added! This module only supports 1 vCPU at this time."
         );
 
-        self.cpus.push(RefCell::new(Cpu::try_new(processor)?));
+        self.cpus.push(Cpu::try_new(processor)?);
 
         Ok(())
     }
@@ -227,6 +217,8 @@ impl ComponentInterface for FaultDetector {
         Ok(())
     }
 }
+
+impl Component for FaultDetector {}
 
 mod callbacks {
     use super::FaultDetector;

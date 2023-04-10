@@ -3,6 +3,8 @@
 //! This module defines common traits of each component, because we need to be checkpointable which
 //! introduces some constraints.
 
+use std::sync::MutexGuard;
+
 use super::{
     config::{InputConfig, OutputConfig},
     controller::instance::ControllerInstance,
@@ -11,9 +13,17 @@ use super::{
 use anyhow::Result;
 use confuse_simics_api::{attr_value_t, conf_object_t};
 
+pub trait ComponentGlobal {
+    /// Used to retrieve the instance of a component. Components are global objects behind mutex
+    /// locks, so they need a `get` function to retrieve them
+    fn get_component<'a>() -> Result<MutexGuard<'a, Box<dyn Component>>>
+    where
+        Self: Sized;
+}
+
 /// A trait defining the functions a component needs to implement so it can initialize itself
 /// from the global configuration and react to events that happen
-pub trait Component {
+pub trait ComponentEvents {
     /// Called when a `ClientMessage::Initialize` message is received. A component can use any
     /// necessary info in `input_config` to initialize itself and modify the
     /// `output_config` as necessary, for example by adding a memory map to share with
@@ -23,6 +33,7 @@ pub trait Component {
         input_config: &InputConfig,
         output_config: OutputConfig,
     ) -> Result<OutputConfig>;
+
     /// Called prior to the first time run of the simulator. This function allows components to
     /// do any last-minute configuration that depends on possible user configurations. For example
     /// the fault detector may need the list of faults to be fully set up before registering
@@ -33,6 +44,7 @@ pub trait Component {
     ///
     /// This function is safe unless its implementation is unsafe
     unsafe fn pre_first_run(&mut self) -> Result<()>;
+
     /// Called prior to running the simulator with a given input. Components do not need to do
     /// anything with this information, but they can. For example, the redqueen component needs
     /// to inspect the input to establish an I2S (Input-To-State) correspondence. This function
@@ -41,17 +53,15 @@ pub trait Component {
     /// # Safety
     ///
     /// This function is safe unless its implementation is unsafe
-    unsafe fn pre_run(
-        &mut self,
-        data: &[u8],
-        instance: Option<&mut ControllerInstance>,
-    ) -> Result<()>;
+    unsafe fn pre_run(&mut self, data: &[u8], instance: &mut ControllerInstance) -> Result<()>;
+
     /// Called when a `ClientMessage::Reset` message is received. The component should do anything
     /// it needs in order to prepare for the next run during this call.
     /// # Safety
     ///
     /// This function is safe unless its implementation is unsafe
     unsafe fn on_reset(&mut self) -> Result<()>;
+
     /// Called when a `ClientMessage::Stop` message is received. The component should clean itself
     /// up and do any pre-exit work it needs to do.
     /// # Safety
@@ -59,8 +69,8 @@ pub trait Component {
     /// This function is safe unless its implementation is unsafe
     unsafe fn on_stop(
         &mut self,
-        reason: Option<StopReason>,
-        instance: Option<&mut ControllerInstance>,
+        reason: StopReason,
+        instance: &mut ControllerInstance,
     ) -> Result<()>;
 }
 
@@ -87,3 +97,5 @@ pub trait ComponentInterface {
     /// This function is safe unless its implementation is unsafe
     unsafe fn on_add_fault(&mut self, obj: *mut conf_object_t, fault: i64) -> Result<()>;
 }
+
+pub trait Component: ComponentEvents + ComponentGlobal + ComponentInterface + Send + Sync {}

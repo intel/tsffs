@@ -5,13 +5,11 @@ use self::{
     target_buffer::TargetBuffer,
 };
 use super::{
-    component::{Component, ComponentInterface},
-    config::{InputConfig, OutputConfig},
-    cpu::Cpu,
-    stop_reason::StopReason,
+    component::ComponentInterface, config::OutputConfig, cpu::Cpu, stop_reason::StopReason,
 };
 use crate::{
     module::{
+        component::ComponentEvents,
         components::{detector::FaultDetector, tracer::AFLCoverageTracer},
         controller::instance::{alloc_controller_conf_object, init_controller_conf_object},
         entrypoint::{BOOTSTRAP_SOCKNAME, CLASS_NAME, LOGLEVEL_VARNAME},
@@ -44,7 +42,6 @@ use log4rs::{
 };
 use raw_cstr::raw_cstr;
 use std::{
-    cell::RefCell,
     env::var,
     ffi::CString,
     str::FromStr,
@@ -61,9 +58,15 @@ lazy_static! {
     pub static ref CONTROLLER: Arc<Mutex<Controller>> = Arc::new(Mutex::new(
         Controller::try_new().expect("Could not initialize Controller")
     ));
+}
+
+lazy_static! {
     pub static ref TRACER: Arc<Mutex<AFLCoverageTracer>> = Arc::new(Mutex::new(
         AFLCoverageTracer::try_new().expect("Could not initialize AFLCoverageTracer")
     ));
+}
+
+lazy_static! {
     pub static ref DETECTOR: Arc<Mutex<FaultDetector>> = Arc::new(Mutex::new(
         FaultDetector::try_new().expect("Could not initialize fault detector")
     ));
@@ -79,19 +82,8 @@ pub struct Controller {
     stop_reason: Option<StopReason>,
     buffer: TargetBuffer,
     first_time_init_done: bool,
-    cpus: Vec<RefCell<Cpu>>,
-    instance: RefCell<ControllerInstance>,
-}
-
-// unsafe impl Send for Controller {}
-// unsafe impl Sync for Controller {}
-
-impl Controller {
-    /// Retrieve the global controller object
-    pub fn get<'a>() -> Result<MutexGuard<'a, Self>> {
-        let controller = CONTROLLER.lock().expect("Could not lock controller");
-        Ok(controller)
-    }
+    cpus: Vec<Cpu>,
+    instance: ControllerInstance,
 }
 
 impl Controller {
@@ -99,6 +91,12 @@ impl Controller {
     pub const CLASS_DESCRIPTION: &str = r#"CONFUSE module controller class. This class controls general actions for the
         CONFUSE SIMICS module including configuration and run controls."#;
     pub const CLASS_SHORT_DESCRIPTION: &str = "CONFUSE controller";
+
+    /// Retrieve the global controller object
+    pub fn get<'a>() -> Result<MutexGuard<'a, Self>> {
+        let controller = CONTROLLER.lock().expect("Could not lock controller");
+        Ok(controller)
+    }
 
     /// Try to create a new controller object by starting up the communication with the client
     pub fn try_new() -> Result<Self> {
@@ -135,7 +133,7 @@ impl Controller {
             buffer: TargetBuffer::default(),
             first_time_init_done: false,
             cpus: vec![],
-            instance: RefCell::new(ControllerInstance::default()),
+            instance: ControllerInstance::default(),
         })
     }
 
@@ -168,9 +166,66 @@ impl Controller {
             _ => bail!("Expected initialize command"),
         };
 
-        let output_config = OutputConfig::default();
+        let mut output_config = OutputConfig::default();
 
-        _ = self.on_initialize(&input_config, output_config)?;
+        let class_data = class_data_t {
+            alloc_object: Some(alloc_controller_conf_object),
+            init_object: Some(init_controller_conf_object),
+            finalize_instance: None,
+            pre_delete_instance: None,
+            delete_instance: None,
+            description: raw_cstr!(Controller::CLASS_SHORT_DESCRIPTION),
+            class_desc: raw_cstr!(Controller::CLASS_DESCRIPTION),
+            kind: class_kind_t_Sim_Class_Kind_Vanilla,
+        };
+        // let class_info = class_info_t {
+        //     alloc: Some(alloc_controller_conf_object_for_create),
+        //     init: Some(init_controller_conf_object_for_create),
+        //     finalize: None,
+        //     objects_finalized: None,
+        //     deinit: None,
+        //     dealloc: None,
+        //     description: raw_cstr!(Controller::CLASS_SHORT_DESCRIPTION),
+        //     short_desc: raw_cstr!(Controller::CLASS_DESCRIPTION),
+        //     kind: class_kind_t_Sim_Class_Kind_Vanilla,
+        // };
+
+        info!("Creating class {}", Controller::CLASS_NAME);
+
+        let cls = register_class(Controller::CLASS_NAME, class_data)?;
+
+        // let cls =
+        //     create_class(Controller::CLASS_NAME, class_info);
+
+        let mut tracer = AFLCoverageTracer::get()?;
+        output_config = tracer.on_initialize(&input_config, output_config)?;
+        drop(tracer);
+
+        let mut detector = FaultDetector::get()?;
+        output_config = detector.on_initialize(&input_config, output_config)?;
+        drop(detector);
+
+        register_interface::<_, confuse_module_interface_t>(cls, Controller::CLASS_NAME)?;
+
+        info!(
+            "Registered interface {}",
+            confuse_module_interface_t::INTERFACE_NAME
+        );
+
+        // Next, we register callbacks for the two events we care about for this component:
+        // - Core_Magic_Instruction: this lets us catch when we should pause to prep fuzzing
+        //   and stop simulation for reset
+        // - Core_Simulation_Stopped: If for some reason we don't get a magic stop, we need
+        //   to know about other stops to handle simulation errors and normal exits.
+
+        hap_add_callback_magic_instruction(callbacks::core_magic_instruction_cb)?;
+
+        hap_add_callback_simulation_stopped(callbacks::core_simulation_stopped_cb)?;
+
+        // The components initialized above may modify the initialized config, and after all of
+        // them have a chance to do so we send the final config back to the client
+
+        self.send_msg(ModuleMessage::Initialized(output_config))?;
 
         Ok(())
     }
@@ -220,14 +275,14 @@ impl Controller {
     /// This function is safe as long as `obj` is actually a non-null pointer to a `conf_object_t`
     pub unsafe fn interface_run(&mut self, obj: *mut conf_object_t) -> Result<()> {
         let instance = ControllerInstance::try_from_obj(obj)?;
-        self.instance = RefCell::new(instance);
+        self.instance = instance;
 
         let mut tracer = AFLCoverageTracer::get()?;
-        tracer.on_run(&self.instance.borrow())?;
+        tracer.on_run(&self.instance)?;
         drop(tracer);
 
         let mut detector = FaultDetector::get()?;
-        detector.on_run(&self.instance.borrow())?;
+        detector.on_run(&self.instance)?;
         drop(detector);
 
         continue_simulation();
@@ -274,85 +329,12 @@ impl Controller {
 
     /// Called by SIMICS on magic instruction
     pub fn on_simulation_stopped_cb(&mut self) -> Result<()> {
-        let reason = self.stop_reason.clone();
-        unsafe { self.on_stop(reason, None) }?;
+        unsafe { self.on_stop() }?;
         Ok(())
     }
 }
 
-impl Component for Controller {
-    /// Callback on initialization. For the controller, this is called directly, and it calls
-    /// the on_initialize callbacks for all the other `Component`s
-    fn on_initialize(
-        &mut self,
-        input_config: &InputConfig,
-        mut output_config: OutputConfig,
-    ) -> Result<OutputConfig> {
-        // First we register our class and interface
-
-        let class_data = class_data_t {
-            alloc_object: Some(alloc_controller_conf_object),
-            init_object: Some(init_controller_conf_object),
-            finalize_instance: None,
-            pre_delete_instance: None,
-            delete_instance: None,
-            description: raw_cstr!(Controller::CLASS_SHORT_DESCRIPTION),
-            class_desc: raw_cstr!(Controller::CLASS_DESCRIPTION),
-            kind: class_kind_t_Sim_Class_Kind_Vanilla,
-        };
-        // let class_info = class_info_t {
-        //     alloc: Some(alloc_controller_conf_object_for_create),
-        //     init: Some(init_controller_conf_object_for_create),
-        //     finalize: None,
-        //     objects_finalized: None,
-        //     deinit: None,
-        //     dealloc: None,
-        //     description: raw_cstr!(Controller::CLASS_SHORT_DESCRIPTION),
-        //     short_desc: raw_cstr!(Controller::CLASS_DESCRIPTION),
-        //     kind: class_kind_t_Sim_Class_Kind_Vanilla,
-        // };
-
-        info!("Creating class {}", Controller::CLASS_NAME);
-
-        let cls = register_class(Controller::CLASS_NAME, class_data)?;
-
-        // let cls =
-        //     create_class(Controller::CLASS_NAME, class_info);
-
-        let mut tracer = AFLCoverageTracer::get()?;
-        output_config = tracer.on_initialize(input_config, output_config)?;
-        drop(tracer);
-
-        let mut detector = FaultDetector::get()?;
-        output_config = detector.on_initialize(input_config, output_config)?;
-        drop(detector);
-
-        register_interface::<_, confuse_module_interface_t>(cls, Controller::CLASS_NAME)?;
-
-        info!(
-            "Registered interface {}",
-            confuse_module_interface_t::INTERFACE_NAME
-        );
-
-        // Next, we register callbacks for the two events we care about for this component:
-        // - Core_Magic_Instruction: this lets us catch when we should pause to prep fuzzing
-        //   and stop simulation for reset
-        // - Core_Simulation_Stopped: If for some reason we don't get a magic stop, we need
-        //   to know about other stops to handle simulation errors and normal exits.
-
-        hap_add_callback_magic_instruction(callbacks::core_magic_instruction_cb)?;
-
-        hap_add_callback_simulation_stopped(callbacks::core_simulation_stopped_cb)?;
-
-        // The components initialized above may modify the initialized config, and after all of
-        // them have a chance to do so we send the final config back to the client
-
-        self.send_msg(ModuleMessage::Initialized(output_config))?;
-
-        // We're the controller, so our config isn't used - we send it ourself just above
-        Ok(OutputConfig::default())
-    }
-
+impl Controller {
     unsafe fn pre_first_run(&mut self) -> Result<()> {
         let mut tracer = AFLCoverageTracer::get()?;
         tracer.pre_first_run()?;
@@ -369,13 +351,11 @@ impl Component for Controller {
                 .cpus
                 .first()
                 .context("No cpu present")?
-                .borrow()
                 .get_reg_value("rsi")?,
             size: self
                 .cpus
                 .first()
                 .context("No cpu present")?
-                .borrow()
                 .get_reg_value("rdi")?,
         };
 
@@ -386,17 +366,13 @@ impl Component for Controller {
         Ok(())
     }
 
-    unsafe fn pre_run(
-        &mut self,
-        data: &[u8],
-        _instance: Option<&mut ControllerInstance>,
-    ) -> Result<()> {
+    unsafe fn pre_run(&mut self, data: &[u8]) -> Result<()> {
         let mut tracer = AFLCoverageTracer::get()?;
-        tracer.pre_run(data, Some(&mut self.instance.borrow_mut()))?;
+        tracer.pre_run(data, &mut self.instance)?;
         drop(tracer);
 
         let mut detector = FaultDetector::get()?;
-        detector.pre_run(data, Some(&mut self.instance.borrow_mut()))?;
+        detector.pre_run(data, &mut self.instance)?;
         drop(detector);
 
         Ok(())
@@ -430,11 +406,10 @@ impl Component for Controller {
             ClientMessage::Run(mut input) => {
                 let buffer = self.buffer;
                 input.truncate(buffer.size as usize);
-                unsafe { self.pre_run(&input, None) }?;
+                unsafe { self.pre_run(&input) }?;
                 self.cpus
                     .first()
                     .context("No cpu available")?
-                    .borrow()
                     .write_bytes(&buffer.address, &input)?;
             }
             ClientMessage::Exit => {
@@ -449,58 +424,54 @@ impl Component for Controller {
     }
 
     /// Callback when the simulation stops.
-    unsafe fn on_stop(
-        &mut self,
-        reason: Option<StopReason>,
-        _instance: Option<&mut ControllerInstance>,
-    ) -> Result<()> {
-        let mut tracer = AFLCoverageTracer::get()?;
-        tracer.on_stop(reason.clone(), Some(&mut self.instance.borrow_mut()))?;
-        drop(tracer);
+    unsafe fn on_stop(&mut self) -> Result<()> {
+        if let Some(reason) = self.stop_reason.clone() {
+            let mut tracer = AFLCoverageTracer::get()?;
+            tracer.on_stop(reason.clone(), &mut self.instance)?;
+            drop(tracer);
 
-        let mut detector = FaultDetector::get()?;
-        detector.on_stop(reason.clone(), Some(&mut self.instance.borrow_mut()))?;
-        drop(detector);
+            let mut detector = FaultDetector::get()?;
+            detector.on_stop(reason.clone(), &mut self.instance)?;
+            drop(detector);
 
-        match reason {
-            None => {}
-            Some(StopReason::Magic(magic)) => match magic {
-                Magic::Start(_) => {
-                    if self.first_time_init_done {
-                        continue_simulation();
-                    } else {
-                        self.pre_first_run()?;
+            match reason {
+                StopReason::Magic(magic) => match magic {
+                    Magic::Start(_) => {
+                        if self.first_time_init_done {
+                            continue_simulation();
+                        } else {
+                            self.pre_first_run()?;
+                            self.on_reset()?;
+                        }
+                    }
+                    Magic::Stop((code, _)) => {
+                        let val = self
+                            .cpus
+                            .first()
+                            .context("No cpu available")?
+                            .get_reg_value("rsi")?;
+                        let magic = Magic::Stop((code, Some(val)));
+                        trace!("Stopped with magic: {:?}", magic);
+                        self.send_msg(ModuleMessage::Stopped(StopReason::Magic(magic)))?;
                         self.on_reset()?;
                     }
-                }
-                Magic::Stop((code, _)) => {
-                    let val = self
-                        .cpus
-                        .first()
-                        .context("No cpu available")?
-                        .borrow()
-                        .get_reg_value("rsi")?;
-                    let magic = Magic::Stop((code, Some(val)));
-                    trace!("Stopped with magic: {:?}", magic);
-                    self.send_msg(ModuleMessage::Stopped(StopReason::Magic(magic)))?;
+                },
+                StopReason::Crash(fault) => {
+                    self.send_msg(ModuleMessage::Stopped(StopReason::Crash(fault)))?;
                     self.on_reset()?;
                 }
-            },
-            Some(StopReason::Crash(fault)) => {
-                self.send_msg(ModuleMessage::Stopped(StopReason::Crash(fault)))?;
-                self.on_reset()?;
+                StopReason::SimulationExit => {
+                    self.send_msg(ModuleMessage::Stopped(StopReason::SimulationExit))?;
+                    self.on_reset()?;
+                }
+                StopReason::TimeOut => {
+                    self.send_msg(ModuleMessage::Stopped(StopReason::TimeOut))?;
+                    self.on_reset()?;
+                }
             }
-            Some(StopReason::SimulationExit) => {
-                self.send_msg(ModuleMessage::Stopped(StopReason::SimulationExit))?;
-                self.on_reset()?;
-            }
-            Some(StopReason::TimeOut) => {
-                self.send_msg(ModuleMessage::Stopped(StopReason::TimeOut))?;
-                self.on_reset()?;
-            }
-        }
 
-        self.stop_reason = None;
+            self.stop_reason = None;
+        }
 
         Ok(())
     }
@@ -526,7 +497,7 @@ impl ComponentInterface for Controller {
             "A CPU has already been added! This module only supports 1 vCPU at this time."
         );
 
-        self.cpus.push(RefCell::new(Cpu::try_new(processor)?));
+        self.cpus.push(Cpu::try_new(processor)?);
 
         Ok(())
     }
