@@ -61,7 +61,11 @@ pub struct FaultDetector {
     pub cpus: Vec<RefCell<Cpu>>,
 }
 
+/// FaultDetector is Send despite having a registered timeout event because that event is only
+/// accessed in callbacks triggered by SIMICS
 unsafe impl Send for FaultDetector {}
+/// FaultDetector is Sync despite having a registered timeout event because that event is only
+/// accessed in callbacks triggered by SIMICS
 unsafe impl Sync for FaultDetector {}
 
 impl FaultDetector {

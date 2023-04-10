@@ -41,8 +41,11 @@ pub enum X86_64Fault {
     AlignmentCheck = 17,
     MachineCheck = 18,
     SimdFpen = 19,
-    VirtualizationException = 20,
-    ControlProtectionException = 21,
+    Virtualization = 20,
+    ControlProtection = 21,
+    HypervisorInjection = 28,
+    VMMCommunication = 29,
+    Security = 30,
 }
 
 impl TryFrom<i64> for X86_64Fault {
@@ -56,7 +59,7 @@ impl TryFrom<i64> for X86_64Fault {
 
 #[derive(Debug, Serialize, Deserialize, Hash, PartialEq, Eq, Copy, Clone)]
 #[repr(i64)]
-/// A fault number, this is defined per architecture.
+/// An architecture independent container for faults on various architectures
 pub enum Fault {
     X86_64(X86_64Fault),
 }

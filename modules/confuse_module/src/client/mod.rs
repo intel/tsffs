@@ -152,8 +152,8 @@ impl Client {
     /// Initialize the client with a configuration. The client will return an output
     /// configuration which contains various information the SIMICS module needs to
     /// inform the client of, including memory maps for coverage. Changes the
-    /// internal state from [`Uninitialized`] to [`HalfInitialized`] and then from
-    /// [`HalfInitialized`] to [`ConfuseModuleState::Initialized`].
+    /// internal state from `Uninitialized` to `HalfInitialized` and then from
+    /// `HalfInitialized` to `ConfuseModuleState::Initialized`.
     pub fn initialize(&mut self, config: InputConfig) -> Result<OutputConfig> {
         info!("Sending initialize message");
         self.send_msg(ClientMessage::Initialize(config))?;
@@ -166,6 +166,9 @@ impl Client {
         }
     }
 
+    /// Reset the module to the beginning of the fuzz loop (the state as snapshotted).
+    /// Changes the internal state from `Stopped` or `Initialized` to `HalfReady`, then
+    /// from `HalfReady` to `Ready`.
     pub fn reset(&mut self) -> Result<()> {
         info!("Sending reset message");
         self.send_msg(ClientMessage::Reset)?;
@@ -178,6 +181,11 @@ impl Client {
         }
     }
 
+    /// Signal the module to run the target software. Changes the intenal state from `Ready` to
+    /// `Running`, then once the run finishes either with a normal stop, a timeout, or a crash,
+    /// from `Running` to `Stopped`. This function blocks until the target software stops and the
+    /// module detects it, so it may take a long time or if there is an unexpected bug it may
+    /// hang.
     pub fn run(&mut self, input: Vec<u8>) -> Result<StopReason> {
         info!("Sending run message");
         self.send_msg(ClientMessage::Run(input))?;
@@ -190,6 +198,8 @@ impl Client {
         }
     }
 
+    /// Signal the module to exit SIMICS, stopping the fuzzing process. Changes the internal state
+    /// from any state to `Done`.
     pub fn exit(&mut self) -> Result<()> {
         info!("Sending exit message");
         self.send_msg(ClientMessage::Exit)?;
