@@ -50,16 +50,16 @@ There are two provided sample targets, `hello-world` and `x509-parse`. You can r
 by running one of the following commands after following the setup instructions.
 
 ```sh
-$ cargo run --bin hello-world-fuzz
+$ cargo run --bin hello-world-fuzz -- --input ./targets/hello-world/corpus --log-level TRACE --cycles 30
 ```
 
 or
 
 ```sh
-$ cargo run --bin x509-parse-fuzz
+$ cargo run --bin x509-parse-fuzz -- --input ./targets/x509-parse/corpus --log-level TRACE --cycles 30
 ```
 
-These samples will run for 1000 fuzzing stages (about 10-50k executions) before stopping.
+These samples will run for 30 fuzzing stages (about 1-5k executions) before stopping.
 Logs will output to `/tmp/confuse-logXXXX.log` where `X` is a random character. You can
 view the logs while the fuzzer is running in another
 terminal with `tail -F /tmp/confuse-log*`. The log will rotate every 100MB to avoid
