@@ -1,6 +1,6 @@
 //! Configuration data for the module, passed to it when it starts up
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 use ipc_shm::IpcShm;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;

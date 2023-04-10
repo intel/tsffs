@@ -12,7 +12,6 @@ members = [
     # Targets
     "targets/hello-world",
     "targets/x509-parse",
-    "targets/gnr-tdx",
     # Utilities
     "util/ipc-shm",
     "util/raw-cstr",
