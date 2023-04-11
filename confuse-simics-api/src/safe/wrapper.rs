@@ -1,6 +1,7 @@
 use crate::{
     class_data_t, class_info_t, conf_class_t, conf_object_t, event_class_t,
     micro_checkpoint_flags_t_Sim_MC_ID_User, micro_checkpoint_flags_t_Sim_MC_Persistent,
+    safe::types::{ClassData, ClassInfo, ConfClass, ConfObject, EventClass},
     CORE_discard_future, SIM_break_simulation, SIM_create_class, SIM_event_cancel_time,
     SIM_event_find_next_time, SIM_event_post_time, SIM_get_class, SIM_last_error, SIM_object_clock,
     SIM_quit, SIM_register_class, SIM_register_event, SIM_register_interface,
@@ -13,6 +14,8 @@ use std::{
     mem::transmute,
     ptr::null_mut,
 };
+
+use super::types::SendSyncRawPointer;
 
 pub fn quit() {
     unsafe {
@@ -50,23 +53,17 @@ pub fn last_error() -> String {
     error_str.to_string_lossy().to_string()
 }
 
-pub fn register_class<S: AsRef<str>>(
-    name: S,
-    class_data: class_data_t,
-) -> Result<&'static mut conf_class_t> {
+pub fn register_class<S: AsRef<str>>(name: S, class_data: ClassData) -> Result<ConfClass> {
     let name_raw = raw_cstr!(name.as_ref());
     let cls = unsafe { SIM_register_class(name_raw, &class_data as *const class_data_t) };
     if cls.is_null() {
         bail!("Failed to register class: {}", last_error());
     } else {
-        Ok(unsafe { &mut *cls })
+        Ok(ConfClass(SendSyncRawPointer(cls)))
     }
 }
 
-pub fn create_class<S: AsRef<str>>(
-    name: S,
-    class_info: class_info_t,
-) -> Result<&'static mut conf_class_t> {
+pub fn create_class<S: AsRef<str>>(name: S, class_info: ClassInfo) -> Result<ConfClass> {
     let name_raw = raw_cstr!(name.as_ref());
     let cls = unsafe { SIM_create_class(name_raw, &class_info as *const class_info_t) };
 
@@ -77,11 +74,11 @@ pub fn create_class<S: AsRef<str>>(
             last_error()
         );
     } else {
-        Ok(unsafe { &mut *cls })
+        Ok(ConfClass(SendSyncRawPointer(cls)))
     }
 }
 
-pub fn register_interface<S: AsRef<str>, T>(cls: &mut conf_class_t, name: S) -> Result<i32>
+pub fn register_interface<S: AsRef<str>, T>(cls: ConfClass, name: S) -> Result<i32>
 where
     T: Default,
 {
@@ -90,8 +87,7 @@ where
     // Note: This allocates and never frees. This is *required* by SIMICS and it is an error to
     // free this pointer
     let iface_raw = Box::into_raw(iface_box);
-    let status =
-        unsafe { SIM_register_interface(cls as *mut conf_class_t, name_raw, iface_raw as *mut _) };
+    let status = unsafe { SIM_register_interface(cls.0 .0, name_raw, iface_raw as *mut _) };
 
     if status != 0 {
         bail!(
@@ -104,7 +100,7 @@ where
     }
 }
 
-pub fn get_class<S: AsRef<str>>(name: S) -> Result<&'static mut conf_class_t> {
+pub fn get_class<S: AsRef<str>>(name: S) -> Result<ConfClass> {
     let name_raw = raw_cstr!(name.as_ref());
 
     let cls = unsafe { SIM_get_class(name_raw) };
@@ -112,20 +108,20 @@ pub fn get_class<S: AsRef<str>>(name: S) -> Result<&'static mut conf_class_t> {
     if cls.is_null() {
         bail!("Failed to get class {}: {}", name.as_ref(), last_error());
     } else {
-        Ok(unsafe { &mut *cls })
+        Ok(ConfClass(SendSyncRawPointer(cls)))
     }
 }
 
 pub fn register_event<S: AsRef<str>>(
     name: S,
-    cls: &mut conf_class_t,
+    cls: ConfClass,
     callback: unsafe extern "C" fn(*mut conf_object_t, *mut c_void),
-) -> Result<&'static mut event_class_t> {
+) -> Result<EventClass> {
     let name_raw = raw_cstr!(name.as_ref());
     let event = unsafe {
         SIM_register_event(
             name_raw,
-            cls as *mut conf_class_t,
+            cls.0 .0,
             0,
             transmute(callback),
             None,
@@ -142,65 +138,28 @@ pub fn register_event<S: AsRef<str>>(
             last_error()
         );
     } else {
-        Ok(unsafe { &mut *event })
+        Ok(EventClass(SendSyncRawPointer(event)))
     }
 }
 
-pub fn object_clock(obj: &mut conf_object_t) -> Result<&'static mut conf_object_t> {
-    let clock = unsafe { SIM_object_clock(obj as *mut conf_object_t) };
+pub fn object_clock(obj: &ConfObject) -> Result<ConfObject> {
+    let clock = unsafe { SIM_object_clock(obj.0) };
 
     if clock.is_null() {
         bail!("Unable to get object clock: {}", last_error());
     } else {
-        Ok(unsafe { &mut *clock })
+        Ok(ConfObject(clock))
     }
 }
 
-pub fn event_post_time(
-    clock: &mut conf_object_t,
-    event: &mut event_class_t,
-    obj: &mut conf_object_t,
-    seconds: f64,
-) {
-    unsafe {
-        SIM_event_post_time(
-            clock as *mut conf_object_t,
-            event as *mut event_class_t,
-            obj as *mut conf_object_t,
-            seconds,
-            null_mut(),
-        )
-    };
+pub fn event_post_time(clock: ConfObject, event: EventClass, obj: ConfObject, seconds: f64) {
+    unsafe { SIM_event_post_time(clock.0, event.0 .0, obj.0, seconds, null_mut()) };
 }
 
-pub fn event_find_next_time(
-    clock: &mut conf_object_t,
-    event: &mut event_class_t,
-    obj: &mut conf_object_t,
-) -> f64 {
-    unsafe {
-        SIM_event_find_next_time(
-            clock as *mut conf_object_t,
-            event as *mut event_class_t,
-            obj as *mut conf_object_t,
-            None,
-            null_mut(),
-        )
-    }
+pub fn event_find_next_time(clock: ConfObject, event: EventClass, obj: ConfObject) -> f64 {
+    unsafe { SIM_event_find_next_time(clock.0, event.0 .0, obj.0, None, null_mut()) }
 }
 
-pub fn event_cancel_time(
-    clock: &mut conf_object_t,
-    event: &mut event_class_t,
-    obj: &mut conf_object_t,
-) {
-    unsafe {
-        SIM_event_cancel_time(
-            clock as *mut conf_object_t,
-            event as *mut event_class_t,
-            obj as *mut conf_object_t,
-            None,
-            null_mut(),
-        )
-    }
+pub fn event_cancel_time(clock: ConfObject, event: EventClass, obj: ConfObject) {
+    unsafe { SIM_event_cancel_time(clock.0, event.0 .0, obj.0, None, null_mut()) }
 }

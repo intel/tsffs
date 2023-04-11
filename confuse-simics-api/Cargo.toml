@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.69"
+derive_builder = "0.12.0"
 raw-cstr.workspace = true
 
 [build-dependencies]

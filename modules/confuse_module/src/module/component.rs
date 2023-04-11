@@ -6,20 +6,12 @@
 use std::sync::MutexGuard;
 
 use super::{
+    components::{detector::FaultDetector, tracer::AFLCoverageTracer},
     config::{InputConfig, OutputConfig},
-    controller::instance::ControllerInstance,
     stop_reason::StopReason,
 };
 use anyhow::Result;
 use confuse_simics_api::{attr_value_t, conf_object_t};
-
-pub trait ComponentGlobal {
-    /// Used to retrieve the instance of a component. Components are global objects behind mutex
-    /// locks, so they need a `get` function to retrieve them
-    fn get_component<'a>() -> Result<MutexGuard<'a, Box<dyn Component>>>
-    where
-        Self: Sized;
-}
 
 /// A trait defining the functions a component needs to implement so it can initialize itself
 /// from the global configuration and react to events that happen
@@ -98,4 +90,7 @@ pub trait ComponentInterface {
     unsafe fn on_add_fault(&mut self, obj: *mut conf_object_t, fault: i64) -> Result<()>;
 }
 
-pub trait Component: ComponentEvents + ComponentGlobal + ComponentInterface + Send + Sync {}
+pub enum Component {
+    AFLCoverageTracer(AFLCoverageTracer),
+    FaultDetector(FaultDetector),
+}

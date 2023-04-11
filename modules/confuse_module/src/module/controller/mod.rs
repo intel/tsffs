@@ -1,11 +1,13 @@
 use self::{
-    instance::ControllerInstance,
     magic::Magic,
     messages::{client::ClientMessage, module::ModuleMessage},
     target_buffer::TargetBuffer,
 };
 use super::{
-    component::ComponentInterface, config::OutputConfig, cpu::Cpu, stop_reason::StopReason,
+    component::{Component, ComponentInterface},
+    config::OutputConfig,
+    cpu::Cpu,
+    stop_reason::StopReason,
 };
 use crate::{
     module::{
@@ -24,6 +26,7 @@ use confuse_simics_api::{
             continue_simulation, count_micro_checkpoints, hap_add_callback_magic_instruction,
             hap_add_callback_simulation_stopped,
         },
+        types::ConfObject,
         wrapper::{
             break_simulation, discard_future, quit, register_class, register_interface,
             restore_micro_checkpoint, save_micro_checkpoint,
@@ -53,24 +56,6 @@ pub mod magic;
 pub mod messages;
 mod target_buffer;
 
-lazy_static! {
-    pub static ref CONTROLLER: Arc<Mutex<Controller>> = Arc::new(Mutex::new(
-        Controller::try_new().expect("Could not initialize Controller")
-    ));
-}
-
-lazy_static! {
-    pub static ref TRACER: Arc<Mutex<AFLCoverageTracer>> = Arc::new(Mutex::new(
-        AFLCoverageTracer::try_new().expect("Could not initialize AFLCoverageTracer")
-    ));
-}
-
-lazy_static! {
-    pub static ref DETECTOR: Arc<Mutex<FaultDetector>> = Arc::new(Mutex::new(
-        FaultDetector::try_new().expect("Could not initialize fault detector")
-    ));
-}
-
 /// Controller for the Confuse simics module. The controller is reponsible for communicating with
 /// the client, dispatching messages, and implementing the overall state machine for the module
 pub struct Controller {
@@ -82,7 +67,7 @@ pub struct Controller {
     buffer: TargetBuffer,
     first_time_init_done: bool,
     cpus: Vec<Cpu>,
-    instance: ControllerInstance,
+    components: Vec<Component>,
 }
 
 impl Controller {
@@ -90,12 +75,6 @@ impl Controller {
     pub const CLASS_DESCRIPTION: &str = r#"CONFUSE module controller class. This class controls general actions for the
         CONFUSE SIMICS module including configuration and run controls."#;
     pub const CLASS_SHORT_DESCRIPTION: &str = "CONFUSE controller";
-
-    /// Retrieve the global controller object
-    pub fn get<'a>() -> Result<MutexGuard<'a, Self>> {
-        let controller = CONTROLLER.lock().expect("Could not lock controller");
-        Ok(controller)
-    }
 
     /// Try to create a new controller object by starting up the communication with the client
     pub fn try_new() -> Result<Self> {
@@ -132,7 +111,7 @@ impl Controller {
             buffer: TargetBuffer::default(),
             first_time_init_done: false,
             cpus: vec![],
-            instance: ControllerInstance::default(),
+            components: vec![],
         })
     }
 

@@ -2,50 +2,23 @@ use self::fault::{Fault, X86_64Fault};
 use crate::module::{
     component::{Component, ComponentEvents, ComponentGlobal, ComponentInterface},
     config::{InputConfig, OutputConfig},
-    controller::{instance::ControllerInstance, Controller, DETECTOR},
+    controller::Controller,
     cpu::Cpu,
     stop_reason::StopReason,
 };
 use anyhow::{ensure, Context, Result};
-use confuse_simics_api::{
-    attr_value_t, conf_object_t, event_class_t,
-    safe::{
-        common::{hap_add_callback_exception, hap_add_callback_triple_fault},
-        wrapper::{
-            event_cancel_time, event_find_next_time, event_post_time, get_class, object_clock,
-            register_event,
-        },
+use confuse_simics_api::safe::{
+    common::{hap_add_callback_exception, hap_add_callback_triple_fault},
+    types::ConfClass,
+    wrapper::{
+        event_cancel_time, event_find_next_time, event_post_time, get_class, object_clock,
+        register_event,
     },
 };
 use log::info;
-use std::ptr::null_mut;
 use std::{collections::HashSet, sync::MutexGuard};
 
 pub mod fault;
-
-struct TimeoutEvent {
-    ptr: *mut event_class_t,
-}
-
-impl Default for TimeoutEvent {
-    fn default() -> Self {
-        Self { ptr: null_mut() }
-    }
-}
-
-impl TimeoutEvent {
-    pub unsafe fn from_ptr(ptr: *mut event_class_t) -> Self {
-        Self { ptr }
-    }
-
-    pub fn _get(&self) -> *mut event_class_t {
-        self.ptr
-    }
-
-    pub fn as_mut_ref(&mut self) -> &mut event_class_t {
-        unsafe { &mut *self.ptr }
-    }
-}
 
 #[derive(Default)]
 /// Component of the Confuse module that detects faults, timeouts, and other error conditions
@@ -57,16 +30,16 @@ pub struct FaultDetector {
     /// doing the math yourself!
     pub timeout: Option<f64>,
     /// The registered timeout event
-    timeout_event: TimeoutEvent,
+    timeout_event: ConfClass,
     pub cpus: Vec<Cpu>,
 }
 
 /// FaultDetector is Send despite having a registered timeout event because that event is only
 /// accessed in callbacks triggered by SIMICS
-unsafe impl Send for FaultDetector {}
+// unsafe impl Send for FaultDetector {}
 /// FaultDetector is Sync despite having a registered timeout event because that event is only
 /// accessed in callbacks triggered by SIMICS
-unsafe impl Sync for FaultDetector {}
+// unsafe impl Sync for FaultDetector {}
 
 impl FaultDetector {
     /// The name of the timeout event this component uses to post events to the SIMICS event queue
@@ -102,20 +75,6 @@ impl FaultDetector {
         let mut controller = Controller::get()?;
         controller.stop_simulation(StopReason::TimeOut);
         Ok(())
-    }
-}
-
-impl FaultDetector {
-    pub fn get<'a>() -> Result<MutexGuard<'a, Self>> {
-        let detector = DETECTOR.lock().expect("Could not lock detector");
-        Ok(detector)
-    }
-}
-
-impl ComponentGlobal for FaultDetector {
-    /// Get the global instance of this component
-    fn get_component<'a>() -> Result<MutexGuard<'a, Box<dyn Component>>> {
-        todo!()
     }
 }
 

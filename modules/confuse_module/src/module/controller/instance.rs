@@ -5,7 +5,6 @@ use confuse_simics_api::{SIM_get_class, SIM_object_class};
 use raw_cstr::raw_cstr;
 use std::ffi::{c_void, CString};
 use std::mem::size_of;
-use std::ptr::null_mut;
 
 use crate::module::controller::Controller;
 
@@ -79,38 +78,3 @@ pub extern "C" fn alloc_controller_conf_object_for_create(
         ) as *mut conf_object_t
     }
 }
-
-pub struct ControllerInstance {
-    ptr: *mut controller_conf_object_t,
-}
-
-impl ControllerInstance {
-    /// Instantiate this struct from a pointer to an object
-    ///
-    /// # Safety
-    ///
-    /// This function is safe as long as `obj` is actually a pointer to a `conf_object_t`, and
-    /// will remain type safe as guaranteed by simics in this case
-    pub unsafe fn try_from_obj(obj: *mut conf_object_t) -> Result<Self> {
-        Ok(Self {
-            ptr: unsafe { controller_conf_object_t::try_from_obj(obj)? },
-        })
-    }
-
-    pub fn get(&self) -> *mut controller_conf_object_t {
-        self.ptr
-    }
-
-    pub fn get_as_obj(&mut self) -> &mut conf_object_t {
-        unsafe { &mut *(self.ptr as *mut conf_object_t) }
-    }
-}
-
-impl Default for ControllerInstance {
-    fn default() -> Self {
-        Self { ptr: null_mut() }
-    }
-}
-
-unsafe impl Send for ControllerInstance {}
-unsafe impl Sync for ControllerInstance {}

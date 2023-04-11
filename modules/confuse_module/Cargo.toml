@@ -51,7 +51,6 @@ ctrlc = "3.2.5"
 anyhow = "1.0.69"
 confuse-simics-project = { workspace = true }
 confuse-simics-manifest = { workspace = true }
-env_logger = "0.10.0"
 log = "0.4.17"
 test-cdylib = "1.1.0"
 test-log = "0.2.11"
