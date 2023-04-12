@@ -60,9 +60,9 @@ const SIMICS_BASE_VERSIONS: &[&str] = &[
     //     "6.0.100", "6.0.101", "6.0.102", "6.0.103", "6.0.104", "6.0.105", "6.0.106", "6.0.107",
     //     "6.0.108", "6.0.109", "6.0.110", "6.0.111", "6.0.112", "6.0.113", "6.0.114", "6.0.115",
     //     "6.0.116", "6.0.117", "6.0.118", "6.0.119", "6.0.120", "6.0.121", "6.0.122", "6.0.123",
-    //     "6.0.124", "6.0.125", "6.0.126", "6.0.127", "6.0.128", "6.0.129", "6.0.130", "6.0.131",
-    //     "6.0.132", "6.0.133", "6.0.134", "6.0.135", "6.0.136", "6.0.137", "6.0.138", "6.0.139",
-    //     "6.0.140", "6.0.141", "6.0.142", "6.0.143", "6.0.144", "6.0.145", "6.0.146", "6.0.147",
+    "6.0.124", "6.0.125", "6.0.126", "6.0.127", "6.0.128", "6.0.129", "6.0.130", "6.0.131",
+    "6.0.132", "6.0.133", "6.0.134", "6.0.135", "6.0.136", "6.0.137", "6.0.138", "6.0.139",
+    "6.0.140", "6.0.141", "6.0.142", "6.0.143", "6.0.144", "6.0.145", "6.0.146", "6.0.147",
     "6.0.148", "6.0.149", "6.0.150", "6.0.151", "6.0.152", "6.0.153", "6.0.154", "6.0.155",
     "6.0.156", "6.0.157", "6.0.158", "6.0.159", "6.0.160", "6.0.161", "6.0.162",
 ];
@@ -295,7 +295,11 @@ fn generate_bindings(args: &Args) -> Result<()> {
             .clang_arg("-fparse-all-comments")
             .generate_comments(true)
             .header(header)
-            .parse_callbacks(Box::new(CargoCallbacks))
+            // NOTE: These callbacks are required to emit `cargo:rerun-if-changed`
+            // statements, so we do not need to use them in this script. If you want to
+            // repurpose this script to use in a `build.rs`, you should re-enable this
+            // line:
+            // .parse_callbacks(Box::new(CargoCallbacks))
             .parse_callbacks(Box::new(IgnoreMacros::new()))
             // These functions and types use (i|u)128 which isn't FFI-safe, we block them because the warnings
             // are not important and annoying to parse through
