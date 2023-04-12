@@ -45,26 +45,24 @@ const SIMICS_BASE_PACKAGE_NUMBER: usize = 1000;
 /// Known versions for SIMICS-Base package. This should be updated correspondingly with a feature
 /// flag addition in the library for this crate
 const SIMICS_BASE_VERSIONS: &[&str] = &[
-    // NOTE: We can build all of these versions, but it is somewhat unlikely they will be
-    //       used. Leave them commented for now until there is good reason to build them (a release
-    //       is happening)
-
-    //     "6.0.14", "6.0.15", "6.0.20", "6.0.21", "6.0.28", "6.0.31", "6.0.33", "6.0.34", "6.0.35",
-    //     "6.0.36", "6.0.38", "6.0.39", "6.0.40", "6.0.41", "6.0.42", "6.0.43", "6.0.44", "6.0.45",
-    //     "6.0.46", "6.0.47", "6.0.48", "6.0.49", "6.0.50", "6.0.51", "6.0.52", "6.0.53", "6.0.54",
-    //     "6.0.55", "6.0.56", "6.0.57", "6.0.58", "6.0.59", "6.0.60", "6.0.61", "6.0.62", "6.0.63",
-    //     "6.0.64", "6.0.65", "6.0.66", "6.0.67", "6.0.68", "6.0.69", "6.0.70", "6.0.71", "6.0.72",
-    //     "6.0.73", "6.0.74", "6.0.75", "6.0.76", "6.0.77", "6.0.78", "6.0.79", "6.0.80", "6.0.81",
-    //     "6.0.82", "6.0.83", "6.0.84", "6.0.85", "6.0.86", "6.0.87", "6.0.88", "6.0.89", "6.0.90",
-    //     "6.0.91", "6.0.92", "6.0.93", "6.0.94", "6.0.95", "6.0.96", "6.0.97", "6.0.98", "6.0.99",
-    //     "6.0.100", "6.0.101", "6.0.102", "6.0.103", "6.0.104", "6.0.105", "6.0.106", "6.0.107",
-    //     "6.0.108", "6.0.109", "6.0.110", "6.0.111", "6.0.112", "6.0.113", "6.0.114", "6.0.115",
-    //     "6.0.116", "6.0.117", "6.0.118", "6.0.119", "6.0.120", "6.0.121", "6.0.122", "6.0.123",
-    "6.0.124", "6.0.125", "6.0.126", "6.0.127", "6.0.128", "6.0.129", "6.0.130", "6.0.131",
-    "6.0.132", "6.0.133", "6.0.134", "6.0.135", "6.0.136", "6.0.137", "6.0.138", "6.0.139",
-    "6.0.140", "6.0.141", "6.0.142", "6.0.143", "6.0.144", "6.0.145", "6.0.146", "6.0.147",
-    "6.0.148", "6.0.149", "6.0.150", "6.0.151", "6.0.152", "6.0.153", "6.0.154", "6.0.155",
-    "6.0.156", "6.0.157", "6.0.158", "6.0.159", "6.0.160", "6.0.161", "6.0.162",
+    // NOTE: We don't support any version earlier than 6.0.28 because that is the first version
+    // that shipped with an src/include directory to build the API from
+    "6.0.28", "6.0.31", "6.0.33", "6.0.34", "6.0.35", "6.0.36", "6.0.38", "6.0.39", "6.0.40",
+    "6.0.41", "6.0.42", "6.0.43", "6.0.44", "6.0.45", "6.0.46", "6.0.47", "6.0.48", "6.0.49",
+    "6.0.50", "6.0.51", "6.0.52", "6.0.53", "6.0.54", "6.0.55", "6.0.56", "6.0.57", "6.0.58",
+    "6.0.59", "6.0.60", "6.0.61", "6.0.62", "6.0.63", "6.0.64", "6.0.65", "6.0.66", "6.0.67",
+    "6.0.68", "6.0.69", "6.0.70", "6.0.71", "6.0.72", "6.0.73", "6.0.74", "6.0.75", "6.0.76",
+    "6.0.77", "6.0.78", "6.0.79", "6.0.80", "6.0.81", "6.0.82", "6.0.83", "6.0.84", "6.0.85",
+    "6.0.86", "6.0.87", "6.0.88", "6.0.89", "6.0.90", "6.0.91", "6.0.92", "6.0.93", "6.0.94",
+    "6.0.95", "6.0.96", "6.0.97", "6.0.98", "6.0.99", "6.0.100", "6.0.101", "6.0.102", "6.0.103",
+    "6.0.104", "6.0.105", "6.0.106", "6.0.107", "6.0.108", "6.0.109", "6.0.110", "6.0.111",
+    "6.0.112", "6.0.113", "6.0.114", "6.0.115", "6.0.116", "6.0.117", "6.0.118", "6.0.119",
+    "6.0.120", "6.0.121", "6.0.122", "6.0.123", "6.0.124", "6.0.125", "6.0.126", "6.0.127",
+    "6.0.128", "6.0.129", "6.0.130", "6.0.131", "6.0.132", "6.0.133", "6.0.134", "6.0.135",
+    "6.0.136", "6.0.137", "6.0.138", "6.0.139", "6.0.140", "6.0.141", "6.0.142", "6.0.143",
+    "6.0.144", "6.0.145", "6.0.146", "6.0.147", "6.0.148", "6.0.149", "6.0.150", "6.0.151",
+    "6.0.152", "6.0.153", "6.0.154", "6.0.155", "6.0.156", "6.0.157", "6.0.158", "6.0.159",
+    "6.0.160", "6.0.161", "6.0.162",
 ];
 
 struct Args {
@@ -191,6 +189,9 @@ fn generate_include_wrapper<P: AsRef<Path>>(base_package_path: P) -> Result<Stri
         "follower.h",
         "link-endpoint.h",
         "data-structs.h",
+        // slave-time.h/slave.h is also broken (it is the old name for follower)
+        "slave-time.h",
+        "slave.h",
     ];
 
     hdr_denylist.iter().for_each(|le| {
@@ -228,6 +229,7 @@ fn generate_bindings(args: &Args) -> Result<()> {
     let include_wrappers = base_versions
         .iter()
         .map(|v| {
+            println!("Generating include wrapper for version {}", v);
             let base_package_path = args.packages_dir.join(format!("simics-{}", v));
             (
                 v,
@@ -293,6 +295,8 @@ fn generate_bindings(args: &Args) -> Result<()> {
             .clang_arg(format!("-I{}", simics_python_include_path.display()))
             .clang_arg("-fretain-comments-from-system-headers")
             .clang_arg("-fparse-all-comments")
+            // We don't care at all what warnings simics has if they aren't errors :)
+            .clang_arg("-Wno-everything")
             .generate_comments(true)
             .header(header)
             // NOTE: These callbacks are required to emit `cargo:rerun-if-changed`
@@ -708,9 +712,13 @@ fn main() -> Result<()> {
         ispm_file: PathBuf::from("./scripts/resource/ispm-internal-cli-1.7.0-linux64.tar.gz"),
     };
 
+    // Download and install all the requested base versions into the packages directory
     install_packages(&args)?;
+    /// Generate Rust bindings for all the downloaded versions
     generate_bindings(&args)?;
+    /// Generate a top-level mod.rs that includes the versioned bindings based on the set feature
     generate_mod(&args)?;
+    /// Add a feature to the Cargo.toml file for each version
     update_cargo_toml(&args)?;
 
     Ok(())
