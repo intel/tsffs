@@ -1,0 +1,3 @@
+[tasks.update-bindings]
+script_runner = "@rust"
+script = { file = "scripts/update-bindings.rs" }

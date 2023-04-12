@@ -1,14 +1,11 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
+//! # SIMICS API SYS
+//!
+//! Low level bindings to the SIMICS API
+//!
+//! This crate provides raw bindings to the SIMICS api built directly from the header files of the
+//! SIMICS base package using `bindgen`. In general, you should prefer to use the `simics-api`
+//! crate over this one, as it provides higher level safe bindings to the SIMICS API.
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+mod bindings;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use bindings::*;
