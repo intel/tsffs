@@ -130,7 +130,6 @@ fn generate_include_wrapper<P: AsRef<Path>>(base_package_path: P) -> Result<Stri
         .filter_map(|p| p.ok())
         .filter_map(|p| {
             let simics_include_path = &simics_include_path;
-            println!("Checking include path {}", p.path().display());
             match p.path().extension() {
                 Some(e) => {
                     if e == "h" {
@@ -145,10 +144,7 @@ fn generate_include_wrapper<P: AsRef<Path>>(base_package_path: P) -> Result<Stri
                                     );
                                     None::<PathBuf>
                                 },
-                                |p| {
-                                    println!("Got include header path {}", p.display());
-                                    Some(p.to_path_buf())
-                                },
+                                |p| Some(p.to_path_buf()),
                             ),
                             Err(e) => {
                                 eprintln!(
@@ -212,17 +208,54 @@ fn generate_include_wrapper<P: AsRef<Path>>(base_package_path: P) -> Result<Stri
     Ok(wrapper)
 }
 
+fn get_existing_versions(args: &Args) -> Result<Vec<String>> {
+    Ok(args
+        .bindings_dir
+        .read_dir()?
+        .filter_map(|de| de.ok())
+        .map(|de| de.path())
+        .filter(|p| {
+            p.is_file()
+                && if let Some(ext) = p.extension() {
+                    ext == "rs"
+                } else {
+                    false
+                }
+        })
+        .filter_map(|p| {
+            p.file_name()
+                .map(|fname| fname.to_string_lossy().to_string())
+        })
+        .filter(|fname| fname.starts_with("bindings-"))
+        .filter_map(|fname| {
+            let fname_parts = fname.split('-').collect::<Vec<_>>();
+            fname_parts
+                .get(1)
+                .map(|part| part.to_string().replace(".rs", ""))
+        })
+        .collect::<Vec<_>>())
+}
+
 fn generate_bindings(args: &Args) -> Result<()> {
     if !args.bindings_dir.exists() {
         create_dir_all(&args.bindings_dir)?;
     }
 
-    let base_versions = if !args.base_versions.is_empty() {
-        args.base_versions.clone()
+    let existing_versions = get_existing_versions(args)?;
+
+    let mut base_versions = if !args.base_versions.is_empty() {
+        args.base_versions
+            .clone()
+            .iter()
+            .filter(|s| !existing_versions.contains(&s))
+            .cloned()
+            .collect::<Vec<_>>()
     } else {
         SIMICS_BASE_VERSIONS
             .iter()
             .map(|s| s.to_string())
+            // Filter out versions we already have bindings for
+            .filter(|s| !existing_versions.contains(&s))
             .collect::<Vec<_>>()
     };
 
@@ -252,7 +285,6 @@ fn generate_bindings(args: &Args) -> Result<()> {
             .filter_map(|de| de.ok())
             .map(|de| de.path())
             .filter_map(|p| {
-                println!("Checking for python version from {}", p.display());
                 if p.is_dir() {
                     let dirname = p.components().last().unwrap();
                     let name = dirname.as_os_str().to_string_lossy().to_string();
@@ -501,12 +533,17 @@ fn install_packages(args: &Args) -> Result<()> {
             .collect::<Vec<_>>()
     };
 
+    let existing_versions = get_existing_versions(args)?;
+
     let base_versions_needed = base_versions
         .iter()
         .filter(|v| {
             let version_dirname = format!("simics-{}", v);
             let version_dir = fake_simics_home.join(version_dirname);
-            !version_dir.is_dir()
+            // Filter out versions we already downloaded *or* already have a binding file for
+            // because we assume things won't get yanked and re-published with the same
+            // version number
+            !version_dir.is_dir() && !existing_versions.contains(&v)
         })
         .collect::<Vec<_>>();
 
@@ -606,33 +643,20 @@ fn install_packages(args: &Args) -> Result<()> {
 }
 
 fn generate_mod(args: &Args) -> Result<()> {
-    let versions = args
-        .bindings_dir
-        .read_dir()?
-        .filter_map(|de| de.ok())
-        .map(|de| de.path())
-        .filter(|p| {
-            p.is_file()
-                && if let Some(ext) = p.extension() {
-                    ext == "rs"
-                } else {
-                    false
-                }
-        })
-        .filter_map(|p| {
-            p.file_name()
-                .map(|fname| fname.to_string_lossy().to_string())
-        })
-        .filter(|fname| fname.starts_with("bindings-"))
-        .filter_map(|fname| {
-            let fname_parts = fname.split('-').collect::<Vec<_>>();
-            fname_parts
-                .get(1)
-                .map(|part| part.to_string().replace(".rs", ""))
-        })
-        .collect::<Vec<_>>();
+    let versions = get_existing_versions(args)?;
 
-    let mut mod_text = String::new();
+    let mut mod_text = r#"//! Raw bindings to the SIMICS API
+
+#![allow(non_upper_case_globals)]
+#![allow(non_camel_case_types)]
+#![allow(non_snake_case)]
+#![allow(clippy::useless_transmute)]
+#![allow(clippy::missing_safety_doc)]
+#![allow(clippy::type_complexity)]
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::unnecessary_cast)]
+"#
+    .to_string();
 
     for version in versions {
         mod_text += &format!(r#"#[cfg(feature = "{}")]"#, version);
@@ -653,31 +677,7 @@ fn generate_mod(args: &Args) -> Result<()> {
 }
 
 fn update_cargo_toml(args: &Args) -> Result<()> {
-    let versions = args
-        .bindings_dir
-        .read_dir()?
-        .filter_map(|de| de.ok())
-        .map(|de| de.path())
-        .filter(|p| {
-            p.is_file()
-                && if let Some(ext) = p.extension() {
-                    ext == "rs"
-                } else {
-                    false
-                }
-        })
-        .filter_map(|p| {
-            p.file_name()
-                .map(|fname| fname.to_string_lossy().to_string())
-        })
-        .filter(|fname| fname.starts_with("bindings-"))
-        .filter_map(|fname| {
-            let fname_parts = fname.split('-').collect::<Vec<_>>();
-            fname_parts
-                .get(1)
-                .map(|part| part.to_string().replace(".rs", ""))
-        })
-        .collect::<Vec<_>>();
+    let versions = get_existing_versions(args)?;
 
     let mut doc = String::from_utf8_lossy(&read(&args.toml_file)?).parse::<Document>()?;
 

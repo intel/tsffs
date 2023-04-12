@@ -1,3 +1,13 @@
+//! Raw bindings to the SIMICS API
+
+#![allow(non_upper_case_globals)]
+#![allow(non_camel_case_types)]
+#![allow(non_snake_case)]
+#![allow(clippy::useless_transmute)]
+#![allow(clippy::missing_safety_doc)]
+#![allow(clippy::type_complexity)]
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::unnecessary_cast)]
 #[cfg(feature = "6.0.154")]
 include!("bindings-6.0.154.rs");
 #[cfg(feature = "6.0.160")]
@@ -16,8 +26,6 @@ include!("bindings-6.0.152.rs");
 include!("bindings-6.0.161.rs");
 #[cfg(feature = "6.0.158")]
 include!("bindings-6.0.158.rs");
-#[cfg(feature = "6.0.162")]
-include!("bindings-6.0.162.rs");
 #[cfg(feature = "6.0.150")]
 include!("bindings-6.0.150.rs");
 #[cfg(feature = "6.0.151")]
@@ -260,3 +268,5 @@ include!("bindings-6.0.114.rs");
 include!("bindings-6.0.72.rs");
 #[cfg(feature = "6.0.73")]
 include!("bindings-6.0.73.rs");
+#[cfg(feature = "6.0.162")]
+include!("bindings-6.0.162.rs");
