@@ -209,7 +209,7 @@ fn generate_include_wrapper<P: AsRef<Path>>(base_package_path: P) -> Result<Stri
 }
 
 fn get_existing_versions(args: &Args) -> Result<Vec<String>> {
-    Ok(args
+    let mut versions = args
         .bindings_dir
         .read_dir()?
         .filter_map(|de| de.ok())
@@ -233,7 +233,12 @@ fn get_existing_versions(args: &Args) -> Result<Vec<String>> {
                 .get(1)
                 .map(|part| part.to_string().replace(".rs", ""))
         })
-        .collect::<Vec<_>>())
+        .filter_map(|v| Versioning::new(&v))
+        .collect::<Vec<_>>();
+
+    versions.sort();
+
+    Ok(versions.iter().map(|v| format!("{}", v)).collect())
 }
 
 fn generate_bindings(args: &Args) -> Result<()> {
