@@ -19,8 +19,3 @@
 //! - Manage the state of a target under test by taking and restoring a snapshot of its state for
 //!   deterministic snapshot fuzzing
 #![deny(clippy::all)]
-
-pub mod client;
-pub mod module;
-pub mod state;
-pub mod util;

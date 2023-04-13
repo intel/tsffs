@@ -11,5 +11,6 @@
     "files.associations": {
         "*.in": "cpp"
     },
-    "mesonbuild.configureOnOpen": false
+    "mesonbuild.configureOnOpen": false,
+    "rust-analyzer.cargo.features": ["6.0.162"]
 }

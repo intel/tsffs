@@ -27,6 +27,8 @@ confuse-simics-project = { path = "./confuse-simics-project" }
 confuse-simics-manifest = { path = "./confuse-simics-manifest" }
 confuse-fuzz = { path = "./confuse-fuzz" }
 confuse_module = { path = "./modules/confuse_module" }
+simics-api-sys = { path = "./simics-api-sys" }
+simics-api = { path = "./simics-api" }
 ipc-shm = { path = "./util/ipc-shm" }
 raw-cstr = { path = "./util/raw-cstr" }
 version-tools = { path = "./util/version-tools" }
