@@ -2,7 +2,6 @@
 members = [
     # Provide simics 
     "confuse-simics-project",
-    "confuse-simics-api",
     # Provide real simics APIs
     "simics-api-sys",
     "simics-api",
