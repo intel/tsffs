@@ -19,3 +19,20 @@
 //! - Manage the state of a target under test by taking and restoring a snapshot of its state for
 //!   deterministic snapshot fuzzing
 #![deny(clippy::all)]
+
+use const_format::concatcp;
+
+mod client;
+mod config;
+mod faults;
+mod magic;
+mod maps;
+mod messages;
+mod module;
+mod state;
+mod stops;
+mod util;
+
+pub const CLASS_NAME: &str = env!("CARGO_PKG_NAME");
+pub const BOOTSTRAP_SOCKNAME: &str = concatcp!(CLASS_NAME, "_SOCK");
+pub const LOGLEVEL_VARNAME: &str = concatcp!(CLASS_NAME, "_LOGLEVEL");
