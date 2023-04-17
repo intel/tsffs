@@ -1,0 +1,65 @@
+[package]
+name = "confuse_module"
+version = "0.1.0"
+edition = "2021"
+
+# This metadata table configures the `SimicsProject` we'll eventually add this module to
+[package.metadata.confuse]
+# The relative path in this crate's root to the directory containing the Makefile for this module
+module = "./stubs/confuse_module"
+# The relative path in the resulting SIMICS project where the built library should be placed so the
+# Makefile(s) can find it (any subdirectories will be created if they do not exist)
+lib = "./lib/libconfuse_module.so"
+# The relative path in this crate's root to the directory containing the Makefile for this
+# module's DML/C/Python interface specification
+interface = "./stubs/confuse_module-interface"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+serde = { version = "1.0.156", features = ["derive"] }
+confuse-simics-api = { workspace = true }
+confuse-simics-project = { workspace = true }
+ipc-shm = { workspace = true }
+once_cell = "1.17.1"
+inventory = "0.3.3"
+const_format = "0.2.30"
+ipc-channel = { workspace = true }
+anyhow = "1.0.69"
+lazy_static = "1.4.0"
+log = "0.4.17"
+raw-cstr.workspace = true
+log4rs = "1.2.0"
+tempfile = "3.4.0"
+num-traits = "0.2.15"
+num-derive = "0.3.3"
+num = "0.4.0"
+yaxpeax-x86 = "1.1.5"
+yaxpeax-arch = { version = "0.2.7", features = [
+    "std",
+    "address-parse",
+    "use-serde",
+] }
+crc32fast = "1.3.2"
+rand = "0.8.5"
+const-cstr = "0.3.0"
+rust-fsm = "0.6.1"
+ctrlc = "3.2.5"
+
+[dev-dependencies]
+anyhow = "1.0.69"
+confuse-simics-project = { workspace = true }
+confuse-simics-manifest = { workspace = true }
+env_logger = "0.10.0"
+log = "0.4.17"
+test-cdylib = "1.1.0"
+test-log = "0.2.11"
+
+[build-dependencies]
+anyhow = "1.0.69"
+dotenvy_macro = "0.15.1"
+confuse-simics-project = { workspace = true }
+confuse-simics-manifest = { workspace = true }
+dockerfile-rs = "0.3.0"
+chrono = "0.4.23"

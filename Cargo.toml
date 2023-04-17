@@ -1,0 +1,33 @@
+[workspace]
+members = [
+    # Provide simics 
+    "confuse-simics-project",
+    "confuse-simics-api",
+    # Just provides common simics manifest tools for parsing/managing simics
+    "confuse-simics-manifest",
+    # Fuzzer
+    "confuse-fuzz",
+    # Modules
+    "modules/confuse_module",
+    # Targets
+    "targets/hello-world",
+    "targets/x509-parse",
+    # Utilities
+    "util/ipc-shm",
+    "util/raw-cstr",
+    "util/version-tools",
+]
+
+[workspace.dependencies]
+confuse-simics-api = { path = "./confuse-simics-api" }
+confuse-simics-project = { path = "./confuse-simics-project" }
+confuse-simics-manifest = { path = "./confuse-simics-manifest" }
+confuse-fuzz = { path = "./confuse-fuzz" }
+confuse_module = { path = "./modules/confuse_module" }
+ipc-shm = { path = "./util/ipc-shm" }
+raw-cstr = { path = "./util/raw-cstr" }
+version-tools = { path = "./util/version-tools" }
+ipc-channel = { git = "https://github.com/novafacing/ipc-channel.git", version = "0.16.0", features = [
+    "memfd",
+] }
+libafl = { git = "https://github.com/AFLplusplus/LibAFL", rev = "d98384e58256668c5b902a86ea473ae6228c8c69" }

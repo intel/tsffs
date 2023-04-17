@@ -4,6 +4,9 @@ CONFUSE is a snapshotting simulator, coverage-guided fuzzer built on Simics! It 
 easily fuzz things that are traditionally challenging to fuzz, like UEFI applications,
 bootloaders, kernel modules, firmware, and the like.
 
+The older proof of concept version of confuse is still available in the [intel Sandbox](https://github.com/intel-sandbox/tool.fuzzing.simics.simics-fuzzing/tree/main). 
+
+
 - [Confuse: **CO**ntrolled **FU**zzing with **S**imics -- **E**nhanced](#confuse-controlled-fuzzing-with-simics----enhanced)
   - [Setup](#setup)
   - [Architecture](#architecture)
