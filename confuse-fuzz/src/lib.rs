@@ -3,10 +3,7 @@
 //! This library contains abstractions over a fuzzing campaign using the SIMICS platform
 
 use anyhow::Result;
-use confuse_module::{
-    client::Client,
-    module::{config::InputConfig, stop_reason::StopReason},
-};
+use confuse_module::{client::Client, config::InputConfig, stops::StopReason};
 use confuse_simics_project::SimicsProject;
 use crossterm::{
     cursor::Show,

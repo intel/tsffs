@@ -22,15 +22,17 @@
 
 use const_format::concatcp;
 
-mod client;
-mod config;
-mod faults;
-mod magic;
-mod maps;
-mod messages;
+pub mod client;
+pub mod config;
+pub mod faults;
+mod interface;
+pub mod magic;
+pub mod maps;
+pub mod messages;
 mod module;
-mod state;
-mod stops;
+pub mod state;
+pub mod stops;
+mod traits;
 mod util;
 
 pub const CLASS_NAME: &str = env!("CARGO_PKG_NAME");

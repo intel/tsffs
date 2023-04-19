@@ -1,3 +1,4 @@
+use crate::ConfObject;
 use anyhow::{ensure, Context, Error, Result};
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{FromPrimitive as ConvertFromPrimitive, ToPrimitive as ConvertToPrimitive};
@@ -9,8 +10,6 @@ use simics_api_sys::{
     attr_kind_t_Sim_Val_String, attr_value__bindgen_ty_1, attr_value_t,
 };
 use std::{ffi::CStr, ptr::null_mut};
-
-use crate::ConfObject;
 
 pub type AttrValue = attr_value_t;
 

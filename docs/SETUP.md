@@ -204,6 +204,10 @@ You'll then need to log out and log back in, or you can run `newgrp docker` to a
 the changes in your running shell. Be aware `newgrp` will not persist changes in other
 shells, so logging out and in is recommended.
 
+After adding yourself to the `docker` group, you should be able to run `groups` and
+see `docker` on the output line. If you don't, try running the above command with your
+username like so `sudo usermod -aG docker YOUR_USERNAME`.
+
 #### Docker Proxy Use
 
 If you need to use a proxy to connect to the internet (for example you are on a VPN)
