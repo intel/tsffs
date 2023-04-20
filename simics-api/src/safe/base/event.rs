@@ -4,7 +4,7 @@ use simics_api_sys::{
     event_class_t, SIM_event_cancel_time, SIM_event_find_next_time, SIM_event_post_time,
 };
 
-use crate::ConfObject;
+use crate::OwnedMutConfObjectPtr;
 
 #[derive(Debug)]
 pub struct EventClass {
@@ -29,14 +29,27 @@ impl From<EventClass> for *mut event_class_t {
     }
 }
 
-pub fn event_post_time(clock: ConfObject, event: EventClass, obj: ConfObject, seconds: f64) {
+pub fn event_post_time(
+    clock: OwnedMutConfObjectPtr,
+    event: EventClass,
+    obj: OwnedMutConfObjectPtr,
+    seconds: f64,
+) {
     unsafe { SIM_event_post_time(clock.into(), event.into(), obj.into(), seconds, null_mut()) };
 }
 
-pub fn event_find_next_time(clock: ConfObject, event: EventClass, obj: ConfObject) -> f64 {
+pub fn event_find_next_time(
+    clock: OwnedMutConfObjectPtr,
+    event: EventClass,
+    obj: OwnedMutConfObjectPtr,
+) -> f64 {
     unsafe { SIM_event_find_next_time(clock.into(), event.into(), obj.into(), None, null_mut()) }
 }
 
-pub fn event_cancel_time(clock: ConfObject, event: EventClass, obj: ConfObject) {
+pub fn event_cancel_time(
+    clock: OwnedMutConfObjectPtr,
+    event: EventClass,
+    obj: OwnedMutConfObjectPtr,
+) {
     unsafe { SIM_event_cancel_time(clock.into(), event.into(), obj.into(), None, null_mut()) }
 }

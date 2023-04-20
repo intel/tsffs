@@ -16,61 +16,67 @@ use simics_api_sys::{
 };
 use std::{ffi::c_void, mem::transmute};
 
+pub type ConfObject = conf_object_t;
+pub type ConfClass = conf_class_t;
 pub type ClassData = class_data_t;
 pub type ClassInfo = class_info_t;
 
 #[derive(Debug)]
-pub struct ConfObject {
-    object: *mut conf_object_t,
+#[repr(C)]
+pub struct OwnedMutConfObjectPtr {
+    object: *mut ConfObject,
 }
 
-impl ConfObject {
-    pub fn new(object: *mut conf_object_t) -> Self {
+impl OwnedMutConfObjectPtr {
+    pub fn new(object: *mut ConfObject) -> Self {
         Self { object }
     }
 
-    pub fn as_const(&self) -> *const conf_object_t {
-        self.object as *const conf_object_t
+    pub fn as_const(&self) -> *const ConfObject {
+        self.object as *const ConfObject
     }
 }
 
-impl From<*mut conf_object_t> for ConfObject {
-    fn from(value: *mut conf_object_t) -> Self {
+impl From<*mut ConfObject> for OwnedMutConfObjectPtr {
+    fn from(value: *mut ConfObject) -> Self {
         Self::new(value)
     }
 }
 
-impl From<ConfObject> for *mut conf_object_t {
-    fn from(value: ConfObject) -> Self {
+impl From<OwnedMutConfObjectPtr> for *mut ConfObject {
+    fn from(value: OwnedMutConfObjectPtr) -> Self {
         value.object
     }
 }
 
 #[derive(Debug)]
 #[repr(C)]
-pub struct ConfClass {
-    cls: *mut conf_class_t,
+pub struct OwnedMutConfClassPtr {
+    cls: *mut ConfClass,
 }
 
-impl ConfClass {
-    pub fn new(cls: *mut conf_class_t) -> Self {
+impl OwnedMutConfClassPtr {
+    pub fn new(cls: *mut ConfClass) -> Self {
         Self { cls }
     }
 }
 
-impl From<*mut conf_class_t> for ConfClass {
-    fn from(value: *mut conf_class_t) -> Self {
+impl From<*mut ConfClass> for OwnedMutConfClassPtr {
+    fn from(value: *mut ConfClass) -> Self {
         Self::new(value)
     }
 }
 
-impl From<ConfClass> for *mut conf_class_t {
-    fn from(val: ConfClass) -> Self {
+impl From<OwnedMutConfClassPtr> for *mut ConfClass {
+    fn from(val: OwnedMutConfClassPtr) -> Self {
         val.cls
     }
 }
 
-pub fn register_class<S: AsRef<str>>(name: S, class_data: ClassData) -> Result<ConfClass> {
+pub fn register_class<S: AsRef<str>>(
+    name: S,
+    class_data: ClassData,
+) -> Result<OwnedMutConfClassPtr> {
     let name_raw = raw_cstr(name.as_ref())?;
 
     // The reference can be dropped after the `SIM_register_class` function returns,
@@ -84,7 +90,7 @@ pub fn register_class<S: AsRef<str>>(name: S, class_data: ClassData) -> Result<C
     }
 }
 
-pub fn create_class<S: AsRef<str>>(name: S, class_info: ClassInfo) -> Result<ConfClass> {
+pub fn create_class<S: AsRef<str>>(name: S, class_info: ClassInfo) -> Result<OwnedMutConfClassPtr> {
     let name_raw = raw_cstr(name.as_ref())?;
 
     // The reference can be dropped after the `SIM_create_class` function returns,
@@ -102,7 +108,7 @@ pub fn create_class<S: AsRef<str>>(name: S, class_info: ClassInfo) -> Result<Con
     }
 }
 
-pub fn register_interface<S: AsRef<str>, T>(cls: ConfClass, name: S) -> Result<i32>
+pub fn register_interface<S: AsRef<str>, T>(cls: OwnedMutConfClassPtr, name: S) -> Result<i32>
 where
     T: Default,
 {
@@ -124,7 +130,7 @@ where
     }
 }
 
-pub fn get_class<S: AsRef<str>>(name: S) -> Result<ConfClass> {
+pub fn get_class<S: AsRef<str>>(name: S) -> Result<OwnedMutConfClassPtr> {
     let name_raw = raw_cstr(name.as_ref())?;
 
     let cls = unsafe { SIM_get_class(name_raw) };
@@ -137,8 +143,8 @@ pub fn get_class<S: AsRef<str>>(name: S) -> Result<ConfClass> {
 }
 pub fn register_event<S: AsRef<str>>(
     name: S,
-    cls: ConfClass,
-    callback: unsafe extern "C" fn(*mut conf_object_t, *mut c_void),
+    cls: OwnedMutConfClassPtr,
+    callback: unsafe extern "C" fn(*mut ConfObject, *mut c_void),
 ) -> Result<EventClass> {
     let name_raw = raw_cstr(name.as_ref())?;
     let event = unsafe {

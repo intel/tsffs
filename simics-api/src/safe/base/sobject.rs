@@ -1,38 +1,41 @@
 use simics_api_sys::{sclass_t, sobject_t};
 
-pub struct SObject {
-    sobj: *const sobject_t,
+pub type SObject = sobject_t;
+pub type SClass = sclass_t;
+
+pub struct SObjectOwnedConstPtr {
+    sobj: *const SObject,
 }
 
-impl From<*const sobject_t> for SObject {
-    fn from(value: *const sobject_t) -> Self {
+impl From<*const SObject> for SObjectOwnedConstPtr {
+    fn from(value: *const SObject) -> Self {
         Self { sobj: value }
     }
 }
 
-impl From<SObject> for *const sobject_t {
-    fn from(value: SObject) -> Self {
+impl From<SObjectOwnedConstPtr> for *const SObject {
+    fn from(value: SObjectOwnedConstPtr) -> Self {
         value.sobj
     }
 }
 
-pub struct SClass {
-    sclass: *mut sclass_t,
+pub struct SClassOwnedMutPtr {
+    sclass: *mut SClass,
 }
 
-impl From<*mut sclass_t> for SClass {
-    fn from(value: *mut sclass_t) -> Self {
+impl From<*mut SClass> for SClassOwnedMutPtr {
+    fn from(value: *mut SClass) -> Self {
         Self { sclass: value }
     }
 }
 
-impl From<SClass> for *mut sclass_t {
-    fn from(value: SClass) -> Self {
+impl From<SClassOwnedMutPtr> for *mut SClass {
+    fn from(value: SClassOwnedMutPtr) -> Self {
         value.sclass
     }
 }
 
-pub fn sobject_class(sobj: SObject) -> SClass {
-    let sobj: *const sobject_t = sobj.into();
+pub fn sobject_class(sobj: SObjectOwnedConstPtr) -> SClassOwnedMutPtr {
+    let sobj: *const SObject = sobj.into();
     unsafe { *sobj }.isa.into()
 }
