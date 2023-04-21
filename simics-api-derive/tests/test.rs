@@ -1,13 +1,14 @@
 //! Tests that the derive macro can correctly parse an input struct
 
-use anyhow;
-use simics_api::{ConfObject, Module, OwnedMutConfObjectPtr, SObject};
-use std::{ffi::c_void, ptr::null_mut};
-#[macro_use]
-extern crate simics_api_derive;
+use simics_api::{ClassKind, Module, OwnedMutConfObjectPtr};
 use simics_api_derive::module;
 
-#[module]
+#[macro_use]
+extern crate simics_api_derive;
+
+// Test that we can have an impl without deriving the module impl
+
+#[module(class_name = "test_module")]
 pub struct TestModule {}
 
 impl Module for TestModule {
@@ -16,11 +17,20 @@ impl Module for TestModule {
     }
 }
 
+// Test that we can derive the Module impl by itself
+
 #[derive(Module)]
 pub struct TestModule2 {}
 
-#[module(derive)]
+// Test that we can derive and have an impl
+
+#[module(derive, class_name = "test_module_3")]
 pub struct TestModule3 {}
+
+// Test that we can customize the description fields
+
+#[module(derive, class_name = "test_module_4", description = "Test module 4", short_description = "TM4", class_kind = ClassKind::Session)]
+pub struct TestModule4 {}
 
 #[test]
 fn test() {}

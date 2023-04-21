@@ -11,8 +11,10 @@ use crate::{last_error, EventClass};
 use anyhow::{bail, Result};
 use raw_cstr::raw_cstr;
 use simics_api_sys::{
-    class_data_t, class_info_t, conf_class_t, conf_object_t, SIM_create_class, SIM_get_class,
-    SIM_register_class, SIM_register_event, SIM_register_interface,
+    class_data_t, class_info_t, class_kind_t_Sim_Class_Kind_Extension,
+    class_kind_t_Sim_Class_Kind_Pseudo, class_kind_t_Sim_Class_Kind_Session,
+    class_kind_t_Sim_Class_Kind_Vanilla, conf_class_t, conf_object_t, SIM_create_class,
+    SIM_get_class, SIM_register_class, SIM_register_event, SIM_register_interface,
 };
 use std::{ffi::c_void, mem::transmute};
 
@@ -20,6 +22,15 @@ pub type ConfObject = conf_object_t;
 pub type ConfClass = conf_class_t;
 pub type ClassData = class_data_t;
 pub type ClassInfo = class_info_t;
+
+#[derive(Debug, Eq, PartialEq)]
+#[repr(u32)]
+pub enum ClassKind {
+    Vanilla = class_kind_t_Sim_Class_Kind_Vanilla,
+    Session = class_kind_t_Sim_Class_Kind_Session,
+    Pseudo = class_kind_t_Sim_Class_Kind_Pseudo,
+    Extension = class_kind_t_Sim_Class_Kind_Extension,
+}
 
 #[derive(Debug)]
 #[repr(C)]

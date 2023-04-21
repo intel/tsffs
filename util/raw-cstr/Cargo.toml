@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.70"
+byte-strings = { version = "0.2.2", features = ["const-friendly"] }

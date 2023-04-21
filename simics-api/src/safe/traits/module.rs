@@ -40,3 +40,7 @@ pub trait Module {
         crate::free(obj.into())
     }
 }
+
+pub trait Create {
+    fn create() -> Result<OwnedMutConfClassPtr>;
+}

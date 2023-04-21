@@ -19,3 +19,5 @@ pub fn raw_cstr<S: AsRef<str>>(str: S) -> Result<*mut i8> {
         }
     })
 }
+
+pub use byte_strings::c_str;
