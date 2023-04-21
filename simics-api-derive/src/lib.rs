@@ -221,7 +221,6 @@ pub fn derive_module(input: TokenStream) -> TokenStream {
 /// The macro accepts the following arguments:
 ///
 /// * `class_name = "name"` (Required) specifies the generated class name the class will be registered with
-///   
 /// * `derive` (Optional) which allows you to derive the default
 ///   implementation of [Module] alongside automatic implementations of the extern functions
 ///   required to register the class.
