@@ -21,7 +21,7 @@ use syn::{
 enum ModuleAttrValue {
     LitStr(LitStr),
     Expr(Expr),
-    Call(Vec<Expr>),
+    // Call(Vec<Expr>),
 }
 
 impl ToTokens for ModuleAttrValue {
@@ -29,10 +29,10 @@ impl ToTokens for ModuleAttrValue {
         match self {
             Self::LitStr(t) => t.to_tokens(tokens),
             Self::Expr(t) => t.to_tokens(tokens),
-            Self::Call(t) => {
-                let t = quote!(#(#t),*);
-                t.to_tokens(tokens)
-            }
+            // Self::Call(t) => {
+            //     let t = quote!(#(#t),*);
+            //     t.to_tokens(tokens)
+            // }
         }
     }
 }
@@ -124,7 +124,7 @@ impl Parse for Args {
             let span = input.span();
             abort! {
                 span,
-                r#"`name` required in `module()` invocation. Try giving your class name like `#[module(class_name = "class_name")]`"#
+                r#"`class_name` required in `module()` invocation. Try giving your class name like `#[module(class_name = "class_name")]`"#
             };
         }
 
@@ -133,13 +133,15 @@ impl Parse for Args {
 }
 
 impl Args {
-    fn class_name(&self) -> String {
+    fn class_name(&self) -> TokenStream2 {
         if let Some(name_attr) = self.attrs.get(&ModuleAttr {
             typ: ModuleAttrType::ClassName,
             value: None,
         }) {
             if let Some(ModuleAttrValue::LitStr(name)) = &name_attr.value {
-                return name.value();
+                return quote! { #name };
+            } else if let Some(ModuleAttrValue::Expr(name)) = &name_attr.value {
+                return quote! { #name };
             }
         }
         unreachable!("No name provided and check somehow failed");
@@ -281,6 +283,9 @@ pub fn module(args: TokenStream, input: TokenStream) -> TokenStream {
     let mut item_struct = parse_macro_input!(input as ItemStruct);
     let name = &item_struct.ident;
 
+    // This needs to be generated first before we add the `ConfObject` field
+    let raw_impl = raw_impl(name.to_string(), &item_struct.fields);
+
     if let Fields::Named(ref mut fields) = item_struct.fields {
         fields.named.insert(
             0,
@@ -299,20 +304,25 @@ pub fn module(args: TokenStream, input: TokenStream) -> TokenStream {
 
     let ffi_impl = ffi_impl(name.to_string());
     let register_impl = create_impl(name.to_string(), &args);
+    let from_impl = from_impl(name.to_string());
 
-    let r: TokenStream = quote! {
+    /* let r: TokenStream = */
+    quote! {
         #derive_attribute
+        #[repr(C)]
         #item_struct
         #ffi_impl
         #register_impl
+        #raw_impl
+        #from_impl
     }
-    .into();
+    .into()
 
-    let s = r.to_string();
+    // let s = r.to_string();
 
-    eprintln!("{}", s);
+    // eprintln!("{}", s);
 
-    r
+    // r
 }
 
 fn ffi_impl<S: AsRef<str>>(name: S) -> TokenStream2 {
@@ -329,33 +339,42 @@ fn ffi_impl<S: AsRef<str>>(name: S) -> TokenStream2 {
         #[no_mangle]
         pub extern "C" fn #alloc_fn_name(cls: *mut simics_api::ConfClass) -> *mut simics_api::ConfObject {
             let cls: simics_api::OwnedMutConfClassPtr = cls.into();
-            let obj: *mut simics_api::ConfObject  = #name::alloc::<#name>(cls).expect("Unable to allocate #name").into();
+            let obj: *mut simics_api::ConfObject  = #name::alloc::<#name>(cls)
+                .unwrap_or_else(|e| panic!("{}::alloc failed: {}", #name_string, e))
+                .into();
             obj
         }
 
         #[no_mangle]
         pub extern "C" fn #init_fn_name(obj: *mut simics_api::ConfObject) -> *mut std::ffi::c_void {
-            Into::<*mut simics_api::ConfObject>::into(#name::init(obj.into())) as *mut std::ffi::c_void
+            let ptr: *mut ConfObject = #name::init(obj.into())
+                .unwrap_or_else(|e| panic!("{}::init failed: {}", #name_string, e))
+                .into();
+            ptr as *mut std::ffi::c_void
         }
 
         #[no_mangle]
         pub extern "C" fn #finalize_fn_name(obj: *mut simics_api::ConfObject) {
-            #name::finalize(obj.into());
+            #name::finalize(obj.into())
+                .unwrap_or_else(|e| panic!("{}::finalize failed: {}", #name_string, e));
         }
 
         #[no_mangle]
         pub extern "C" fn #objects_finalized_fn_name(obj: *mut simics_api::ConfObject) {
-            #name::objects_finalized(obj.into());
+            #name::objects_finalized(obj.into())
+                .unwrap_or_else(|e| panic!("{}::objects_finalized failed: {}", #name_string, e));
         }
 
         #[no_mangle]
         pub extern "C" fn #deinit_fn_name(obj: *mut simics_api::ConfObject) {
-            #name::deinit(obj.into());
+            #name::deinit(obj.into())
+                .unwrap_or_else(|e| panic!("{}::deinit failed: {}", #name_string, e));
         }
 
         #[no_mangle]
         pub extern "C" fn #dealloc_fn_name(obj: *mut simics_api::ConfObject) {
-            #name::dealloc(obj.into());
+            #name::dealloc(obj.into())
+                .unwrap_or_else(|e| panic!("{}::dealloc failed: {}", #name_string, e));
         }
     }
 }
@@ -408,6 +427,61 @@ fn create_impl<S: AsRef<str>>(name: S, args: &Args) -> TokenStream2 {
         impl simics_api::Create for #name {
             fn create() -> anyhow::Result<simics_api::OwnedMutConfClassPtr> {
                 simics_api::create_class(#class_name, #name::CLASS)
+            }
+        }
+    }
+}
+
+fn raw_impl<S: AsRef<str>>(name: S, fields: &Fields) -> TokenStream2 {
+    let name = format_ident!("{}", name.as_ref());
+
+    let mut field_parameters = Vec::new();
+
+    for field in fields {
+        let ty = &field.ty;
+        if let Some(ident) = &field.ident {
+            field_parameters.push(quote! {
+                #ident: #ty
+            });
+        }
+    }
+
+    let mut field_initializers = Vec::new();
+
+    for field in fields {
+        if let Some(ident) = &field.ident {
+            field_initializers.push(quote! {
+                unsafe { std::ptr::addr_of_mut!((*ptr).#ident).write(#ident) };
+            })
+        }
+    }
+
+    quote! {
+        impl #name {
+            fn new(
+                obj: simics_api::OwnedMutConfObjectPtr,
+                #(#field_parameters),*
+            ) -> simics_api::OwnedMutConfObjectPtr  {
+                let obj_ptr: *mut simics_api::ConfObject = obj.into();
+                let ptr: *mut #name = obj_ptr as *mut #name;
+
+                #(#field_initializers)*
+
+                (ptr as *mut simics_api::ConfObject).into()
+            }
+        }
+    }
+}
+
+fn from_impl<S: AsRef<str>>(name: S) -> TokenStream2 {
+    let name = format_ident!("{}", name.as_ref());
+
+    quote! {
+        impl From<simics_api::OwnedMutConfObjectPtr> for &mut #name {
+            fn from(value: simics_api::OwnedMutConfObjectPtr) -> Self {
+                let obj_ptr: *mut simics_api::ConfObject = value.into();
+                let ptr: *mut #name = obj_ptr as *mut #name;
+                unsafe { &mut *ptr }
             }
         }
     }

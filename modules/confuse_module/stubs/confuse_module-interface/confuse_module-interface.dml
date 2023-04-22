@@ -18,7 +18,7 @@ header %{
 
 // Define the new interface type
 extern typedef struct {
-    void (*run)(conf_object_t *obj);
+    void (*start)(conf_object_t *obj);
     void (*add_processor)(conf_object_t *obj, attr_value_t *processor);
     void (*add_fault)(conf_object_t *obj, int64 fault);
 } confuse_module_interface_t;

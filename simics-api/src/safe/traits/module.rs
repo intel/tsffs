@@ -1,6 +1,5 @@
-use crate::{ConfObject, OwnedMutConfClassPtr, OwnedMutConfObjectPtr};
+use crate::{OwnedMutConfClassPtr, OwnedMutConfObjectPtr};
 use anyhow::Result;
-use std::ffi::c_void;
 
 /// Trait for simics module objects to implement to create a threadsafe module implementation
 pub trait Module {
@@ -15,29 +14,36 @@ pub trait Module {
     /// additional memory if co-allocation is not used. Attribute setters are called *after* this
     /// function returns. The default implementation returns the object without modification.
     /// Returning NULL from this function indicates an error
-    fn init(obj: OwnedMutConfObjectPtr) -> OwnedMutConfObjectPtr {
-        obj
+    fn init(obj: OwnedMutConfObjectPtr) -> Result<OwnedMutConfObjectPtr> {
+        Ok(obj)
     }
 
     /// Object can do final initialization that requires attribute values, but should avoid calling
     /// interface methods on *other* objects. The default implementation of this method does
     /// nothing
-    fn finalize(_obj: OwnedMutConfObjectPtr) {}
+    fn finalize(_obj: OwnedMutConfObjectPtr) -> Result<()> {
+        Ok(())
+    }
 
     /// Called after object is fully constructed and can participate in simulation and reverse
     /// execution. May call interface methods on other objects here as part of initialization.
     /// The default implementation of this method does nothing
-    fn objects_finalized(_obj: OwnedMutConfObjectPtr) {}
+    fn objects_finalized(_obj: OwnedMutConfObjectPtr) -> Result<()> {
+        Ok(())
+    }
 
     /// Called first on all objects being deleted, should do the opposite of `init` and
     /// deinitialize any additionally-allocated memory, destroy file descriptors, etc.
     /// The default implementation of this method does nothing
-    fn deinit(_obj: OwnedMutConfObjectPtr) {}
+    fn deinit(_obj: OwnedMutConfObjectPtr) -> Result<()> {
+        Ok(())
+    }
 
     /// Called after all objects are deinitialized, this should free the allocated object using
     /// mm_free
-    fn dealloc(obj: OwnedMutConfObjectPtr) {
-        crate::free(obj.into())
+    fn dealloc(obj: OwnedMutConfObjectPtr) -> Result<()> {
+        crate::free(obj.into());
+        Ok(())
     }
 }
 

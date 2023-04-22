@@ -1,6 +1,6 @@
 //! Tests that the derive macro can correctly parse an input struct
 
-use simics_api::{ClassKind, Module, OwnedMutConfObjectPtr};
+use simics_api::{ClassKind, Create, Module, OwnedMutConfObjectPtr};
 use simics_api_derive::module;
 
 #[macro_use]
@@ -29,7 +29,13 @@ pub struct TestModule3 {}
 
 // Test that we can customize the description fields
 
-#[module(derive, class_name = "test_module_4", description = "Test module 4", short_description = "TM4", class_kind = ClassKind::Session)]
+#[module(
+    derive,
+    class_name = "test_module_4",
+    description = "Test module 4",
+    short_description = "TM4",
+    class_kind = ClassKind::Session
+)]
 pub struct TestModule4 {}
 
 #[test]

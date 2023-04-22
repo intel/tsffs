@@ -27,6 +27,7 @@ log = "0.4.17"
 num = "0.4.0"
 num-derive = "0.3.3"
 num-traits = "0.2.15"
+raw-cstr.workspace = true
 rust-fsm = "0.6.1"
 serde = { version = "1.0.160", features = ["derive"] }
 simics-api = { workspace = true }

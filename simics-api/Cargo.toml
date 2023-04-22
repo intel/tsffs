@@ -12,8 +12,17 @@ anyhow = "1.0.70"
 num-derive = "0.3.3"
 num-traits = "0.2.15"
 num = "0.4.0"
+simics-api-derive = { workspace = true, optional = true }
 
 [features]
+# Derive is provided by default to provide #[derive(Module)] and #[module]
+default = ["derive"]
+
+# Provide #[derive(Module)] and #[module]
+derive = ["simics-api-derive"]
+
+# When simics-api-sys is updated to include a new SIMICS version, add a new entry here
+# manually as well
 "6.0.28" = ["simics-api-sys/6.0.28"]
 "6.0.31" = ["simics-api-sys/6.0.31"]
 "6.0.33" = ["simics-api-sys/6.0.33"]
