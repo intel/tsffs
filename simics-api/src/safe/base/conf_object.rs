@@ -7,14 +7,15 @@
 //! - conf_object_t
 //! - object_iter_t
 
-use crate::{last_error, EventClass};
+use crate::{last_error, EventClass, Interface};
 use anyhow::{bail, Result};
 use raw_cstr::raw_cstr;
 use simics_api_sys::{
     class_data_t, class_info_t, class_kind_t_Sim_Class_Kind_Extension,
     class_kind_t_Sim_Class_Kind_Pseudo, class_kind_t_Sim_Class_Kind_Session,
-    class_kind_t_Sim_Class_Kind_Vanilla, conf_class_t, conf_object_t, SIM_create_class,
-    SIM_get_class, SIM_register_class, SIM_register_event, SIM_register_interface,
+    class_kind_t_Sim_Class_Kind_Vanilla, conf_class_t, conf_object_t, SIM_c_get_interface,
+    SIM_create_class, SIM_get_class, SIM_register_class, SIM_register_event,
+    SIM_register_interface,
 };
 use std::{ffi::c_void, mem::transmute};
 
@@ -32,7 +33,7 @@ pub enum ClassKind {
     Extension = class_kind_t_Sim_Class_Kind_Extension,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub struct OwnedMutConfObjectPtr {
     object: *mut ConfObject,
@@ -60,6 +61,12 @@ impl From<OwnedMutConfObjectPtr> for *mut ConfObject {
     }
 }
 
+impl From<&OwnedMutConfObjectPtr> for *mut ConfObject {
+    fn from(value: &OwnedMutConfObjectPtr) -> Self {
+        value.object
+    }
+}
+
 #[derive(Debug)]
 #[repr(C)]
 pub struct OwnedMutConfClassPtr {
@@ -80,6 +87,12 @@ impl From<*mut ConfClass> for OwnedMutConfClassPtr {
 
 impl From<OwnedMutConfClassPtr> for *mut ConfClass {
     fn from(val: OwnedMutConfClassPtr) -> Self {
+        val.cls
+    }
+}
+
+impl From<&OwnedMutConfClassPtr> for *mut ConfClass {
+    fn from(val: &OwnedMutConfClassPtr) -> Self {
         val.cls
     }
 }
@@ -139,6 +152,10 @@ where
     } else {
         Ok(status)
     }
+}
+
+pub fn get_interface<T>(obj: OwnedMutConfObjectPtr, iface: Interface) -> *mut T {
+    unsafe { SIM_c_get_interface(obj.as_const(), iface.as_slice().as_ptr() as *const i8) as *mut T }
 }
 
 pub fn get_class<S: AsRef<str>>(name: S) -> Result<OwnedMutConfClassPtr> {

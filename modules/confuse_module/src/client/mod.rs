@@ -42,12 +42,6 @@
 //! client.exit()?;
 //! ```
 
-use anyhow::{bail, Result};
-use confuse_simics_project::SimicsProject;
-use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender};
-use log::{debug, info};
-use std::io::{BufRead, BufReader};
-
 use crate::{
     config::{InputConfig, OutputConfig},
     messages::{client::ClientMessage, module::ModuleMessage},
@@ -55,6 +49,11 @@ use crate::{
     stops::StopReason,
     BOOTSTRAP_SOCKNAME, CLASS_NAME, LOGLEVEL_VARNAME,
 };
+use anyhow::{bail, Result};
+use confuse_simics_project::SimicsProject;
+use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender};
+use log::{debug, info};
+use std::io::{BufRead, BufReader};
 
 /// The client for the CONFUSE module. Allows controlling the module over IPC using the child
 /// process spawned by a running project.

@@ -334,6 +334,12 @@ fn generate_bindings(args: &Args) -> Result<()> {
             .clang_arg("-fparse-all-comments")
             // We don't care at all what warnings simics has if they aren't errors :)
             .clang_arg("-Wno-everything")
+            .derive_default(true)
+            .derive_hash(true)
+            .derive_partialord(true)
+            .derive_ord(true)
+            .derive_eq(true)
+            .derive_partialeq(true)
             .generate_comments(true)
             .header(header)
             // NOTE: These callbacks are required to emit `cargo:rerun-if-changed`

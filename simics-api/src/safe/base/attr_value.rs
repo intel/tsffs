@@ -7,13 +7,13 @@ use simics_api_sys::{
     attr_kind_t_Sim_Val_Boolean, attr_kind_t_Sim_Val_Data, attr_kind_t_Sim_Val_Dict,
     attr_kind_t_Sim_Val_Floating, attr_kind_t_Sim_Val_Integer, attr_kind_t_Sim_Val_Invalid,
     attr_kind_t_Sim_Val_List, attr_kind_t_Sim_Val_Nil, attr_kind_t_Sim_Val_Object,
-    attr_kind_t_Sim_Val_String, attr_value__bindgen_ty_1, attr_value_t,
+    attr_kind_t_Sim_Val_String, attr_value__bindgen_ty_1, attr_value_t, SIM_get_attribute,
 };
 use std::{ffi::CStr, ptr::null_mut};
 
 pub type AttrValue = attr_value_t;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub struct OwnedMutAttrValuePtr {
     object: *mut AttrValue,
@@ -345,6 +345,17 @@ pub fn attr_object(attr: AttrValue) -> Result<OwnedMutConfObjectPtr> {
     Ok(OwnedMutConfObjectPtr::new(unsafe { attr.private_u.object }))
 }
 
+/// Obtain a [`ConfObject`] pointer from an [`AttrValue`] pointer
+///
+/// # Safety
+///
+/// * `attr` may be a null or non-null pointer. If it is non-null, it must point to a valid
+///   [`AttrValue`] instance
+pub fn attr_object_from_ptr(attr: OwnedMutAttrValuePtr) -> Result<OwnedMutConfObjectPtr> {
+    let ptr: *mut AttrValue = attr.into();
+    attr_object(unsafe { *ptr })
+}
+
 /* <append-fun id="SIM_attr_integer"/> */
 pub fn attr_object_or_nil(attr: AttrValue) -> Result<OwnedMutConfObjectPtr> {
     if attr_is_nil(attr)? {
@@ -352,6 +363,11 @@ pub fn attr_object_or_nil(attr: AttrValue) -> Result<OwnedMutConfObjectPtr> {
     } else {
         attr_object(attr)
     }
+}
+
+pub fn attr_object_or_nil_from_ptr(attr: OwnedMutAttrValuePtr) -> Result<OwnedMutConfObjectPtr> {
+    let ptr: *mut AttrValue = attr.into();
+    attr_object_or_nil(unsafe { *ptr })
 }
 
 /* <append-fun id="SIM_attr_is_integer"/> */
@@ -443,4 +459,8 @@ pub fn attr_dict_value(attr: AttrValue, index: u32) -> Result<AttrValue> {
     );
     let pair = unsafe { attr.private_u.dict.offset(index.try_into()?) };
     Ok(unsafe { *pair }.value)
+}
+
+pub fn get_attribute<S: AsRef<str>>(obj: OwnedMutConfObjectPtr, attribute: S) -> Result<AttrValue> {
+    Ok(unsafe { SIM_get_attribute(obj.into(), raw_cstr(attribute)?) })
 }

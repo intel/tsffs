@@ -30,6 +30,7 @@ pub mod magic;
 pub mod maps;
 pub mod messages;
 mod module;
+mod processor;
 pub mod state;
 pub mod stops;
 mod traits;

@@ -2672,7 +2672,7 @@ pub type __off_t = ::std::os::raw::c_long;
 pub type __off64_t = ::std::os::raw::c_long;
 pub type __pid_t = ::std::os::raw::c_int;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct __fsid_t {
     pub __val: [::std::os::raw::c_int; 2usize],
 }
@@ -2781,6 +2781,15 @@ fn bindgen_test_layout___mbstate_t__bindgen_ty_1() {
         )
     );
 }
+impl Default for __mbstate_t__bindgen_ty_1 {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[test]
 fn bindgen_test_layout___mbstate_t() {
     const UNINIT: ::std::mem::MaybeUninit<__mbstate_t> = ::std::mem::MaybeUninit::uninit();
@@ -2815,6 +2824,15 @@ fn bindgen_test_layout___mbstate_t() {
             stringify!(__value)
         )
     );
+}
+impl Default for __mbstate_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 #[doc = " The tag name of this struct is _G_fpos_t to preserve historic\nC++ mangled names for functions taking fpos_t arguments.\nThat name should not be used in new code."]
 #[repr(C)]
@@ -2857,6 +2875,15 @@ fn bindgen_test_layout__G_fpos_t() {
             stringify!(__state)
         )
     );
+}
+impl Default for _G_fpos_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 #[doc = " The tag name of this struct is _G_fpos_t to preserve historic\nC++ mangled names for functions taking fpos_t arguments.\nThat name should not be used in new code."]
 pub type __fpos_t = _G_fpos_t;
@@ -2902,6 +2929,15 @@ fn bindgen_test_layout__G_fpos64_t() {
         )
     );
 }
+impl Default for _G_fpos64_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " The tag name of this struct is _G_fpos64_t to preserve historic\nC++ mangled names for functions taking fpos_t and/or fpos64_t\narguments.  That name should not be used in new code."]
 pub type __fpos64_t = _G_fpos64_t;
 #[doc = " The tag name of this struct is _IO_FILE to preserve historic\nC++ mangled names for functions taking FILE* arguments.\nThat name should not be used in new code."]
@@ -2926,7 +2962,7 @@ pub struct _IO_wide_data {
 pub type _IO_lock_t = ::std::os::raw::c_void;
 #[doc = " The tag name of this struct is _IO_FILE to preserve historic\nC++ mangled names for functions taking FILE* arguments.\nThat name should not be used in new code."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct _IO_FILE {
     #[doc = " High-order word is _IO_MAGIC; rest is flags."]
     pub _flags: ::std::os::raw::c_int,
@@ -3278,6 +3314,15 @@ fn bindgen_test_layout__IO_FILE() {
             stringify!(_unused2)
         )
     );
+}
+impl Default for _IO_FILE {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 pub type off_t = __off_t;
 #[doc = " The tag name of this struct is _G_fpos_t to preserve historic\nC++ mangled names for functions taking fpos_t arguments.\nThat name should not be used in new code."]
@@ -3812,7 +3857,7 @@ pub type wchar_t = ::std::os::raw::c_int;
 #[doc = " Define 'max_align_t' to match the GCC definition."]
 #[repr(C)]
 #[repr(align(16))]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, PartialOrd, PartialEq)]
 pub struct max_align_t {
     pub __clang_max_align_nonce1: ::std::os::raw::c_longlong,
     pub __bindgen_padding_0: u64,
@@ -3970,7 +4015,7 @@ extern "C" {
 }
 #[doc = " POSIX.1-2008: the locale_t type, representing a locale context\n(implementation-namespace version).  This type should be treated\nas opaque by applications; some details are exposed for the sake of\nefficiency in e.g. ctype functions."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct __locale_struct {
     #[doc = " 13 = __LC_LAST."]
     pub __locales: [*mut __locale_data; 13usize],
@@ -4045,6 +4090,15 @@ fn bindgen_test_layout___locale_struct() {
             stringify!(__names)
         )
     );
+}
+impl Default for __locale_struct {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 pub type __locale_t = *mut __locale_struct;
 pub type locale_t = __locale_t;
@@ -4285,7 +4339,7 @@ extern "C" {
 }
 #[doc = " Returned by `div'."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct div_t {
     #[doc = " Quotient."]
     pub quot: ::std::os::raw::c_int,
@@ -4328,7 +4382,7 @@ fn bindgen_test_layout_div_t() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ldiv_t {
     #[doc = " Quotient."]
     pub quot: ::std::os::raw::c_long,
@@ -4372,7 +4426,7 @@ fn bindgen_test_layout_ldiv_t() {
 }
 #[doc = " Returned by `lldiv'."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct lldiv_t {
     #[doc = " Quotient."]
     pub quot: ::std::os::raw::c_longlong,
@@ -4540,7 +4594,7 @@ pub type u_int32_t = __uint32_t;
 pub type u_int64_t = __uint64_t;
 pub type register_t = ::std::os::raw::c_long;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct __sigset_t {
     pub __val: [::std::os::raw::c_ulong; 16usize],
 }
@@ -4573,7 +4627,7 @@ fn bindgen_test_layout___sigset_t() {
 pub type sigset_t = __sigset_t;
 #[doc = " A time value that is accurate to the nearest\nmicrosecond but also has a range of years."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct timeval {
     #[doc = " Seconds."]
     pub tv_sec: __time_t,
@@ -4617,7 +4671,7 @@ fn bindgen_test_layout_timeval() {
 }
 #[doc = " POSIX.1b structure for a time value.  This is like a `struct timeval' but\nhas nanoseconds instead of microseconds."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct timespec {
     #[doc = " Seconds."]
     pub tv_sec: __time_t,
@@ -4664,7 +4718,7 @@ pub type suseconds_t = __suseconds_t;
 pub type __fd_mask = ::std::os::raw::c_long;
 #[doc = " fd_set for select and pselect."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct fd_set {
     pub __fds_bits: [__fd_mask; 16usize],
 }
@@ -4726,7 +4780,7 @@ pub union __atomic_wide_counter {
     pub __value32: __atomic_wide_counter__bindgen_ty_1,
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct __atomic_wide_counter__bindgen_ty_1 {
     pub __low: ::std::os::raw::c_uint,
     pub __high: ::std::os::raw::c_uint,
@@ -4806,9 +4860,18 @@ fn bindgen_test_layout___atomic_wide_counter() {
         )
     );
 }
+impl Default for __atomic_wide_counter {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " Common definition of pthread_mutex_t."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct __pthread_internal_list {
     pub __prev: *mut __pthread_internal_list,
     pub __next: *mut __pthread_internal_list,
@@ -4849,10 +4912,19 @@ fn bindgen_test_layout___pthread_internal_list() {
         )
     );
 }
+impl Default for __pthread_internal_list {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " Common definition of pthread_mutex_t."]
 pub type __pthread_list_t = __pthread_internal_list;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct __pthread_internal_slist {
     pub __next: *mut __pthread_internal_slist,
 }
@@ -4882,9 +4954,18 @@ fn bindgen_test_layout___pthread_internal_slist() {
         )
     );
 }
+impl Default for __pthread_internal_slist {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 pub type __pthread_slist_t = __pthread_internal_slist;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct __pthread_mutex_s {
     pub __lock: ::std::os::raw::c_int,
     pub __count: ::std::os::raw::c_uint,
@@ -4991,8 +5072,17 @@ fn bindgen_test_layout___pthread_mutex_s() {
         )
     );
 }
+impl Default for __pthread_mutex_s {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct __pthread_rwlock_arch_t {
     pub __readers: ::std::os::raw::c_uint,
     pub __writers: ::std::os::raw::c_uint,
@@ -5241,10 +5331,19 @@ fn bindgen_test_layout___pthread_cond_s() {
         )
     );
 }
+impl Default for __pthread_cond_s {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 pub type __tss_t = ::std::os::raw::c_uint;
 pub type __thrd_t = ::std::os::raw::c_ulong;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct __once_flag {
     pub __data: ::std::os::raw::c_int,
 }
@@ -5317,6 +5416,15 @@ fn bindgen_test_layout_pthread_mutexattr_t() {
         )
     );
 }
+impl Default for pthread_mutexattr_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " Data structure for condition variable handling.  The structure of\nthe attribute type is not exposed on purpose."]
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -5358,6 +5466,15 @@ fn bindgen_test_layout_pthread_condattr_t() {
             stringify!(__align)
         )
     );
+}
+impl Default for pthread_condattr_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 #[doc = " Keys for thread-specific data"]
 pub type pthread_key_t = ::std::os::raw::c_uint;
@@ -5403,6 +5520,15 @@ fn bindgen_test_layout_pthread_attr_t() {
             stringify!(__align)
         )
     );
+}
+impl Default for pthread_attr_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -5456,6 +5582,15 @@ fn bindgen_test_layout_pthread_mutex_t() {
         )
     );
 }
+impl Default for pthread_mutex_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub union pthread_cond_t {
@@ -5507,6 +5642,15 @@ fn bindgen_test_layout_pthread_cond_t() {
             stringify!(__align)
         )
     );
+}
+impl Default for pthread_cond_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 #[doc = " Data structure for reader-writer lock variable handling.  The\nstructure of the attribute type is deliberately not exposed."]
 #[repr(C)]
@@ -5561,6 +5705,15 @@ fn bindgen_test_layout_pthread_rwlock_t() {
         )
     );
 }
+impl Default for pthread_rwlock_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub union pthread_rwlockattr_t {
@@ -5601,6 +5754,15 @@ fn bindgen_test_layout_pthread_rwlockattr_t() {
             stringify!(__align)
         )
     );
+}
+impl Default for pthread_rwlockattr_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 #[doc = " POSIX spinlock data type."]
 pub type pthread_spinlock_t = ::std::os::raw::c_int;
@@ -5646,6 +5808,15 @@ fn bindgen_test_layout_pthread_barrier_t() {
         )
     );
 }
+impl Default for pthread_barrier_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub union pthread_barrierattr_t {
@@ -5688,6 +5859,15 @@ fn bindgen_test_layout_pthread_barrierattr_t() {
         )
     );
 }
+impl Default for pthread_barrierattr_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     #[doc = " These are the functions that actually do things.  The `random', `srandom',\n`initstate' and `setstate' functions are those from BSD Unices.\nThe `rand' and `srand' functions are required by the ANSI standard.\nWe provide both interfaces to the same random number generator.  */\n/* Return a random long integer between 0 and 2^31-1 inclusive."]
     pub fn random() -> ::std::os::raw::c_long;
@@ -5710,7 +5890,7 @@ extern "C" {
 }
 #[doc = " Reentrant versions of the `random' family of functions.\nThese functions all use the following data structure to contain\nstate, rather than global state variables."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct random_data {
     #[doc = " Front pointer."]
     pub fptr: *mut i32,
@@ -5812,6 +5992,15 @@ fn bindgen_test_layout_random_data() {
         )
     );
 }
+impl Default for random_data {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     pub fn random_r(__buf: *mut random_data, __result: *mut i32) -> ::std::os::raw::c_int;
 }
@@ -5880,7 +6069,7 @@ extern "C" {
 }
 #[doc = " Data structure for communication with thread safe versions.  This\ntype is to be regarded as opaque.  It's only exported because users\nhave to allocate objects of this type."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct drand48_data {
     #[doc = " Current state."]
     pub __x: [::std::os::raw::c_ushort; 3usize],
@@ -7222,7 +7411,7 @@ extern "C" {
 }
 #[doc = " Memory area used by crypt_r."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct crypt_data {
     #[doc = " crypt_r writes the hashed password to this field of its 'data'\nargument.  crypt_rn and crypt_ra do the same, treating the\nuntyped data area they are supplied with as this struct."]
     pub output: [::std::os::raw::c_char; 384usize],
@@ -7311,6 +7500,15 @@ fn bindgen_test_layout_crypt_data() {
             stringify!(internal)
         )
     );
+}
+impl Default for crypt_data {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     #[doc = " Thread-safe version of crypt.  Instead of writing to a static\nstorage area, the string returned by this function will be within\nDATA->output.  Otherwise, behaves exactly the same as crypt."]
@@ -7427,7 +7625,7 @@ pub type uintmax_t = __uintmax_t;
 pub type __gwchar_t = ::std::os::raw::c_int;
 #[doc = " We have to define the `uintmax_t' type using `ldiv_t'."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct imaxdiv_t {
     #[doc = " Quotient."]
     pub quot: ::std::os::raw::c_long,
@@ -8395,7 +8593,7 @@ pub const FP_NORMAL: _bindgen_ty_4 = 4;
 pub type _bindgen_ty_4 = ::std::os::raw::c_uint;
 #[doc = " Structure crudely representing a timezone.\nThis is obsolete and should never be used."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct timezone {
     #[doc = " Minutes west of GMT."]
     pub tz_minuteswest: ::std::os::raw::c_int,
@@ -8461,7 +8659,7 @@ pub const __itimer_which_ITIMER_PROF: __itimer_which = 2;
 pub type __itimer_which = ::std::os::raw::c_uint;
 #[doc = " Type of the second argument to `getitimer' and\nthe second and third arguments `setitimer'."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct itimerval {
     #[doc = " Value to put into `it_value' when the timer expires."]
     pub it_interval: timeval,
@@ -8536,7 +8734,7 @@ extern "C" {
 }
 #[doc = " ISO C `broken-down time' structure."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct tm {
     #[doc = " Seconds.\t[0-60] (1 leap second)"]
     pub tm_sec: ::std::os::raw::c_int,
@@ -8686,9 +8884,18 @@ fn bindgen_test_layout_tm() {
         )
     );
 }
+impl Default for tm {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " POSIX.1b structure for timer start values and intervals."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct itimerspec {
     pub it_interval: timespec,
     pub it_value: timespec,
@@ -8909,7 +9116,7 @@ extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct stat {
     #[doc = " Device."]
     pub st_dev: __dev_t,
@@ -9218,7 +9425,7 @@ extern "C" {
 pub type PyTypeObject = _typeobject;
 #[doc = " Nothing is actually declared to be a PyObject, but every pointer to\n a Python object can be cast to a PyObject*.  This is inheritance built\n by hand.  Similarly every pointer to a variable-size Python object can,\n in addition, be cast to PyVarObject*."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct _object {
     pub ob_refcnt: Py_ssize_t,
     pub ob_type: *mut PyTypeObject,
@@ -9258,10 +9465,19 @@ fn bindgen_test_layout__object() {
         )
     );
 }
+impl Default for _object {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " Nothing is actually declared to be a PyObject, but every pointer to\n a Python object can be cast to a PyObject*.  This is inheritance built\n by hand.  Similarly every pointer to a variable-size Python object can,\n in addition, be cast to PyVarObject*."]
 pub type PyObject = _object;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyVarObject {
     pub ob_base: PyObject,
     #[doc = " Number of items in variable part"]
@@ -9301,6 +9517,15 @@ fn bindgen_test_layout_PyVarObject() {
             stringify!(ob_size)
         )
     );
+}
+impl Default for PyVarObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 #[doc = "Type objects contain a string containing the type name (to help somewhat\nin debugging), the allocation parameters (see PyObject_New() and\nPyObject_NewVar()),\nand methods for accessing objects of the type.  Methods are optional, a\nnil pointer meaning that particular kind of access is not available for\nthis type.  The Py_DECREF() macro uses the tp_dealloc method without\nchecking for a nil pointer; it should always be implemented except if\nthe implementation can guarantee that the reference count will never\nreach zero (e.g., for statically allocated type objects).\n\nNB: the methods for certain type groups are now contained in separate\nmethod blocks."]
 pub type unaryfunc =
@@ -9430,7 +9655,7 @@ pub type allocfunc = ::std::option::Option<
     unsafe extern "C" fn(arg1: *mut PyTypeObject, arg2: Py_ssize_t) -> *mut PyObject,
 >;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyType_Slot {
     #[doc = " slot id, see below"]
     pub slot: ::std::os::raw::c_int,
@@ -9472,8 +9697,17 @@ fn bindgen_test_layout_PyType_Slot() {
         )
     );
 }
+impl Default for PyType_Slot {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyType_Spec {
     pub name: *const ::std::os::raw::c_char,
     pub basicsize: ::std::os::raw::c_int,
@@ -9546,6 +9780,15 @@ fn bindgen_test_layout_PyType_Spec() {
             stringify!(slots)
         )
     );
+}
+impl Default for PyType_Spec {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     pub fn PyType_FromSpec(arg1: *mut PyType_Spec) -> *mut PyObject;
@@ -9748,7 +9991,7 @@ extern "C" {
 }
 #[doc = " String Literals ****************************************/\n/* This structure helps managing static strings. The basic usage goes like this:\nInstead of doing\n\nr = PyObject_CallMethod(o, \"foo\", \"args\", ...);\n\ndo\n\n_Py_IDENTIFIER(foo);\n...\nr = _PyObject_CallMethodId(o, &PyId_foo, \"args\", ...);\n\nPyId_foo is a static variable, either on block level or file level. On first\nusage, the string \"foo\" is interned, and the structures are linked. On interpreter\nshutdown, all strings are released.\n\nAlternatively, _Py_static_string allows choosing the variable name.\n_PyUnicode_FromId returns a borrowed reference to the interned string.\n_PyObject_{Get,Set,Has}AttrId are __getattr__ versions using _Py_Identifier*."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct _Py_Identifier {
     pub next: *mut _Py_Identifier,
     pub string: *const ::std::os::raw::c_char,
@@ -9799,9 +10042,18 @@ fn bindgen_test_layout__Py_Identifier() {
         )
     );
 }
+impl Default for _Py_Identifier {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " buffer interface"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct bufferinfo {
     pub buf: *mut ::std::os::raw::c_void,
     #[doc = " owned reference"]
@@ -9942,6 +10194,15 @@ fn bindgen_test_layout_bufferinfo() {
         )
     );
 }
+impl Default for bufferinfo {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " buffer interface"]
 pub type Py_buffer = bufferinfo;
 pub type getbufferproc = ::std::option::Option<
@@ -9963,7 +10224,7 @@ pub type vectorcallfunc = ::std::option::Option<
 >;
 #[doc = " End buffer interface"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyNumberMethods {
     #[doc = " Number implementations must check *both*\narguments for proper type and implement the necessary conversions\nin the slot functions themselves."]
     pub nb_add: binaryfunc,
@@ -10379,8 +10640,17 @@ fn bindgen_test_layout_PyNumberMethods() {
         )
     );
 }
+impl Default for PyNumberMethods {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PySequenceMethods {
     pub sq_length: lenfunc,
     pub sq_concat: binaryfunc,
@@ -10508,8 +10778,17 @@ fn bindgen_test_layout_PySequenceMethods() {
         )
     );
 }
+impl Default for PySequenceMethods {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyMappingMethods {
     pub mp_length: lenfunc,
     pub mp_subscript: binaryfunc,
@@ -10561,7 +10840,7 @@ fn bindgen_test_layout_PyMappingMethods() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyAsyncMethods {
     pub am_await: unaryfunc,
     pub am_aiter: unaryfunc,
@@ -10613,7 +10892,7 @@ fn bindgen_test_layout_PyAsyncMethods() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyBufferProcs {
     pub bf_getbuffer: getbufferproc,
     pub bf_releasebuffer: releasebufferproc,
@@ -10656,7 +10935,7 @@ fn bindgen_test_layout_PyBufferProcs() {
 #[doc = " Allow printfunc in the tp_vectorcall_offset slot for\n backwards-compatibility"]
 pub type printfunc = Py_ssize_t;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct _typeobject {
     pub ob_base: PyVarObject,
     #[doc = " For printing, in format \"<module>.<name>\""]
@@ -11233,9 +11512,18 @@ fn bindgen_test_layout__typeobject() {
         )
     );
 }
+impl Default for _typeobject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " The *real* layout of a type object when allocated on the heap"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct _heaptypeobject {
     #[doc = " Note: there's a dependency on the order of these members\nin slotptr() in typeobject.c ."]
     pub ht_type: PyTypeObject,
@@ -11375,6 +11663,15 @@ fn bindgen_test_layout__heaptypeobject() {
             stringify!(ht_module)
         )
     );
+}
+impl Default for _heaptypeobject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 #[doc = " The *real* layout of a type object when allocated on the heap"]
 pub type PyHeapTypeObject = _heaptypeobject;
@@ -11703,7 +12000,7 @@ extern "C" {
 }
 #[doc = " Structure used by time.get_clock_info()"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
 pub struct _Py_clock_info_t {
     pub implementation: *const ::std::os::raw::c_char,
     pub monotonic: ::std::os::raw::c_int,
@@ -11764,6 +12061,15 @@ fn bindgen_test_layout__Py_clock_info_t() {
             stringify!(resolution)
         )
     );
+}
+impl Default for _Py_clock_info_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     #[doc = " Get the current time from the system clock.\n Fill clock information if info is not NULL.\n Raise an exception and return -1 on error, return 0 on success."]
@@ -11865,7 +12171,7 @@ pub const PyMemAllocatorName_PYMEM_ALLOCATOR_PYMALLOC: PyMemAllocatorName = 5;
 pub const PyMemAllocatorName_PYMEM_ALLOCATOR_PYMALLOC_DEBUG: PyMemAllocatorName = 6;
 pub type PyMemAllocatorName = ::std::os::raw::c_uint;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyMemAllocatorEx {
     #[doc = " user context passed as the first argument to the 4 functions"]
     pub ctx: *mut ::std::os::raw::c_void,
@@ -11962,6 +12268,15 @@ fn bindgen_test_layout_PyMemAllocatorEx() {
         )
     );
 }
+impl Default for PyMemAllocatorEx {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     #[doc = " Get the memory block allocator of the specified domain."]
     pub fn PyMem_GetAllocator(domain: PyMemAllocatorDomain, allocator: *mut PyMemAllocatorEx);
@@ -12045,7 +12360,7 @@ extern "C" {
     pub fn _PyObject_DebugMallocStats(out: *mut FILE) -> ::std::os::raw::c_int;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyObjectArenaAllocator {
     #[doc = " user context passed as the first argument to the 2 functions"]
     pub ctx: *mut ::std::os::raw::c_void,
@@ -12111,6 +12426,15 @@ fn bindgen_test_layout_PyObjectArenaAllocator() {
         )
     );
 }
+impl Default for PyObjectArenaAllocator {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     #[doc = " Get the arena allocator."]
     pub fn PyObject_GetArenaAllocator(allocator: *mut PyObjectArenaAllocator);
@@ -12163,7 +12487,7 @@ pub union _Py_HashSecret_t {
 }
 #[doc = " two Py_hash_t for FNV"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct _Py_HashSecret_t__bindgen_ty_1 {
     pub prefix: Py_hash_t,
     pub suffix: Py_hash_t,
@@ -12206,7 +12530,7 @@ fn bindgen_test_layout__Py_HashSecret_t__bindgen_ty_1() {
 }
 #[doc = " two uint64 for SipHash24"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct _Py_HashSecret_t__bindgen_ty_2 {
     pub k0: u64,
     pub k1: u64,
@@ -12249,7 +12573,7 @@ fn bindgen_test_layout__Py_HashSecret_t__bindgen_ty_2() {
 }
 #[doc = " a different (!) Py_hash_t for small string optimization"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct _Py_HashSecret_t__bindgen_ty_3 {
     pub padding: [::std::os::raw::c_uchar; 16usize],
     pub suffix: Py_hash_t,
@@ -12291,7 +12615,7 @@ fn bindgen_test_layout__Py_HashSecret_t__bindgen_ty_3() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct _Py_HashSecret_t__bindgen_ty_4 {
     pub padding: [::std::os::raw::c_uchar; 16usize],
     pub hashsalt: Py_hash_t,
@@ -12397,11 +12721,20 @@ fn bindgen_test_layout__Py_HashSecret_t() {
         )
     );
 }
+impl Default for _Py_HashSecret_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     pub static mut _Py_HashSecret: _Py_HashSecret_t;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyHash_FuncDef {
     pub hash: ::std::option::Option<
         unsafe extern "C" fn(arg1: *const ::std::os::raw::c_void, arg2: Py_ssize_t) -> Py_hash_t,
@@ -12464,6 +12797,15 @@ fn bindgen_test_layout_PyHash_FuncDef() {
             stringify!(seed_bits)
         )
     );
+}
+impl Default for PyHash_FuncDef {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     pub fn PyHash_GetFuncDef() -> *mut PyHash_FuncDef;
@@ -12544,7 +12886,7 @@ extern "C" {
 }
 #[doc = " Object layout"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyByteArrayObject {
     pub ob_base: PyVarObject,
     #[doc = " How many bytes allocated in ob_bytes"]
@@ -12621,6 +12963,15 @@ fn bindgen_test_layout_PyByteArrayObject() {
         )
     );
 }
+impl Default for PyByteArrayObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     pub static mut _PyByteArray_empty_string: [::std::os::raw::c_char; 0usize];
 }
@@ -12685,7 +13036,7 @@ extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyBytesObject {
     pub ob_base: PyVarObject,
     pub ob_shash: Py_hash_t,
@@ -12736,6 +13087,15 @@ fn bindgen_test_layout_PyBytesObject() {
         )
     );
 }
+impl Default for PyBytesObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     pub fn _PyBytes_Resize(arg1: *mut *mut PyObject, arg2: Py_ssize_t) -> ::std::os::raw::c_int;
 }
@@ -12768,7 +13128,7 @@ extern "C" {
 }
 #[doc = " The _PyBytesWriter structure is big: it contains an embedded \"stack buffer\".\nA _PyBytesWriter variable must be declared at the end of variables in a\nfunction to optimize the memory allocation on the stack."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct _PyBytesWriter {
     #[doc = " bytes, bytearray or NULL (when the small buffer is used)"]
     pub buffer: *mut PyObject,
@@ -12868,6 +13228,15 @@ fn bindgen_test_layout__PyBytesWriter() {
             stringify!(small_buffer)
         )
     );
+}
+impl Default for _PyBytesWriter {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     #[doc = " Initialize a bytes writer\n\nBy default, the overallocation is disabled. Set the overallocate attribute\nto control the allocation of the buffer."]
@@ -14011,7 +14380,7 @@ extern "C" {
 pub type Py_UNICODE = wchar_t;
 #[doc = " ASCII-only strings created through PyUnicode_New use the PyASCIIObject\nstructure. state.ascii and state.compact are set, and the data\nimmediately follow the structure. utf8_length and wstr_length can be found\nin the length field; the utf8 pointer is equal to the data pointer."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyASCIIObject {
     pub ob_base: PyObject,
     #[doc = " Number of code points in the string"]
@@ -14024,7 +14393,7 @@ pub struct PyASCIIObject {
 }
 #[repr(C)]
 #[repr(align(4))]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyASCIIObject__bindgen_ty_1 {
     pub _bitfield_align_1: [u8; 0],
     pub _bitfield_1: __BindgenBitfieldUnit<[u8; 4usize]>,
@@ -14195,9 +14564,18 @@ fn bindgen_test_layout_PyASCIIObject() {
         )
     );
 }
+impl Default for PyASCIIObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " Non-ASCII strings allocated through PyUnicode_New use the\nPyCompactUnicodeObject structure. state.compact is set, and the data\nimmediately follow the structure."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyCompactUnicodeObject {
     pub _base: PyASCIIObject,
     #[doc = " Number of bytes in utf8, excluding the\n terminating \\0."]
@@ -14262,6 +14640,15 @@ fn bindgen_test_layout_PyCompactUnicodeObject() {
             stringify!(wstr_length)
         )
     );
+}
+impl Default for PyCompactUnicodeObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 #[doc = " Strings allocated through PyUnicode_FromUnicode(NULL, len) use the\nPyUnicodeObject structure. The actual string data is initially in the wstr\nblock, and copied into the data block using _PyUnicode_Ready."]
 #[repr(C)]
@@ -14335,6 +14722,15 @@ fn bindgen_test_layout_PyUnicodeObject__bindgen_ty_1() {
         )
     );
 }
+impl Default for PyUnicodeObject__bindgen_ty_1 {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[test]
 fn bindgen_test_layout_PyUnicodeObject() {
     const UNINIT: ::std::mem::MaybeUninit<PyUnicodeObject> = ::std::mem::MaybeUninit::uninit();
@@ -14369,6 +14765,15 @@ fn bindgen_test_layout_PyUnicodeObject() {
             stringify!(data)
         )
     );
+}
+impl Default for PyUnicodeObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     pub fn _PyUnicode_CheckConsistency(
@@ -14483,7 +14888,7 @@ extern "C" {
 }
 #[doc = " --- _PyUnicodeWriter API -----------------------------------------------"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct _PyUnicodeWriter {
     pub buffer: *mut PyObject,
     pub data: *mut ::std::os::raw::c_void,
@@ -14614,6 +15019,15 @@ fn bindgen_test_layout__PyUnicodeWriter() {
             stringify!(readonly)
         )
     );
+}
+impl Default for _PyUnicodeWriter {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     #[doc = " Initialize a Unicode writer.\n\n By default, the minimum buffer size is 0 character and overallocation is\n disabled. Set min_length, min_char and overallocate attributes to control\n the allocation of the buffer."]
@@ -15294,7 +15708,7 @@ pub type twodigits = u64;
 pub type stwodigits = i64;
 #[doc = " Long integer representation.\nThe absolute value of a number is equal to\nSUM(for i=0 through abs(ob_size)-1) ob_digit[i] * 2**(SHIFT*i)\nNegative numbers are represented with ob_size < 0;\nzero is represented by ob_size == 0.\nIn a normalized number, ob_digit[abs(ob_size)-1] (the most significant\ndigit) is never zero.  Also, in all cases, for all valid i,\n0 <= ob_digit[i] <= MASK.\nThe allocation function takes care of allocating extra memory\nso that ob_digit[0] ... ob_digit[abs(ob_size)-1] are actually available.\n\nCAUTION:  Generic code manipulating subtypes of PyVarObject has to\naware that ints abuse  ob_size's sign bit."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct _longobject {
     pub ob_base: PyVarObject,
     pub ob_digit: [digit; 1usize],
@@ -15334,6 +15748,15 @@ fn bindgen_test_layout__longobject() {
         )
     );
 }
+impl Default for _longobject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     pub fn _PyLong_New(arg1: Py_ssize_t) -> *mut PyLongObject;
 }
@@ -15357,7 +15780,7 @@ extern "C" {
     pub fn PyBool_FromLong(arg1: ::std::os::raw::c_long) -> *mut PyObject;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
 pub struct PyFloatObject {
     pub ob_base: PyObject,
     pub ob_fval: f64,
@@ -15396,6 +15819,15 @@ fn bindgen_test_layout_PyFloatObject() {
             stringify!(ob_fval)
         )
     );
+}
+impl Default for PyFloatObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     pub static mut PyFloat_Type: PyTypeObject;
@@ -15467,7 +15899,7 @@ extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, PartialOrd, PartialEq)]
 pub struct Py_complex {
     pub real: f64,
     pub imag: f64,
@@ -15530,7 +15962,7 @@ extern "C" {
     pub fn _Py_c_abs(arg1: Py_complex) -> f64;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
 pub struct PyComplexObject {
     pub ob_base: PyObject,
     pub cval: Py_complex,
@@ -15569,6 +16001,15 @@ fn bindgen_test_layout_PyComplexObject() {
             stringify!(cval)
         )
     );
+}
+impl Default for PyComplexObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     pub static mut PyComplex_Type: PyTypeObject;
@@ -15634,7 +16075,7 @@ extern "C" {
     ) -> *mut PyObject;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct _PyManagedBufferObject {
     pub ob_base: PyObject,
     #[doc = " state flags"]
@@ -15700,8 +16141,17 @@ fn bindgen_test_layout__PyManagedBufferObject() {
         )
     );
 }
+impl Default for _PyManagedBufferObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyMemoryViewObject {
     pub ob_base: PyVarObject,
     #[doc = " managed buffer"]
@@ -15813,6 +16263,15 @@ fn bindgen_test_layout_PyMemoryViewObject() {
         )
     );
 }
+impl Default for PyMemoryViewObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     #[doc = "Another generally useful object type is a tuple of object pointers.\nFor Python, this is an immutable type.  C code can change the tuple items\n(but not their number), and even use tuples as general-purpose arrays of\nobject references, but in general only brand new tuples should be mutated,\nnot ones that might already have been exposed to Python code.\n\n WARNING *** PyTuple_SetItem does not increment the new item's reference\ncount, but does decrement the reference count of the item it replaces,\nif not nil.  It does *decrement* the reference count if it is *not*\ninserted in the tuple.  Similarly, PyTuple_GetItem does not increment the\nreturned item's reference count."]
     pub static mut PyTuple_Type: PyTypeObject;
@@ -15847,7 +16306,7 @@ extern "C" {
     pub fn PyTuple_Pack(arg1: Py_ssize_t, ...) -> *mut PyObject;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyTupleObject {
     pub ob_base: PyVarObject,
     #[doc = " ob_item contains space for 'ob_size' elements.\nItems must normally not be NULL, except during construction when\nthe tuple is not yet visible outside the function that builds it."]
@@ -15887,6 +16346,15 @@ fn bindgen_test_layout_PyTupleObject() {
             stringify!(ob_item)
         )
     );
+}
+impl Default for PyTupleObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     pub fn _PyTuple_Resize(arg1: *mut *mut PyObject, arg2: Py_ssize_t) -> ::std::os::raw::c_int;
@@ -15957,7 +16425,7 @@ extern "C" {
     pub fn PyList_AsTuple(arg1: *mut PyObject) -> *mut PyObject;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyListObject {
     pub ob_base: PyVarObject,
     #[doc = " Vector of pointers to list elements.  list[0] is ob_item[0], etc."]
@@ -16009,6 +16477,15 @@ fn bindgen_test_layout_PyListObject() {
             stringify!(allocated)
         )
     );
+}
+impl Default for PyListObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     pub fn _PyList_Extend(arg1: *mut PyListObject, arg2: *mut PyObject) -> *mut PyObject;
@@ -16139,7 +16616,7 @@ extern "C" {
 pub type PyDictKeysObject = _dictkeysobject;
 #[doc = " The ma_values pointer is NULL for a combined table\n or points to an array of PyObject* for a split table"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyDictObject {
     pub ob_base: PyObject,
     #[doc = " Number of items in the dictionary"]
@@ -16214,6 +16691,15 @@ fn bindgen_test_layout_PyDictObject() {
             stringify!(ma_values)
         )
     );
+}
+impl Default for PyDictObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     pub fn _PyDict_GetItem_KnownHash(
@@ -16366,7 +16852,7 @@ extern "C" {
 }
 #[doc = " _PyDictView"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct _PyDictViewObject {
     pub ob_base: PyObject,
     pub dv_dict: *mut PyDictObject,
@@ -16405,6 +16891,15 @@ fn bindgen_test_layout__PyDictViewObject() {
             stringify!(dv_dict)
         )
     );
+}
+impl Default for _PyDictViewObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     pub fn _PyDictView_New(arg1: *mut PyObject, arg2: *mut PyTypeObject) -> *mut PyObject;
@@ -16453,7 +16948,7 @@ extern "C" {
     pub static mut PyReversed_Type: PyTypeObject;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct setentry {
     pub key: *mut PyObject,
     #[doc = " Cached hash code of the key"]
@@ -16494,9 +16989,18 @@ fn bindgen_test_layout_setentry() {
         )
     );
 }
+impl Default for setentry {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " The SetObject data structure is shared by set and frozenset objects.\n\nInvariant for sets:\n- hash is -1\n\nInvariants for frozensets:\n- data is immutable.\n- hash is the hash of the frozenset or -1 if not computed yet."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PySetObject {
     pub ob_base: PyObject,
     #[doc = " Number active and dummy entries"]
@@ -16620,6 +17124,15 @@ fn bindgen_test_layout_PySetObject() {
         )
     );
 }
+impl Default for PySetObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     pub static mut _PySet_Dummy: *mut PyObject;
 }
@@ -16722,7 +17235,7 @@ extern "C" {
     ) -> *mut PyObject;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyMethodDef {
     #[doc = " The name of the built-in function/method"]
     pub ml_name: *const ::std::os::raw::c_char,
@@ -16788,6 +17301,15 @@ fn bindgen_test_layout_PyMethodDef() {
         )
     );
 }
+impl Default for PyMethodDef {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     pub fn PyCFunction_NewEx(
         arg1: *mut PyMethodDef,
@@ -16807,7 +17329,7 @@ extern "C" {
     pub static mut PyCMethod_Type: PyTypeObject;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyCFunctionObject {
     pub ob_base: PyObject,
     #[doc = " Description of the C function to call"]
@@ -16895,8 +17417,17 @@ fn bindgen_test_layout_PyCFunctionObject() {
         )
     );
 }
+impl Default for PyCFunctionObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyCMethodObject {
     pub func: PyCFunctionObject,
     #[doc = " Class that defines this method"]
@@ -16936,6 +17467,15 @@ fn bindgen_test_layout_PyCMethodObject() {
             stringify!(mm_class)
         )
     );
+}
+impl Default for PyCMethodObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     pub static mut PyModule_Type: PyTypeObject;
@@ -16984,7 +17524,7 @@ extern "C" {
     pub static mut PyModuleDef_Type: PyTypeObject;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyModuleDef_Base {
     pub ob_base: PyObject,
     pub m_init: ::std::option::Option<unsafe extern "C" fn() -> *mut PyObject>,
@@ -17046,9 +17586,18 @@ fn bindgen_test_layout_PyModuleDef_Base() {
         )
     );
 }
+impl Default for PyModuleDef_Base {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " New in 3.5"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyModuleDef_Slot {
     pub slot: ::std::os::raw::c_int,
     pub value: *mut ::std::os::raw::c_void,
@@ -17088,8 +17637,17 @@ fn bindgen_test_layout_PyModuleDef_Slot() {
         )
     );
 }
+impl Default for PyModuleDef_Slot {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyModuleDef {
     pub m_base: PyModuleDef_Base,
     pub m_name: *const ::std::os::raw::c_char,
@@ -17206,9 +17764,18 @@ fn bindgen_test_layout_PyModuleDef() {
         )
     );
 }
+impl Default for PyModuleDef {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " Function objects and code objects should not be confused with each other:\n\n Function objects are created by the execution of the 'def' statement.\n They reference a code object in their __code__ attribute, which is a\n purely syntactic object, i.e. nothing more than a compiled version of some\n source code lines.  There is one code object per source code \"fragment\",\n but each code object can be referenced by zero or many function objects\n depending only on how many times the 'def' statement in the source was\n executed so far."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyFunctionObject {
     pub ob_base: PyObject,
     #[doc = " A code object, the __code__ attribute"]
@@ -17392,6 +17959,15 @@ fn bindgen_test_layout_PyFunctionObject() {
         )
     );
 }
+impl Default for PyFunctionObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     pub static mut PyFunction_Type: PyTypeObject;
 }
@@ -17470,7 +18046,7 @@ extern "C" {
     pub fn PyStaticMethod_New(arg1: *mut PyObject) -> *mut PyObject;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyMethodObject {
     pub ob_base: PyObject,
     #[doc = " The callable object implementing the method"]
@@ -17546,6 +18122,15 @@ fn bindgen_test_layout_PyMethodObject() {
         )
     );
 }
+impl Default for PyMethodObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     pub static mut PyMethod_Type: PyTypeObject;
 }
@@ -17559,7 +18144,7 @@ extern "C" {
     pub fn PyMethod_Self(arg1: *mut PyObject) -> *mut PyObject;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyInstanceMethodObject {
     pub ob_base: PyObject,
     pub func: *mut PyObject,
@@ -17599,6 +18184,15 @@ fn bindgen_test_layout_PyInstanceMethodObject() {
             stringify!(func)
         )
     );
+}
+impl Default for PyInstanceMethodObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     pub static mut PyInstanceMethod_Type: PyTypeObject;
@@ -17753,7 +18347,7 @@ pub struct _PyOpcache {
 }
 #[doc = " Bytecode object"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyCodeObject {
     pub ob_base: PyObject,
     #[doc = " #arguments, except *args"]
@@ -18069,6 +18663,15 @@ fn bindgen_test_layout_PyCodeObject() {
         )
     );
 }
+impl Default for PyCodeObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     pub static mut PyCode_Type: PyTypeObject;
 }
@@ -18129,7 +18732,7 @@ extern "C" {
 }
 #[doc = " for internal use only"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct _addr_pair {
     pub ap_lower: ::std::os::raw::c_int,
     pub ap_upper: ::std::os::raw::c_int,
@@ -18230,7 +18833,7 @@ extern "C" {
     pub static mut PyTraceBack_Type: PyTypeObject;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct _traceback {
     pub ob_base: PyObject,
     pub tb_next: *mut _traceback,
@@ -18303,6 +18906,15 @@ fn bindgen_test_layout__traceback() {
         )
     );
 }
+impl Default for _traceback {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 pub type PyTracebackObject = _traceback;
 extern "C" {
     pub fn _Py_DisplaySourceLine(
@@ -18324,7 +18936,7 @@ extern "C" {
     pub static mut _Py_EllipsisObject: PyObject;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PySliceObject {
     pub ob_base: PyObject,
     #[doc = " not NULL"]
@@ -18389,6 +19001,15 @@ fn bindgen_test_layout_PySliceObject() {
         )
     );
 }
+impl Default for PySliceObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     pub static mut PySlice_Type: PyTypeObject;
 }
@@ -18450,7 +19071,7 @@ extern "C" {
     ) -> Py_ssize_t;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyCellObject {
     pub ob_base: PyObject,
     #[doc = " Content of the cell or NULL when empty"]
@@ -18490,6 +19111,15 @@ fn bindgen_test_layout_PyCellObject() {
             stringify!(ob_ref)
         )
     );
+}
+impl Default for PyCellObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     pub static mut PyCell_Type: PyTypeObject;
@@ -18607,7 +19237,7 @@ extern "C" {
 }
 #[doc = " --- PyStatus -----------------------------------------------"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyStatus {
     pub _type: PyStatus__bindgen_ty_1,
     pub func: *const ::std::os::raw::c_char,
@@ -18673,6 +19303,15 @@ fn bindgen_test_layout_PyStatus() {
         )
     );
 }
+impl Default for PyStatus {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     pub fn PyStatus_Ok() -> PyStatus;
 }
@@ -18696,7 +19335,7 @@ extern "C" {
 }
 #[doc = " --- PyWideStringList ------------------------------------------------"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyWideStringList {
     #[doc = " If length is greater than zero, items must be non-NULL\nand all items strings must be non-NULL"]
     pub length: Py_ssize_t,
@@ -18737,6 +19376,15 @@ fn bindgen_test_layout_PyWideStringList() {
         )
     );
 }
+impl Default for PyWideStringList {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     pub fn PyWideStringList_Append(list: *mut PyWideStringList, item: *const wchar_t) -> PyStatus;
 }
@@ -18749,7 +19397,7 @@ extern "C" {
 }
 #[doc = " --- PyPreConfig -----------------------------------------------"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyPreConfig {
     #[doc = " _PyConfigInitEnum value"]
     pub _config_init: ::std::os::raw::c_int,
@@ -18895,7 +19543,7 @@ extern "C" {
 }
 #[doc = " --- PyConfig ----------------------------------------------"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyConfig {
     #[doc = " _PyConfigInitEnum value"]
     pub _config_init: ::std::os::raw::c_int,
@@ -19595,6 +20243,15 @@ fn bindgen_test_layout_PyConfig() {
         )
     );
 }
+impl Default for PyConfig {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     pub fn PyConfig_InitPythonConfig(config: *mut PyConfig);
 }
@@ -19671,7 +20328,7 @@ pub type Py_tracefunc = ::std::option::Option<
     ) -> ::std::os::raw::c_int,
 >;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct _err_stackitem {
     #[doc = " This struct represents an entry on the exception stack, which is a\n per-coroutine state. (Coroutine in the computer science sense,\n including the thread and generators).\n This ensures that the exception state is not impacted by \"yields\"\n from an except handler."]
     pub exc_type: *mut PyObject,
@@ -19736,10 +20393,19 @@ fn bindgen_test_layout__err_stackitem() {
         )
     );
 }
+impl Default for _err_stackitem {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 pub type _PyErr_StackItem = _err_stackitem;
 #[doc = " Forward declarations for PyThreadState"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct _ts {
     #[doc = " See Python/ceval.c for comments explaining most fields"]
     pub prev: *mut _ts,
@@ -20115,6 +20781,15 @@ fn bindgen_test_layout__ts() {
         concat!("Offset of field: ", stringify!(_ts), "::", stringify!(id))
     );
 }
+impl Default for _ts {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     pub fn _PyThreadState_Prealloc(arg1: *mut PyInterpreterState) -> *mut PyThreadState;
 }
@@ -20184,7 +20859,7 @@ extern "C" {
 }
 #[doc = " cross-interpreter data"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct _xid {
     #[doc = " data is the cross-interpreter-safe derivation of a Python object\n (see _PyObject_GetCrossInterpreterData).  It will be NULL if the\n new_object func (below) encodes the data."]
     pub data: *mut ::std::os::raw::c_void,
@@ -20257,6 +20932,15 @@ fn bindgen_test_layout__xid() {
         )
     );
 }
+impl Default for _xid {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " _PyCrossInterpreterData is similar to Py_buffer as an effectively\n opaque struct that holds data outside the object machinery.  This\n is necessary to pass safely between interpreters in the same process."]
 pub type _PyCrossInterpreterData = _xid;
 extern "C" {
@@ -20288,7 +20972,7 @@ extern "C" {
     pub fn _PyCrossInterpreterData_Lookup(arg1: *mut PyObject) -> crossinterpdatafunc;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyGenObject {
     pub ob_base: PyObject,
     pub gi_frame: *mut PyFrameObject,
@@ -20394,6 +21078,15 @@ fn bindgen_test_layout_PyGenObject() {
         )
     );
 }
+impl Default for PyGenObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     pub static mut PyGen_Type: PyTypeObject;
 }
@@ -20423,7 +21116,7 @@ extern "C" {
     pub fn _PyGen_Finalize(self_: *mut PyObject);
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyCoroObject {
     pub ob_base: PyObject,
     pub cr_frame: *mut PyFrameObject,
@@ -20540,6 +21233,15 @@ fn bindgen_test_layout_PyCoroObject() {
         )
     );
 }
+impl Default for PyCoroObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     pub static mut PyCoro_Type: PyTypeObject;
 }
@@ -20558,7 +21260,7 @@ extern "C" {
 }
 #[doc = " Asynchronous Generators"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyAsyncGenObject {
     pub ob_base: PyObject,
     pub ag_frame: *mut PyFrameObject,
@@ -20710,6 +21412,15 @@ fn bindgen_test_layout_PyAsyncGenObject() {
         )
     );
 }
+impl Default for PyAsyncGenObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     pub static mut PyAsyncGen_Type: PyTypeObject;
 }
@@ -20743,7 +21454,7 @@ pub type setter = ::std::option::Option<
     ) -> ::std::os::raw::c_int,
 >;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyGetSetDef {
     pub name: *const ::std::os::raw::c_char,
     pub get: getter,
@@ -20816,6 +21527,15 @@ fn bindgen_test_layout_PyGetSetDef() {
         )
     );
 }
+impl Default for PyGetSetDef {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 pub type wrapperfunc = ::std::option::Option<
     unsafe extern "C" fn(
         self_: *mut PyObject,
@@ -20832,7 +21552,7 @@ pub type wrapperfunc_kwds = ::std::option::Option<
     ) -> *mut PyObject,
 >;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct wrapperbase {
     pub name: *const ::std::os::raw::c_char,
     pub offset: ::std::os::raw::c_int,
@@ -20927,9 +21647,18 @@ fn bindgen_test_layout_wrapperbase() {
         )
     );
 }
+impl Default for wrapperbase {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " Various kinds of descriptor objects"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyDescrObject {
     pub ob_base: PyObject,
     pub d_type: *mut PyTypeObject,
@@ -20991,8 +21720,17 @@ fn bindgen_test_layout_PyDescrObject() {
         )
     );
 }
+impl Default for PyDescrObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyMethodDescrObject {
     pub d_common: PyDescrObject,
     pub d_method: *mut PyMethodDef,
@@ -21043,8 +21781,17 @@ fn bindgen_test_layout_PyMethodDescrObject() {
         )
     );
 }
+impl Default for PyMethodDescrObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyMemberDescrObject {
     pub d_common: PyDescrObject,
     pub d_member: *mut PyMemberDef,
@@ -21084,8 +21831,17 @@ fn bindgen_test_layout_PyMemberDescrObject() {
         )
     );
 }
+impl Default for PyMemberDescrObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyGetSetDescrObject {
     pub d_common: PyDescrObject,
     pub d_getset: *mut PyGetSetDef,
@@ -21125,8 +21881,17 @@ fn bindgen_test_layout_PyGetSetDescrObject() {
         )
     );
 }
+impl Default for PyGetSetDescrObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyWrapperDescrObject {
     pub d_common: PyDescrObject,
     pub d_base: *mut wrapperbase,
@@ -21177,6 +21942,15 @@ fn bindgen_test_layout_PyWrapperDescrObject() {
             stringify!(d_wrapped)
         )
     );
+}
+impl Default for PyWrapperDescrObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     pub static mut PyClassMethodDescr_Type: PyTypeObject;
@@ -21302,7 +22076,7 @@ extern "C" {
 }
 pub type PyWeakReference = _PyWeakReference;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct _PyWeakReference {
     pub ob_base: PyObject,
     #[doc = " The object to which this is a weak reference, or Py_None if none.\n Note that this is a stealth reference:  wr_object's refcount is\n not incremented to reflect this pointer."]
@@ -21390,6 +22164,15 @@ fn bindgen_test_layout__PyWeakReference() {
         )
     );
 }
+impl Default for _PyWeakReference {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     pub static mut _PyWeakref_RefType: PyTypeObject;
 }
@@ -21415,7 +22198,7 @@ extern "C" {
     pub fn _PyWeakref_ClearRef(self_: *mut PyWeakReference);
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyStructSequence_Field {
     pub name: *const ::std::os::raw::c_char,
     pub doc: *const ::std::os::raw::c_char,
@@ -21456,8 +22239,17 @@ fn bindgen_test_layout_PyStructSequence_Field() {
         )
     );
 }
+impl Default for PyStructSequence_Field {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyStructSequence_Desc {
     pub name: *const ::std::os::raw::c_char,
     pub doc: *const ::std::os::raw::c_char,
@@ -21519,6 +22311,15 @@ fn bindgen_test_layout_PyStructSequence_Desc() {
             stringify!(n_in_sequence)
         )
     );
+}
+impl Default for PyStructSequence_Desc {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     pub static PyStructSequence_UnnamedField: *const ::std::os::raw::c_char;
@@ -22255,7 +23056,7 @@ extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyBaseExceptionObject {
     pub ob_base: PyObject,
     pub dict: *mut PyObject,
@@ -22351,8 +23152,17 @@ fn bindgen_test_layout_PyBaseExceptionObject() {
         )
     );
 }
+impl Default for PyBaseExceptionObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PySyntaxErrorObject {
     pub ob_base: PyObject,
     pub dict: *mut PyObject,
@@ -22513,8 +23323,17 @@ fn bindgen_test_layout_PySyntaxErrorObject() {
         )
     );
 }
+impl Default for PySyntaxErrorObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyImportErrorObject {
     pub ob_base: PyObject,
     pub dict: *mut PyObject,
@@ -22642,8 +23461,17 @@ fn bindgen_test_layout_PyImportErrorObject() {
         )
     );
 }
+impl Default for PyImportErrorObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyUnicodeErrorObject {
     pub ob_base: PyObject,
     pub dict: *mut PyObject,
@@ -22793,8 +23621,17 @@ fn bindgen_test_layout_PyUnicodeErrorObject() {
         )
     );
 }
+impl Default for PyUnicodeErrorObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PySystemExitObject {
     pub ob_base: PyObject,
     pub dict: *mut PyObject,
@@ -22900,8 +23737,17 @@ fn bindgen_test_layout_PySystemExitObject() {
         )
     );
 }
+impl Default for PySystemExitObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyOSErrorObject {
     pub ob_base: PyObject,
     pub dict: *mut PyObject,
@@ -23052,8 +23898,17 @@ fn bindgen_test_layout_PyOSErrorObject() {
         )
     );
 }
+impl Default for PyOSErrorObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyStopIterationObject {
     pub ob_base: PyObject,
     pub dict: *mut PyObject,
@@ -23159,6 +24014,15 @@ fn bindgen_test_layout_PyStopIterationObject() {
             stringify!(value)
         )
     );
+}
+impl Default for PyStopIterationObject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 #[doc = " Compatibility typedefs"]
 pub type PyEnvironmentErrorObject = PyOSErrorObject;
@@ -23349,7 +24213,7 @@ extern "C" {
 pub type Py_tss_t = _Py_tss_t;
 #[doc = " Data structure to describe a process' schedulability."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct sched_param {
     pub sched_priority: ::std::os::raw::c_int,
 }
@@ -23382,7 +24246,7 @@ fn bindgen_test_layout_sched_param() {
 pub type __cpu_mask = ::std::os::raw::c_ulong;
 #[doc = " Data structure to describe CPU mask."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct cpu_set_t {
     pub __bits: [__cpu_mask; 16usize],
 }
@@ -23458,7 +24322,7 @@ extern "C" {
 pub type __jmp_buf = [::std::os::raw::c_long; 8usize];
 #[doc = " Calling environment, plus possibly a saved signal mask."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct __jmp_buf_tag {
     #[doc = " Calling environment."]
     pub __jmpbuf: __jmp_buf,
@@ -23556,7 +24420,7 @@ pub const PTHREAD_PROCESS_SHARED: _bindgen_ty_13 = 1;
 pub type _bindgen_ty_13 = ::std::os::raw::c_uint;
 #[doc = " Cleanup buffers"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct _pthread_cleanup_buffer {
     #[doc = " Function to call."]
     pub __routine: ::std::option::Option<unsafe extern "C" fn(arg1: *mut ::std::os::raw::c_void)>,
@@ -23622,6 +24486,15 @@ fn bindgen_test_layout__pthread_cleanup_buffer() {
             stringify!(__prev)
         )
     );
+}
+impl Default for _pthread_cleanup_buffer {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 pub const PTHREAD_CANCEL_ENABLE: _bindgen_ty_14 = 0;
 pub const PTHREAD_CANCEL_DISABLE: _bindgen_ty_14 = 1;
@@ -23854,7 +24727,7 @@ extern "C" {
 }
 #[doc = " Cancellation handling with integration into exception handling."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct __cancel_jmp_buf_tag {
     pub __cancel_jmp_buf: __jmp_buf,
     pub __mask_was_saved: ::std::os::raw::c_int,
@@ -23895,7 +24768,7 @@ fn bindgen_test_layout___cancel_jmp_buf_tag() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct __pthread_unwind_buf_t {
     pub __cancel_jmp_buf: [__cancel_jmp_buf_tag; 1usize],
     pub __pad: [*mut ::std::os::raw::c_void; 4usize],
@@ -23936,9 +24809,18 @@ fn bindgen_test_layout___pthread_unwind_buf_t() {
         )
     );
 }
+impl Default for __pthread_unwind_buf_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " Structure to hold the cleanup handler information."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct __pthread_cleanup_frame {
     pub __cancel_routine:
         ::std::option::Option<unsafe extern "C" fn(arg1: *mut ::std::os::raw::c_void)>,
@@ -24001,6 +24883,15 @@ fn bindgen_test_layout___pthread_cleanup_frame() {
             stringify!(__cancel_type)
         )
     );
+}
+impl Default for __pthread_cleanup_frame {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     pub fn __pthread_register_cancel(__buf: *mut __pthread_unwind_buf_t);
@@ -24395,7 +25286,7 @@ extern "C" {
 }
 #[doc = " When Py_LIMITED_API is not defined, the type layout of Py_tss_t is\nexposed to allow static allocation in the API clients.  Even in this case,\nyou must handle TSS keys through API functions due to compatibility."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct _Py_tss_t {
     pub _is_initialized: ::std::os::raw::c_int,
     pub _key: pthread_key_t,
@@ -24682,7 +25573,7 @@ extern "C" {
     ) -> *mut *mut PyObject;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct _PyArg_Parser {
     pub format: *const ::std::os::raw::c_char,
     pub keywords: *const *const ::std::os::raw::c_char,
@@ -24802,6 +25693,15 @@ fn bindgen_test_layout__PyArg_Parser() {
             stringify!(next)
         )
     );
+}
+impl Default for _PyArg_Parser {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     pub fn _PyArg_ParseTupleAndKeywordsFast(
@@ -24930,7 +25830,7 @@ extern "C" {
     ) -> *mut PyCodeObject;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyCompilerFlags {
     #[doc = " bitmask of CO_xxx flags relevant to future"]
     pub cf_flags: ::std::os::raw::c_int,
@@ -24974,7 +25874,7 @@ fn bindgen_test_layout_PyCompilerFlags() {
 }
 #[doc = " Future feature support"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PyFutureFeatures {
     #[doc = " flags set by future statements"]
     pub ff_features: ::std::os::raw::c_int,
@@ -25069,7 +25969,7 @@ extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct _PyASTOptimizeState {
     pub optimize: ::std::os::raw::c_int,
     pub ff_features: ::std::os::raw::c_int,
@@ -26033,7 +26933,7 @@ extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct _inittab {
     #[doc = " ASCII encoded string"]
     pub name: *const ::std::os::raw::c_char,
@@ -26074,6 +26974,15 @@ fn bindgen_test_layout__inittab() {
         )
     );
 }
+impl Default for _inittab {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     pub static mut PyImport_Inittab: *mut _inittab;
 }
@@ -26081,7 +26990,7 @@ extern "C" {
     pub fn PyImport_ExtendInittab(newtab: *mut _inittab) -> ::std::os::raw::c_int;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct _frozen {
     #[doc = " ASCII encoded string"]
     pub name: *const ::std::os::raw::c_char,
@@ -26132,6 +27041,15 @@ fn bindgen_test_layout__frozen() {
             stringify!(size)
         )
     );
+}
+impl Default for _frozen {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     #[doc = " Embedding apps may change this pointer to point to their favorite\ncollection of frozen modules:"]
@@ -27100,7 +28018,7 @@ extern "C" {
 }
 #[doc = " <add-type id=\"tuple_int_string_t def\">\n</add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct tuple_int_string_t {
     pub integer: ::std::os::raw::c_int,
     pub string: *mut ::std::os::raw::c_char,
@@ -27140,9 +28058,18 @@ fn bindgen_test_layout_tuple_int_string_t() {
         )
     );
 }
+impl Default for tuple_int_string_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " obsolete type; please use either buffer_t or bytes_t instead"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct byte_string_t {
     pub len: usize,
     pub str_: *mut uint8,
@@ -27182,9 +28109,18 @@ fn bindgen_test_layout_byte_string_t() {
         )
     );
 }
+impl Default for byte_string_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " <add-type id=\"buffer_t def\"></add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct buffer_t {
     pub data: *mut uint8,
     pub len: usize,
@@ -27224,9 +28160,18 @@ fn bindgen_test_layout_buffer_t() {
         )
     );
 }
+impl Default for buffer_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " <add-type id=\"bytes_t def\"></add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct bytes_t {
     pub data: *const uint8,
     pub len: usize,
@@ -27266,8 +28211,17 @@ fn bindgen_test_layout_bytes_t() {
         )
     );
 }
+impl Default for bytes_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct atomic_counter_t {
     pub c: uint32,
 }
@@ -27332,7 +28286,7 @@ pub type swap_mode = ::std::os::raw::c_uint;
 pub use self::swap_mode as swap_mode_t;
 #[doc = " <add id=\"map_info_t DOC\">\n<ndx>map_info_t</ndx>\n<ndx>swap_mode_t</ndx>\n<name index=\"true\">map_info_t</name>\n<doc>\n<doc-item name=\"NAME\">map_info_t, swap_mode_t</doc-item>\n<doc-item name=\"SYNOPSIS\">\n<ndx>map_type_t</ndx>\n<smaller>\n<insert id=\"map_info_t def\"/>\n</smaller>\n</doc-item>\n<doc-item name=\"DESCRIPTION\">\nThe <tt>map_info_t</tt> structure members have the following meaning:\n<ul>\n<li>\n<tt>base</tt>: The base address of the device mapping in the memory space.\n</li>\n<li>\n<tt>start</tt>: The address inside the device memory space where the mapping\nstarts.</li>\n<li><tt>length</tt>: The length of the mapped memory, in bytes.</li>\n<li><tt>function</tt>: Used to map the same object several times\nwith different functionality. Corresponds to the function argument used\nwhen mapping devices into a memory space.</li>\n<li>If the map target does not support large accesses, then\n<tt>align_size</tt> can be set to the maximum allowed size. Accesses\nspanning align boundaries will be split into several smaller\ntransactions. The align size must be a power of two, or zero (which\nmeans \"use the default value\": 8 for devices and 8192 for memory).</li>\n<li>Mappings with an align size of 2, 4, or 8 may set the\n<tt>reverse_endian</tt> field to a non zero value. This can be used to\nmodel bridges that perform byte swapping on a specific bus width.</li>\n</ul>\n\nIf both <tt>base</tt> and <tt>length</tt> are 0 the map will become a\n<tt>default_target</tt>.\n\n</doc-item>\n</doc>\n</add>\n\n<add-type id=\"map_info_t def\"></add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct map_info {
     pub base: physical_address_t,
     pub start: physical_address_t,
@@ -27427,6 +28381,15 @@ fn bindgen_test_layout_map_info() {
         )
     );
 }
+impl Default for map_info {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " <add id=\"map_info_t DOC\">\n<ndx>map_info_t</ndx>\n<ndx>swap_mode_t</ndx>\n<name index=\"true\">map_info_t</name>\n<doc>\n<doc-item name=\"NAME\">map_info_t, swap_mode_t</doc-item>\n<doc-item name=\"SYNOPSIS\">\n<ndx>map_type_t</ndx>\n<smaller>\n<insert id=\"map_info_t def\"/>\n</smaller>\n</doc-item>\n<doc-item name=\"DESCRIPTION\">\nThe <tt>map_info_t</tt> structure members have the following meaning:\n<ul>\n<li>\n<tt>base</tt>: The base address of the device mapping in the memory space.\n</li>\n<li>\n<tt>start</tt>: The address inside the device memory space where the mapping\nstarts.</li>\n<li><tt>length</tt>: The length of the mapped memory, in bytes.</li>\n<li><tt>function</tt>: Used to map the same object several times\nwith different functionality. Corresponds to the function argument used\nwhen mapping devices into a memory space.</li>\n<li>If the map target does not support large accesses, then\n<tt>align_size</tt> can be set to the maximum allowed size. Accesses\nspanning align boundaries will be split into several smaller\ntransactions. The align size must be a power of two, or zero (which\nmeans \"use the default value\": 8 for devices and 8192 for memory).</li>\n<li>Mappings with an align size of 2, 4, or 8 may set the\n<tt>reverse_endian</tt> field to a non zero value. This can be used to\nmodel bridges that perform byte swapping on a specific bus width.</li>\n</ul>\n\nIf both <tt>base</tt> and <tt>length</tt> are 0 the map will become a\n<tt>default_target</tt>.\n\n</doc-item>\n</doc>\n</add>\n\n<add-type id=\"map_info_t def\"></add-type>"]
 pub type map_info_t = map_info;
 pub const map_type_t_Sim_Map_Ram: map_type_t = 0;
@@ -27449,7 +28412,7 @@ pub struct page {
 pub type page_t = page;
 #[doc = " <add id=\"map_list_t DOC\">\n<ndx>map_list_t</ndx>\n<ndx>map_type_t</ndx>\n<name index=\"true\">map_list_t</name>\n<doc>\n<doc-item name=\"NAME\">map_list_t, map_type_t</doc-item>\n<doc-item name=\"SYNOPSIS\">\n<ndx>map_type_t</ndx><ndx>map_info_t</ndx>\n<smaller>\n<insert id=\"map_type_t def\"/>\n<insert id=\"struct map_list def\"/>\n</smaller>\n</doc-item>\n<doc-item name=\"DESCRIPTION\">\nThis data structure is used to pass information about the set of\nmappings a particular address in an address space contains.\n</doc-item>\n</doc>\n</add>\n<add-type id=\"struct map_list def\"></add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct map_list {
     pub map_type: map_type_t,
     pub object: *mut conf_object_t,
@@ -27623,6 +28586,15 @@ fn bindgen_test_layout_map_list() {
         )
     );
 }
+impl Default for map_list {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " <add id=\"map_list_t DOC\">\n<ndx>map_list_t</ndx>\n<ndx>map_type_t</ndx>\n<name index=\"true\">map_list_t</name>\n<doc>\n<doc-item name=\"NAME\">map_list_t, map_type_t</doc-item>\n<doc-item name=\"SYNOPSIS\">\n<ndx>map_type_t</ndx><ndx>map_info_t</ndx>\n<smaller>\n<insert id=\"map_type_t def\"/>\n<insert id=\"struct map_list def\"/>\n</smaller>\n</doc-item>\n<doc-item name=\"DESCRIPTION\">\nThis data structure is used to pass information about the set of\nmappings a particular address in an address space contains.\n</doc-item>\n</doc>\n</add>\n<add-type id=\"struct map_list def\"></add-type>"]
 pub type map_list_t = map_list;
 #[doc = " Type provided for backwards compatibility."]
@@ -27671,7 +28643,7 @@ pub const cpu_endian_t_Sim_Endian_Little: cpu_endian_t = 0;
 pub const cpu_endian_t_Sim_Endian_Big: cpu_endian_t = 1;
 pub type cpu_endian_t = ::std::os::raw::c_uint;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct physical_block_t {
     pub valid: ::std::os::raw::c_int,
     pub address: physical_address_t,
@@ -27744,7 +28716,7 @@ pub type granted_mem_t = granted_mem;
 pub type direct_memory_handle_t = *mut granted_mem_t;
 #[doc = " <add id=\"direct_memory_t\">\n<ndx>direct_memory_t</ndx>\n<insert-upto text=\"direct_memory_t;\"/>\n</add>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct direct_memory_t {
     pub data: *mut uint8,
     pub permission: access_t,
@@ -27795,11 +28767,20 @@ fn bindgen_test_layout_direct_memory_t() {
         )
     );
 }
+impl Default for direct_memory_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " <add-type id=\"direct_memory_ack_id_t\"></add-type>"]
 pub type direct_memory_ack_id_t = uint64;
 #[doc = " <add id=\"direct_memory_lookup_t\">\n<ndx>direct_memory_t</ndx>\n<insert-upto text=\"direct_memory_lookup_t;\"/>\n</add>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct direct_memory_lookup_t {
     pub target: *mut conf_object_t,
     pub offs: uint64,
@@ -27876,9 +28857,18 @@ fn bindgen_test_layout_direct_memory_lookup_t() {
         )
     );
 }
+impl Default for direct_memory_lookup_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " <add id=\"direct_memory_tags_t\">\n<ndx>direct_memory_tags_t</ndx>\n<insert-upto text=\"direct_memory_tags_t;\"/>\n</add>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct direct_memory_tags_t {
     pub data: *mut uint8,
     pub len: ::std::os::raw::c_uint,
@@ -27917,6 +28907,15 @@ fn bindgen_test_layout_direct_memory_tags_t() {
             stringify!(len)
         )
     );
+}
+impl Default for direct_memory_tags_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     pub fn SIM_version() -> *const ::std::os::raw::c_char;
@@ -27959,7 +28958,7 @@ extern "C" {
 }
 #[doc = " Please do not access the members of this struct directly;\nuse the accessor functions defined in this file.\nInvariants:\n- .s[.len] == '\\0'\n- If .size == 0, then .len == 0 and .s points to a static null byte\n- If .size > 0, then 0 <= .len < .size\nand .s points to an allocation of .size bytes."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct strbuf_t {
     #[doc = " string, always 0-terminated"]
     pub s: *mut ::std::os::raw::c_char,
@@ -28012,6 +29011,15 @@ fn bindgen_test_layout_strbuf_t() {
             stringify!(len)
         )
     );
+}
+impl Default for strbuf_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     pub fn sb_new(s: *const ::std::os::raw::c_char) -> strbuf_t;
@@ -28289,6 +29297,15 @@ fn bindgen_test_layout_attr_value__bindgen_ty_1() {
         )
     );
 }
+impl Default for attr_value__bindgen_ty_1 {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[test]
 fn bindgen_test_layout_attr_value() {
     const UNINIT: ::std::mem::MaybeUninit<attr_value> = ::std::mem::MaybeUninit::uninit();
@@ -28334,6 +29351,15 @@ fn bindgen_test_layout_attr_value() {
         )
     );
 }
+impl Default for attr_value {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct attr_dict_pair {
@@ -28374,6 +29400,15 @@ fn bindgen_test_layout_attr_dict_pair() {
             stringify!(value)
         )
     );
+}
+impl Default for attr_dict_pair {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     #[doc = " attr_value_t accessors and constructors"]
@@ -28502,7 +29537,7 @@ pub const block_flag_t_Sim_Block_DSTC_Disabled: block_flag_t = 64;
 pub type block_flag_t = ::std::os::raw::c_uint;
 #[doc = " <add id=\"generic_transaction_t DOC\">\n<ndx>generic_transaction_t</ndx>\n<name index=\"true\">generic_transaction_t</name>\n<doc>\n\n<doc-item name=\"NAME\">generic_transaction_t</doc-item>\n\n<doc-item name=\"DESCRIPTION\"> A <type>generic_transaction_t</type>\nrepresents a memory transaction. It should only be accessed via the accessor\nfunctions documented in <cite>Device API Functions, Core, Memory\nTransactions</cite>.</doc-item>\n\n</doc>\n</add>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct generic_transaction {
     pub logical_address: logical_address_t,
     pub physical_address: physical_address_t,
@@ -28685,6 +29720,15 @@ fn bindgen_test_layout_generic_transaction() {
             stringify!(reserved2)
         )
     );
+}
+impl Default for generic_transaction {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 impl generic_transaction {
     #[inline]
@@ -28981,7 +30025,7 @@ pub const translation_flags_t_Sim_Translation_Ambiguous: translation_flags_t = 2
 #[doc = " <add id=\"translation_t DOC\">\n<ndx>translation_flags_t</ndx>\n<ndx>translation_t</ndx>\n<name index=\"true\">translation_t</name>\n\n<doc>\n<doc-item name=\"NAME\">translation_t</doc-item>\n<doc-item name=\"DESCRIPTION\">\n<insert id=\"translation_t description\"/>\n</doc-item>\n</doc>\n</add>\n\n<add id=\"translation_t description\">\n\nThe <type>translation_t</type> type is used for the implementation\nof the <iface>translator</iface> and <iface>transaction_translator</iface>\ninterfaces. It describes the range\nfor which the translation is valid, its target as well as\ntranslation properties.\n\nThe range for which the translation is valid is specified by the\nfields <param>base</param> and <param>size</param>. As a special case,\nif <param>size</param> and <param>base</param> are both 0, then the\ntranslation is valid for the entire address space. To allow optimizations\n(e.g., caching of translations) translators should return as wide ranges\nas possible.\n\nThe <param>target</param> field specifies the object and interface\nport which is mapped into the address range in the form of a map target.\nMap targets can be created using the function\n<fun>SIM_new_map_target</fun>. Please note that the ownership over\nthe returned map target is not transferred to the interface caller.\nThis means that to avoid memory leaks the reference to the map\ntarget must be kept by the implementing object, and\n<fun>SIM_free_map_target</fun> function should be later used to\ndeallocate the map target. Possible map targets include IO\nbanks, RAM, ROM, memory spaces, port spaces, bridges, and translators.\nThe <param>base</param> address in the source address space is\nmapped to the target address returned in the <param>start</param> field.\n\nA null value returned in the <param>target</param> field signifies that\nthe translation cannot be done. This can happen if there is nothing mapped\nin the range defined by <param>base</param> and <param>size</param>\n(transactions directed to this region will be terminated\nwith the pseudo exception <const>Sim_PE_IO_Not_Taken</const>) or\nif a translation valid for all requested accesses cannot be performed.\nIn the latter case, the requestor is expected to repeat\nthe interface call with just a single bit set in the access mask,\ne.g. <const>Sim_Access_Read</const>.\n\nIf the returned translation is not static but instead depends on e.g.\na device register, then the translator can set the flags field\nto <const>Sim_Translation_Dynamic</const>. This flag indicates that\nthe translation must not be cached. If this flag is not used, then it\nis the responsibility of the translator to call\neither <fun>SIM_map_target_flush</fun> (preferably)\nor <fun>SIM_translation_changed</fun> function when a previously performed\ntranslation is no longer valid.\n\nThe <const>Sim_Translation_Ambiguous</const> flag should not generally\nbe used by models. It is used by Simics objects of\nthe <class>memory-space</class> class to indicate an error in\nthe memory mapping when several destinations are specified for the address.\n\n<insert-until text=\"// ADD TYPE translation\"/>\n\n<doc-item name=\"SEE ALSO\">\n<fun>SIM_map_target_flush</fun>,\n<fun>SIM_translation_changed</fun>\n</doc-item>\n\n</add>"]
 pub type translation_flags_t = ::std::os::raw::c_uint;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct translation_t {
     #[doc = " target of translation"]
     pub target: *const map_target_t,
@@ -29058,6 +30102,15 @@ fn bindgen_test_layout_translation_t() {
         )
     );
 }
+impl Default for translation_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 pub const atom_id_t_Sim_Atom_Id_illegal: atom_id_t = 0;
 pub const atom_id_t_Sim_Atom_Id_list_end: atom_id_t = 1;
 pub const atom_id_t_Sim_Atom_Id_flags: atom_id_t = 2;
@@ -29088,7 +30141,7 @@ pub const atom_id_t_Sim_Atom_Id_arm_nsaid: atom_id_t = 516;
 pub type atom_id_t = ::std::os::raw::c_uint;
 #[doc = " <add id=\"atom_t DOC\">\n<ndx>atom_t</ndx>\n<name index=\"true\">atom_t</name>\n<doc>\n\n<doc-item name=\"NAME\">atom_t</doc-item>\n\n<doc-item name=\"DESCRIPTION\"> The <type>atom_t</type> type is a container\ntype for tagged data associated with a transaction. The kind of data\nstored in the atom is determined by the <var>id</var> field, and a pointer\nto the data or the data itself is stored in the <var>ptr</var> field.\n\nAtoms should always be initialized using provided constructor functions\nlike <fun>ATOM_flags</fun> or <fun>ATOM_size</fun>. Usage of\nthe constructors ensures that the data payload is of the correct type\nand that the <fun>id</fun> is set to the correct value.\n\nAtom lists must be terminated with the special <const>ATOM_LIST_END</const>\nmarker.\n</doc-item>\n</doc></add>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct atom_t {
     pub id: atom_id_t,
     pub ptr: *mut ::std::os::raw::c_void,
@@ -29128,9 +30181,18 @@ fn bindgen_test_layout_atom_t() {
         )
     );
 }
+impl Default for atom_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " <add id=\"transaction_t DOC\">\n<ndx>transaction_t</ndx>\n<name index=\"true\">transaction_t</name>\n<doc>\n\n<doc-item name=\"NAME\">transaction_t</doc-item>\n\n<doc-item name=\"DESCRIPTION\"> A <type>transaction_t</type>\nrepresents a memory transaction. The properties of the\ntransaction is stored in the form of an atom list, where each\natom describes a particular aspect of the transaction, like the\nsize of the transaction.\n\nThe field <var>atoms</var> points to the atoms list,\nwhich must be terminated with the constant <const>ATOM_LIST_END</const>.\n\nThe <var>prev</var> field points to an optional parent transaction.\nIf a particular atom is not found in the atoms list, then the\nparent's list of atoms is consulted instead. The <var>prev</var>\npointer is also used when a chained transaction is monitored\nwith <fun>SIM_monitor_chained_transaction</fun>.\n\nBesides the fields above, the transaction contains some internal\nfields that should be initialized to 0. The internal fields should\nnot be referenced explicitly since they are likely to change\nin future Simics releases.\n\nFor details, please refer to \"Transactions\" chapter in\nthe Model Builder's User Guide.\n\n</doc-item>\n</doc></add>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct transaction {
     pub atoms: *mut atom_t,
     pub prev: *mut transaction,
@@ -29191,6 +30253,15 @@ fn bindgen_test_layout_transaction() {
             stringify!(_status)
         )
     );
+}
+impl Default for transaction {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 #[doc = " <add id=\"transaction_t DOC\">\n<ndx>transaction_t</ndx>\n<name index=\"true\">transaction_t</name>\n<doc>\n\n<doc-item name=\"NAME\">transaction_t</doc-item>\n\n<doc-item name=\"DESCRIPTION\"> A <type>transaction_t</type>\nrepresents a memory transaction. The properties of the\ntransaction is stored in the form of an atom list, where each\natom describes a particular aspect of the transaction, like the\nsize of the transaction.\n\nThe field <var>atoms</var> points to the atoms list,\nwhich must be terminated with the constant <const>ATOM_LIST_END</const>.\n\nThe <var>prev</var> field points to an optional parent transaction.\nIf a particular atom is not found in the atoms list, then the\nparent's list of atoms is consulted instead. The <var>prev</var>\npointer is also used when a chained transaction is monitored\nwith <fun>SIM_monitor_chained_transaction</fun>.\n\nBesides the fields above, the transaction contains some internal\nfields that should be initialized to 0. The internal fields should\nnot be referenced explicitly since they are likely to change\nin future Simics releases.\n\nFor details, please refer to \"Transactions\" chapter in\nthe Model Builder's User Guide.\n\n</doc-item>\n</doc></add>"]
 pub type transaction_t = transaction;
@@ -29371,7 +30442,7 @@ extern "C" {
     pub fn SIM_register_python_atom_type(name: *const ::std::os::raw::c_char);
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct dummy_semicolon_eater_completion {
     pub dummy: ::std::os::raw::c_int,
 }
@@ -29405,7 +30476,7 @@ fn bindgen_test_layout_dummy_semicolon_eater_completion() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct dummy_semicolon_eater_flags {
     pub dummy: ::std::os::raw::c_int,
 }
@@ -29436,7 +30507,7 @@ fn bindgen_test_layout_dummy_semicolon_eater_flags() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct dummy_semicolon_eater_user_data {
     pub dummy: ::std::os::raw::c_int,
 }
@@ -29467,7 +30538,7 @@ fn bindgen_test_layout_dummy_semicolon_eater_user_data() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct dummy_semicolon_eater_memop {
     pub dummy: ::std::os::raw::c_int,
 }
@@ -29498,7 +30569,7 @@ fn bindgen_test_layout_dummy_semicolon_eater_memop() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct dummy_semicolon_eater_fill_value {
     pub dummy: ::std::os::raw::c_int,
 }
@@ -29532,7 +30603,7 @@ fn bindgen_test_layout_dummy_semicolon_eater_fill_value() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct dummy_semicolon_eater_initiator {
     pub dummy: ::std::os::raw::c_int,
 }
@@ -29563,7 +30634,7 @@ fn bindgen_test_layout_dummy_semicolon_eater_initiator() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct dummy_semicolon_eater_owner {
     pub dummy: ::std::os::raw::c_int,
 }
@@ -29594,7 +30665,7 @@ fn bindgen_test_layout_dummy_semicolon_eater_owner() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct dummy_semicolon_eater_list_end {
     pub dummy: ::std::os::raw::c_int,
 }
@@ -29625,7 +30696,7 @@ fn bindgen_test_layout_dummy_semicolon_eater_list_end() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct dummy_semicolon_eater_data {
     pub dummy: ::std::os::raw::c_int,
 }
@@ -29656,7 +30727,7 @@ fn bindgen_test_layout_dummy_semicolon_eater_data() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct dummy_semicolon_eater_size {
     pub dummy: ::std::os::raw::c_int,
 }
@@ -29687,7 +30758,7 @@ fn bindgen_test_layout_dummy_semicolon_eater_size() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct dummy_semicolon_eater_bytemap {
     pub dummy: ::std::os::raw::c_int,
 }
@@ -29741,7 +30812,7 @@ pub const arm_mem_instr_origin_t_Instr_Count: arm_mem_instr_origin_t = 9;
 pub type arm_mem_instr_origin_t = ::std::os::raw::c_uint;
 #[doc = " <add id=\"arm_memory_transaction_t DOC\">\n<ndx>arm_memory_transaction_t</ndx>\n<name index=\"true\">arm_memory_transaction_t</name>\n<doc>\n<doc-item name=\"NAME\">arm_memory_transaction_t</doc-item>\n<doc-item name=\"SYNOPSIS\"><insert id=\"arm_memory_transaction_t def\"/>\n</doc-item>\n<doc-item name=\"DESCRIPTION\">\n\nThis is the ARM specific memory transaction data structure.\nThe generic data is stored in the <var>s</var> field.\n\nThe <var>mode</var> field specifies the processor mode the MMU should assume\nwhen processing the transaction. This is the same as the current mode of the\nprocessor except for unprivileged load and store instructions when it is\nalways <const>Sim_CPU_Mode_User</const>.\n\nThe <var>rotate</var> field is non-zero if this transaction is from one of\nthe AArch32 instructions for which an unaligned address is interpreted as an\naligned load with the value rotated so that the addressed byte becomes the\nleast significant byte if neither <reg>SCTLR.U</reg> nor <reg>SCTLR.A</reg>\nis set.\n\nThe <var>instr_origin</var> field specifies the type of instruction that\ninitiated this memory transaction.\n\n</doc-item>\n</doc>\n</add>\n\n<add-type id=\"arm_memory_transaction_t def\"></add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct arm_memory_transaction {
     pub s: generic_transaction_t,
     pub mode: processor_mode_t,
@@ -29804,6 +30875,15 @@ fn bindgen_test_layout_arm_memory_transaction() {
         )
     );
 }
+impl Default for arm_memory_transaction {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " <add id=\"arm_memory_transaction_t DOC\">\n<ndx>arm_memory_transaction_t</ndx>\n<name index=\"true\">arm_memory_transaction_t</name>\n<doc>\n<doc-item name=\"NAME\">arm_memory_transaction_t</doc-item>\n<doc-item name=\"SYNOPSIS\"><insert id=\"arm_memory_transaction_t def\"/>\n</doc-item>\n<doc-item name=\"DESCRIPTION\">\n\nThis is the ARM specific memory transaction data structure.\nThe generic data is stored in the <var>s</var> field.\n\nThe <var>mode</var> field specifies the processor mode the MMU should assume\nwhen processing the transaction. This is the same as the current mode of the\nprocessor except for unprivileged load and store instructions when it is\nalways <const>Sim_CPU_Mode_User</const>.\n\nThe <var>rotate</var> field is non-zero if this transaction is from one of\nthe AArch32 instructions for which an unaligned address is interpreted as an\naligned load with the value rotated so that the addressed byte becomes the\nleast significant byte if neither <reg>SCTLR.U</reg> nor <reg>SCTLR.A</reg>\nis set.\n\nThe <var>instr_origin</var> field specifies the type of instruction that\ninitiated this memory transaction.\n\n</doc-item>\n</doc>\n</add>\n\n<add-type id=\"arm_memory_transaction_t def\"></add-type>"]
 pub type arm_memory_transaction_t = arm_memory_transaction;
 extern "C" {
@@ -29813,7 +30893,7 @@ extern "C" {
 }
 pub type arm_interface_t = arm_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct arm_interface {
     pub read_register_mode: ::std::option::Option<
         unsafe extern "C" fn(
@@ -29868,7 +30948,7 @@ fn bindgen_test_layout_arm_interface() {
 }
 pub type arm_coprocessor_interface_t = arm_coprocessor_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct arm_coprocessor_interface {
     pub process_data: ::std::option::Option<
         unsafe extern "C" fn(
@@ -30040,7 +31120,7 @@ fn bindgen_test_layout_arm_coprocessor_interface() {
 }
 #[doc = " <add id=\"arm_avic_interface_t\">\n\nThe <iface>ARM AVIC</iface> interface makes it possible for an ARM\nprocessor to get the interrupt vector address from an AVIC device\nconnected to the processor core. Both processor and AVIC must\nenable the AVIC interface to support this feature.\n\nThe processor calls <fun>get_interrupt_address</fun> function to\nget the interrupt vector address. The AVIC returns an\n<em>arm_avic_t</em> struct with a <i>valid</i> field and an\n<i>address</i> field, the <i>address</i> field is only valid when\nthe <i>valid</i> is not <tt>0</tt>.\n\n<insert-until text=\"// ADD INTERFACE arm_avic_interface\"/>\n</add>\n<add id=\"arm_avic_interface_exec_context\">\nCell Context for all methods.\n</add>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct arm_avic {
     pub valid: ::std::os::raw::c_int,
     pub address: uint32,
@@ -30084,7 +31164,7 @@ fn bindgen_test_layout_arm_avic() {
 pub type arm_avic_t = arm_avic;
 pub type arm_avic_interface_t = arm_avic_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct arm_avic_interface {
     pub get_interrupt_address:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> arm_avic_t>,
@@ -30120,7 +31200,7 @@ pub const arm_trustzone_mode_t_Arm_Trustzone_Non_Secure: arm_trustzone_mode_t = 
 pub type arm_trustzone_mode_t = ::std::os::raw::c_uint;
 pub type arm_trustzone_interface_t = arm_trustzone_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct arm_trustzone_interface {
     pub get_security_mode: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t) -> arm_trustzone_mode_t,
@@ -30170,7 +31250,7 @@ fn bindgen_test_layout_arm_trustzone_interface() {
 }
 pub type arm_external_debug_interface_t = arm_external_debug_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct arm_external_debug_interface {
     pub handle_semihosting: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
     pub read_reg: ::std::option::Option<
@@ -30228,7 +31308,7 @@ fn bindgen_test_layout_arm_external_debug_interface() {
 }
 #[doc = " <add id=\"arm_gic_interface_t\"> This <iface>arm_gic</iface> interface is used\naccessing registers in a device implementing the Generic Interrupt\nController architecture..\n\nThe <fun>read_register</fun> function is called reading the registers in GIC\ndevice.\n\nThe <fun>write_register</fun> function is called writing the registers in\nGIC device.\n\nThe <fun>cpu_state_changed</fun> function is called to notify the GIC device\nthat the cpu has changed state. This function is only called when the cpu\nchanges state with an interrupt pending. </add>\n\n<add id=\"arm_gic_interface_exec_context\">\nCell Context for all methods.\n</add>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct arm_cpu_state {
     #[doc = " scr_el3.irq"]
     pub fmo_set: bool,
@@ -30329,7 +31409,7 @@ fn bindgen_test_layout_arm_cpu_state() {
 #[doc = " <add id=\"arm_gic_interface_t\"> This <iface>arm_gic</iface> interface is used\naccessing registers in a device implementing the Generic Interrupt\nController architecture..\n\nThe <fun>read_register</fun> function is called reading the registers in GIC\ndevice.\n\nThe <fun>write_register</fun> function is called writing the registers in\nGIC device.\n\nThe <fun>cpu_state_changed</fun> function is called to notify the GIC device\nthat the cpu has changed state. This function is only called when the cpu\nchanges state with an interrupt pending. </add>\n\n<add id=\"arm_gic_interface_exec_context\">\nCell Context for all methods.\n</add>"]
 pub type arm_cpu_state_t = arm_cpu_state;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct gic_reg_info {
     pub op1: ::std::os::raw::c_int,
     pub crn: ::std::os::raw::c_int,
@@ -30405,7 +31485,7 @@ fn bindgen_test_layout_gic_reg_info() {
 pub type gic_reg_info_t = gic_reg_info;
 pub type arm_gic_interface_t = arm_gic_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct arm_gic_interface {
     pub read_register: ::std::option::Option<
         unsafe extern "C" fn(
@@ -30468,7 +31548,7 @@ fn bindgen_test_layout_arm_gic_interface() {
 }
 pub type arm_gic_cpu_state_interface_t = arm_gic_cpu_state_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct arm_gic_cpu_state_interface {
     pub get_cpu_state:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> arm_cpu_state_t>,
@@ -30544,7 +31624,7 @@ pub union arm_memory_attributes_encoding_t {
 }
 #[repr(C)]
 #[repr(align(8))]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct arm_memory_attributes_encoding_t__bindgen_ty_1 {
     pub _bitfield_align_1: [u8; 0],
     pub _bitfield_1: __BindgenBitfieldUnit<[u8; 3usize]>,
@@ -30780,6 +31860,15 @@ fn bindgen_test_layout_arm_memory_attributes_encoding_t() {
         )
     );
 }
+impl Default for arm_memory_attributes_encoding_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " <add-type id=\"arm_smmu_attributes_t def\"></add-type>"]
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -30789,7 +31878,7 @@ pub union arm_smmu_attributes_t {
 }
 #[repr(C)]
 #[repr(align(8))]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct arm_smmu_attributes_t__bindgen_ty_1 {
     pub _bitfield_align_1: [u32; 0],
     pub _bitfield_1: __BindgenBitfieldUnit<[u8; 7usize]>,
@@ -30934,8 +32023,17 @@ fn bindgen_test_layout_arm_smmu_attributes_t() {
         )
     );
 }
+impl Default for arm_smmu_attributes_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct dummy_semicolon_eater_arm_privileged {
     pub dummy: ::std::os::raw::c_int,
 }
@@ -30972,7 +32070,7 @@ fn bindgen_test_layout_dummy_semicolon_eater_arm_privileged() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct dummy_semicolon_eater_arm_nonsecure {
     pub dummy: ::std::os::raw::c_int,
 }
@@ -31006,7 +32104,7 @@ fn bindgen_test_layout_dummy_semicolon_eater_arm_nonsecure() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct dummy_semicolon_eater_arm_memory_attributes {
     pub dummy: ::std::os::raw::c_int,
 }
@@ -31043,7 +32141,7 @@ fn bindgen_test_layout_dummy_semicolon_eater_arm_memory_attributes() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct dummy_semicolon_eater_arm_smmu_attributes {
     pub dummy: ::std::os::raw::c_int,
 }
@@ -31080,7 +32178,7 @@ fn bindgen_test_layout_dummy_semicolon_eater_arm_smmu_attributes() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct dummy_semicolon_eater_arm_nsaid {
     pub dummy: ::std::os::raw::c_int,
 }
@@ -31112,7 +32210,7 @@ fn bindgen_test_layout_dummy_semicolon_eater_arm_nsaid() {
 }
 pub type i8051_interrupt_interface_t = i8051_interrupt_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct i8051_interrupt_interface {
     pub active_interrupt: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t) -> ::std::os::raw::c_int,
@@ -31169,7 +32267,7 @@ fn bindgen_test_layout_i8051_interrupt_interface() {
 }
 pub type i8051_timer_interface_t = i8051_timer_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct i8051_timer_interface {
     pub change_mode:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t, mode: uint8)>,
@@ -31223,7 +32321,7 @@ pub struct sclass {
 pub type sclass_t = sclass;
 #[doc = " Please do not access the members of this struct directly"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct sobject {
     pub isa: *mut sclass_t,
     pub props: *mut proplist,
@@ -31262,6 +32360,15 @@ fn bindgen_test_layout_sobject() {
             stringify!(props)
         )
     );
+}
+impl Default for sobject {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 pub const attr_attr_t_Sim_Attr_Required: attr_attr_t = 0;
 pub const attr_attr_t_Sim_Attr_Optional: attr_attr_t = 1;
@@ -31331,7 +32438,7 @@ pub struct conf_class {
 }
 pub type conf_class_t = conf_class;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct class_data {
     pub alloc_object:
         ::std::option::Option<unsafe extern "C" fn(data: *mut lang_void) -> *mut conf_object_t>,
@@ -31442,9 +32549,18 @@ fn bindgen_test_layout_class_data() {
         )
     );
 }
+impl Default for class_data {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 pub type class_data_t = class_data;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct class_info {
     pub alloc:
         ::std::option::Option<unsafe extern "C" fn(cls: *mut conf_class_t) -> *mut conf_object_t>,
@@ -31563,10 +32679,19 @@ fn bindgen_test_layout_class_info() {
         )
     );
 }
+impl Default for class_info {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 pub type class_info_t = class_info;
 #[doc = " Opaque struct - do not access members directly!"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct conf_object {
     pub sobj: sobject_t,
     pub instance_data: *mut ::std::os::raw::c_void,
@@ -31661,6 +32786,15 @@ fn bindgen_test_layout_conf_object() {
         )
     );
 }
+impl Default for conf_object {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     #[doc = " Register new class. Returns NULL on failure."]
     pub fn SIM_register_class(
@@ -31743,7 +32877,7 @@ extern "C" {
         -> *mut _object;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct object_iter_t {
     #[doc = " Opaque fields. Do not access directly."]
     pub node: *mut conf_object_t,
@@ -31794,6 +32928,15 @@ fn bindgen_test_layout_object_iter_t() {
             stringify!(kind)
         )
     );
+}
+impl Default for object_iter_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     pub fn SIM_object_iterator(obj: *mut conf_object_t) -> object_iter_t;
@@ -32049,7 +33192,7 @@ extern "C" {
     ) -> *const class_interface_t;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct interface_array_t {
     pub size: ::std::os::raw::c_int,
     pub used: ::std::os::raw::c_int,
@@ -32099,6 +33242,15 @@ fn bindgen_test_layout_interface_array_t() {
             stringify!(elements)
         )
     );
+}
+impl Default for interface_array_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     pub fn VT_register_port_array_interface(
@@ -32163,7 +33315,7 @@ pub type cpu_cb_handle_t = instrumentation_entry;
 pub type cpu_stream_handle_t = instrumentation_entry;
 #[doc = " <add-type id=\"cpu_bytes_t\"></add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct cpu_bytes {
     pub size: usize,
     pub data: *const uint8,
@@ -32203,11 +33355,20 @@ fn bindgen_test_layout_cpu_bytes() {
         )
     );
 }
+impl Default for cpu_bytes {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " <add-type id=\"cpu_bytes_t\"></add-type>"]
 pub type cpu_bytes_t = cpu_bytes;
 pub type cpu_instruction_query_interface_t = cpu_instruction_query_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct cpu_instruction_query_interface {
     pub logical_address: ::std::option::Option<
         unsafe extern "C" fn(
@@ -32281,7 +33442,7 @@ pub const page_crossing_info_t_Sim_Page_Crossing_Second: page_crossing_info_t = 
 pub type page_crossing_info_t = ::std::os::raw::c_uint;
 pub type cpu_memory_query_interface_t = cpu_memory_query_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct cpu_memory_query_interface {
     pub logical_address: ::std::option::Option<
         unsafe extern "C" fn(
@@ -32440,7 +33601,7 @@ fn bindgen_test_layout_cpu_memory_query_interface() {
 }
 pub type cpu_exception_query_interface_t = cpu_exception_query_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct cpu_exception_query_interface {
     pub exception_number: ::std::option::Option<
         unsafe extern "C" fn(
@@ -32519,7 +33680,7 @@ pub type cpu_memory_cb_t = ::std::option::Option<
 >;
 pub type cpu_cached_instruction_interface_t = cpu_cached_instruction_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct cpu_cached_instruction_interface {
     pub register_instruction_before_cb: ::std::option::Option<
         unsafe extern "C" fn(
@@ -32679,7 +33840,7 @@ fn bindgen_test_layout_cpu_cached_instruction_interface() {
 }
 pub type cpu_cached_instruction_once_interface_t = cpu_cached_instruction_once_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct cpu_cached_instruction_once_interface {
     pub register_instruction_before_once_cb: ::std::option::Option<
         unsafe extern "C" fn(
@@ -32748,7 +33909,7 @@ fn bindgen_test_layout_cpu_cached_instruction_once_interface() {
 }
 pub type internal_cached_instruction_interface_t = internal_cached_instruction_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct internal_cached_instruction_interface {
     pub add_counters: ::std::option::Option<
         unsafe extern "C" fn(
@@ -32834,7 +33995,7 @@ pub type cpu_emulation_cb_t = ::std::option::Option<
 >;
 pub type cpu_instruction_decoder_interface_t = cpu_instruction_decoder_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct cpu_instruction_decoder_interface {
     pub register_emulation_cb: ::std::option::Option<
         unsafe extern "C" fn(
@@ -32963,7 +34124,7 @@ pub const cpu_access_scope_t_CPU_Access_Scope_Implicit: cpu_access_scope_t = 1;
 pub type cpu_access_scope_t = ::std::os::raw::c_uint;
 pub type cpu_instrumentation_subscribe_interface_t = cpu_instrumentation_subscribe_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct cpu_instrumentation_subscribe_interface {
     #[doc = " Callback specific methods"]
     pub remove_callback: ::std::option::Option<
@@ -33408,7 +34569,7 @@ pub type cpu_stream_enum_t = ::std::os::raw::c_uint;
 #[doc = " Contains bits created by using bit numbers from cpu_stream_enum_t"]
 pub type cpu_stream_bits_t = uint64;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct cpu_stream_data_t {
     #[doc = " stored as CPU_STREAM_MAKE_TYPE(type, data)"]
     pub tag: uint64,
@@ -33452,7 +34613,7 @@ fn bindgen_test_layout_cpu_stream_data_t() {
 }
 pub type cpu_cached_stream_interface_t = cpu_cached_stream_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct cpu_cached_stream_interface {
     pub add_stream: ::std::option::Option<
         unsafe extern "C" fn(
@@ -33492,7 +34653,7 @@ fn bindgen_test_layout_cpu_cached_stream_interface() {
 }
 pub type cpu_instrumentation_stream_interface_t = cpu_instrumentation_stream_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct cpu_instrumentation_stream_interface {
     pub add_stream: ::std::option::Option<
         unsafe extern "C" fn(
@@ -33564,7 +34725,7 @@ pub type pre_decoder_cb_t = ::std::option::Option<
 >;
 pub type pre_decoder_interface_t = pre_decoder_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct pre_decoder_interface {
     pub register_pre_decoder_cb: ::std::option::Option<
         unsafe extern "C" fn(
@@ -33603,7 +34764,7 @@ fn bindgen_test_layout_pre_decoder_interface() {
 }
 pub type mips_exception_query_interface_t = mips_exception_query_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct mips_exception_query_interface {
     pub return_pc: ::std::option::Option<
         unsafe extern "C" fn(
@@ -33640,7 +34801,7 @@ fn bindgen_test_layout_mips_exception_query_interface() {
 }
 #[doc = " <add-type id=\"mips_memory_transaction_t def\">\n</add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct mips_memory_transaction {
     #[doc = " generic transaction"]
     pub s: generic_transaction_t,
@@ -33673,6 +34834,15 @@ fn bindgen_test_layout_mips_memory_transaction() {
             stringify!(s)
         )
     );
+}
+impl Default for mips_memory_transaction {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 impl mips_memory_transaction {
     #[inline]
@@ -33707,7 +34877,7 @@ extern "C" {
 }
 pub type mips_interface_t = mips_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct mips_interface {
     pub dummy: ::std::os::raw::c_int,
 }
@@ -33738,7 +34908,7 @@ fn bindgen_test_layout_mips_interface() {
 }
 pub type mips_coprocessor_interface_t = mips_coprocessor_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct mips_coprocessor_interface {
     pub read_register: ::std::option::Option<
         unsafe extern "C" fn(
@@ -33796,7 +34966,7 @@ fn bindgen_test_layout_mips_coprocessor_interface() {
 }
 pub type fmn_station_control_interface_t = fmn_station_control_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct fmn_station_control_interface {
     pub send_message: ::std::option::Option<
         unsafe extern "C" fn(
@@ -33876,7 +35046,7 @@ fn bindgen_test_layout_fmn_station_control_interface() {
 }
 pub type fmn_station_control_v2_interface_t = fmn_station_control_v2_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct fmn_station_control_v2_interface {
     pub send_message: ::std::option::Option<
         unsafe extern "C" fn(
@@ -33963,7 +35133,7 @@ fn bindgen_test_layout_fmn_station_control_v2_interface() {
 }
 pub type mips_cache_instruction_interface_t = mips_cache_instruction_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct mips_cache_instruction_interface {
     pub cache_instruction: ::std::option::Option<
         unsafe extern "C" fn(
@@ -34005,7 +35175,7 @@ fn bindgen_test_layout_mips_cache_instruction_interface() {
 }
 pub type mips_ite_interface_t = mips_ite_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct mips_ite_interface {
     pub set_dtag_lo:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t, value: uint32)>,
@@ -34118,7 +35288,7 @@ fn bindgen_test_layout_mips_ite_interface() {
 }
 pub type mips_eic_interface_t = mips_eic_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct mips_eic_interface {
     pub cpu_pending_irqs:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t, cause: uint32)>,
@@ -34208,7 +35378,7 @@ fn bindgen_test_layout_mips_eic_interface() {
 }
 #[doc = " <add-type id=\"nios_memory_transaction_t def\"></add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct nios_memory_transaction {
     #[doc = " generic transaction"]
     pub s: generic_transaction_t,
@@ -34239,11 +35409,20 @@ fn bindgen_test_layout_nios_memory_transaction() {
         )
     );
 }
+impl Default for nios_memory_transaction {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " <add-type id=\"nios_memory_transaction_t def\"></add-type>"]
 pub type nios_memory_transaction_t = nios_memory_transaction;
 pub type nios_interface_t = nios_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct nios_interface {
     pub dummy: ::std::os::raw::c_int,
 }
@@ -34274,7 +35453,7 @@ fn bindgen_test_layout_nios_interface() {
 }
 pub type nios_eic_interface_t = nios_eic_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct nios_eic_interface {
     pub handler:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> logical_address_t>,
@@ -34350,7 +35529,7 @@ fn bindgen_test_layout_nios_eic_interface() {
 }
 pub type nios_cache_interface_t = nios_cache_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct nios_cache_interface {
     pub flushd: ::std::option::Option<
         unsafe extern "C" fn(self_: *mut conf_object_t, addr: logical_address_t),
@@ -34470,7 +35649,7 @@ fn bindgen_test_layout_nios_cache_interface() {
 }
 pub type nios_custom_interface_t = nios_custom_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct nios_custom_interface {
     pub custom: ::std::option::Option<
         unsafe extern "C" fn(
@@ -34609,7 +35788,7 @@ pub const cache_control_operation_t_Cache_Control_Invalidate_Cache: cache_contro
 pub type cache_control_operation_t = ::std::os::raw::c_uint;
 pub type cache_control_interface_t = cache_control_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct cache_control_interface {
     #[doc = " Returns the number of cycles until the operation is complete."]
     pub cache_control: ::std::option::Option<
@@ -34778,7 +35957,7 @@ pub const ppc_decoration_type_t_Decoration_Store: ppc_decoration_type_t = 3;
 pub type ppc_decoration_type_t = ::std::os::raw::c_uint;
 #[doc = " <add-type id=\"ppc_decoration_t def\"></add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ppc_decoration_t {
     pub type_: ppc_decoration_type_t,
     pub data: uint64,
@@ -34818,9 +35997,18 @@ fn bindgen_test_layout_ppc_decoration_t() {
         )
     );
 }
+impl Default for ppc_decoration_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " <add-type id=\"ppc_memory_transaction_t def\">\n</add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ppc_memory_transaction {
     #[doc = " generic transaction"]
     pub s: generic_transaction_t,
@@ -34942,6 +36130,15 @@ fn bindgen_test_layout_ppc_memory_transaction() {
         )
     );
 }
+impl Default for ppc_memory_transaction {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " <add-type id=\"ppc_memory_transaction_t def\">\n</add-type>"]
 pub type ppc_memory_transaction_t = ppc_memory_transaction;
 extern "C" {
@@ -34974,7 +36171,7 @@ pub use self::gen_spr_access_type_t as ppc_spr_access_type_t;
 pub use self::gen_spr_ret_t as ppc_spr_ret_t;
 pub type ppc_interface_t = ppc_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ppc_interface {
     pub clear_atomic_reservation_bit:
         ::std::option::Option<unsafe extern "C" fn(cpu: *mut conf_object_t)>,
@@ -35075,7 +36272,7 @@ fn bindgen_test_layout_ppc_interface() {
 }
 pub type spr_interface_t = spr_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct spr_interface {
     pub register_user_handlers: ::std::option::Option<
         unsafe extern "C" fn(
@@ -35233,7 +36430,7 @@ fn bindgen_test_layout_spr_interface() {
 }
 pub type pmr_interface_t = pmr_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct pmr_interface {
     pub get: ::std::option::Option<
         unsafe extern "C" fn(
@@ -35287,7 +36484,7 @@ fn bindgen_test_layout_pmr_interface() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct controllable_cache_t {
     pub obj: *mut conf_object_t,
     pub ifc: *const cache_control_interface_t,
@@ -35327,6 +36524,15 @@ fn bindgen_test_layout_controllable_cache_t() {
         )
     );
 }
+impl Default for controllable_cache_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 pub const riscv_cpu_mode_t_Riscv_Mode_User: riscv_cpu_mode_t = 0;
 pub const riscv_cpu_mode_t_Riscv_Mode_Supervisor: riscv_cpu_mode_t = 1;
 pub const riscv_cpu_mode_t_Riscv_Mode_Reserved: riscv_cpu_mode_t = 2;
@@ -35335,7 +36541,7 @@ pub const riscv_cpu_mode_t_Riscv_Mode_Machine: riscv_cpu_mode_t = 3;
 pub type riscv_cpu_mode_t = ::std::os::raw::c_uint;
 #[doc = " <add-type id=\"riscv_memory_transaction_t def\"></add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct riscv_memory_transaction {
     #[doc = " generic transaction"]
     pub s: generic_transaction_t,
@@ -35377,11 +36583,20 @@ fn bindgen_test_layout_riscv_memory_transaction() {
         )
     );
 }
+impl Default for riscv_memory_transaction {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " <add-type id=\"riscv_memory_transaction_t def\"></add-type>"]
 pub type riscv_memory_transaction_t = riscv_memory_transaction;
 pub type riscv_coprocessor_interface_t = riscv_coprocessor_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct riscv_coprocessor_interface {
     pub read_register: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, number: uint64) -> uint64,
@@ -35432,7 +36647,7 @@ pub const riscv_vectoring_mode_t_Riscv_Selective_Hardware_Vectoring: riscv_vecto
 pub type riscv_vectoring_mode_t = ::std::os::raw::c_uint;
 pub type riscv_clic_interrupt_interface_t = riscv_clic_interrupt_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct riscv_clic_interrupt_interface {
     pub set_active_interrupt: ::std::option::Option<
         unsafe extern "C" fn(
@@ -35483,7 +36698,7 @@ fn bindgen_test_layout_riscv_clic_interrupt_interface() {
 }
 pub type riscv_clic_interface_t = riscv_clic_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct riscv_clic_interface {
     pub acknowledge_interrupt:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t, id: uint64)>,
@@ -35515,7 +36730,7 @@ fn bindgen_test_layout_riscv_clic_interface() {
 }
 pub type sh_interrupt_interface_t = sh_interrupt_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct sh_interrupt_interface {
     pub change_pending: ::std::option::Option<
         unsafe extern "C" fn(
@@ -35560,7 +36775,7 @@ pub type cbdata_register_t = cbdata_t;
 pub type cbdata_call_t = cbdata_t;
 #[doc = " <add-type id=\"cbdata_type def\"></add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct cbdata_type_t {
     pub name: *const ::std::os::raw::c_char,
     pub dealloc: ::std::option::Option<unsafe extern "C" fn(data: *mut ::std::os::raw::c_void)>,
@@ -35600,8 +36815,17 @@ fn bindgen_test_layout_cbdata_type_t() {
         )
     );
 }
+impl Default for cbdata_type_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct cbdata {
     pub type_: *const cbdata_type_t,
     pub data: *mut ::std::os::raw::c_void,
@@ -35641,6 +36865,15 @@ fn bindgen_test_layout_cbdata() {
         )
     );
 }
+impl Default for cbdata {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     pub fn VT_make_python_cbdata(cbd: cbdata_t) -> *mut _object;
 }
@@ -35649,7 +36882,7 @@ extern "C" {
 }
 pub type sparc_v8_interface_t = sparc_v8_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct sparc_v8_interface {
     pub read_window_register: ::std::option::Option<
         unsafe extern "C" fn(
@@ -35715,7 +36948,7 @@ fn bindgen_test_layout_sparc_v8_interface() {
 }
 pub type sparc_v8_ecc_fault_injection_interface_t = sparc_v8_ecc_fault_injection_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct sparc_v8_ecc_fault_injection_interface {
     pub inject_instr_access_exception:
         ::std::option::Option<unsafe extern "C" fn(cpu: *mut conf_object_t)>,
@@ -35842,7 +37075,7 @@ pub type x86_access_type = ::std::os::raw::c_uint;
 pub use self::x86_access_type as x86_access_type_t;
 pub type x86_access_type_interface_t = x86_access_type_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_access_type_interface {
     pub get_enum_name: ::std::option::Option<
         unsafe extern "C" fn(
@@ -36014,7 +37247,7 @@ pub const x86_memory_or_io_t_X86_IO: x86_memory_or_io_t = 1;
 pub type x86_memory_or_io_t = ::std::os::raw::c_uint;
 #[doc = " <add id=\"x86_memory_transaction_t def\">\n<insert-until text=\"// JDOCU INSERT-UNTIL x86_memory_transaction_t\"/>\n</add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_memory_transaction {
     #[doc = " Superclass"]
     pub s: generic_transaction_t,
@@ -36148,6 +37381,15 @@ fn bindgen_test_layout_x86_memory_transaction() {
         )
     );
 }
+impl Default for x86_memory_transaction {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 impl x86_memory_transaction {
     #[inline]
     pub fn access_linear(&self) -> uint16 {
@@ -36232,7 +37474,7 @@ extern "C" {
 pub type p2_memory_transaction_t = x86_memory_transaction;
 #[doc = " <add id=\"x86_tlb_interface_t\">\nThe x86 tlb interface is used for communication between an x86 cpu\nand its TLB. The TLB is implemented as a separate class for greater\nflexibility. The TLB object does no memory operations itself.\n\n<ndx>tagged_physical_address_t</ndx>\n<insert-until text=\"// ADD INTERFACE x86_tlb_interface\"/>\n\nAll functions in the interface get the <i>object</i> implementing\nthe interface as their first parameter.\n\n<b>flush_all</b> is called when all TLB entries should be\nflushed. If <i>keep_global_entries</i> is set, then TLB entries\nwith their global bit set should not be flushed.\n\n<b>flush_page</b> is invoked when pages containing <i>laddr</i> are\nto be removed from the TLB.\n\n<b>lookup</b> is used by the CPU when a memory access misses the\nSTC. It must return true (non-zero) if and only if the memory\noperation specified by <i>mem_tr</i> hits the TLB and does not\nraise an exception. The <i>mode</i>, <i>linear_address</i> are valid when\nthe method is invoked. The other fields passed through <i>mem_tr</i>\nare undefined. If the method returns true, the\n<i>s.physical_address</i>, <i>pat_type</i>, and <i>mtrr_type</i>\nfields of <i>mem_tr</i> must be updated by <b>lookup</b>.\n\nAn access that misses in <b>lookup</b> but does not raise a fault\nis inserted into the TLB with <b>add</b>. The <i>page_size</i>\nencoding is 0 for 4 kb pages, 1 for 2 Mb pages, and 2 for 4 Mb\npages.\n\n<b>itlb_lookup</b> is a simplified version of <b>lookup</b> used\nonly for instruction TLB lookups. If the lookup is successful\n<i>valid</i> and <i>paddr</i> should be set, otherwise <i>valid</i>\nshould be cleared.\n\n<b>set_pae_mode</b> is invoked when the cpu changes the\nPAE enable bit.\n\nIt class implementing the interface must make sure that only\naddresses mapped in the TLB are present in the STCs.\n\nThis interface may be changed or replaced with an architecture\nindependent interface in future versions of Simics.\n\n</add>\n<add id=\"x86_tlb_interface_exec_context\">\nCell Context for all methods.\n</add>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct tagged_physical_address_t {
     pub valid: ::std::os::raw::c_int,
     pub paddr: physical_address_t,
@@ -36275,7 +37517,7 @@ fn bindgen_test_layout_tagged_physical_address_t() {
 }
 pub type x86_tlb_interface_t = x86_tlb_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_tlb_interface {
     pub flush_all: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, keep_global_entries: ::std::os::raw::c_int),
@@ -36390,7 +37632,7 @@ fn bindgen_test_layout_x86_tlb_interface() {
 }
 #[doc = " ADD INTERFACE x86_tlb_interface"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_tlb_attrs_t {
     pub supervisor_access: access_t,
     pub user_access: access_t,
@@ -36474,8 +37716,17 @@ fn bindgen_test_layout_x86_tlb_attrs_t() {
         )
     );
 }
+impl Default for x86_tlb_attrs_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_tlb_entry_t {
     pub linear_page_start: linear_address_t,
     pub physical_page_start: physical_address_t,
@@ -36526,9 +37777,18 @@ fn bindgen_test_layout_x86_tlb_entry_t() {
         )
     );
 }
+impl Default for x86_tlb_entry_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 pub type x86_tlb_v2_interface_t = x86_tlb_v2_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_tlb_v2_interface {
     pub flush_all: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, keep_global_entries: ::std::os::raw::c_int),
@@ -36625,7 +37885,7 @@ fn bindgen_test_layout_x86_tlb_v2_interface() {
 }
 #[doc = " <add-type id=\"x86_tlb_attrs_v3_t def\"> </add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_tlb_attrs_v3_t {
     pub pte_attrs: uint64,
     pub pat_type: x86_memory_type_t,
@@ -36687,9 +37947,18 @@ fn bindgen_test_layout_x86_tlb_attrs_v3_t() {
         )
     );
 }
+impl Default for x86_tlb_attrs_v3_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " <add-type id=\"x86_tlb_entry_v3_t def\"> </add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_tlb_entry_v3_t {
     pub linear_page_start: linear_address_t,
     pub physical_page_start: physical_address_t,
@@ -36740,6 +38009,15 @@ fn bindgen_test_layout_x86_tlb_entry_v3_t() {
         )
     );
 }
+impl Default for x86_tlb_entry_v3_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 pub const x86_tlb_inv_t_X86_Tlb_Invalidate_Page: x86_tlb_inv_t = 0;
 pub const x86_tlb_inv_t_X86_Tlb_Invalidate_Address_Space: x86_tlb_inv_t = 4;
 pub const x86_tlb_inv_t_X86_Tlb_Invalidate_Address_Space_NonGlobal: x86_tlb_inv_t = 1;
@@ -36749,7 +38027,7 @@ pub const x86_tlb_inv_t_X86_Tlb_Invalidate_All_NonGlobal: x86_tlb_inv_t = 3;
 pub type x86_tlb_inv_t = ::std::os::raw::c_uint;
 pub type x86_tlb_v3_interface_t = x86_tlb_v3_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_tlb_v3_interface {
     pub add: ::std::option::Option<
         unsafe extern "C" fn(
@@ -36859,7 +38137,7 @@ pub const x86_pin_t_Pin_Ignne: x86_pin_t = 3;
 #[doc = " <add-type id=\"x86_pin_t\"> </add-type>"]
 pub type x86_pin_t = ::std::os::raw::c_uint;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct tagged_linear_address_t {
     pub valid: bool,
     pub addr: linear_address_t,
@@ -36902,7 +38180,7 @@ fn bindgen_test_layout_tagged_linear_address_t() {
 }
 pub type x86_interface_t = x86_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_interface {
     pub set_pin_status: ::std::option::Option<
         unsafe extern "C" fn(
@@ -37059,7 +38337,7 @@ fn bindgen_test_layout_x86_interface() {
 }
 #[doc = " ADD INTERFACE x86_interface"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct cpuid_ret_t {
     pub taken: ::std::os::raw::c_int,
     pub out_a: uint64,
@@ -37134,7 +38412,7 @@ fn bindgen_test_layout_cpuid_ret_t() {
 }
 pub type x86_cpuid_interface_t = x86_cpuid_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_cpuid_interface {
     pub cpuid: ::std::option::Option<
         unsafe extern "C" fn(
@@ -37174,7 +38452,7 @@ fn bindgen_test_layout_x86_cpuid_interface() {
 }
 #[doc = " ADD INTERFACE x86_cpuid_interface"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct cpuid_value_t {
     pub a: uint64,
     pub b: uint64,
@@ -37238,7 +38516,7 @@ fn bindgen_test_layout_cpuid_value_t() {
 }
 pub type x86_cpuid_query_interface_t = x86_cpuid_query_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_cpuid_query_interface {
     pub cpuid_query: ::std::option::Option<
         unsafe extern "C" fn(
@@ -37280,7 +38558,7 @@ pub const local_apic_interrupt_t_Apic_Thermal_Sensor: local_apic_interrupt_t = 8
 pub type local_apic_interrupt_t = ::std::os::raw::c_uint;
 pub type apic_cpu_interface_t = apic_cpu_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct apic_cpu_interface {
     pub tpr_r: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> uint64>,
     pub tpr_w: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t, tpr: uint64)>,
@@ -37370,7 +38648,7 @@ fn bindgen_test_layout_apic_cpu_interface() {
 }
 pub type a20_interface_t = a20_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct a20_interface {
     pub set_a20_line: ::std::option::Option<
         unsafe extern "C" fn(arg1: *mut conf_object_t, arg2: ::std::os::raw::c_int),
@@ -37434,7 +38712,7 @@ pub const x86_msr_ret_t_Sim_X86_Msr_Not_Handled: x86_msr_ret_t = 2;
 pub type x86_msr_ret_t = ::std::os::raw::c_uint;
 #[doc = " <add-type id=\"x86_msr_getter_ret_t def\"></add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_msr_getter_ret_t {
     pub status: x86_msr_ret_t,
     pub value: uint64,
@@ -37474,6 +38752,15 @@ fn bindgen_test_layout_x86_msr_getter_ret_t() {
         )
     );
 }
+impl Default for x86_msr_getter_ret_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " <add-type id=\"x86_msr_getter_func_t def\"></add-type>"]
 pub type x86_msr_getter_func_t = ::std::option::Option<
     unsafe extern "C" fn(
@@ -37495,7 +38782,7 @@ pub type x86_msr_setter_func_t = ::std::option::Option<
 >;
 pub type x86_msr_interface_t = x86_msr_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_msr_interface {
     pub register_handlers: ::std::option::Option<
         unsafe extern "C" fn(
@@ -37624,7 +38911,7 @@ fn bindgen_test_layout_x86_msr_interface() {
 }
 pub type x86_cache_flush_interface_t = x86_cache_flush_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_cache_flush_interface {
     pub flush: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, cpu: *mut conf_object_t, writeback: bool),
@@ -37658,7 +38945,7 @@ fn bindgen_test_layout_x86_cache_flush_interface() {
 }
 #[doc = " Attribute format:\ntype    bit 0..3\ns       bit 4\ndpl     bit 5..6\np       bit 7\navl     bit 12\nl       bit 13\ndb      bit 14\ng       bit 15\ninvalid bit 16"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct smm_reg_state_t {
     pub gpr: [uint64; 16usize],
     pub seg_sel: [uint16; 6usize],
@@ -38153,7 +39440,7 @@ fn bindgen_test_layout_smm_reg_state_t() {
 }
 pub type x86_smm_state_interface_t = x86_smm_state_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_smm_state_interface {
     pub get_state: ::std::option::Option<
         unsafe extern "C" fn(cpu: *mut conf_object_t, state: *mut smm_reg_state_t),
@@ -38235,7 +39522,7 @@ fn bindgen_test_layout_x86_smm_state_interface() {
 }
 pub type x86_smm_interface_t = x86_smm_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_smm_interface {
     pub save_state: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, cpu: *mut conf_object_t),
@@ -38281,7 +39568,7 @@ fn bindgen_test_layout_x86_smm_interface() {
 }
 #[doc = " <add-type id=\"x86_xmode_info_t\"> </add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_xmode_info_t {
     pub efer_lma: bool,
     pub cs_l: bool,
@@ -38345,7 +39632,7 @@ fn bindgen_test_layout_x86_xmode_info_t() {
 }
 #[doc = " x86_seg_reg_t describes a segment register and its hidden fields. If valid\nis false, the segment is unusable and attempts to use it will trigger a\nfault in non-64-bit mode. The meaning of each bit in attr is as follows:\ntype    bit 0..3\nS       bit 4\nDPL     bit 5..6\nP       bit 7\nL       bit 13\nD/B     bit 14\nG       bit 15"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_seg_reg_t {
     pub valid: bool,
     pub sel: uint16,
@@ -38419,7 +39706,7 @@ fn bindgen_test_layout_x86_seg_reg_t() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_system_seg_reg_t {
     pub base: uint64,
     pub limit: uint16,
@@ -38487,7 +39774,7 @@ pub const x86_activity_t_X86_Activity_Senter_Sleep_State: x86_activity_t = 6;
 pub type x86_activity_t = ::std::os::raw::c_uint;
 #[doc = " <add-type id=\"ymm_reg_t\"> </add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ymm_reg_t {
     pub llo64: uint64,
     pub lhi64: uint64,
@@ -38551,7 +39838,7 @@ fn bindgen_test_layout_ymm_reg_t() {
 }
 #[doc = " <add-type id=\"xmm_reg_t\"> </add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct xmm_reg_t {
     pub lo64: uint64,
     pub hi64: uint64,
@@ -38614,7 +39901,7 @@ pub const x86_detailed_exec_mode_t_X86_Detailed_Exec_Mode_Compatibility_32:
 #[doc = " <add-type id=\"x86_detailed_exec_mode_t\"> </add-type>"]
 pub type x86_detailed_exec_mode_t = ::std::os::raw::c_uint;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_monitor_info_t {
     pub armed: bool,
     pub address: uint64,
@@ -38677,7 +39964,7 @@ fn bindgen_test_layout_x86_monitor_info_t() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_mwait_info_t {
     pub extensions: uint64,
     pub hints: uint64,
@@ -38718,7 +40005,7 @@ fn bindgen_test_layout_x86_mwait_info_t() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_pending_debug_exc_t {
     pub pending: bool,
     pub pending_dr6: uint64,
@@ -38761,7 +40048,7 @@ fn bindgen_test_layout_x86_pending_debug_exc_t() {
 }
 #[doc = " <add-type id=\"x86_fpu_reg_t\"> </add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_fpu_reg_t {
     pub low: uint64,
     pub high: uint16,
@@ -38803,7 +40090,7 @@ fn bindgen_test_layout_x86_fpu_reg_t() {
 }
 #[doc = " <add-type id=\"x86_fpu_env_t\"> </add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_fpu_env_t {
     pub cw: uint16,
     pub sw: uint16,
@@ -38940,7 +40227,7 @@ pub const x86_intstate_t_X86_Intstate_Blocking_NMI: x86_intstate_t = 16;
 pub type x86_intstate_t = ::std::os::raw::c_uint;
 pub type x86_reg_access_interface_t = x86_reg_access_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_reg_access_interface {
     pub get_gpr: ::std::option::Option<
         unsafe extern "C" fn(cpu: *mut conf_object_t, index: ::std::os::raw::c_uint) -> uint64,
@@ -39621,7 +40908,7 @@ fn bindgen_test_layout_x86_reg_access_interface() {
 }
 pub type x86_exception_interface_t = x86_exception_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_exception_interface {
     pub DE_fault: ::std::option::Option<unsafe extern "C" fn(cpu: *mut conf_object_t)>,
     pub BR_fault: ::std::option::Option<unsafe extern "C" fn(cpu: *mut conf_object_t)>,
@@ -39817,7 +41104,7 @@ pub const x86_alignment_t_X86_Alignment_Required: x86_alignment_t = 1;
 pub type x86_alignment_t = ::std::os::raw::c_uint;
 #[doc = " <add-type id=\"x86_read_physical_ret_t\"> </add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_read_physical_ret_t {
     pub value: uint64,
     pub exception: exception_type_t,
@@ -39858,9 +41145,18 @@ fn bindgen_test_layout_x86_read_physical_ret_t() {
         )
     );
 }
+impl Default for x86_read_physical_ret_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 pub type x86_memory_access_interface_t = x86_memory_access_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_memory_access_interface {
     pub read_logical: ::std::option::Option<
         unsafe extern "C" fn(
@@ -39966,7 +41262,7 @@ fn bindgen_test_layout_x86_memory_access_interface() {
 }
 pub type x86_memory_operation_interface_t = x86_memory_operation_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_memory_operation_interface {
     pub read_logical: ::std::option::Option<
         unsafe extern "C" fn(
@@ -40145,7 +41441,7 @@ fn bindgen_test_layout_x86_memory_operation_interface() {
 }
 pub type x86_vmp_control_interface_t = x86_vmp_control_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_vmp_control_interface {
     pub get_block_count: ::std::option::Option<
         unsafe extern "C" fn(cpu: *mut conf_object_t) -> ::std::os::raw::c_uint,
@@ -40204,7 +41500,7 @@ pub const vmp_info_t_Vmp_Info_Vmxmon_Version: vmp_info_t = 1;
 pub type vmp_info_t = ::std::os::raw::c_uint;
 pub type vmp_interface_t = vmp_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct vmp_interface {
     pub class_has_support:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> bool>,
@@ -40347,7 +41643,7 @@ pub const xed_data_type_t_Xed_Iform: xed_data_type_t = 0;
 pub type xed_data_type_t = ::std::os::raw::c_uint;
 pub type xed_access_interface_t = xed_access_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct xed_access_interface {
     pub get_last: ::std::option::Option<
         unsafe extern "C" fn(
@@ -40417,7 +41713,7 @@ fn bindgen_test_layout_xed_access_interface() {
 }
 pub type x86_instruction_query_interface_t = x86_instruction_query_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_instruction_query_interface {
     pub linear_address: ::std::option::Option<
         unsafe extern "C" fn(
@@ -40454,7 +41750,7 @@ fn bindgen_test_layout_x86_instruction_query_interface() {
 }
 pub type x86_memory_query_interface_t = x86_memory_query_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_memory_query_interface {
     pub linear_address: ::std::option::Option<
         unsafe extern "C" fn(
@@ -40536,7 +41832,7 @@ fn bindgen_test_layout_x86_memory_query_interface() {
 }
 pub type x86_exception_query_interface_t = x86_exception_query_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_exception_query_interface {
     pub vector: ::std::option::Option<
         unsafe extern "C" fn(cpu: *mut conf_object_t, handle: *mut exception_handle_t) -> uint8,
@@ -40599,7 +41895,7 @@ fn bindgen_test_layout_x86_exception_query_interface() {
 }
 pub type x86_address_query_interface_t = x86_address_query_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_address_query_interface {
     pub segment: ::std::option::Option<
         unsafe extern "C" fn(cpu: *mut conf_object_t, handle: *mut address_handle_t) -> x86_seg_t,
@@ -40658,7 +41954,7 @@ pub type x86_mode_switch_cb_t = ::std::option::Option<
 >;
 pub type x86_instrumentation_subscribe_interface_t = x86_instrumentation_subscribe_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_instrumentation_subscribe_interface {
     pub register_mode_switch_cb: ::std::option::Option<
         unsafe extern "C" fn(
@@ -40731,7 +42027,7 @@ pub const x86_stream_enum_t_X86_Stream_Last: x86_stream_enum_t = 36;
 pub type x86_stream_enum_t = ::std::os::raw::c_uint;
 #[doc = " <add-type id=\"xtensa_memory_transaction_t def\"></add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct xtensa_memory_transaction {
     #[doc = " generic transaction"]
     pub s: generic_transaction_t,
@@ -40762,11 +42058,20 @@ fn bindgen_test_layout_xtensa_memory_transaction() {
         )
     );
 }
+impl Default for xtensa_memory_transaction {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " <add-type id=\"xtensa_memory_transaction_t def\"></add-type>"]
 pub type xtensa_memory_transaction_t = xtensa_memory_transaction;
 pub type xtensa_tie_lookup_interface_t = xtensa_tie_lookup_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct xtensa_tie_lookup_interface {
     pub data: ::std::option::Option<
         unsafe extern "C" fn(
@@ -40806,7 +42111,7 @@ fn bindgen_test_layout_xtensa_tie_lookup_interface() {
 }
 pub type xtensa_tie_export_state_interface_t = xtensa_tie_export_state_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct xtensa_tie_export_state_interface {
     pub data: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, bit_width: uint32, out_data: *const uint32),
@@ -40843,7 +42148,7 @@ fn bindgen_test_layout_xtensa_tie_export_state_interface() {
 }
 pub type xtensa_tie_output_queue_interface_t = xtensa_tie_output_queue_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct xtensa_tie_output_queue_interface {
     pub full: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> bool>,
     pub data: ::std::option::Option<
@@ -40896,7 +42201,7 @@ fn bindgen_test_layout_xtensa_tie_output_queue_interface() {
 }
 pub type xtensa_tie_input_queue_interface_t = xtensa_tie_input_queue_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct xtensa_tie_input_queue_interface {
     pub empty: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> bool>,
     pub data: ::std::option::Option<
@@ -40949,7 +42254,7 @@ fn bindgen_test_layout_xtensa_tie_input_queue_interface() {
 }
 pub type xtensa_tie_import_wire_interface_t = xtensa_tie_import_wire_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct xtensa_tie_import_wire_interface {
     pub data: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, bit_width: uint32, in_data: *mut uint32),
@@ -40986,7 +42291,7 @@ fn bindgen_test_layout_xtensa_tie_import_wire_interface() {
 }
 pub type xtensa_lookup_interface_t = xtensa_lookup_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct xtensa_lookup_interface {
     pub register_lookup: ::std::option::Option<
         unsafe extern "C" fn(
@@ -41024,7 +42329,7 @@ fn bindgen_test_layout_xtensa_lookup_interface() {
 }
 pub type xtensa_export_state_interface_t = xtensa_export_state_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct xtensa_export_state_interface {
     pub register_export_state: ::std::option::Option<
         unsafe extern "C" fn(
@@ -41062,7 +42367,7 @@ fn bindgen_test_layout_xtensa_export_state_interface() {
 }
 pub type xtensa_output_queue_interface_t = xtensa_output_queue_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct xtensa_output_queue_interface {
     pub register_output_queue: ::std::option::Option<
         unsafe extern "C" fn(
@@ -41101,7 +42406,7 @@ fn bindgen_test_layout_xtensa_output_queue_interface() {
 }
 pub type xtensa_input_queue_interface_t = xtensa_input_queue_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct xtensa_input_queue_interface {
     pub register_input_queue: ::std::option::Option<
         unsafe extern "C" fn(
@@ -41140,7 +42445,7 @@ fn bindgen_test_layout_xtensa_input_queue_interface() {
 }
 pub type xtensa_import_wire_interface_t = xtensa_import_wire_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct xtensa_import_wire_interface {
     pub register_import_wire: ::std::option::Option<
         unsafe extern "C" fn(
@@ -41199,7 +42504,7 @@ extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct int128 {
     pub lo: uint64,
     pub hi: int64,
@@ -41255,7 +42560,7 @@ extern "C" {
     ) -> *mut ::std::os::raw::c_char;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct duration_t {
     pub t: int64,
 }
@@ -41286,7 +42591,7 @@ fn bindgen_test_layout_duration_t() {
 }
 #[doc = " <add-type id=\"bigtime_t def\"></add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct bigtime_t {
     pub val: int128,
 }
@@ -41367,7 +42672,7 @@ pub const event_class_flag_t_Sim_EC_Machine_Sync: event_class_flag_t = 8;
 pub const event_class_flag_t_Sim_EC_No_Serialize: event_class_flag_t = 16;
 pub type event_class_flag_t = ::std::os::raw::c_uint;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct event_class {
     #[doc = " identifier, unique within the conf_class (malloced)"]
     pub name: *const ::std::os::raw::c_char,
@@ -41502,6 +42807,15 @@ fn bindgen_test_layout_event_class() {
             stringify!(slot)
         )
     );
+}
+impl Default for event_class {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 pub type event_class_t = event_class;
 extern "C" {
@@ -41648,7 +42962,7 @@ extern "C" {
     pub fn SIM_step_count(obj: *mut conf_object_t) -> pc_step_t;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct local_time_t {
     #[doc = " The clock is an object which implements the cycle interface. The\ntime stamp given in this struct is only valid in the clocks' \"time\nspace\"."]
     pub clock: *mut conf_object_t,
@@ -41689,6 +43003,15 @@ fn bindgen_test_layout_local_time_t() {
         )
     );
 }
+impl Default for local_time_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     pub fn local_time_to_attr(t: local_time_t) -> attr_value_t;
 }
@@ -41700,7 +43023,7 @@ extern "C" {
 }
 pub type cycle_interface_t = cycle_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct cycle_interface {
     pub get_cycle_count:
         ::std::option::Option<unsafe extern "C" fn(queue: *mut conf_object_t) -> cycles_t>,
@@ -42442,7 +43765,7 @@ extern "C" {
     pub fn SIM_reacquire_thread_domains(lock: *mut domain_lock_t);
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct prop_desc_t {
     #[doc = " The version of the struct used"]
     pub abi_version: ::std::os::raw::c_uint,
@@ -42494,6 +43817,15 @@ fn bindgen_test_layout_prop_desc_t() {
             stringify!(free_data)
         )
     );
+}
+impl Default for prop_desc_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 pub type prop_id_t = *const prop_desc_t;
 extern "C" {
@@ -42700,7 +44032,7 @@ pub type frags_t = frags;
 pub type frags_it_t = frags_it;
 #[doc = " The structures should never be used directly. Only use the accessor\n functions."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct frags_frag {
     pub start: *const uint8,
     pub len: usize,
@@ -42740,10 +44072,19 @@ fn bindgen_test_layout_frags_frag() {
         )
     );
 }
+impl Default for frags_frag {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " The structures should never be used directly. Only use the accessor\n functions."]
 pub type frags_frag_t = frags_frag;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct frags {
     pub len: usize,
     pub nfrags: ::std::os::raw::c_uint,
@@ -42794,8 +44135,17 @@ fn bindgen_test_layout_frags() {
         )
     );
 }
+impl Default for frags {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct frags_it {
     pub frag: *const frags_frag,
     pub skip: usize,
@@ -42846,6 +44196,15 @@ fn bindgen_test_layout_frags_it() {
         )
     );
 }
+impl Default for frags_it {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     #[doc = " <add-fun id=\"frags_api\">\n<short>extract the contents of a <type>frags_t</type></short>\n\nCopy the whole contents of <param>buf</param> to <param>vdst</param>. The\ndestination buffer <param>vdst</param> should be large enough to contain\nall data in <param>buf</param>.\n\nThis function is completely equivalent to <fun>frags_extract_slice()</fun>\nwith an <param>offset</param> and a <param>length</param> covering the\nwhole contents of the <type>frags_t</type>, and is provided for\nconvenience.\n\n<di name=\"RETURN VALUE\">None</di>\n<di name=\"EXECUTION CONTEXT\">Cell Context</di>\n<di name=\"EXAMPLE\">\n<insert id=\"fg_extract\"/>\n</di>\n<di name=\"SEE ALSO\">\n<fun>frags_extract_8</fun>, <fun>frags_extract_slice</fun>,\n<fun>frags_extract_alloc</fun>, <fun>frags_extract_slice_alloc</fun>\n</di>\n\n</add-fun>"]
     pub fn frags_extract(buf: *const frags_t, vdst: *mut ::std::os::raw::c_void);
@@ -42886,7 +44245,7 @@ pub const cpu_variant_t_Cpu_Stall: cpu_variant_t = 3;
 pub type cpu_variant_t = ::std::os::raw::c_uint;
 #[doc = " <add-type id=\"init_prefs_t def\">\n</add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct init_prefs_t {
     pub batch_mode: bool,
     pub quiet: bool,
@@ -43238,6 +44597,15 @@ fn bindgen_test_layout_init_prefs_t() {
         )
     );
 }
+impl Default for init_prefs_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     pub fn SIM_init_environment(
         argv: *mut *mut ::std::os::raw::c_char,
@@ -43295,6 +44663,15 @@ fn bindgen_test_layout_init_arg_t__bindgen_ty_1() {
         )
     );
 }
+impl Default for init_arg_t__bindgen_ty_1 {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[test]
 fn bindgen_test_layout_init_arg_t() {
     const UNINIT: ::std::mem::MaybeUninit<init_arg_t> = ::std::mem::MaybeUninit::uninit();
@@ -43339,6 +44716,15 @@ fn bindgen_test_layout_init_arg_t() {
             stringify!(u)
         )
     );
+}
+impl Default for init_arg_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     pub fn SIM_init_simulator2(init_args: *mut init_arg_t);
@@ -43405,7 +44791,7 @@ pub const apic_bus_status_t_Apic_Bus_Invalid: apic_bus_status_t = 3;
 pub type apic_bus_status_t = ::std::os::raw::c_uint;
 pub type apic_bus_interface_t = apic_bus_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct apic_bus_interface {
     pub interrupt: ::std::option::Option<
         unsafe extern "C" fn(
@@ -43446,7 +44832,7 @@ fn bindgen_test_layout_apic_bus_interface() {
 }
 pub type arinc429_bus_interface_t = arinc429_bus_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct arinc429_bus_interface {
     pub send_word: ::std::option::Option<
         unsafe extern "C" fn(
@@ -43484,7 +44870,7 @@ fn bindgen_test_layout_arinc429_bus_interface() {
 }
 pub type arinc429_receiver_interface_t = arinc429_receiver_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct arinc429_receiver_interface {
     pub receive_word: ::std::option::Option<
         unsafe extern "C" fn(
@@ -43521,7 +44907,7 @@ fn bindgen_test_layout_arinc429_receiver_interface() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct coreint_reply_t {
     pub enabled: bool,
     pub vector: uint64,
@@ -43563,7 +44949,7 @@ fn bindgen_test_layout_coreint_reply_t() {
 }
 pub type coreint_interface_t = coreint_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct coreint_interface {
     pub acknowledge: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, core: *mut conf_object_t) -> coreint_reply_t,
@@ -43596,7 +44982,7 @@ fn bindgen_test_layout_coreint_interface() {
 }
 pub type datagram_link_interface_t = datagram_link_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct datagram_link_interface {
     #[doc = " Transmit a message to the object."]
     pub receive: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t, msg: bytes_t)>,
@@ -43634,7 +45020,7 @@ pub const eth_frame_crc_status_t_Eth_Frame_CRC_Unknown: eth_frame_crc_status_t =
 pub type eth_frame_crc_status_t = ::std::os::raw::c_uint;
 pub type ethernet_common_interface_t = ethernet_common_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ethernet_common_interface {
     pub frame: ::std::option::Option<
         unsafe extern "C" fn(
@@ -43672,7 +45058,7 @@ fn bindgen_test_layout_ethernet_common_interface() {
 }
 pub type ethernet_cable_interface_t = ethernet_cable_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ethernet_cable_interface {
     pub link_status:
         ::std::option::Option<unsafe extern "C" fn(ep: *mut conf_object_t, link_up: bool)>,
@@ -43714,7 +45100,7 @@ pub type ethernet_link_snoop_t = ::std::option::Option<
 >;
 pub type ethernet_snoop_interface_t = ethernet_snoop_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ethernet_snoop_interface {
     pub attach: ::std::option::Option<
         unsafe extern "C" fn(
@@ -43753,7 +45139,7 @@ fn bindgen_test_layout_ethernet_snoop_interface() {
 }
 pub type ethernet_vlan_snoop_interface_t = ethernet_vlan_snoop_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ethernet_vlan_snoop_interface {
     pub attach: ::std::option::Option<
         unsafe extern "C" fn(
@@ -43808,7 +45194,7 @@ pub type ethernet_probe_snoop_t = ::std::option::Option<
 >;
 pub type ethernet_probe_interface_t = ethernet_probe_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ethernet_probe_interface {
     pub attach_snooper: ::std::option::Option<
         unsafe extern "C" fn(
@@ -43959,7 +45345,7 @@ pub const firewire_port_status_t_Firewire_Port_Child: firewire_port_status_t = 3
 pub type firewire_port_status_t = ::std::os::raw::c_uint;
 pub type firewire_bus_interface_t = firewire_bus_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct firewire_bus_interface {
     pub connect_device: ::std::option::Option<
         unsafe extern "C" fn(
@@ -44101,7 +45487,7 @@ fn bindgen_test_layout_firewire_bus_interface() {
 }
 #[doc = " <add-type id=\"uint32_array_t\">\nAn array of unsigned 32-bit integers.\n</add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct uint32_array_t {
     pub len: usize,
     pub data: *mut uint32,
@@ -44141,9 +45527,18 @@ fn bindgen_test_layout_uint32_array_t() {
         )
     );
 }
+impl Default for uint32_array_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 pub type firewire_device_interface_t = firewire_device_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct firewire_device_interface {
     pub transfer: ::std::option::Option<
         unsafe extern "C" fn(
@@ -44248,7 +45643,7 @@ fn bindgen_test_layout_firewire_device_interface() {
 }
 pub type frequency_interface_t = frequency_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct frequency_interface {
     pub get: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> f64>,
 }
@@ -44279,7 +45674,7 @@ fn bindgen_test_layout_frequency_interface() {
 }
 pub type frequency_listener_interface_t = frequency_listener_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct frequency_listener_interface {
     pub set: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, numerator: uint64, denominator: uint64),
@@ -44313,7 +45708,7 @@ fn bindgen_test_layout_frequency_listener_interface() {
 }
 pub type scale_factor_listener_interface_t = scale_factor_listener_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct scale_factor_listener_interface {
     pub set: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, numerator: uint64, denominator: uint64),
@@ -44347,7 +45742,7 @@ fn bindgen_test_layout_scale_factor_listener_interface() {
 }
 pub type simple_dispatcher_interface_t = simple_dispatcher_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct simple_dispatcher_interface {
     pub subscribe: ::std::option::Option<
         unsafe extern "C" fn(
@@ -44403,7 +45798,7 @@ fn bindgen_test_layout_simple_dispatcher_interface() {
 pub type mod_def_t = ::std::os::raw::c_int;
 pub type gbic_transceiver_interface_t = gbic_transceiver_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct gbic_transceiver_interface {
     pub read_mod_def:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> mod_def_t>,
@@ -44461,7 +45856,7 @@ fn bindgen_test_layout_gbic_transceiver_interface() {
 }
 pub type hpi_interface_t = hpi_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct hpi_interface {
     #[doc = " HCNTL = 0"]
     pub read_hpic: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> uint32>,
@@ -44575,7 +45970,7 @@ pub const i2c_device_flag_t_I2C_flag_shared: i2c_device_flag_t = 1;
 pub type i2c_device_flag_t = ::std::os::raw::c_uint;
 pub type i2c_bus_interface_t = i2c_bus_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct i2c_bus_interface {
     pub start: ::std::option::Option<
         unsafe extern "C" fn(i2c_bus: *mut conf_object_t, address: uint8) -> ::std::os::raw::c_int,
@@ -44682,7 +46077,7 @@ fn bindgen_test_layout_i2c_bus_interface() {
 }
 pub type i2c_device_interface_t = i2c_device_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct i2c_device_interface {
     pub set_state: ::std::option::Option<
         unsafe extern "C" fn(
@@ -44749,7 +46144,7 @@ pub const i2c_status_t_I2C_status_bus_busy: i2c_status_t = 2;
 pub type i2c_status_t = ::std::os::raw::c_uint;
 pub type i2c_link_interface_t = i2c_link_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct i2c_link_interface {
     pub register_slave_address: ::std::option::Option<
         unsafe extern "C" fn(
@@ -44968,7 +46363,7 @@ fn bindgen_test_layout_i2c_link_interface() {
 }
 pub type i2c_slave_interface_t = i2c_slave_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct i2c_slave_interface {
     pub start_request:
         ::std::option::Option<unsafe extern "C" fn(device: *mut conf_object_t, address: uint32)>,
@@ -45048,7 +46443,7 @@ fn bindgen_test_layout_i2c_slave_interface() {
 }
 pub type i2c_master_interface_t = i2c_master_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct i2c_master_interface {
     pub bus_freed: ::std::option::Option<unsafe extern "C" fn(device: *mut conf_object_t)>,
     pub read_response:
@@ -45128,7 +46523,7 @@ fn bindgen_test_layout_i2c_master_interface() {
 }
 pub type i2c_bridge_interface_t = i2c_bridge_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct i2c_bridge_interface {
     pub address_added: ::std::option::Option<
         unsafe extern "C" fn(device: *mut conf_object_t, addr: uint32, mask: uint32),
@@ -45174,7 +46569,7 @@ fn bindgen_test_layout_i2c_bridge_interface() {
 }
 pub type i2c_slave_v2_interface_t = i2c_slave_v2_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct i2c_slave_v2_interface {
     pub start:
         ::std::option::Option<unsafe extern "C" fn(device: *mut conf_object_t, address: uint8)>,
@@ -45257,7 +46652,7 @@ pub const i2c_ack_t_I2C_noack: i2c_ack_t = 1;
 pub type i2c_ack_t = ::std::os::raw::c_uint;
 pub type i2c_master_v2_interface_t = i2c_master_v2_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct i2c_master_v2_interface {
     pub acknowledge:
         ::std::option::Option<unsafe extern "C" fn(device: *mut conf_object_t, ack: i2c_ack_t)>,
@@ -45306,7 +46701,7 @@ pub const i3c_ack_t_I3C_noack: i3c_ack_t = 1;
 pub type i3c_ack_t = ::std::os::raw::c_uint;
 pub type i3c_master_interface_t = i3c_master_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct i3c_master_interface {
     pub acknowledge:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t, ack: i3c_ack_t)>,
@@ -45387,7 +46782,7 @@ fn bindgen_test_layout_i3c_master_interface() {
 }
 pub type i3c_slave_interface_t = i3c_slave_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct i3c_slave_interface {
     pub start: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t, address: uint8)>,
     pub write: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t, value: uint8)>,
@@ -45497,7 +46892,7 @@ fn bindgen_test_layout_i3c_slave_interface() {
 }
 pub type i3c_daa_snoop_interface_t = i3c_daa_snoop_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct i3c_daa_snoop_interface {
     pub assigned_address: ::std::option::Option<
         unsafe extern "C" fn(
@@ -45584,7 +46979,7 @@ pub const ieee_802_3_link_status_t_IEEE_link_up: ieee_802_3_link_status_t = 2;
 pub type ieee_802_3_link_status_t = ::std::os::raw::c_uint;
 pub type ieee_802_3_phy_interface_t = ieee_802_3_phy_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ieee_802_3_phy_interface {
     pub send_frame: ::std::option::Option<
         unsafe extern "C" fn(
@@ -45698,7 +47093,7 @@ fn bindgen_test_layout_ieee_802_3_phy_interface() {
 }
 pub type ieee_802_3_phy_v2_interface_t = ieee_802_3_phy_v2_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ieee_802_3_phy_v2_interface {
     pub send_frame: ::std::option::Option<
         unsafe extern "C" fn(
@@ -45812,7 +47207,7 @@ fn bindgen_test_layout_ieee_802_3_phy_v2_interface() {
 }
 pub type ieee_802_3_phy_v3_interface_t = ieee_802_3_phy_v3_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ieee_802_3_phy_v3_interface {
     pub send_frame: ::std::option::Option<
         unsafe extern "C" fn(
@@ -45863,7 +47258,7 @@ fn bindgen_test_layout_ieee_802_3_phy_v3_interface() {
 }
 pub type ieee_802_3_mac_interface_t = ieee_802_3_mac_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ieee_802_3_mac_interface {
     pub receive_frame: ::std::option::Option<
         unsafe extern "C" fn(
@@ -45932,7 +47327,7 @@ fn bindgen_test_layout_ieee_802_3_mac_interface() {
 }
 pub type ieee_802_3_mac_v3_interface_t = ieee_802_3_mac_v3_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ieee_802_3_mac_v3_interface {
     pub receive_frame: ::std::option::Option<
         unsafe extern "C" fn(
@@ -46004,7 +47399,7 @@ pub type interrupt_ack_fn_t =
     ::std::option::Option<unsafe extern "C" fn(arg1: *mut conf_object_t) -> ::std::os::raw::c_int>;
 pub type interrupt_ack_interface_t = interrupt_ack_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct interrupt_ack_interface {
     pub raise_interrupt: ::std::option::Option<
         unsafe extern "C" fn(
@@ -46055,7 +47450,7 @@ fn bindgen_test_layout_interrupt_ack_interface() {
 }
 pub type interrupt_cpu_interface_t = interrupt_cpu_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct interrupt_cpu_interface {
     pub ack: interrupt_ack_fn_t,
 }
@@ -46087,7 +47482,7 @@ fn bindgen_test_layout_interrupt_cpu_interface() {
 }
 pub type simple_interrupt_interface_t = simple_interrupt_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct simple_interrupt_interface {
     pub interrupt: ::std::option::Option<
         unsafe extern "C" fn(arg1: *mut conf_object_t, arg2: ::std::os::raw::c_int),
@@ -46144,7 +47539,7 @@ pub type interrupt_changed_state_callback_t = ::std::option::Option<
 >;
 pub type interrupt_query_interface_t = interrupt_query_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct interrupt_query_interface {
     pub is_enabled: ::std::option::Option<
         unsafe extern "C" fn(
@@ -46222,7 +47617,7 @@ pub type interrupt_query_enabled_t = ::std::option::Option<
 >;
 pub type io_memory_interface_t = io_memory_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct io_memory_interface {
     pub _deprecated_map: ::std::option::Option<
         unsafe extern "C" fn(
@@ -46300,7 +47695,7 @@ extern "C" {
 }
 #[doc = " <add id=\"link_message_t DOC\">\n<ndx>link_message_t</ndx>\n<doc>\n<doc-item name=\"NAME\">link_message_t</doc-item>\n<doc-item name=\"SYNOPSIS\">\ntypedef struct link_message link_message_t;\n</doc-item>\n<doc-item name=\"DESCRIPTION\">\nGeneric part of a link message. This structure should always be the\nfirst member of the link message data structure, so that the link\nlibrary can access the generic part with a simple cast.\n</doc-item>\n<doc-item name=\"EXAMPLE\">\nThe <class>datagram_link</class> example defines its link message in\nthe following way:\n<insert id=\"dl_msg_t\"/>\n</doc-item>\n<doc-item name=\"SEE ALSO\">\nlink_type_t,\nSIMLINK_init_message\n</doc-item>\n</doc>\n</add>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct link_message_t {
     pub refcount: atomic_counter_t,
 }
@@ -46331,7 +47726,7 @@ fn bindgen_test_layout_link_message_t() {
 }
 #[doc = " <add id=\"link_type_t DOC\">\n<ndx>link_type_t</ndx>\n<doc>\n<doc-item name=\"NAME\">link_type_t</doc-item>\n<doc-item name=\"SYNOPSIS\"><insert id=\"link_type_t def\"/></doc-item>\n<doc-item name=\"DESCRIPTION\">\nFunctions to be defined by the specific link implementation.\n\nThese functions can be classified in four groups:\n\n<dl>\n\n<dt>Message Links Manipulation</dt>\n\n<dd>The first five functions are related to the link-specific\nmessages.\n\nAll five functions can be called in any execution context and should\nbe thread-safe. They all take the link object as argument, in case it\ncontains information necessary to perform the operation. As the link\nobject is shared between the cells in which it is connected, it\nshould not be modified during execution. Mutable state should be kept\nin the endpoint objects instead.\n\n<fun>msg_to_attr()</fun> transforms the message <param>msg</param>\ninto an <type>attr_value_t</type> value. It is used to checkpoint\nin-flight messages waiting to be delivered. The value returned will\nbe passed unchanged as argument <param>attr</param> to\n<fun>msg_from_attr()</fun> when loading a checkpoint with pending\nlink messages. Neither function is expected to return an error,\nalthough <fun>msg_from_attr()</fun> is allowed to return NULL when\ntranslating a message it does not care to restore. This can be useful\nto keep checkpoint compatibility with older versions of the same link\nthat do not always have the same message protocol.\n\nUsing the <class>datagram_link</class> as an example, the\n<class>datagram-link</class> message is defined as:\n\n<insert id=\"dl_msg_t\"/>\n\n<fun>msg_to_attr()</fun> and <fun>msg_from_attr()</fun> are thus\ndefined as:\n\n<insert id=\"dl_to_a\"/>\n<insert id=\"dl_fr_a\"/>\n\n<fun>free_msg()</fun> is called when the message <param>msg</param>\nhas been delivered to all its destinations and is no longer\nneeded. All memory allocated for <param>msg</param> is expected to be\nfreed, including <param>msg</param> itself. The\n<class>datagram_link</class> defines <fun>free_msg()</fun> as:\n\n<insert id=\"dl_free\"/>\n\n<fun>marshal()</fun> is called when the message <param>msg</param>\nshould be transmitted over a distributed simulation. Its purpose is\nto serialize the message into a <type>frags_t</type>\nrepresentation. Rather than returning the marshaled message,\n<fun>marshal()</fun> takes the <param>finish</param> and\n<param>finish_data</param> arguments, that it is expected to call\nonce the message has been marshaled.\n\nThe reason behind this mechanism is that it allows\n<fun>marshal()</fun> to perform its operations with a\n<type>frags_t</type> variable allocated on the stack, and thus to\nskip any heap allocation when sending the message. In case memory was\nallocated anyway, it should be freed just after <param>finish</param>\nhas returned.\n\n<insert id=\"dl_mrsh\"/>\n\n<fun>unmarshal()</fun> does the opposite of <fun>marshal()</fun>: it\ntakes a serialized <type>frags_t</type> representation of the message\ncalled <param>data</param> and returns a newly allocated link\nmessage.\n\n<insert id=\"dl_unm\"/>\n\n</dd>\n\n<dt>Endpoint Configuration</dt>\n\n<dd>Link endpoints are created as needed by the link\ncomponent. Depending on how they are created, they may not know yet\nwhich device they are connected to, so it might not be possible yet,\nfor example, to cache the device's communication interface in the\nendpoint's <fun>finalize()</fun> function. Additionally, there are\ncases where the device the endpoint talks to may be changed, such as\nwhen inserting a probe object to listen to the traffic.\n\nIn all of these cases, the <fun>device_changed()</fun> callback will\nbe called when the endpoint's device attribute is changed\n<em>and</em> the endpoint has reached to finalize phase. In that\ncallback, the new device can be obtained via\n<fun>SIMLINK_endpoint_device()</fun> and additional operations, such\nas interface caching, can be safely performed. The old device the\nendpoint was connected to is provided for convenience as an argument\nto <fun>device_changed()</fun>.\n\nNote that if no device related operations are necessary, this\ncallback may be left unimplemented.\n\nThe <class>ser_link</class> implementation of\n<fun>device_changed</fun> is the following:\n\n<insert id=\"sl_dev_changed\"/>\n\n</dd>\n\n<dt>Message Delivery</dt>\n\n<dd>Messages are delivered to the link by calling the\n<fun>deliver()</fun> function. The arguments of <fun>deliver()</fun>\nare the endpoint <param>ep</param> that received the message and the\nmessage <param>msg</param> itself. The implementation of\n<fun>deliver()</fun> is expected to call the correct device's\nfunction to deliver the message.\n\nNote that <fun>deliver()</fun> can be called in any execution context\nand should be thread-safe. The link object is shared between the\ncells in which it is connected, and should not be modified during\nexecution. Mutable state should be kept in the endpoint objects\ninstead.\n\nThe <class>datagram_link</class> implementation of\n<fun>deliver()</fun> is the following:\n\n<insert id=\"dl_dlv\"/>\n\n</dd>\n\n<dt>Configuration</dt>\n\n<dd>The last two functions of <type>link_type_t</type> are taking\ncare of the link configuration itself. In the same way messages needs\nto be marshaled when sent over a network, the global link\nconfiguration needs to be agreed upon when running the simulation in\nseveral processes.\n\n<fun>update_config_value()</fun> is called whenever a configuration\nparameter has been added or updated. The configuration parameter's\nname is provided as <param>key</param> and its new value as\n<param>value</param>, encoded as a <type>frags_t</type>.\n\n<fun>remove_config_value()</fun> is called whenever the configuration\nvalue <param>key</param> has been removed.\n\nThe interpretation of the link configuration messages is link\nspecific. The only configuration parameter that is defined by the\nlink library itself is <var>goal_latency</var>. This is handled\nentirely internally, although with the same mechanism as exposed\nhere. Configuration changes are initiated by the link objects\nthemselves with the Link Library API functions\n<fun>SIMLINK_config_update_value()</fun> and\n<fun>SIMLINK_config_remove_value()</fun>.\n\nNote that the link object that initiates the configuration change is\nalso called back via <fun>update_config_value()</fun> and\n<fun>remove_config_value()</fun>. Note also that the configuration\nchanges may be buffered and sent later if they are initiated too soon\nfor the configuration message to propagate.\n\nConfiguration changes should only be initiated while in Global\nContext, so the two configuration functions above will only be called\nin Global Context. This allows them to modify properties of\nthe link object itself without needing to care about thread safety.\n\nAs an example, here is how <class>ser_link</class> defines these two\nfunctions. The serial link keeps track of all endpoints connected to\nit by saving their ID as a configuration parameter. It also uses a\nconfigurable buffer size.\n\nFinally, it is important to note that these two callbacks may be\ncalled from a non-execution thread. They should call the Simics API\nonly via <fun>SIM_thread_safe_callback()</fun>. This includes calling\nthe <fun>SIM_log_*</fun> functions.\n\n<insert id=\"sl_cfg_up\"/>\n<insert id=\"sl_cfg_rm\"/>\n\n</dd>\n\n</dl>\n\n</doc-item>\n<doc-item name=\"SEE ALSO\">\nlink_message_t,\nSIMLINK_init\n</doc-item>\n\n</doc>\n</add>\n<add-type id=\"link_type_t def\"></add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct link_type_t {
     pub msg_to_attr: ::std::option::Option<
         unsafe extern "C" fn(link: *mut conf_object_t, msg: *const link_message_t) -> attr_value_t,
@@ -46578,7 +47973,7 @@ extern "C" {
 }
 pub type map_demap_interface_t = map_demap_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct map_demap_interface {
     #[doc = " old-style"]
     pub add_map: ::std::option::Option<
@@ -46737,7 +48132,7 @@ fn bindgen_test_layout_map_demap_interface() {
 }
 pub type memory_space_interface_t = memory_space_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct memory_space_interface {
     pub space_lookup: ::std::option::Option<
         unsafe extern "C" fn(
@@ -46906,7 +48301,7 @@ fn bindgen_test_layout_memory_space_interface() {
 }
 pub type port_space_interface_t = port_space_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct port_space_interface {
     pub port_operation: ::std::option::Option<
         unsafe extern "C" fn(
@@ -46981,7 +48376,7 @@ fn bindgen_test_layout_port_space_interface() {
 }
 pub type translate_interface_t = translate_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct translate_interface {
     pub translate: ::std::option::Option<
         unsafe extern "C" fn(
@@ -47018,7 +48413,7 @@ fn bindgen_test_layout_translate_interface() {
 }
 pub type bridge_interface_t = bridge_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct bridge_interface {
     pub not_taken: ::std::option::Option<
         unsafe extern "C" fn(
@@ -47058,7 +48453,7 @@ fn bindgen_test_layout_bridge_interface() {
 }
 pub type microwire_interface_t = microwire_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct microwire_interface {
     pub set_cs: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, cs: ::std::os::raw::c_int),
@@ -47156,7 +48551,7 @@ fn bindgen_test_layout_microwire_interface() {
 }
 pub type mii_management_interface_t = mii_management_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct mii_management_interface {
     pub serial_access: ::std::option::Option<
         unsafe extern "C" fn(
@@ -47229,7 +48624,7 @@ fn bindgen_test_layout_mii_management_interface() {
 }
 pub type mii_interface_t = mii_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct mii_interface {
     pub serial_access: ::std::option::Option<
         unsafe extern "C" fn(
@@ -47292,7 +48687,7 @@ fn bindgen_test_layout_mii_interface() {
 }
 pub type mdio45_bus_interface_t = mdio45_bus_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct mdio45_bus_interface {
     pub read_register: ::std::option::Option<
         unsafe extern "C" fn(
@@ -47349,7 +48744,7 @@ fn bindgen_test_layout_mdio45_bus_interface() {
 }
 pub type mdio45_phy_interface_t = mdio45_phy_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct mdio45_phy_interface {
     pub read_register: ::std::option::Option<
         unsafe extern "C" fn(
@@ -47439,7 +48834,7 @@ pub const ms1553_mode_code_t_MS1553_Override_Selected_Transmitter_Shutdown: ms15
 pub type ms1553_mode_code_t = ::std::os::raw::c_uint;
 #[doc = " <add-type id=\"ms1553_words_t def\">\n</add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ms1553_words_t {
     pub length: ::std::os::raw::c_int,
     pub data: *const uint16,
@@ -47479,9 +48874,18 @@ fn bindgen_test_layout_ms1553_words_t() {
         )
     );
 }
+impl Default for ms1553_words_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 pub type ms1553_link_interface_t = ms1553_link_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ms1553_link_interface {
     pub connect_terminal: ::std::option::Option<
         unsafe extern "C" fn(
@@ -47617,7 +49021,7 @@ fn bindgen_test_layout_ms1553_link_interface() {
 }
 pub type ms1553_terminal_interface_t = ms1553_terminal_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ms1553_terminal_interface {
     pub receive_data: ::std::option::Option<
         unsafe extern "C" fn(
@@ -47675,7 +49079,7 @@ fn bindgen_test_layout_ms1553_terminal_interface() {
 }
 pub type nand_flash_interface_t = nand_flash_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct nand_flash_interface {
     pub read_access: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> uint16>,
     pub write_access:
@@ -47771,7 +49175,7 @@ fn bindgen_test_layout_nand_flash_interface() {
 #[doc = " <add id=\"pci_memory_transaction_t DOC\">\n<ndx>pci_memory_transaction_t</ndx>\n<doc>\n<doc-item name=\"NAME\">pci_memory_transaction_t</doc-item>\n<doc-item name=\"SYNOPSIS\"><insert id=\"pci_memory_transaction_t def\"/>\n</doc-item>\n<doc-item name=\"DESCRIPTION\">\n\nThe <type>pci_memory_transaction_t</type> is used for memory accesses\ninitiated by PCI devices.\n\n<note>All struct fields are internal and should never be used\ndirectly.</note>\n\nA <type>generic_transaction_t</type> can be converted to a\n<type>pci_memory_transaction_t</type> via the\n<fun>SIM_pci_mem_trans_from_generic()</fun> function. Never explicitly cast\none struct to the other, always use the Simics API functions.</doc-item>\n<doc-item name=\"SEE ALSO\">\n<fun>SIM_pci_mem_trans_from_generic</fun>,\n<type>generic_transaction_t</type>\n</doc-item>\n</doc></add>\n\n<add-type id=\"pci_memory_transaction_t def\"></add-type>"]
 pub type pci_memory_transaction_t = pci_memory_transaction;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct pci_memory_transaction {
     pub _internal_s: generic_transaction_t,
     pub _internal_original_size: uint32,
@@ -47867,6 +49271,15 @@ fn bindgen_test_layout_pci_memory_transaction() {
         )
     );
 }
+impl Default for pci_memory_transaction {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     #[doc = " The documentation for these EXPORTED methods are in mop.c and in the API RM"]
     pub fn SIM_pci_mem_trans_from_generic(
@@ -47884,7 +49297,7 @@ extern "C" {
 }
 pub type pci_device_interface_t = pci_device_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct pci_device_interface {
     pub bus_reset: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
     pub _deprecated_interrupt_acknowledge: ::std::option::Option<
@@ -47981,7 +49394,7 @@ fn bindgen_test_layout_pci_device_interface() {
 }
 pub type pci_bus_interface_t = pci_bus_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct pci_bus_interface {
     #[doc = " Deprecated; memory_access"]
     pub memory_access: ::std::option::Option<
@@ -48267,7 +49680,7 @@ fn bindgen_test_layout_pci_bus_interface() {
 }
 pub type pci_upstream_interface_t = pci_upstream_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct pci_upstream_interface {
     pub operation: ::std::option::Option<
         unsafe extern "C" fn(
@@ -48305,7 +49718,7 @@ fn bindgen_test_layout_pci_upstream_interface() {
 }
 pub type pci_upstream_operation_interface_t = pci_upstream_operation_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct pci_upstream_operation_interface {
     pub read: ::std::option::Option<
         unsafe extern "C" fn(
@@ -48369,7 +49782,7 @@ fn bindgen_test_layout_pci_upstream_operation_interface() {
 }
 pub type pci_downstream_interface_t = pci_downstream_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct pci_downstream_interface {
     pub operation: ::std::option::Option<
         unsafe extern "C" fn(
@@ -48407,7 +49820,7 @@ fn bindgen_test_layout_pci_downstream_interface() {
 }
 pub type pci_bridge_interface_t = pci_bridge_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct pci_bridge_interface {
     pub system_error: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
     pub raise_interrupt: ::std::option::Option<
@@ -48474,7 +49887,7 @@ fn bindgen_test_layout_pci_bridge_interface() {
 }
 pub type pci_interrupt_interface_t = pci_interrupt_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct pci_interrupt_interface {
     pub raise_interrupt: ::std::option::Option<
         unsafe extern "C" fn(
@@ -48613,7 +50026,7 @@ pub const pcie_message_type_t_PCIE_DLL_Link_Up: pcie_message_type_t = -2;
 pub type pcie_message_type_t = ::std::os::raw::c_int;
 pub type pci_express_interface_t = pci_express_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct pci_express_interface {
     pub send_message: ::std::option::Option<
         unsafe extern "C" fn(
@@ -48652,7 +50065,7 @@ fn bindgen_test_layout_pci_express_interface() {
 }
 pub type pci_express_hotplug_interface_t = pci_express_hotplug_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct pci_express_hotplug_interface {
     #[doc = " This is sent when a device is added or removed from the bus."]
     pub presence_change: ::std::option::Option<
@@ -48740,7 +50153,7 @@ fn bindgen_test_layout_pci_express_hotplug_interface() {
 }
 pub type pci_multi_function_device_interface_t = pci_multi_function_device_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct pci_multi_function_device_interface {
     pub supported_functions:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> attr_value_t>,
@@ -48784,7 +50197,7 @@ pub const pcie_type_t_PCIE_Type_Other: pcie_type_t = 5;
 pub type pcie_type_t = ::std::os::raw::c_uint;
 pub type pcie_device_interface_t = pcie_device_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct pcie_device_interface {
     pub connected: ::std::option::Option<
         unsafe extern "C" fn(
@@ -48850,7 +50263,7 @@ fn bindgen_test_layout_pcie_device_interface() {
 }
 pub type pcie_map_interface_t = pcie_map_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct pcie_map_interface {
     pub add_map: ::std::option::Option<
         unsafe extern "C" fn(
@@ -48977,7 +50390,7 @@ fn bindgen_test_layout_pcie_map_interface() {
 }
 pub type pcie_port_control_interface_t = pcie_port_control_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct pcie_port_control_interface {
     pub set_secondary_bus_number:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t, value: uint64)>,
@@ -49020,7 +50433,7 @@ fn bindgen_test_layout_pcie_port_control_interface() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct dummy_semicolon_eater_pcie_type {
     pub dummy: ::std::os::raw::c_int,
 }
@@ -49051,7 +50464,7 @@ fn bindgen_test_layout_dummy_semicolon_eater_pcie_type() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct dummy_semicolon_eater_pcie_requester_id {
     pub dummy: ::std::os::raw::c_int,
 }
@@ -49088,7 +50501,7 @@ fn bindgen_test_layout_dummy_semicolon_eater_pcie_requester_id() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct dummy_semicolon_eater_pcie_device_id {
     pub dummy: ::std::os::raw::c_int,
 }
@@ -49125,7 +50538,7 @@ fn bindgen_test_layout_dummy_semicolon_eater_pcie_device_id() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct dummy_semicolon_eater_pcie_msg_type {
     pub dummy: ::std::os::raw::c_int,
 }
@@ -49173,7 +50586,7 @@ pub const pcie_msg_route_t_PCIE_Msg_Route_Terminate: pcie_msg_route_t = 5;
 pub const pcie_msg_route_t_PCIE_Msg_Route_Gather: pcie_msg_route_t = 6;
 pub type pcie_msg_route_t = ::std::os::raw::c_uint;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct dummy_semicolon_eater_pcie_msg_route {
     pub dummy: ::std::os::raw::c_int,
 }
@@ -49210,7 +50623,7 @@ fn bindgen_test_layout_dummy_semicolon_eater_pcie_msg_route() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct dummy_semicolon_eater_pcie_pasid {
     pub dummy: ::std::os::raw::c_int,
 }
@@ -49249,7 +50662,7 @@ pub const pcie_at_t_PCIE_AT_Translation_Request: pcie_at_t = 2;
 pub const pcie_at_t_PCIE_AT_Translated: pcie_at_t = 3;
 pub type pcie_at_t = ::std::os::raw::c_uint;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct dummy_semicolon_eater_pcie_at {
     pub dummy: ::std::os::raw::c_int,
 }
@@ -49287,7 +50700,7 @@ pub const pcie_error_t_PCIE_Error_No_Error: pcie_error_t = 4;
 pub const pcie_error_t_PCIE_Error_Configuration_Request_Retry_Status: pcie_error_t = 5;
 pub type pcie_error_t = ::std::os::raw::c_uint;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct pcie_error_ret_t {
     pub val: pcie_error_t,
 }
@@ -49316,8 +50729,17 @@ fn bindgen_test_layout_pcie_error_ret_t() {
         )
     );
 }
+impl Default for pcie_error_ret_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct dummy_semicolon_eater_pcie_error_ret {
     pub dummy: ::std::os::raw::c_int,
 }
@@ -49354,7 +50776,7 @@ fn bindgen_test_layout_dummy_semicolon_eater_pcie_error_ret() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct pcie_byte_count_ret_t {
     pub val: uint64,
 }
@@ -49385,7 +50807,7 @@ fn bindgen_test_layout_pcie_byte_count_ret_t() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct dummy_semicolon_eater_pcie_byte_count_ret {
     pub dummy: ::std::os::raw::c_int,
 }
@@ -49429,7 +50851,7 @@ pub const ram_operation_flags_t_Sim_Ram_Op_Non_Coherent: ram_operation_flags_t =
 pub type ram_operation_flags_t = ::std::os::raw::c_uint;
 pub type ram_interface_t = ram_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ram_interface {
     #[doc = " The get_page is method is obsolete and should be left\nunimplemented."]
     pub get_page: ::std::option::Option<
@@ -49562,7 +50984,7 @@ pub const rapidio_operation_t_RapidIO_Swap: rapidio_operation_t = 8;
 pub type rapidio_operation_t = ::std::os::raw::c_uint;
 pub type rapidio_v3_interface_t = rapidio_v3_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct rapidio_v3_interface {
     pub memory_operation: ::std::option::Option<
         unsafe extern "C" fn(
@@ -49698,7 +51120,7 @@ fn bindgen_test_layout_rapidio_v3_interface() {
 }
 pub type rapidio_v4_interface_t = rapidio_v4_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct rapidio_v4_interface {
     pub transaction_request: ::std::option::Option<
         unsafe extern "C" fn(
@@ -49862,7 +51284,7 @@ fn bindgen_test_layout_rapidio_v4_interface() {
 }
 pub type rapidio_v5_interface_t = rapidio_v5_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct rapidio_v5_interface {
     pub transaction_request: ::std::option::Option<
         unsafe extern "C" fn(
@@ -50054,7 +51476,7 @@ fn bindgen_test_layout_rapidio_v5_interface() {
 }
 pub type sata_interface_t = sata_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct sata_interface {
     pub receive_fis:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t, fis: bytes_t)>,
@@ -50086,7 +51508,7 @@ fn bindgen_test_layout_sata_interface() {
 }
 pub type serial_device_interface_t = serial_device_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct serial_device_interface {
     pub write: ::std::option::Option<
         unsafe extern "C" fn(
@@ -50134,7 +51556,7 @@ fn bindgen_test_layout_serial_device_interface() {
 }
 pub type extended_serial_interface_t = extended_serial_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct extended_serial_interface {
     pub write_at: ::std::option::Option<
         unsafe extern "C" fn(
@@ -50188,7 +51610,7 @@ fn bindgen_test_layout_extended_serial_interface() {
 }
 pub type rs232_device_interface_t = rs232_device_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct rs232_device_interface {
     #[doc = " Flow control lines"]
     pub cts: ::std::option::Option<
@@ -50297,7 +51719,7 @@ pub const parity_mode_t_Parity_Odd: parity_mode_t = 2;
 pub type parity_mode_t = ::std::os::raw::c_uint;
 pub type rs232_console_interface_t = rs232_console_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct rs232_console_interface {
     #[doc = " Set line parameters"]
     pub set_baudrate: ::std::option::Option<
@@ -50433,7 +51855,7 @@ pub use self::serial_peripheral_interface_flags as serial_peripheral_interface_f
 pub type serial_peripheral_interface_master_interface_t =
     serial_peripheral_interface_master_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct serial_peripheral_interface_master_interface {
     pub spi_response: ::std::option::Option<
         unsafe extern "C" fn(
@@ -50478,7 +51900,7 @@ fn bindgen_test_layout_serial_peripheral_interface_master_interface() {
 pub type serial_peripheral_interface_slave_interface_t =
     serial_peripheral_interface_slave_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct serial_peripheral_interface_slave_interface {
     pub spi_request: ::std::option::Option<
         unsafe extern "C" fn(
@@ -50555,7 +51977,7 @@ fn bindgen_test_layout_serial_peripheral_interface_slave_interface() {
 }
 pub type signal_interface_t = signal_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct signal_interface {
     pub signal_raise: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
     pub signal_lower: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
@@ -50597,7 +52019,7 @@ fn bindgen_test_layout_signal_interface() {
 }
 pub type multi_level_signal_interface_t = multi_level_signal_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct multi_level_signal_interface {
     pub signal_level_change:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t, level: uint64)>,
@@ -50642,7 +52064,7 @@ fn bindgen_test_layout_multi_level_signal_interface() {
 }
 pub type pulse_interface_t = pulse_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct pulse_interface {
     pub pulse: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
 }
@@ -50677,7 +52099,7 @@ pub type telemetry_class_id_t = ::std::os::raw::c_int;
 pub type telemetry_id_t = ::std::os::raw::c_int;
 pub type telemetry_interface_t = telemetry_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct telemetry_interface {
     pub get_telemetry_class_id: ::std::option::Option<
         unsafe extern "C" fn(
@@ -50815,7 +52237,7 @@ fn bindgen_test_layout_telemetry_interface() {
 }
 pub type translator_interface_t = translator_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct translator_interface {
     pub translate: ::std::option::Option<
         unsafe extern "C" fn(
@@ -50853,7 +52275,7 @@ fn bindgen_test_layout_translator_interface() {
 }
 pub type transaction_translator_interface_t = transaction_translator_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct transaction_translator_interface {
     pub translate: ::std::option::Option<
         unsafe extern "C" fn(
@@ -50903,7 +52325,7 @@ fn bindgen_test_layout_transaction_translator_interface() {
 }
 pub type translation_flush_interface_t = translation_flush_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct translation_flush_interface {
     pub flush_range: ::std::option::Option<
         unsafe extern "C" fn(
@@ -50964,7 +52386,7 @@ pub const usb_speed_t_USB_Speed_Full: usb_speed_t = 1;
 pub const usb_speed_t_USB_Speed_High: usb_speed_t = 2;
 pub type usb_speed_t = ::std::os::raw::c_uint;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct usb_device_request_t {
     pub bmRequestType: uint8,
     pub bRequest: uint8,
@@ -51095,6 +52517,15 @@ fn bindgen_test_layout_usb_transfer_t__bindgen_ty_1() {
         )
     );
 }
+impl Default for usb_transfer_t__bindgen_ty_1 {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[test]
 fn bindgen_test_layout_usb_transfer_t() {
     const UNINIT: ::std::mem::MaybeUninit<usb_transfer_t> = ::std::mem::MaybeUninit::uninit();
@@ -51190,9 +52621,18 @@ fn bindgen_test_layout_usb_transfer_t() {
         )
     );
 }
+impl Default for usb_transfer_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 pub type usb_device_interface_t = usb_device_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct usb_device_interface {
     pub submit_transfer: ::std::option::Option<
         unsafe extern "C" fn(
@@ -51252,7 +52692,7 @@ fn bindgen_test_layout_usb_device_interface() {
 }
 pub type usb_interface_t = usb_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct usb_interface {
     pub connect_device: ::std::option::Option<
         unsafe extern "C" fn(
@@ -51322,7 +52762,7 @@ fn bindgen_test_layout_usb_interface() {
 }
 pub type vectored_interrupt_interface_t = vectored_interrupt_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct vectored_interrupt_interface {
     pub set_level: ::std::option::Option<
         unsafe extern "C" fn(
@@ -51360,7 +52800,7 @@ fn bindgen_test_layout_vectored_interrupt_interface() {
 }
 pub type vectored_interrupt_source_interface_t = vectored_interrupt_source_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct vectored_interrupt_source_interface {
     pub acknowledge: ::std::option::Option<
         unsafe extern "C" fn(
@@ -51401,7 +52841,7 @@ fn bindgen_test_layout_vectored_interrupt_source_interface() {
 }
 #[doc = " <add id=\"x86_cstate_interface_t\">\n\nThe methods in this interface can be used to read or change the current\npower state the CPU is in. A state value of 0 corresponds to C0, a value of\n1 corresponds to C1, etc. HLT will be reported as state 1, substate 0.\nMWAIT will reported based upon the eax hint, decoded as state = (eax[7:4] +\n1) mod 16, substate = eax[3:0].\n\n<fun>set_cstate</fun> will perform side-effects such as putting the\nprocessor to sleep or waking it up, and call the registered cstate\nlisteners.\n\n<insert-until text=\"// ADD INTERFACE x86_cstate_interface\"/>\n\n</add>\n<add id=\"x86_cstate_interface_exec_context\">\nCell Context for all methods.\n</add>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_cstate_t {
     pub state: uint32,
     pub sub_state: uint32,
@@ -51443,7 +52883,7 @@ fn bindgen_test_layout_x86_cstate_t() {
 }
 pub type x86_cstate_interface_t = x86_cstate_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_cstate_interface {
     pub get_cstate:
         ::std::option::Option<unsafe extern "C" fn(cpu_obj: *mut conf_object_t) -> x86_cstate_t>,
@@ -51488,7 +52928,7 @@ fn bindgen_test_layout_x86_cstate_interface() {
 }
 pub type x86_pkg_cstate_interface_t = x86_pkg_cstate_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_pkg_cstate_interface {
     pub get_pkg_cstate:
         ::std::option::Option<unsafe extern "C" fn(cpu_obj: *mut conf_object_t) -> x86_cstate_t>,
@@ -51546,7 +52986,7 @@ fn bindgen_test_layout_x86_pkg_cstate_interface() {
 }
 pub type x86_cstate_notification_interface_t = x86_cstate_notification_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct x86_cstate_notification_interface {
     pub notification: ::std::option::Option<
         unsafe extern "C" fn(
@@ -51628,6 +53068,15 @@ fn bindgen_test_layout_ht_key_t() {
         )
     );
 }
+impl Default for ht_key_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct ht_entry_common {
@@ -51692,6 +53141,15 @@ fn bindgen_test_layout_ht_entry_common() {
         )
     );
 }
+impl Default for ht_entry_common {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 pub type ht_entry_common_t = ht_entry_common;
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -51723,6 +53181,15 @@ fn bindgen_test_layout_ht_int_entry_t() {
         )
     );
 }
+impl Default for ht_int_entry_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct ht_str_entry_t {
@@ -51753,8 +53220,17 @@ fn bindgen_test_layout_ht_str_entry_t() {
         )
     );
 }
+impl Default for ht_str_entry_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ht_table_common_t {
     #[doc = " size of buckets array; 0 or a power of 2"]
     pub nbuckets: ::std::os::raw::c_uint,
@@ -51820,8 +53296,17 @@ fn bindgen_test_layout_ht_table_common_t() {
         )
     );
 }
+impl Default for ht_table_common_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ht_str_table_t {
     pub t: ht_table_common_t,
     #[doc = " whether the table owns the keys"]
@@ -51862,8 +53347,17 @@ fn bindgen_test_layout_ht_str_table_t() {
         )
     );
 }
+impl Default for ht_str_table_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ht_int_table_t {
     pub t: ht_table_common_t,
 }
@@ -51892,8 +53386,17 @@ fn bindgen_test_layout_ht_int_table_t() {
         )
     );
 }
+impl Default for ht_int_table_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ht_iter_common_t {
     pub ht: *mut ht_table_common_t,
     #[doc = " current bucket"]
@@ -51958,8 +53461,17 @@ fn bindgen_test_layout_ht_iter_common_t() {
         )
     );
 }
+impl Default for ht_iter_common_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ht_int_iter_t {
     pub it: ht_iter_common_t,
 }
@@ -51988,8 +53500,17 @@ fn bindgen_test_layout_ht_int_iter_t() {
         )
     );
 }
+impl Default for ht_int_iter_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ht_str_iter_t {
     pub it: ht_iter_common_t,
 }
@@ -52017,6 +53538,15 @@ fn bindgen_test_layout_ht_str_iter_t() {
             stringify!(it)
         )
     );
+}
+impl Default for ht_str_iter_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     pub fn ht_clear_int_table(ht: *mut ht_int_table_t, free_vals: bool);
@@ -52154,7 +53684,7 @@ extern "C" {
     pub fn VT_release_python_lock(old_lock_state: bool);
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct trampoline_data {
     #[doc = " trampoline template"]
     pub templ: ::std::option::Option<unsafe extern "C" fn()>,
@@ -52163,7 +53693,7 @@ pub struct trampoline_data {
     pub offsets: trampoline_data__bindgen_ty_1,
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct trampoline_data__bindgen_ty_1 {
     #[doc = " offsets of hi/lo 32 bits of the C function address"]
     pub function_hi: usize,
@@ -52337,7 +53867,7 @@ extern "C" {
 pub type py_wrap_c_func_t = py_wrap_c_func;
 #[doc = " converter functions from/to a struct field type"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct field_type_t {
     #[doc = " of type"]
     pub name: *const ::std::os::raw::c_char,
@@ -52426,9 +53956,18 @@ fn bindgen_test_layout_field_type_t() {
         )
     );
 }
+impl Default for field_type_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " struct member information"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct struct_member {
     pub name: *const ::std::os::raw::c_char,
     #[doc = " set this member to a Python value: 0 on success, -1 on error"]
@@ -52516,6 +54055,15 @@ fn bindgen_test_layout_struct_member() {
         )
     );
 }
+impl Default for struct_member {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " struct member information"]
 pub type struct_member_t = struct_member;
 pub type opaque_type_t = opaque_type;
@@ -52527,7 +54075,7 @@ extern "C" {
 }
 #[doc = " struct to hold data about each type of generated trampolines (one\nper signature)"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct py_wrap_c_func {
     #[doc = " Python definition"]
     pub meth: PyMethodDef,
@@ -52629,9 +54177,18 @@ fn bindgen_test_layout_py_wrap_c_func() {
         )
     );
 }
+impl Default for py_wrap_c_func {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " py_opaque_type_t is used to wrap C structures whose contents cannot\n be accessed by Python without getter/setter functions"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct py_opaque_type_t {
     pub ob_base: PyObject,
     #[doc = " true if struct should be freed at\ndestruction"]
@@ -52719,8 +54276,17 @@ fn bindgen_test_layout_py_opaque_type_t() {
         )
     );
 }
+impl Default for py_opaque_type_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct opaque_type {
     pub pytype: PyTypeObject,
     pub size: ::std::os::raw::c_uint,
@@ -52809,8 +54375,17 @@ fn bindgen_test_layout_opaque_type() {
         )
     );
 }
+impl Default for opaque_type {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct py_method_t {
     pub ob_base: PyObject,
     #[doc = " actual signature may vary"]
@@ -52862,8 +54437,17 @@ fn bindgen_test_layout_py_method_t() {
         )
     );
 }
+impl Default for py_method_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct python_cbdata_t {
     pub ob_base: PyObject,
     pub cbdata: cbdata_t,
@@ -52903,6 +54487,15 @@ fn bindgen_test_layout_python_cbdata_t() {
         )
     );
 }
+impl Default for python_cbdata_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     pub fn VT_lookup_python_opaque_type(name: *const ::std::os::raw::c_char) -> *mut opaque_type_t;
 }
@@ -52935,7 +54528,7 @@ pub const abs_pointer_buttons_t_Abs_Pointer_Button_Middle: abs_pointer_buttons_t
 #[doc = " <add id=\"abs_pointer_interface_t\">\n\nInterface implemented by tablet devices. Used by consoles to send touchpad\nevents to the controller. The <fun>set_state</fun> function is called when\nsomething changes in the console. The coordinates are given as scaled\nabsolute scaled values, where (0, 0) is the upper-left corner and (0xffff,\n0xffff) is the lower-right corner.\n\n<insert-until text=\"// ADD INTERFACE abs_pointer_interface\"/>\n\n</add>\n<add id=\"abs_pointer_interface_exec_context\">\nCell Context for all methods.\n</add>"]
 pub type abs_pointer_buttons_t = ::std::os::raw::c_uint;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct abs_pointer_state_t {
     pub buttons: abs_pointer_buttons_t,
     pub x: uint16,
@@ -52997,9 +54590,18 @@ fn bindgen_test_layout_abs_pointer_state_t() {
         )
     );
 }
+impl Default for abs_pointer_state_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 pub type abs_pointer_interface_t = abs_pointer_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct abs_pointer_interface {
     pub set_state: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, state: abs_pointer_state_t),
@@ -53033,7 +54635,7 @@ fn bindgen_test_layout_abs_pointer_interface() {
 }
 pub type abs_pointer_activate_interface_t = abs_pointer_activate_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct abs_pointer_activate_interface {
     pub enable: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
     pub disable: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
@@ -53076,7 +54678,7 @@ fn bindgen_test_layout_abs_pointer_activate_interface() {
 }
 pub type instrumentation_order_interface_t = instrumentation_order_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct instrumentation_order_interface {
     #[doc = " Returns an object list in the connection order"]
     pub get_connections:
@@ -53127,7 +54729,7 @@ fn bindgen_test_layout_instrumentation_order_interface() {
 }
 pub type callback_info_interface_t = callback_info_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct callback_info_interface {
     pub get_callbacks:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> attr_value_t>,
@@ -53169,7 +54771,7 @@ pub type bank_access_t = bank_access;
 pub type bank_callback_handle_t = usize;
 pub type bank_before_read_interface_t = bank_before_read_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct bank_before_read_interface {
     pub offset: ::std::option::Option<
         unsafe extern "C" fn(handle: *mut bank_access_t) -> physical_address_t,
@@ -53253,7 +54855,7 @@ fn bindgen_test_layout_bank_before_read_interface() {
 }
 pub type bank_after_read_interface_t = bank_after_read_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct bank_after_read_interface {
     pub offset: ::std::option::Option<
         unsafe extern "C" fn(handle: *mut bank_access_t) -> physical_address_t,
@@ -53359,7 +54961,7 @@ fn bindgen_test_layout_bank_after_read_interface() {
 }
 pub type bank_before_write_interface_t = bank_before_write_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct bank_before_write_interface {
     pub offset: ::std::option::Option<
         unsafe extern "C" fn(handle: *mut bank_access_t) -> physical_address_t,
@@ -53466,7 +55068,7 @@ fn bindgen_test_layout_bank_before_write_interface() {
 }
 pub type bank_after_write_interface_t = bank_after_write_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct bank_after_write_interface {
     pub offset: ::std::option::Option<
         unsafe extern "C" fn(handle: *mut bank_access_t) -> physical_address_t,
@@ -53585,7 +55187,7 @@ pub type after_write_callback_t = ::std::option::Option<
 >;
 pub type bank_instrumentation_subscribe_interface_t = bank_instrumentation_subscribe_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct bank_instrumentation_subscribe_interface {
     pub register_before_read: ::std::option::Option<
         unsafe extern "C" fn(
@@ -53746,7 +55348,7 @@ fn bindgen_test_layout_bank_instrumentation_subscribe_interface() {
 }
 #[doc = " <add-type id=\"addr_prof_iter_t def\"></add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct addr_prof_iter {
     pub next: ::std::option::Option<unsafe extern "C" fn(i: *mut addr_prof_iter) -> uint64>,
     pub destroy: ::std::option::Option<unsafe extern "C" fn(i: *mut addr_prof_iter)>,
@@ -53806,7 +55408,7 @@ pub const branch_arc_type_t_Branch_Arc_Max: branch_arc_type_t = 3;
 #[doc = "<add-type id=\"branch_arc_type_t def\"></add-type>"]
 pub type branch_arc_type_t = ::std::os::raw::c_uint;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct branch_arc_t {
     pub addr_from: uint64,
     pub addr_to: uint64,
@@ -53868,8 +55470,17 @@ fn bindgen_test_layout_branch_arc_t() {
         )
     );
 }
+impl Default for branch_arc_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct branch_arc_iter {
     pub next:
         ::std::option::Option<unsafe extern "C" fn(i: *mut branch_arc_iter) -> *mut branch_arc_t>,
@@ -53930,7 +55541,7 @@ pub type iter_func_t = ::std::option::Option<
 >;
 pub type branch_recorder_handler_interface_t = branch_recorder_handler_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct branch_recorder_handler_interface {
     #[doc = " Attach/detach returns zero on error."]
     pub attach_branch_recorder: ::std::option::Option<
@@ -54145,6 +55756,15 @@ fn bindgen_test_layout_branch_recorder_handler_interface() {
         )
     );
 }
+impl Default for branch_recorder_handler_interface {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 pub const breakpoint_kind_t_Sim_Break_Physical: breakpoint_kind_t = 0;
 pub const breakpoint_kind_t_Sim_Break_Virtual: breakpoint_kind_t = 1;
 #[doc = " x86 only"]
@@ -54155,7 +55775,7 @@ pub type breakpoint_kind_t = ::std::os::raw::c_uint;
 pub type breakpoint_id_t = ::std::os::raw::c_int;
 pub type breakpoint_handle_t = usize;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct breakpoint_info_t {
     pub handle: breakpoint_handle_t,
     pub read_write_execute: access_t,
@@ -54217,9 +55837,18 @@ fn bindgen_test_layout_breakpoint_info_t() {
         )
     );
 }
+impl Default for breakpoint_info_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 pub type breakpoint_interface_t = breakpoint_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct breakpoint_interface {
     pub insert_breakpoint: ::std::option::Option<
         unsafe extern "C" fn(
@@ -54288,7 +55917,7 @@ fn bindgen_test_layout_breakpoint_interface() {
 }
 #[doc = " ADD INTERFACE breakpoint_interface"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct breakpoint_set_t {
     pub num_breakpoints: ::std::os::raw::c_int,
     pub breakpoints: *mut breakpoint_info_t,
@@ -54328,9 +55957,18 @@ fn bindgen_test_layout_breakpoint_set_t() {
         )
     );
 }
+impl Default for breakpoint_set_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 pub type breakpoint_change_interface_t = breakpoint_change_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct breakpoint_change_interface {
     pub breakpoint_added: ::std::option::Option<
         unsafe extern "C" fn(
@@ -54385,7 +56023,7 @@ fn bindgen_test_layout_breakpoint_change_interface() {
 }
 pub type breakpoint_query_interface_t = breakpoint_query_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct breakpoint_query_interface {
     pub get_breakpoints: ::std::option::Option<
         unsafe extern "C" fn(
@@ -54437,7 +56075,7 @@ fn bindgen_test_layout_breakpoint_query_interface() {
 }
 pub type breakpoint_query_v2_interface_t = breakpoint_query_v2_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct breakpoint_query_v2_interface {
     pub get_breakpoints: ::std::option::Option<
         unsafe extern "C" fn(
@@ -54476,7 +56114,7 @@ fn bindgen_test_layout_breakpoint_query_v2_interface() {
 }
 pub type breakpoint_trigger_interface_t = breakpoint_trigger_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct breakpoint_trigger_interface {
     pub trigger_breakpoint: ::std::option::Option<
         unsafe extern "C" fn(
@@ -54528,7 +56166,7 @@ pub struct virtual_data_bp_handle {
 pub type virtual_data_bp_handle_t = virtual_data_bp_handle;
 pub type virtual_data_breakpoint_interface_t = virtual_data_breakpoint_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct virtual_data_breakpoint_interface {
     pub add_read: ::std::option::Option<
         unsafe extern "C" fn(
@@ -54626,7 +56264,7 @@ pub struct virtual_instr_bp_handle {
 pub type virtual_instr_bp_handle_t = virtual_instr_bp_handle;
 pub type virtual_instruction_breakpoint_interface_t = virtual_instruction_breakpoint_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct virtual_instruction_breakpoint_interface {
     pub add: ::std::option::Option<
         unsafe extern "C" fn(
@@ -54705,7 +56343,7 @@ extern "C" {
 }
 pub type cdrom_media_interface_t = cdrom_media_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct cdrom_media_interface {
     pub read_toc: ::std::option::Option<
         unsafe extern "C" fn(
@@ -54813,7 +56451,7 @@ fn bindgen_test_layout_cdrom_media_interface() {
 }
 pub type co_execute_interface_t = co_execute_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct co_execute_interface {
     pub start_thread: ::std::option::Option<
         unsafe extern "C" fn(
@@ -54861,7 +56499,7 @@ fn bindgen_test_layout_co_execute_interface() {
 }
 pub type synchronous_mode_interface_t = synchronous_mode_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct synchronous_mode_interface {
     pub enter: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t) -> ::std::os::raw::c_int,
@@ -54908,7 +56546,7 @@ fn bindgen_test_layout_synchronous_mode_interface() {
 }
 pub type component_interface_t = component_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct component_interface {
     pub pre_instantiate:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> bool>,
@@ -55063,7 +56701,7 @@ pub const connector_direction_t_Sim_Connector_Direction_Any: connector_direction
 pub type connector_direction_t = ::std::os::raw::c_uint;
 pub type connector_interface_t = connector_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct connector_interface {
     pub type_: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t) -> *mut ::std::os::raw::c_char,
@@ -55240,7 +56878,7 @@ fn bindgen_test_layout_connector_interface() {
 }
 pub type component_connector_interface_t = component_connector_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct component_connector_interface {
     pub get_check_data: ::std::option::Option<
         unsafe extern "C" fn(
@@ -55340,7 +56978,7 @@ fn bindgen_test_layout_component_connector_interface() {
 }
 pub type disk_component_interface_t = disk_component_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct disk_component_interface {
     pub size: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> uint64>,
 }
@@ -55380,7 +57018,7 @@ pub const concurrency_mode_t_Sim_Concurrency_Mode_Full: concurrency_mode_t = 4;
 pub type concurrency_mode_t = ::std::os::raw::c_uint;
 pub type concurrency_mode_interface_t = concurrency_mode_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct concurrency_mode_interface {
     pub supported_modes:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> concurrency_mode_t>,
@@ -55438,7 +57076,7 @@ fn bindgen_test_layout_concurrency_mode_interface() {
 }
 pub type concurrency_group_interface_t = concurrency_group_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct concurrency_group_interface {
     pub serialized_memory_group: ::std::option::Option<
         unsafe extern "C" fn(
@@ -55507,7 +57145,7 @@ extern "C" {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct cpu_list_t {
     pub size: ::std::os::raw::c_int,
     pub used: ::std::os::raw::c_int,
@@ -55558,9 +57196,18 @@ fn bindgen_test_layout_cpu_list_t() {
         )
     );
 }
+impl Default for cpu_list_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 pub type cpu_group_interface_t = cpu_group_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct cpu_group_interface {
     pub get_cpu_list: ::std::option::Option<
         unsafe extern "C" fn(cpu_group: *mut conf_object_t) -> *const cpu_list_t,
@@ -55593,7 +57240,7 @@ fn bindgen_test_layout_cpu_group_interface() {
 }
 pub type cycle_event_interface_t = cycle_event_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct cycle_event_interface {
     pub cycles: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> cycles_t>,
     pub post: ::std::option::Option<
@@ -55704,7 +57351,7 @@ fn bindgen_test_layout_cycle_event_interface() {
 }
 pub type cycle_control_interface_t = cycle_control_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct cycle_control_interface {
     pub stop: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
     pub start: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
@@ -55759,7 +57406,7 @@ fn bindgen_test_layout_cycle_control_interface() {
 }
 pub type data_profiler_interface_t = data_profiler_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct data_profiler_interface {
     #[doc = " computes the sum of all counters in an address range, from start to\nend, inclusive. This function is deprecated; you should use the\nfunctions of the address_profiler interface instead."]
     pub accum_in_range: ::std::option::Option<
@@ -55856,7 +57503,7 @@ pub type service_routine_t = ::std::option::Option<
 >;
 #[doc = " <add id=\"instruction info\">\n<insert-upto text=\"instruction_info_t;\"/>\n<ndx>instruction_info_t</ndx>\n\n<var>ii_ServiceRoutine</var> is a pointer to a function that will\nbe called by Simics every time the instruction is executed. It has\nthe following prototype:\n\n<insert id=\"service routine function\"/>\n\nThe service routine function should return an exception when it is\nfinished to signal its status. If no exception occurs\n<const>Sim_PE_No_Exception</const> should be returned.\n\nSee <type>exception_type_t</type> in\n<file>src/include/simics/base/memory.h</file> for the different\nexceptions available.\n\nA special return value, <const>Sim_PE_Default_Semantics</const>, can be\nreturned; this signals Simics to run the default semantics for the\ninstruction. This is useful if the semantics of an instruction\nshould be changed but the user routine does not want to handle it all\nthe time.\n\nNote that in a shared memory multiprocessor, the CPU\nused in decoding may differ from the CPU that executes the\ninstruction, since the decoded instructions may be cached.\n\n<var>ii_Arg</var> is the argument <var>arg</var> that will be\npassed on to the service routine function. Op code bit-fields for\nthe instruction such as register numbers or intermediate values can\nbe stored here. The <var>ii_UserData</var> field can also be used\nto pass information to the service routine if more data is needed.\n\n<var>ii_Type</var> is either <pp>UD_IT_SEQUENTIAL</pp> or\n<pp>UD_IT_CONTROL_FLOW</pp>.  A sequential type means that the\ninstruction does not perform any branches and the update of the\nprogram counter(s) is handled by Simics. In a control flow\ninstruction on the other hand it is up to the user to set the\nprogram counter(s).\n\n<var>ii_LogicalAddress</var> and <var>ii_PhysicalAddress</var>\nholds the logical and physical addresses of the instruction to be\ndecoded.\n\n</add>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct instruction_info {
     pub ii_ServiceRoutine: service_routine_t,
     pub ii_Arg: uint64,
@@ -55940,11 +57587,20 @@ fn bindgen_test_layout_instruction_info() {
         )
     );
 }
+impl Default for instruction_info {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " <add id=\"instruction info\">\n<insert-upto text=\"instruction_info_t;\"/>\n<ndx>instruction_info_t</ndx>\n\n<var>ii_ServiceRoutine</var> is a pointer to a function that will\nbe called by Simics every time the instruction is executed. It has\nthe following prototype:\n\n<insert id=\"service routine function\"/>\n\nThe service routine function should return an exception when it is\nfinished to signal its status. If no exception occurs\n<const>Sim_PE_No_Exception</const> should be returned.\n\nSee <type>exception_type_t</type> in\n<file>src/include/simics/base/memory.h</file> for the different\nexceptions available.\n\nA special return value, <const>Sim_PE_Default_Semantics</const>, can be\nreturned; this signals Simics to run the default semantics for the\ninstruction. This is useful if the semantics of an instruction\nshould be changed but the user routine does not want to handle it all\nthe time.\n\nNote that in a shared memory multiprocessor, the CPU\nused in decoding may differ from the CPU that executes the\ninstruction, since the decoded instructions may be cached.\n\n<var>ii_Arg</var> is the argument <var>arg</var> that will be\npassed on to the service routine function. Op code bit-fields for\nthe instruction such as register numbers or intermediate values can\nbe stored here. The <var>ii_UserData</var> field can also be used\nto pass information to the service routine if more data is needed.\n\n<var>ii_Type</var> is either <pp>UD_IT_SEQUENTIAL</pp> or\n<pp>UD_IT_CONTROL_FLOW</pp>.  A sequential type means that the\ninstruction does not perform any branches and the update of the\nprogram counter(s) is handled by Simics. In a control flow\ninstruction on the other hand it is up to the user to set the\nprogram counter(s).\n\n<var>ii_LogicalAddress</var> and <var>ii_PhysicalAddress</var>\nholds the logical and physical addresses of the instruction to be\ndecoded.\n\n</add>"]
 pub type instruction_info_t = instruction_info;
 #[doc = " <add id=\"user decoder\">\n<insert-upto text=\"decoder_t;\"/>\n<ndx>decoder_t</ndx>\n\nThe <fun>decode</fun> function is called to decode an instruction\npointed to by <param>code</param>.  The first byte corresponds to\nthe lowest address of the instruction in the simulated\nmemory. <param>valid_bytes</param> tells how many bytes can be\nread. The CPU is given in the <param>cpu</param> parameter.  When\nthe decoder has successfully decoded an instruction, it should set\nthe <var>ii_ServiceRoutine</var>, the <var>ii_Arg</var>, and the\n<var>ii_Type</var> members of the <param>ii</param> structure (see\nbelow), and returns the number of bytes used in the decoding.  If\nit does not apply to the given instruction, it should return zero.\nIf the decoder needs more data than <param>valid_bytes</param> it\nshould return a negative number corresponding to the total number\nof bytes it will need to continue the decoding. The underlying\narchitecture limits the number of bytes that can be requested,\ne.g. no more than 4 bytes can be requested on most RISC\narchitectures. Simics will call the decoder again when more bytes\nare available. This process is repeated until the decoder accepts\nor rejects the instruction.  A decoder should never request more\ndata than it needs. For example, if an instructions can be rejected\nby looking at the first byte, the decoder should never ask for more\nbytes.\n\nThe <type>instruction_info_t</type> is defined as follows:\n\n<insert id=\"instruction info\"/>\n\nThe <fun>disassemble</fun> function is called to disassemble an\ninstruction.  It uses the same <param>code</param>,\n<param>valid_bytes</param>, and <param>cpu</param> parameters as\nthe <fun>decode</fun> function. If the disassembly is valid, then\nthe string part of the returned <tt>tuple_int_string_t</tt> struct\nshould be a MALLOCed string with the disassembly and the integer\npart should be its length in bytes.  The caller is responsible for\nfreeing the disassembly string. The string member should be NULL\nand the integer part should be zero if the disassembly is not\nvalid.  If the disassemble function needs more data than\n<param>valid_bytes</param> it should return a negative number in\nthe integer part in the same way as the <fun>decode</fun> function,\nand set the string part to NULL.\n\nThe <fun>flush</fun> function is called to free any memory\nallocated when decoding an instruction and any user data associated\nwith the instruction.  It should return zero if it does not\nrecognize the instruction, and non-zero if it has accepted it.\nUsually, the way to recognize if a decoded instruction is the right\none to flush is to compare <tt>ii->ii_ServiceRoutine</tt> with the\nfunction that was set in the <param>decode</param> function. Note\nthat the <param>cpu</param> parameter is the processor that caused\nthe flush. It is more or less an arbitrary processor and should be\nignored.\n\nIn addition to the function pointers, the\n<type>decoder_t</type> structure contains a\n<var>user_data</var> pointer that is passed to all the\nfunctions.  This can be used for passing any data to the decoder\nfunctions.\n\n</add>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct decoder_t {
     pub user_data: *mut ::std::os::raw::c_void,
     pub decode: ::std::option::Option<
@@ -56026,9 +57682,18 @@ fn bindgen_test_layout_decoder_t() {
         )
     );
 }
+impl Default for decoder_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 pub type decoder_interface_t = decoder_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct decoder_interface {
     pub register_decoder: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, decoder: *mut decoder_t),
@@ -56074,7 +57739,7 @@ fn bindgen_test_layout_decoder_interface() {
 }
 pub type context_handler_interface_t = context_handler_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct context_handler_interface {
     pub get_current_context:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> *mut conf_object_t>,
@@ -56136,7 +57801,7 @@ pub type prof_data_t = prof_data;
 pub type prof_data_address_t = uint64;
 pub type prof_data_counter_t = uint64;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct prof_data_iter_t {
     pub pd: *mut prof_data_t,
     pub start: uint64,
@@ -56209,6 +57874,15 @@ fn bindgen_test_layout_prof_data_iter_t() {
             stringify!(index)
         )
     );
+}
+impl Default for prof_data_iter_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     pub fn prof_data_create(granularity: ::std::os::raw::c_uint) -> *mut prof_data_t;
@@ -56633,7 +58307,7 @@ extern "C" {
 }
 pub type telemetry_manager_interface_t = telemetry_manager_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct telemetry_manager_interface {
     pub add_data: ::std::option::Option<
         unsafe extern "C" fn(
@@ -56705,7 +58379,7 @@ pub const cmd_line_mod_t_Cmd_Line_Mod_Alt: cmd_line_mod_t = 4;
 pub type cmd_line_mod_t = ::std::os::raw::c_uint;
 pub type cmd_line_frontend_interface_t = cmd_line_frontend_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct cmd_line_frontend_interface {
     #[doc = " write a character on the command line at the current cursor\nposition, overwriting any existing character there"]
     pub write: ::std::option::Option<
@@ -56829,7 +58503,7 @@ fn bindgen_test_layout_cmd_line_frontend_interface() {
 }
 pub type cmd_line_selection_interface_t = cmd_line_selection_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct cmd_line_selection_interface {
     pub new_selection: ::std::option::Option<
         unsafe extern "C" fn(
@@ -56914,7 +58588,7 @@ extern "C" {
 }
 pub type terminal_server_interface_t = terminal_server_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct terminal_server_interface {
     pub write: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, str_: *const ::std::os::raw::c_char),
@@ -56976,7 +58650,7 @@ fn bindgen_test_layout_terminal_server_interface() {
 }
 pub type terminal_client_interface_t = terminal_client_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct terminal_client_interface {
     pub write: ::std::option::Option<
         unsafe extern "C" fn(
@@ -57305,7 +58979,7 @@ extern "C" {
 }
 pub type frontend_server_interface_t = frontend_server_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct frontend_server_interface {
     pub init_control_pipes: ::std::option::Option<
         unsafe extern "C" fn(arg1: *mut conf_object_t, s: *const ::std::os::raw::c_char),
@@ -57400,7 +59074,7 @@ fn bindgen_test_layout_frontend_server_interface() {
 }
 pub type tcf_channel_interface_t = tcf_channel_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct tcf_channel_interface {
     pub start_channel: ::std::option::Option<
         unsafe extern "C" fn(
@@ -57971,7 +59645,7 @@ pub const reg_bitorder_t_Reg_Bitorder_Big_Endian: reg_bitorder_t = 1;
 pub type reg_bitorder_t = ::std::os::raw::c_uint;
 #[doc = " Describes a named value. */\n/* <add-type id=\"named_value_t def\"><ndx>named_value_t</ndx></add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct named_value_t {
     pub name: *const ::std::os::raw::c_char,
     pub description: *const ::std::os::raw::c_char,
@@ -58023,9 +59697,18 @@ fn bindgen_test_layout_named_value_t() {
         )
     );
 }
+impl Default for named_value_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " <add-type id=\"description_t def\"><ndx>description_t</ndx></add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct description_t {
     #[doc = " Common fields"]
     pub type_: description_type_t,
@@ -58197,9 +59880,18 @@ fn bindgen_test_layout_description_t() {
         )
     );
 }
+impl Default for description_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 pub type describe_registers_interface_t = describe_registers_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct describe_registers_interface {
     pub first_child: ::std::option::Option<
         unsafe extern "C" fn(
@@ -58344,7 +60036,7 @@ fn bindgen_test_layout_describe_registers_interface() {
 }
 pub type device_identification_interface_t = device_identification_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct device_identification_interface {
     pub get_id: ::std::option::Option<
         unsafe extern "C" fn(
@@ -58397,7 +60089,7 @@ fn bindgen_test_layout_device_identification_interface() {
 }
 pub type direct_memory_interface_t = direct_memory_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct direct_memory_interface {
     pub get_handle: ::std::option::Option<
         unsafe extern "C" fn(
@@ -58532,7 +60224,7 @@ fn bindgen_test_layout_direct_memory_interface() {
 }
 pub type direct_memory_lookup_interface_t = direct_memory_lookup_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct direct_memory_lookup_interface {
     pub lookup: ::std::option::Option<
         unsafe extern "C" fn(
@@ -58572,7 +60264,7 @@ fn bindgen_test_layout_direct_memory_lookup_interface() {
 }
 pub type direct_memory_lookup_v2_interface_t = direct_memory_lookup_v2_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct direct_memory_lookup_v2_interface {
     pub lookup: ::std::option::Option<
         unsafe extern "C" fn(
@@ -58614,7 +60306,7 @@ fn bindgen_test_layout_direct_memory_lookup_v2_interface() {
 }
 pub type direct_memory_update_interface_t = direct_memory_update_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct direct_memory_update_interface {
     pub release: ::std::option::Option<
         unsafe extern "C" fn(
@@ -58693,7 +60385,7 @@ fn bindgen_test_layout_direct_memory_update_interface() {
 }
 pub type direct_memory_flush_interface_t = direct_memory_flush_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct direct_memory_flush_interface {
     pub revoke: ::std::option::Option<
         unsafe extern "C" fn(
@@ -58753,7 +60445,7 @@ fn bindgen_test_layout_direct_memory_flush_interface() {
 }
 pub type direct_memory_tags_interface_t = direct_memory_tags_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct direct_memory_tags_interface {
     pub get_tags_data: ::std::option::Option<
         unsafe extern "C" fn(
@@ -58790,7 +60482,7 @@ fn bindgen_test_layout_direct_memory_tags_interface() {
 }
 pub type event_delta_interface_t = event_delta_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct event_delta_interface {
     pub set_delta: ::std::option::Option<
         unsafe extern "C" fn(
@@ -58845,7 +60537,7 @@ fn bindgen_test_layout_event_delta_interface() {
 }
 pub type event_handler_interface_t = event_handler_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct event_handler_interface {
     pub handle_event: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> bool>,
     pub stop: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
@@ -58912,7 +60604,7 @@ pub type step_event_cb_t = ::std::option::Option<
 >;
 pub type step_event_instrumentation_interface_t = step_event_instrumentation_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct step_event_instrumentation_interface {
     pub register_step_event_cb: ::std::option::Option<
         unsafe extern "C" fn(
@@ -58983,7 +60675,7 @@ pub type cycle_event_cb_t = ::std::option::Option<
 >;
 pub type cycle_event_instrumentation_interface_t = cycle_event_instrumentation_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct cycle_event_instrumentation_interface {
     pub register_cycle_event_cb: ::std::option::Option<
         unsafe extern "C" fn(
@@ -59041,7 +60733,7 @@ fn bindgen_test_layout_cycle_event_instrumentation_interface() {
 }
 pub type exception_interface_t = exception_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct exception_interface {
     pub get_number: ::std::option::Option<
         unsafe extern "C" fn(
@@ -59132,7 +60824,7 @@ pub type instruction_trace_callback_t = ::std::option::Option<
 >;
 pub type exec_trace_interface_t = exec_trace_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct exec_trace_interface {
     pub register_tracer: ::std::option::Option<
         unsafe extern "C" fn(
@@ -59186,7 +60878,7 @@ fn bindgen_test_layout_exec_trace_interface() {
 }
 pub type execute_interface_t = execute_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct execute_interface {
     pub run: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
     pub stop: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
@@ -59250,7 +60942,7 @@ fn bindgen_test_layout_execute_interface() {
 }
 pub type cell_inspection_interface_t = cell_inspection_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct cell_inspection_interface {
     pub set_current_processor_obj: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, cpu_obj: *mut conf_object_t),
@@ -59297,7 +60989,7 @@ fn bindgen_test_layout_cell_inspection_interface() {
 }
 pub type execute_control_interface_t = execute_control_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct execute_control_interface {
     pub message_pending: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
     pub yield_request: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
@@ -59346,7 +61038,7 @@ pub const exec_mode_t_Sim_EM_Thread: exec_mode_t = 1;
 pub type exec_mode_t = ::std::os::raw::c_uint;
 pub type external_connection_ctl_interface_t = external_connection_ctl_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct external_connection_ctl_interface {
     #[doc = " Call this with a NULL cookie to indicate non-acceptance.\nIf blocking_read is true then this connection will\nuse blocking reads, i.e. calls to read will not return until the\ncomplete buffer has been filled."]
     pub accept: ::std::option::Option<
@@ -59484,7 +61176,7 @@ fn bindgen_test_layout_external_connection_ctl_interface() {
 }
 pub type external_connection_events_interface_t = external_connection_events_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct external_connection_events_interface {
     pub on_accept: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, server: *mut conf_object_t, id: uint64),
@@ -59550,7 +61242,7 @@ fn bindgen_test_layout_external_connection_events_interface() {
 }
 pub type tcp_connection_info_interface_t = tcp_connection_info_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct tcp_connection_info_interface {
     pub remote_port: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, cookie: *mut lang_void) -> uint16,
@@ -59597,7 +61289,7 @@ fn bindgen_test_layout_tcp_connection_info_interface() {
 }
 pub type freerun_interface_t = freerun_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct freerun_interface {
     pub enabled: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> bool>,
     pub advance_clock: ::std::option::Option<
@@ -59687,7 +61379,7 @@ pub struct monitored_attribute {
 pub type attribute_id_t = monitored_attribute;
 pub type attribute_monitor_interface_t = attribute_monitor_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct attribute_monitor_interface {
     pub register_monitored_attribute: ::std::option::Option<
         unsafe extern "C" fn(
@@ -59740,7 +61432,7 @@ fn bindgen_test_layout_attribute_monitor_interface() {
 }
 pub type vga_update_interface_t = vga_update_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct vga_update_interface {
     pub refresh: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
     pub refresh_all: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
@@ -59792,7 +61484,7 @@ pub const gfx_con_pixel_fmt_t_GFX_xRGB_8888: gfx_con_pixel_fmt_t = 32;
 pub type gfx_con_pixel_fmt_t = ::std::os::raw::c_uint;
 pub type gfx_con_interface_t = gfx_con_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct gfx_con_interface {
     pub set_color: ::std::option::Option<
         unsafe extern "C" fn(
@@ -59973,7 +61665,7 @@ fn bindgen_test_layout_gfx_con_interface() {
 }
 pub type hap_listen_interface_t = hap_listen_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct hap_listen_interface {
     pub occurred: ::std::option::Option<
         unsafe extern "C" fn(
@@ -60020,7 +61712,7 @@ pub struct image_spage {
 pub type image_spage_t = image_spage;
 pub type image_interface_t = image_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct image_interface {
     pub read: ::std::option::Option<
         unsafe extern "C" fn(
@@ -60215,7 +61907,7 @@ fn bindgen_test_layout_image_interface() {
 }
 pub type linear_image_interface_t = linear_image_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct linear_image_interface {
     pub get_base: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, retsize: *mut usize) -> *mut uint8,
@@ -60279,7 +61971,7 @@ fn bindgen_test_layout_linear_image_interface() {
 }
 pub type image_snoop_interface_t = image_snoop_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct image_snoop_interface {
     pub page_modified: ::std::option::Option<
         unsafe extern "C" fn(
@@ -60319,7 +62011,7 @@ fn bindgen_test_layout_image_snoop_interface() {
 }
 pub type pool_protect_interface_t = pool_protect_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct pool_protect_interface {
     pub create_group: ::std::option::Option<
         unsafe extern "C" fn(
@@ -60378,7 +62070,7 @@ pub const instruction_fetch_mode_t_Instruction_Fetch_Trace: instruction_fetch_mo
 pub type instruction_fetch_mode_t = ::std::os::raw::c_uint;
 pub type instruction_fetch_interface_t = instruction_fetch_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct instruction_fetch_interface {
     pub get_mode: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t) -> instruction_fetch_mode_t,
@@ -60454,7 +62146,7 @@ pub const ireg_info_t_Sim_RegInfo_Catchable: ireg_info_t = 0;
 pub type ireg_info_t = ::std::os::raw::c_uint;
 pub type int_register_interface_t = int_register_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct int_register_interface {
     pub get_number: ::std::option::Option<
         unsafe extern "C" fn(
@@ -60562,7 +62254,7 @@ fn bindgen_test_layout_int_register_interface() {
 }
 pub type jit_control_interface_t = jit_control_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct jit_control_interface {
     pub set_compile_enable:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t, enabled: bool)>,
@@ -60595,7 +62287,7 @@ fn bindgen_test_layout_jit_control_interface() {
 }
 pub type keyboard_interface_t = keyboard_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct keyboard_interface {
     pub keyboard_event: ::std::option::Option<
         unsafe extern "C" fn(
@@ -60632,7 +62324,7 @@ fn bindgen_test_layout_keyboard_interface() {
 }
 pub type keyboard_console_interface_t = keyboard_console_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct keyboard_console_interface {
     pub keyboard_ready: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
 }
@@ -60664,7 +62356,7 @@ fn bindgen_test_layout_keyboard_console_interface() {
 }
 pub type kbd_console_interface_t = kbd_console_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct kbd_console_interface {
     pub keyboard_ready: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
 }
@@ -60696,7 +62388,7 @@ fn bindgen_test_layout_kbd_console_interface() {
 }
 pub type mouse_interface_t = mouse_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct mouse_interface {
     pub mouse_event: ::std::option::Option<
         unsafe extern "C" fn(
@@ -60735,7 +62427,7 @@ fn bindgen_test_layout_mouse_interface() {
 }
 pub type dummy_memory_page_interface_t = dummy_memory_page_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct dummy_memory_page_interface {
     pub dummy: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
 }
@@ -60767,7 +62459,7 @@ fn bindgen_test_layout_dummy_memory_page_interface() {
 }
 pub type memory_profiler_interface_t = memory_profiler_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct memory_profiler_interface {
     pub get: ::std::option::Option<
         unsafe extern "C" fn(
@@ -60834,7 +62526,7 @@ fn bindgen_test_layout_memory_profiler_interface() {
 }
 pub type mmc_interface_t = mmc_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct mmc_interface {
     pub send_command: ::std::option::Option<
         unsafe extern "C" fn(
@@ -60898,7 +62590,7 @@ fn bindgen_test_layout_mmc_interface() {
 }
 pub type packet_interface_t = packet_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct packet_interface {
     pub transfer:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t, data: bytes_t)>,
@@ -60930,7 +62622,7 @@ fn bindgen_test_layout_packet_interface() {
 }
 pub type processor_info_interface_t = processor_info_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct processor_info_interface {
     pub disassemble: ::std::option::Option<
         unsafe extern "C" fn(
@@ -61112,7 +62804,7 @@ fn bindgen_test_layout_processor_info_interface() {
 }
 pub type processor_info_v2_interface_t = processor_info_v2_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct processor_info_v2_interface {
     pub disassemble: ::std::option::Option<
         unsafe extern "C" fn(
@@ -61306,7 +62998,7 @@ fn bindgen_test_layout_processor_info_v2_interface() {
 }
 pub type processor_cli_interface_t = processor_cli_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct processor_cli_interface {
     pub get_disassembly: ::std::option::Option<
         unsafe extern "C" fn(
@@ -61416,7 +63108,7 @@ fn bindgen_test_layout_processor_cli_interface() {
 }
 #[doc = "<add id=\"opcode_info_interface_t\">\n\nThe <iface>opcode_info</iface> interface is implemented by\nprocessors that need to communicate information about the encoding\nof instructions to the GUI.\n\nThe <fun>get_opcode_length</fun> function returns information about\ninstruction encoding in the current operating mode of the\nprocessor. The <fun>min_alignment</fun> field indicates the\nsmallest allowed alignment of instructions, typically 4 for regular\nRISC architectures. The <fun>max_length</fun> field specifies the\nmaximum instruction length in bytes. The <fun>avg_length</fun> is\nan approximation of the average instruction size.\n\n<insert-until text=\"// ADD INTERFACE opcode_info_interface_t\"/>\n</add>\n<add id=\"opcode_info_interface_exec_context\">\nCell Context for all methods.\n</add>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct opcode_length_info_t {
     pub min_alignment: ::std::os::raw::c_int,
     pub max_length: ::std::os::raw::c_int,
@@ -61469,7 +63161,7 @@ fn bindgen_test_layout_opcode_length_info_t() {
 }
 pub type opcode_info_interface_t = opcode_info_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct opcode_info_interface {
     pub get_opcode_length_info: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t) -> opcode_length_info_t,
@@ -61503,7 +63195,7 @@ fn bindgen_test_layout_opcode_info_interface() {
 }
 pub type processor_gui_interface_t = processor_gui_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct processor_gui_interface {
     pub dummy: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
 }
@@ -61563,7 +63255,7 @@ pub type ram_access_cb_t = ::std::option::Option<
 >;
 pub type ram_access_subscribe_interface_t = ram_access_subscribe_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ram_access_subscribe_interface {
     pub remove_callback: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, handle: *mut ram_cb_handle_t),
@@ -61677,7 +63369,7 @@ fn bindgen_test_layout_ram_access_subscribe_interface() {
 }
 pub type register_view_read_only_interface_t = register_view_read_only_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct register_view_read_only_interface {
     pub is_read_only: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, reg: ::std::os::raw::c_uint) -> bool,
@@ -61714,7 +63406,7 @@ fn bindgen_test_layout_register_view_read_only_interface() {
 }
 pub type register_view_interface_t = register_view_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct register_view_interface {
     pub description: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t) -> *const ::std::os::raw::c_char,
@@ -61818,7 +63510,7 @@ pub const state_save_kind_t_Sim_State_Default: state_save_kind_t = 1;
 pub type state_save_kind_t = ::std::os::raw::c_uint;
 pub type save_state_interface_t = save_state_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct save_state_interface {
     #[doc = " return the CVS version of the object"]
     pub get_version:
@@ -62158,7 +63850,7 @@ pub const sim_key_t_SK_SUN_EMPTY: sim_key_t = 126;
 pub type sim_key_t = ::std::os::raw::c_uint;
 pub type simulator_cache_interface_t = simulator_cache_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct simulator_cache_interface {
     pub flush: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
 }
@@ -62190,7 +63882,7 @@ fn bindgen_test_layout_simulator_cache_interface() {
 }
 pub type uint64_state_interface_t = uint64_state_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct uint64_state_interface {
     pub set: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t, level: uint64)>,
 }
@@ -62222,7 +63914,7 @@ fn bindgen_test_layout_uint64_state_interface() {
 }
 pub type step_interface_t = step_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct step_interface {
     pub get_step_count:
         ::std::option::Option<unsafe extern "C" fn(queue: *mut conf_object_t) -> pc_step_t>,
@@ -62346,7 +64038,7 @@ fn bindgen_test_layout_step_interface() {
 }
 #[doc = "<add id=\"step_cycle_ratio_interface_t\">\n\nThe <iface>step_cycle_ratio</iface> interface is implemented by\nprocessors that support a changeable ratio between steps and\ncycles. The <cmd>set-step-rate</cmd> command uses this interface to\nset the ratio between steps and cycles.\n\nThe <fun>set_ratio</fun> sets the ratio between <arg>steps</arg> and\n<arg>cycles</arg>. Note that the introduction of stall cycles can\nskew the ratio. The <fun>get_ratio</fun> simply returns the current\nratio.\n\nThe <arg>cycles</arg> and <arg>step</arg> arguments must be in the range\n[1..128] and <arg>cycles</arg> must be a power of two. Implementers of this\ninterface may choose to ignore other values of <arg>cycles</arg> and\n<arg>step</arg> and may log an error.\n\n<insert-until text=\"// ADD INTERFACE step_cycle_ratio_interface_t\"/>\n</add>\n<add id=\"step_cycle_ratio_interface_exec_context\">\nCell Context for all methods.\n</add>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct step_cycle_ratio_t {
     pub steps: uint32,
     pub cycles: uint32,
@@ -62388,7 +64080,7 @@ fn bindgen_test_layout_step_cycle_ratio_t() {
 }
 pub type step_cycle_ratio_interface_t = step_cycle_ratio_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct step_cycle_ratio_interface {
     pub get_ratio:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> step_cycle_ratio_t>,
@@ -62434,7 +64126,7 @@ fn bindgen_test_layout_step_cycle_ratio_interface() {
 }
 pub type stall_interface_t = stall_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct stall_interface {
     pub get_stall_cycles:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> cycles_t>,
@@ -62490,7 +64182,7 @@ fn bindgen_test_layout_stall_interface() {
 }
 pub type step_info_interface_t = step_info_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct step_info_interface {
     pub get_halt_steps:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> pc_step_t>,
@@ -62582,7 +64274,7 @@ fn bindgen_test_layout_step_info_interface() {
 }
 pub type temporal_state_interface_t = temporal_state_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct temporal_state_interface {
     pub save:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> *mut lang_void>,
@@ -62651,7 +64343,7 @@ fn bindgen_test_layout_temporal_state_interface() {
 }
 pub type timing_model_interface_t = timing_model_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct timing_model_interface {
     pub operate: ::std::option::Option<
         unsafe extern "C" fn(
@@ -62690,7 +64382,7 @@ fn bindgen_test_layout_timing_model_interface() {
 }
 pub type snoop_memory_interface_t = snoop_memory_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct snoop_memory_interface {
     pub operate: ::std::option::Option<
         unsafe extern "C" fn(
@@ -62738,7 +64430,7 @@ pub type operate_func_t = ::std::option::Option<
 >;
 pub type transaction_interface_t = transaction_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct transaction_interface {
     pub issue: ::std::option::Option<
         unsafe extern "C" fn(
@@ -62776,7 +64468,7 @@ fn bindgen_test_layout_transaction_interface() {
 }
 pub type vga_text_interface_t = vga_text_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct vga_text_interface {
     pub add_string_notification: ::std::option::Option<
         unsafe extern "C" fn(
@@ -62813,7 +64505,7 @@ fn bindgen_test_layout_vga_text_interface() {
 }
 pub type vga_text_info_interface_t = vga_text_info_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct vga_text_info_interface {
     pub text_mode: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> bool>,
     pub font_size: ::std::option::Option<
@@ -62896,7 +64588,7 @@ fn bindgen_test_layout_vga_text_info_interface() {
 }
 pub type vga_text_update_interface_t = vga_text_update_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct vga_text_update_interface {
     pub write: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, value: ::std::os::raw::c_char),
@@ -62929,7 +64621,7 @@ fn bindgen_test_layout_vga_text_update_interface() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct gfx_breakpoint {
     pub id: ::std::os::raw::c_int,
     pub enabled: ::std::os::raw::c_int,
@@ -63057,10 +64749,19 @@ fn bindgen_test_layout_gfx_breakpoint() {
         )
     );
 }
+impl Default for gfx_breakpoint {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 pub type gfx_breakpoint_t = gfx_breakpoint;
 pub type video_interface_t = video_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct video_interface {
     pub get_breakpoint_data: ::std::option::Option<
         unsafe extern "C" fn(
@@ -63117,7 +64818,7 @@ fn bindgen_test_layout_video_interface() {
 }
 pub type address_profiler_interface_t = address_profiler_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct address_profiler_interface {
     pub iter: ::std::option::Option<
         unsafe extern "C" fn(
@@ -63269,7 +64970,7 @@ fn bindgen_test_layout_address_profiler_interface() {
 }
 pub type branch_arc_interface_t = branch_arc_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct branch_arc_interface {
     pub iter: ::std::option::Option<
         unsafe extern "C" fn(
@@ -63307,7 +65008,7 @@ fn bindgen_test_layout_branch_arc_interface() {
 }
 pub type breakpoint_registration_interface_t = breakpoint_registration_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct breakpoint_registration_interface {
     pub register_breakpoint: ::std::option::Option<
         unsafe extern "C" fn(
@@ -63377,7 +65078,7 @@ fn bindgen_test_layout_breakpoint_registration_interface() {
 }
 pub type breakpoint_type_interface_t = breakpoint_type_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct breakpoint_type_interface {
     #[doc = " Returns false if type is already registered."]
     pub register_type: ::std::option::Option<
@@ -63481,7 +65182,7 @@ pub const sim_bp_type_t_Breakpoint_Type_Trace: sim_bp_type_t = 4;
 pub type sim_bp_type_t = ::std::os::raw::c_uint;
 pub type breakpoint_type_provider_interface_t = breakpoint_type_provider_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct breakpoint_type_provider_interface {
     #[doc = " Register breakpoint in manager.\nReturn breakpoint manager ID, or 0 on error."]
     pub register_bp: ::std::option::Option<
@@ -63647,7 +65348,7 @@ fn bindgen_test_layout_breakpoint_type_provider_interface() {
 }
 pub type breakpoint_manager_interface_t = breakpoint_manager_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct breakpoint_manager_interface {
     #[doc = " Return a list of the breakpoint ids of all breakpoints."]
     pub list_breakpoints:
@@ -63746,7 +65447,7 @@ fn bindgen_test_layout_breakpoint_manager_interface() {
 }
 pub type checkpoint_interface_t = checkpoint_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct checkpoint_interface {
     pub save: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, path: *const ::std::os::raw::c_char),
@@ -63805,7 +65506,7 @@ fn bindgen_test_layout_checkpoint_interface() {
 }
 pub type serial_console_frontend_interface_t = serial_console_frontend_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct serial_console_frontend_interface {
     pub write: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t, value: uint8)>,
 }
@@ -63840,7 +65541,7 @@ fn bindgen_test_layout_serial_console_frontend_interface() {
 }
 pub type con_input_interface_t = con_input_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct con_input_interface {
     pub input_str: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, str_: *const ::std::os::raw::c_char),
@@ -63885,7 +65586,7 @@ fn bindgen_test_layout_con_input_interface() {
 }
 pub type con_input_code_interface_t = con_input_code_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct con_input_code_interface {
     pub input: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, code: sim_key_t, down: bool),
@@ -63928,7 +65629,7 @@ pub type break_string_cb_t = ::std::option::Option<
 >;
 pub type break_strings_interface_t = break_strings_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct break_strings_interface {
     pub add: ::std::option::Option<
         unsafe extern "C" fn(
@@ -63996,7 +65697,7 @@ fn bindgen_test_layout_break_strings_interface() {
 }
 pub type break_strings_v2_interface_t = break_strings_v2_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct break_strings_v2_interface {
     pub add: ::std::option::Option<
         unsafe extern "C" fn(
@@ -64090,7 +65791,7 @@ pub type gfx_break_cb_t = ::std::option::Option<
 >;
 #[doc = " <add id=\"gbp_header_t DOC\">\n<ndx>gbp_header_t</ndx>\n<name index=\"true\">gbp_header_t</name>\n<doc>\n<doc-item name=\"NAME\">gbp_header_t</doc-item>\n\n<doc-item name=\"DESCRIPTION\"> Header for graphical breakpoint files, also\nreturned by the <fun>info</fun> method of the <iface>gfx_break</iface>\ninterface.\n\nThe fields <var>magic</var> and <var>format</var> are always\n<tt>GBP_MAGIC</tt> and <tt>GBP_FMT_V3_32</tt>, respectively.\n\nThe field <var>bytes</var> is the size of the image data in the file, not\nincluding the header.\n\nThe other fields specify the breakpoint image patch location on the screen.\n</doc-item>\n</doc></add>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct gbp_header_t {
     pub magic: uint32,
     pub format: uint32,
@@ -64187,7 +65888,7 @@ fn bindgen_test_layout_gbp_header_t() {
 }
 pub type gfx_break_interface_t = gfx_break_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct gfx_break_interface {
     pub store: ::std::option::Option<
         unsafe extern "C" fn(
@@ -64331,7 +66032,7 @@ fn bindgen_test_layout_gfx_break_interface() {
 }
 pub type telnet_connection_interface_t = telnet_connection_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct telnet_connection_interface {
     pub setup:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t, port: uint16) -> bool>,
@@ -64441,7 +66142,7 @@ fn bindgen_test_layout_telnet_connection_interface() {
 }
 pub type vnc_server_interface_t = vnc_server_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct vnc_server_interface {
     pub setup:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t, port: uint16) -> bool>,
@@ -64519,7 +66220,7 @@ fn bindgen_test_layout_vnc_server_interface() {
 }
 pub type host_serial_interface_t = host_serial_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct host_serial_interface {
     pub setup: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, name: *const ::std::os::raw::c_char) -> bool,
@@ -64577,7 +66278,7 @@ fn bindgen_test_layout_host_serial_interface() {
 }
 pub type screenshot_interface_t = screenshot_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct screenshot_interface {
     pub save_png: ::std::option::Option<
         unsafe extern "C" fn(
@@ -64894,7 +66595,7 @@ pub const text_console_colour_t_Text_Console_Colour_Default_Background: text_con
 #[doc = " Text console colours.\nhttps://www.wikipedia.org/wiki/ANSI_escape_code#8-bit"]
 pub type text_console_colour_t = ::std::os::raw::c_uint;
 #[repr(C, packed)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct text_console_attrib_t {
     #[doc = " Bitmask of text_console_text_attrib_t"]
     pub attrib: uint8,
@@ -64951,7 +66652,7 @@ fn bindgen_test_layout_text_console_attrib_t() {
 }
 pub type text_console_frontend_interface_t = text_console_frontend_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct text_console_frontend_interface {
     #[doc = " Called when the console is finalised.\n'backend' is the calling text console."]
     pub start: ::std::option::Option<
@@ -65264,7 +66965,7 @@ pub const text_console_modifier_t_Text_Console_Modifier_Shift: text_console_modi
 pub type text_console_modifier_t = ::std::os::raw::c_uint;
 pub type text_console_backend_interface_t = text_console_backend_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct text_console_backend_interface {
     #[doc = " Send a key press to the backend."]
     pub input: ::std::option::Option<
@@ -65407,7 +67108,7 @@ pub const gfx_console_mouse_button_t_Gfx_Console_Mouse_Button_Middle: gfx_consol
 pub type gfx_console_mouse_button_t = ::std::os::raw::c_uint;
 pub type gfx_console_frontend_interface_t = gfx_console_frontend_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct gfx_console_frontend_interface {
     #[doc = " Called when the backend is finalised. Should return a unique handle\n identifying the given backend object to the frontend."]
     pub start: ::std::option::Option<
@@ -65666,7 +67367,7 @@ fn bindgen_test_layout_gfx_console_frontend_interface() {
 }
 #[doc = " VGA text mode data.\n Stored in this file since we have the VGA device pointer here."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct gfx_console_screen_text_t {
     #[doc = " Screen text (text_width × text_height), in some 8-bit ASCII\nsuperset (we assume CP437)."]
     pub text: bytes_t,
@@ -65757,9 +67458,18 @@ fn bindgen_test_layout_gfx_console_screen_text_t() {
         )
     );
 }
+impl Default for gfx_console_screen_text_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 pub type gfx_console_backend_interface_t = gfx_console_backend_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct gfx_console_backend_interface {
     #[doc = " Indicate to the backend that a key has been pressed or released."]
     pub kbd_event: ::std::option::Option<
@@ -65891,7 +67601,7 @@ pub union winsome_update_t__bindgen_ty_1 {
 }
 #[doc = " Data for a message containing text console screen update\nand cursor movement. This corresponds to calls to\nset_contents and set_cursor_pos in text_console_frontend,\naccumulated in the obvious way: take the bounding box of\nthe updated rectangles and the last cursor position."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct winsome_update_t__bindgen_ty_1__bindgen_ty_1 {
     #[doc = " Heap-allocated contents of new screen rectangle.\n Each array has\n (right - left + 1) * (bottom - top + 1)\n elements."]
     pub text: *mut ::std::os::raw::c_char,
@@ -66007,9 +67717,18 @@ fn bindgen_test_layout_winsome_update_t__bindgen_ty_1__bindgen_ty_1() {
         )
     );
 }
+impl Default for winsome_update_t__bindgen_ty_1__bindgen_ty_1 {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " Data for a message containing text console append and cursor\nmovement. This corresponds to calls to append_text and\nset_cursor_pos in text_console_frontend, accumulated in the\nobvious way: append the text lines and take the last cursor\nposition."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct winsome_update_t__bindgen_ty_1__bindgen_ty_2 {
     #[doc = " Number of lines to append."]
     pub num_lines: uint64,
@@ -66104,9 +67823,18 @@ fn bindgen_test_layout_winsome_update_t__bindgen_ty_1__bindgen_ty_2() {
         )
     );
 }
+impl Default for winsome_update_t__bindgen_ty_1__bindgen_ty_2 {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " Data for a message containing text console screen refresh.\nThis corresponds to calls to refresh_screen\nin text_console_frontend."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct winsome_update_t__bindgen_ty_1__bindgen_ty_3 {
     #[doc = " Heap-allocated contents of visible screen rectangle.\n Each array has width * height elements."]
     pub text: *mut ::std::os::raw::c_char,
@@ -66235,9 +67963,18 @@ fn bindgen_test_layout_winsome_update_t__bindgen_ty_1__bindgen_ty_3() {
         )
     );
 }
+impl Default for winsome_update_t__bindgen_ty_1__bindgen_ty_3 {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " Data for a message containing text console screen resize.\nThis corresponds to calls to set_size\nin text_console_frontend."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct winsome_update_t__bindgen_ty_1__bindgen_ty_4 {
     #[doc = " New screen size."]
     pub width: ::std::os::raw::c_int,
@@ -66287,7 +68024,7 @@ fn bindgen_test_layout_winsome_update_t__bindgen_ty_1__bindgen_ty_4() {
 }
 #[doc = " Data for a message containing graphics console updates.\nThis corresponds to calls to set_contents in\ngfx_console_frontend, accumulated in the\nobvious way: take the bounding box of the updated\nrectangles."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct winsome_update_t__bindgen_ty_1__bindgen_ty_5 {
     #[doc = " New pixels for the dirty rectangle (owned)."]
     pub data: *mut uint32,
@@ -66404,6 +68141,15 @@ fn bindgen_test_layout_winsome_update_t__bindgen_ty_1__bindgen_ty_5() {
         )
     );
 }
+impl Default for winsome_update_t__bindgen_ty_1__bindgen_ty_5 {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[test]
 fn bindgen_test_layout_winsome_update_t__bindgen_ty_1() {
     const UNINIT: ::std::mem::MaybeUninit<winsome_update_t__bindgen_ty_1> =
@@ -66470,6 +68216,15 @@ fn bindgen_test_layout_winsome_update_t__bindgen_ty_1() {
         )
     );
 }
+impl Default for winsome_update_t__bindgen_ty_1 {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[test]
 fn bindgen_test_layout_winsome_update_t() {
     const UNINIT: ::std::mem::MaybeUninit<winsome_update_t> = ::std::mem::MaybeUninit::uninit();
@@ -66505,9 +68260,18 @@ fn bindgen_test_layout_winsome_update_t() {
         )
     );
 }
+impl Default for winsome_update_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 pub type winsome_console_interface_t = winsome_console_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct winsome_console_interface {
     pub gfx: ::std::option::Option<
         unsafe extern "C" fn(
@@ -66649,7 +68413,7 @@ fn bindgen_test_layout_winsome_console_interface() {
 }
 pub type gui_console_backend_interface_t = gui_console_backend_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct gui_console_backend_interface {
     pub start: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, console: *mut lang_void),
@@ -66734,7 +68498,7 @@ pub const debugger_error_t_Debugger_Step_Interrupted: debugger_error_t = 33;
 pub type debugger_error_t = ::std::os::raw::c_uint;
 pub type debug_notification_interface_t = debug_notification_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct debug_notification_interface {
     pub notify_context_creation: ::std::option::Option<
         unsafe extern "C" fn(
@@ -66982,7 +68746,7 @@ fn bindgen_test_layout_debug_notification_interface() {
 pub type debug_setup_id_t = int64;
 pub type debug_setup_interface_t = debug_setup_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct debug_setup_interface {
     pub add_symbol_file: ::std::option::Option<
         unsafe extern "C" fn(
@@ -67218,7 +68982,7 @@ fn bindgen_test_layout_debug_setup_interface() {
 }
 pub type debug_query_interface_t = debug_query_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct debug_query_interface {
     pub matching_contexts: ::std::option::Option<
         unsafe extern "C" fn(
@@ -67428,7 +69192,7 @@ fn bindgen_test_layout_debug_query_interface() {
 }
 pub type debug_step_interface_t = debug_step_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct debug_step_interface {
     pub instruction_into: ::std::option::Option<
         unsafe extern "C" fn(
@@ -67608,7 +69372,7 @@ fn bindgen_test_layout_debug_step_interface() {
 }
 pub type debug_symbol_interface_t = debug_symbol_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct debug_symbol_interface {
     pub address_source: ::std::option::Option<
         unsafe extern "C" fn(
@@ -68004,7 +69768,7 @@ fn bindgen_test_layout_debug_symbol_interface() {
 }
 pub type debug_symbol_file_interface_t = debug_symbol_file_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct debug_symbol_file_interface {
     pub open_symbol_file: ::std::option::Option<
         unsafe extern "C" fn(
@@ -68126,7 +69890,7 @@ fn bindgen_test_layout_debug_symbol_file_interface() {
 }
 #[doc = " <add-type id=\"disasm_instr_t\"> </add-type>"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct disasm_instr_t {
     #[doc = " Where the instructions starts in the buffer"]
     pub start: ::std::os::raw::c_int,
@@ -68180,9 +69944,18 @@ fn bindgen_test_layout_disasm_instr_t() {
         )
     );
 }
+impl Default for disasm_instr_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 pub type disassemble_interface_t = disassemble_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct disassemble_interface {
     #[doc = " Set up new block to disassemble"]
     pub init: ::std::option::Option<
@@ -68235,7 +70008,7 @@ fn bindgen_test_layout_disassemble_interface() {
 }
 pub type instrumentation_filter_slave_interface_t = instrumentation_filter_slave_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct instrumentation_filter_slave_interface {
     pub disable: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, source_id: ::std::os::raw::c_uint),
@@ -68288,7 +70061,7 @@ fn bindgen_test_layout_instrumentation_filter_slave_interface() {
 }
 pub type instrumentation_filter_status_interface_t = instrumentation_filter_status_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct instrumentation_filter_status_interface {
     pub get_disabled_sources:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> attr_value_t>,
@@ -68327,7 +70100,7 @@ fn bindgen_test_layout_instrumentation_filter_status_interface() {
 }
 pub type instrumentation_filter_master_interface_t = instrumentation_filter_master_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct instrumentation_filter_master_interface {
     pub set_source_id: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, source_id: ::std::os::raw::c_uint),
@@ -68414,7 +70187,7 @@ fn bindgen_test_layout_instrumentation_filter_master_interface() {
 }
 pub type instrumentation_tool_interface_t = instrumentation_tool_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct instrumentation_tool_interface {
     pub connect: ::std::option::Option<
         unsafe extern "C" fn(
@@ -68465,7 +70238,7 @@ fn bindgen_test_layout_instrumentation_tool_interface() {
 }
 pub type instrumentation_connection_interface_t = instrumentation_connection_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct instrumentation_connection_interface {
     pub enable: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
     pub disable: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
@@ -68520,7 +70293,7 @@ pub type request_id_t = uint64;
 pub const cancel_id_error_t_Cancel_Error_ID: cancel_id_error_t = 0;
 pub type cancel_id_error_t = ::std::os::raw::c_uint;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct maybe_node_id {
     pub valid: bool,
     pub id: node_id_t,
@@ -68563,7 +70336,7 @@ fn bindgen_test_layout_maybe_node_id() {
 pub type maybe_node_id_t = maybe_node_id;
 pub type osa_component_interface_t = osa_component_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct osa_component_interface {
     pub get_admin:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> *mut conf_object_t>,
@@ -68663,7 +70436,7 @@ pub const request_id_error_t_OSA_Request_Error_ID: request_id_error_t = 0;
 pub type request_id_error_t = ::std::os::raw::c_uint;
 pub type osa_control_interface_t = osa_control_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct osa_control_interface {
     pub request: ::std::option::Option<
         unsafe extern "C" fn(
@@ -68712,7 +70485,7 @@ fn bindgen_test_layout_osa_control_interface() {
 }
 pub type osa_control_v2_interface_t = osa_control_v2_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct osa_control_v2_interface {
     pub request: ::std::option::Option<
         unsafe extern "C" fn(
@@ -68773,7 +70546,7 @@ fn bindgen_test_layout_osa_control_v2_interface() {
 }
 pub type osa_node_tree_query_interface_t = osa_node_tree_query_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct osa_node_tree_query_interface {
     pub get_root_nodes:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> attr_value_t>,
@@ -68913,7 +70686,7 @@ fn bindgen_test_layout_osa_node_tree_query_interface() {
 }
 pub type osa_node_tree_notification_interface_t = osa_node_tree_notification_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct osa_node_tree_notification_interface {
     pub notify_create: ::std::option::Option<
         unsafe extern "C" fn(
@@ -69172,7 +70945,7 @@ fn bindgen_test_layout_osa_node_tree_notification_interface() {
 }
 pub type osa_node_path_interface_t = osa_node_path_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct osa_node_path_interface {
     pub matching_nodes: ::std::option::Option<
         unsafe extern "C" fn(
@@ -69229,7 +71002,7 @@ pub const osa_read_len_t_OSA_Read_Eight_Byte: osa_read_len_t = 8;
 pub type osa_read_len_t = ::std::os::raw::c_uint;
 pub type osa_machine_notification_interface_t = osa_machine_notification_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct osa_machine_notification_interface {
     pub notify_mode_change: ::std::option::Option<
         unsafe extern "C" fn(
@@ -69459,7 +71232,7 @@ fn bindgen_test_layout_osa_machine_notification_interface() {
 }
 pub type osa_machine_query_interface_t = osa_machine_query_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct osa_machine_query_interface {
     pub read_register: ::std::option::Option<
         unsafe extern "C" fn(
@@ -69620,7 +71393,7 @@ fn bindgen_test_layout_osa_machine_query_interface() {
 }
 pub type osa_mapper_admin_interface_t = osa_mapper_admin_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct osa_mapper_admin_interface {
     pub tracker_updated: ::std::option::Option<
         unsafe extern "C" fn(
@@ -69658,7 +71431,7 @@ fn bindgen_test_layout_osa_mapper_admin_interface() {
 }
 pub type osa_mapper_control_interface_t = osa_mapper_control_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct osa_mapper_control_interface {
     pub disable: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
     pub enable: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> bool>,
@@ -69712,7 +71485,7 @@ fn bindgen_test_layout_osa_mapper_control_interface() {
 }
 pub type osa_mapper_query_interface_t = osa_mapper_query_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct osa_mapper_query_interface {
     pub get_process_list:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> attr_value_t>,
@@ -69758,7 +71531,7 @@ fn bindgen_test_layout_osa_mapper_query_interface() {
 }
 pub type osa_node_tree_admin_interface_t = osa_node_tree_admin_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct osa_node_tree_admin_interface {
     pub begin: ::std::option::Option<
         unsafe extern "C" fn(
@@ -69975,7 +71748,7 @@ fn bindgen_test_layout_osa_node_tree_admin_interface() {
 }
 pub type osa_parameters_interface_t = osa_parameters_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct osa_parameters_interface {
     pub get_parameters: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, include_children: bool) -> attr_value_t,
@@ -70035,7 +71808,7 @@ fn bindgen_test_layout_osa_parameters_interface() {
 }
 pub type osa_tracker_component_interface_t = osa_tracker_component_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct osa_tracker_component_interface {
     pub get_tracker:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> *mut conf_object_t>,
@@ -70080,7 +71853,7 @@ fn bindgen_test_layout_osa_tracker_component_interface() {
 }
 pub type osa_tracker_state_admin_interface_t = osa_tracker_state_admin_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct osa_tracker_state_admin_interface {
     pub begin: ::std::option::Option<
         unsafe extern "C" fn(
@@ -70228,7 +72001,7 @@ fn bindgen_test_layout_osa_tracker_state_admin_interface() {
 }
 pub type osa_tracker_state_notification_interface_t = osa_tracker_state_notification_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct osa_tracker_state_notification_interface {
     pub subscribe_tracker: ::std::option::Option<
         unsafe extern "C" fn(
@@ -70289,7 +72062,7 @@ fn bindgen_test_layout_osa_tracker_state_notification_interface() {
 }
 pub type osa_tracker_state_query_interface_t = osa_tracker_state_query_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct osa_tracker_state_query_interface {
     pub get_trackers:
         ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> attr_value_t>,
@@ -70355,7 +72128,7 @@ fn bindgen_test_layout_osa_tracker_state_query_interface() {
 }
 pub type osa_tracker_control_interface_t = osa_tracker_control_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct osa_tracker_control_interface {
     pub disable: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
     pub enable: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> bool>,
@@ -70435,7 +72208,7 @@ fn bindgen_test_layout_osa_tracker_control_interface() {
 }
 pub type osa_micro_checkpoint_interface_t = osa_micro_checkpoint_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct osa_micro_checkpoint_interface {
     pub started: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
     pub finished: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
@@ -70478,7 +72251,7 @@ fn bindgen_test_layout_osa_micro_checkpoint_interface() {
 }
 pub type preference_interface_t = preference_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct preference_interface {
     pub get_preference_for_module_key: ::std::option::Option<
         unsafe extern "C" fn(
@@ -70565,7 +72338,7 @@ pub const probe_key_t_Probe_Key_Cell_Sum: probe_key_t = 16;
 pub type probe_key_t = ::std::os::raw::c_uint;
 pub type probe_interface_t = probe_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct probe_interface {
     pub value: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> attr_value_t>,
     pub properties:
@@ -70608,7 +72381,7 @@ fn bindgen_test_layout_probe_interface() {
 }
 pub type probe_index_interface_t = probe_index_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct probe_index_interface {
     pub num_indices: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t) -> ::std::os::raw::c_int,
@@ -70668,7 +72441,7 @@ fn bindgen_test_layout_probe_index_interface() {
 }
 pub type probe_subscribe_interface_t = probe_subscribe_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct probe_subscribe_interface {
     pub subscribe: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
     pub unsubscribe: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
@@ -70724,7 +72497,7 @@ fn bindgen_test_layout_probe_subscribe_interface() {
 }
 pub type probe_cache_interface_t = probe_cache_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct probe_cache_interface {
     pub start: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
     pub stop: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t)>,
@@ -70777,7 +72550,7 @@ pub type recorder_input_handler_t = ::std::option::Option<
 >;
 pub type recorder_interface_t = recorder_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct recorder_interface {
     pub attach: ::std::option::Option<
         unsafe extern "C" fn(
@@ -70855,7 +72628,7 @@ fn bindgen_test_layout_recorder_interface() {
 }
 pub type recorder_v2_interface_t = recorder_v2_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct recorder_v2_interface {
     pub record: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, sender: *mut conf_object_t, data: bytes_t),
@@ -70900,7 +72673,7 @@ fn bindgen_test_layout_recorder_v2_interface() {
 }
 pub type recorded_interface_t = recorded_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct recorded_interface {
     pub input: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t, data: bytes_t, playback: bool),
@@ -70933,7 +72706,7 @@ fn bindgen_test_layout_recorded_interface() {
 }
 pub type register_breakpoint_interface_t = register_breakpoint_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct register_breakpoint_interface {
     pub add_breakpoint: ::std::option::Option<
         unsafe extern "C" fn(
@@ -70998,7 +72771,7 @@ fn bindgen_test_layout_register_breakpoint_interface() {
 }
 pub type scalar_time_interface_t = scalar_time_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct scalar_time_interface {
     pub add_consumer: ::std::option::Option<
         unsafe extern "C" fn(obj: *mut conf_object_t) -> ::std::os::raw::c_int,
@@ -71110,7 +72883,7 @@ pub const extra_header_key_t_Extra_Header_Key_Last_Column: extra_header_key_t = 
 pub type extra_header_key_t = ::std::os::raw::c_uint;
 pub type table_interface_t = table_interface;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct table_interface {
     #[doc = " Returns all rows and columns in the following format:\n[[[i|f|s|o|n*]*]] where the outer list is the row\nand the inner list is the data for each column."]
     pub data: ::std::option::Option<unsafe extern "C" fn(obj: *mut conf_object_t) -> attr_value_t>,
@@ -71165,7 +72938,7 @@ pub const craff_compr_t_Compr_Gz: craff_compr_t = 2;
 pub type craff_compr_t = ::std::os::raw::c_uint;
 #[doc = " Craff file creation parameters; see vin0010 for a more thorough description\nof these."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct craff_params_t {
     #[doc = " log2(block size in bytes)"]
     pub block_bits: ::std::os::raw::c_int,
@@ -71230,8 +73003,17 @@ fn bindgen_test_layout_craff_params_t() {
         )
     );
 }
+impl Default for craff_params_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct craff_info_t {
     pub size: uint64,
     pub block_bits: ::std::os::raw::c_int,
@@ -71315,8 +73097,17 @@ fn bindgen_test_layout_craff_info_t() {
         )
     );
 }
+impl Default for craff_info_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct craff_interv_t {
     pub ofs: uint64,
     pub len: uint64,
@@ -71377,7 +73168,7 @@ pub const craff_errclass_t_Craff_Err_Other: craff_errclass_t = 8;
 pub type craff_errclass_t = ::std::os::raw::c_uint;
 #[doc = " craff error state - can be shared between multiple file objects"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct craff_error {
     #[doc = " malloced, owned by this struct"]
     pub msg: *mut ::std::os::raw::c_char,
@@ -71418,6 +73209,15 @@ fn bindgen_test_layout_craff_error() {
         )
     );
 }
+impl Default for craff_error {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " craff error state - can be shared between multiple file objects"]
 pub type craff_error_t = craff_error;
 pub const craff_mode_t_Craff_Read_Only: craff_mode_t = 0;
@@ -71427,7 +73227,7 @@ pub const craff_mode_t_Craff_Read_Write: craff_mode_t = 1;
 pub const craff_mode_t_Craff_Read_Write_Allow_Compression: craff_mode_t = 2;
 pub type craff_mode_t = ::std::os::raw::c_uint;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct craff_interv_vec_t {
     pub size: ::std::os::raw::c_int,
     pub used: ::std::os::raw::c_int,
@@ -71477,6 +73277,15 @@ fn bindgen_test_layout_craff_interv_vec_t() {
             stringify!(elements)
         )
     );
+}
+impl Default for craff_interv_vec_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     pub fn craff_new_error() -> *mut craff_error_t;
@@ -71545,7 +73354,7 @@ extern "C" {
 }
 #[doc = " Structure for scatter/gather I/O."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct iovec {
     #[doc = " Pointer to data."]
     pub iov_base: *mut ::std::os::raw::c_void,
@@ -71587,6 +73396,15 @@ fn bindgen_test_layout_iovec() {
         )
     );
 }
+impl Default for iovec {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " Sequenced, reliable, connection-based\nbyte streams."]
 pub const __socket_type_SOCK_STREAM: __socket_type = 1;
 #[doc = " Connectionless, unreliable datagrams\nof fixed maximum length."]
@@ -71611,7 +73429,7 @@ pub type __socket_type = ::std::os::raw::c_uint;
 pub type sa_family_t = ::std::os::raw::c_ushort;
 #[doc = " Structure describing a generic socket address."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct sockaddr {
     pub sa_family: sa_family_t,
     #[doc = " Address data."]
@@ -71653,7 +73471,7 @@ fn bindgen_test_layout_sockaddr() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct sockaddr_storage {
     pub ss_family: sa_family_t,
     pub __ss_padding: [::std::os::raw::c_char; 118usize],
@@ -71705,6 +73523,15 @@ fn bindgen_test_layout_sockaddr_storage() {
         )
     );
 }
+impl Default for sockaddr_storage {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " Process out-of-band data."]
 pub const MSG_OOB: _bindgen_ty_17 = 1;
 #[doc = " Peek at incoming messages."]
@@ -71747,7 +73574,7 @@ pub const MSG_CMSG_CLOEXEC: _bindgen_ty_17 = 1073741824;
 pub type _bindgen_ty_17 = ::std::os::raw::c_uint;
 #[doc = " Structure describing messages sent by\n`sendmsg' and received by `recvmsg'."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct msghdr {
     #[doc = " Address to send to/receive from."]
     pub msg_name: *mut ::std::os::raw::c_void,
@@ -71849,9 +73676,18 @@ fn bindgen_test_layout_msghdr() {
         )
     );
 }
+impl Default for msghdr {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " Structure used for storage of ancillary data object information."]
 #[repr(C)]
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct cmsghdr {
     #[doc = " Length of data in cmsg_data plus length\nof cmsghdr structure.\n The type should be socklen_t but the\ndefinition of the kernel is incompatible\nwith this."]
     pub cmsg_len: usize,
@@ -71925,7 +73761,7 @@ pub const SCM_RIGHTS: _bindgen_ty_18 = 1;
 #[doc = " Socket level message types.  This must match the definitions in\n<linux/socket.h>."]
 pub type _bindgen_ty_18 = ::std::os::raw::c_uint;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct __kernel_fd_set {
     pub fds_bits: [::std::os::raw::c_ulong; 16usize],
 }
@@ -71980,7 +73816,7 @@ pub type __kernel_size_t = __kernel_ulong_t;
 pub type __kernel_ssize_t = __kernel_long_t;
 pub type __kernel_ptrdiff_t = __kernel_long_t;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct __kernel_fsid_t {
     pub val: [::std::os::raw::c_int; 2usize],
 }
@@ -72023,7 +73859,7 @@ pub type __kernel_uid16_t = ::std::os::raw::c_ushort;
 pub type __kernel_gid16_t = ::std::os::raw::c_ushort;
 #[doc = " Structure used to manipulate the SO_LINGER option."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct linger {
     #[doc = " Nonzero to linger on close."]
     pub l_onoff: ::std::os::raw::c_int,
@@ -72067,7 +73903,7 @@ fn bindgen_test_layout_linger() {
 }
 #[doc = " This is the 4.3 BSD `struct sockaddr' format, which is used as wire\nformat in the grotty old 4.3 `talk' protocol."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct osockaddr {
     pub sa_family: ::std::os::raw::c_ushort,
     pub sa_data: [::std::os::raw::c_uchar; 14usize],
@@ -72281,7 +74117,7 @@ pub union tcphdr__bindgen_ty_1 {
     pub __bindgen_anon_2: tcphdr__bindgen_ty_1__bindgen_ty_2,
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct tcphdr__bindgen_ty_1__bindgen_ty_1 {
     #[doc = " source port"]
     pub th_sport: u16,
@@ -72438,7 +74274,7 @@ impl tcphdr__bindgen_ty_1__bindgen_ty_1 {
     }
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct tcphdr__bindgen_ty_1__bindgen_ty_2 {
     pub source: u16,
     pub dest: u16,
@@ -72704,6 +74540,15 @@ fn bindgen_test_layout_tcphdr__bindgen_ty_1() {
         concat!("Alignment of ", stringify!(tcphdr__bindgen_ty_1))
     );
 }
+impl Default for tcphdr__bindgen_ty_1 {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[test]
 fn bindgen_test_layout_tcphdr() {
     assert_eq!(
@@ -72716,6 +74561,15 @@ fn bindgen_test_layout_tcphdr() {
         4usize,
         concat!("Alignment of ", stringify!(tcphdr))
     );
+}
+impl Default for tcphdr {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 pub const TCP_ESTABLISHED: _bindgen_ty_20 = 1;
 pub const TCP_SYN_SENT: _bindgen_ty_20 = 2;
@@ -72738,7 +74592,7 @@ pub const tcp_ca_state_TCP_CA_Loss: tcp_ca_state = 4;
 #[doc = " Values for tcpi_state."]
 pub type tcp_ca_state = ::std::os::raw::c_uint;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct tcp_info {
     pub tcpi_state: u8,
     pub tcpi_ca_state: u8,
@@ -73132,7 +74986,7 @@ impl tcp_info {
     }
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct tcp_md5sig {
     #[doc = " Address associated."]
     pub tcpm_addr: sockaddr_storage,
@@ -73222,9 +75076,18 @@ fn bindgen_test_layout_tcp_md5sig() {
         )
     );
 }
+impl Default for tcp_md5sig {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " For socket repair options."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct tcp_repair_opt {
     pub opt_code: u32,
     pub opt_val: u32,
@@ -73271,7 +75134,7 @@ pub const TCP_QUEUES_NR: _bindgen_ty_21 = 3;
 #[doc = " Queue to repair, for TCP_REPAIR_QUEUE."]
 pub type _bindgen_ty_21 = ::std::os::raw::c_uint;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct tcp_cookie_transactions {
     pub tcpct_flags: u16,
     pub __tcpct_pad1: u8,
@@ -73356,9 +75219,18 @@ fn bindgen_test_layout_tcp_cookie_transactions() {
         )
     );
 }
+impl Default for tcp_cookie_transactions {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " For use with TCP_REPAIR_WINDOW."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct tcp_repair_window {
     pub snd_wl1: u32,
     pub snd_wnd: u32,
@@ -73433,7 +75305,7 @@ fn bindgen_test_layout_tcp_repair_window() {
 }
 #[doc = " For use with TCP_ZEROCOPY_RECEIVE."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct tcp_zerocopy_receive {
     #[doc = " In: address of mapping."]
     pub address: u64,
@@ -73488,7 +75360,7 @@ fn bindgen_test_layout_tcp_zerocopy_receive() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct if_nameindex {
     #[doc = " 1, 2, ..."]
     pub if_index: ::std::os::raw::c_uint,
@@ -73529,6 +75401,15 @@ fn bindgen_test_layout_if_nameindex() {
             stringify!(if_name)
         )
     );
+}
+impl Default for if_nameindex {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 #[doc = " Interface is up."]
 pub const IFF_UP: _bindgen_ty_22 = 1;
@@ -73617,6 +75498,15 @@ fn bindgen_test_layout_ifaddr__bindgen_ty_1() {
         )
     );
 }
+impl Default for ifaddr__bindgen_ty_1 {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[test]
 fn bindgen_test_layout_ifaddr() {
     const UNINIT: ::std::mem::MaybeUninit<ifaddr> = ::std::mem::MaybeUninit::uninit();
@@ -73672,9 +75562,18 @@ fn bindgen_test_layout_ifaddr() {
         )
     );
 }
+impl Default for ifaddr {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " Device mapping structure. I'd just gone off and designed a\nbeautiful scheme using only loadable modules with arguments for\ndriver options and along come the PCMCIA people 8)\n\nAh well. The get() side of this is good for WDSETUP, and it'll be\nhandy for debugging things. The set side is fine for now and being\nvery small might be worth keeping for clean configuration."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ifmap {
     pub mem_start: ::std::os::raw::c_ulong,
     pub mem_end: ::std::os::raw::c_ulong,
@@ -73795,6 +75694,15 @@ fn bindgen_test_layout_ifreq__bindgen_ty_1() {
             stringify!(ifrn_name)
         )
     );
+}
+impl Default for ifreq__bindgen_ty_1 {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -73948,6 +75856,15 @@ fn bindgen_test_layout_ifreq__bindgen_ty_2() {
         )
     );
 }
+impl Default for ifreq__bindgen_ty_2 {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[test]
 fn bindgen_test_layout_ifreq() {
     const UNINIT: ::std::mem::MaybeUninit<ifreq> = ::std::mem::MaybeUninit::uninit();
@@ -73982,6 +75899,15 @@ fn bindgen_test_layout_ifreq() {
             stringify!(ifr_ifru)
         )
     );
+}
+impl Default for ifreq {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 #[doc = " Structure used in SIOCGIFCONF request.  Used to retrieve interface\nconfiguration for machine (useful for programs which must know all\nnetworks accessible)."]
 #[repr(C)]
@@ -74032,6 +75958,15 @@ fn bindgen_test_layout_ifconf__bindgen_ty_1() {
         )
     );
 }
+impl Default for ifconf__bindgen_ty_1 {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[test]
 fn bindgen_test_layout_ifconf() {
     const UNINIT: ::std::mem::MaybeUninit<ifconf> = ::std::mem::MaybeUninit::uninit();
@@ -74066,6 +76001,15 @@ fn bindgen_test_layout_ifconf() {
             stringify!(ifc_ifcu)
         )
     );
+}
+impl Default for ifconf {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     #[doc = " Convert an interface name to an index, and vice versa."]
@@ -74104,7 +76048,7 @@ pub type __sum16 = __u16;
 pub type __wsum = __u32;
 pub type __poll_t = ::std::os::raw::c_uint;
 #[repr(C, packed)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ethhdr {
     #[doc = " destination eth addr"]
     pub h_dest: [::std::os::raw::c_uchar; 6usize],
@@ -74160,7 +76104,7 @@ fn bindgen_test_layout_ethhdr() {
 }
 #[doc = " This is a name for the 48 bit ethernet address available on many\nsystems."]
 #[repr(C, packed)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ether_addr {
     pub ether_addr_octet: [u8; 6usize],
 }
@@ -74191,7 +76135,7 @@ fn bindgen_test_layout_ether_addr() {
 }
 #[doc = " 10Mb/s ethernet header"]
 #[repr(C, packed)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ether_header {
     #[doc = " destination eth addr"]
     pub ether_dhost: [u8; 6usize],
@@ -74247,7 +76191,7 @@ fn bindgen_test_layout_ether_header() {
 }
 #[doc = " See RFC 826 for protocol description.  ARP packets are variable\nin size; the arphdr structure defines the fixed-length portion.\nProtocol type values are the same as those for 10 Mb/s Ethernet.\nIt is followed by the variable-sized fields ar_sha, arp_spa,\narp_tha and arp_tpa in that order, according to the lengths\nspecified.  Field names used correspond to RFC 826."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct arphdr {
     #[doc = " Format of hardware address."]
     pub ar_hrd: ::std::os::raw::c_ushort,
@@ -74327,7 +76271,7 @@ fn bindgen_test_layout_arphdr() {
 }
 #[doc = " ARP ioctl request."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct arpreq {
     #[doc = " Protocol address."]
     pub arp_pa: sockaddr,
@@ -74405,7 +76349,7 @@ fn bindgen_test_layout_arpreq() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct arpreq_old {
     #[doc = " Protocol address."]
     pub arp_pa: sockaddr,
@@ -74472,7 +76416,7 @@ fn bindgen_test_layout_arpreq_old() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct arpd_request {
     #[doc = " Request type."]
     pub req: ::std::os::raw::c_ushort,
@@ -74562,7 +76506,7 @@ fn bindgen_test_layout_arpd_request() {
 }
 #[doc = " Ethernet Address Resolution Protocol.\n\n See RFC 826 for protocol description.  Structure below is adapted\n to resolving internet addresses.  Field names used correspond to\n RFC 826."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ether_arp {
     #[doc = " fixed-size header"]
     pub ea_hdr: arphdr,
@@ -74663,12 +76607,12 @@ extern "C" {
     pub fn dlerror() -> *mut ::std::os::raw::c_char;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct str_vec_t {
     pub v: str_vec_t__bindgen_ty_1,
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct str_vec_t__bindgen_ty_1 {
     pub size: ::std::os::raw::c_int,
     pub used: ::std::os::raw::c_int,
@@ -74720,6 +76664,15 @@ fn bindgen_test_layout_str_vec_t__bindgen_ty_1() {
         )
     );
 }
+impl Default for str_vec_t__bindgen_ty_1 {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[test]
 fn bindgen_test_layout_str_vec_t() {
     const UNINIT: ::std::mem::MaybeUninit<str_vec_t> = ::std::mem::MaybeUninit::uninit();
@@ -74744,6 +76697,15 @@ fn bindgen_test_layout_str_vec_t() {
             stringify!(v)
         )
     );
+}
+impl Default for str_vec_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     pub fn str_vec_free(sv: *mut str_vec_t);
@@ -74784,7 +76746,7 @@ extern "C" {
     ) -> os_dlsymbol_t;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct os_dlinfo_t {
     #[doc = " Name of symbol at or before queried addr\n(statically allocated). May be NULL."]
     pub sym_name: *const ::std::os::raw::c_char,
@@ -74849,6 +76811,15 @@ fn bindgen_test_layout_os_dlinfo_t() {
             stringify!(file_base)
         )
     );
+}
+impl Default for os_dlinfo_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     pub fn os_dladdr(addr: *mut ::std::os::raw::c_void, ret: *mut os_dlinfo_t) -> bool;
@@ -75115,7 +77086,7 @@ extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct os_stat_t {
     #[doc = " File size in bytes."]
     pub size: uint64,
@@ -75311,7 +77282,7 @@ extern "C" {
 pub type interval_set_t = interval_set;
 pub type interval_set_iter_t = interval_set_iter;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct range_node_t {
     pub start: uint64,
     pub end: uint64,
@@ -75362,8 +77333,17 @@ fn bindgen_test_layout_range_node_t() {
         )
     );
 }
+impl Default for range_node_t {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct interval_section {
     #[doc = " start of this section"]
     pub start: uint64,
@@ -75405,13 +77385,22 @@ fn bindgen_test_layout_interval_section() {
         )
     );
 }
+impl Default for interval_section {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct interval_set {
     pub sections: interval_set__bindgen_ty_1,
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct interval_set__bindgen_ty_1 {
     pub size: ::std::os::raw::c_int,
     pub used: ::std::os::raw::c_int,
@@ -75463,6 +77452,15 @@ fn bindgen_test_layout_interval_set__bindgen_ty_1() {
         )
     );
 }
+impl Default for interval_set__bindgen_ty_1 {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[test]
 fn bindgen_test_layout_interval_set() {
     const UNINIT: ::std::mem::MaybeUninit<interval_set> = ::std::mem::MaybeUninit::uninit();
@@ -75488,11 +77486,20 @@ fn bindgen_test_layout_interval_set() {
         )
     );
 }
+impl Default for interval_set {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     pub fn init_interval(is: *mut interval_set_t, allow_overlap: ::std::os::raw::c_int);
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct interval_set_iter {
     pub is: *const interval_set_t,
     pub start: uint64,
@@ -75566,6 +77573,15 @@ fn bindgen_test_layout_interval_set_iter() {
             stringify!(inum)
         )
     );
+}
+impl Default for interval_set_iter {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 extern "C" {
     pub fn new_interval(dummy: ::std::os::raw::c_int) -> *mut interval_set_t;
@@ -75670,7 +77686,7 @@ extern "C" {
 }
 pub type os_time_t = ::std::os::raw::c_int;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct os_tm {
     #[doc = " Seconds.     [0-60] (1 leap second)"]
     pub tm_sec: ::std::os::raw::c_int,
@@ -75815,7 +77831,7 @@ pub const vtopt_arguments_vtopt_required_argument: vtopt_arguments = 1;
 pub const vtopt_arguments_vtopt_optional_argument: vtopt_arguments = 2;
 pub type vtopt_arguments = ::std::os::raw::c_uint;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct vtoption {
     pub name: *const ::std::os::raw::c_char,
     pub has_arg: vtopt_arguments,
@@ -75877,6 +77893,15 @@ fn bindgen_test_layout_vtoption() {
         )
     );
 }
+impl Default for vtoption {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     pub fn get_vtoptind() -> *mut ::std::os::raw::c_int;
 }
@@ -75903,7 +77928,7 @@ extern "C" {
 }
 pub type __builtin_va_list = [__va_list_tag; 1usize];
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct __va_list_tag {
     pub gp_offset: ::std::os::raw::c_uint,
     pub fp_offset: ::std::os::raw::c_uint,
@@ -75965,56 +77990,65 @@ fn bindgen_test_layout___va_list_tag() {
         )
     );
 }
+impl Default for __va_list_tag {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[doc = " 13 = __LC_LAST."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct __locale_data {
     pub _address: u8,
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct _dictkeysobject {
     pub _address: u8,
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct transaction_cache {
     pub _address: u8,
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct proplist {
     pub _address: u8,
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct log_info {
     pub _address: u8,
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct confdata {
     pub _address: u8,
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct extension_data {
     pub _address: u8,
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct thread_domain {
     pub _address: u8,
 }
 #[doc = " Back-pointer to interface."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct iface {
     pub _address: u8,
 }
 #[doc = " NULL if no intervals here"]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct interval_bucket {
     pub _address: u8,
 }

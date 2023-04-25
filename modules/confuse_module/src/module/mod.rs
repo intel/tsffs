@@ -1,3 +1,4 @@
+use self::components::{detector::Detector, tracer::Tracer};
 use crate::{
     config::OutputConfig,
     interface::{ConfuseModuleInterface, Interface},
@@ -7,33 +8,54 @@ use crate::{
 };
 use anyhow::{bail, Context, Result};
 use ipc_channel::ipc::{channel, IpcReceiver, IpcSender};
-use log::trace;
-use simics_api::{register_interface, ConfObject, OwnedMutAttrValuePtr, OwnedMutConfObjectPtr};
+use log::{debug, info, trace, Level};
+use simics_api::{
+    register_interface, ConfObject, OwnedMutAttrValuePtr, OwnedMutConfObjectPtr, SimicsLogger,
+};
 use simics_api::{Create, Module};
 use simics_api_derive::module;
 use std::env::var;
 
-mod components;
+pub mod components;
 
 #[module(class_name = CLASS_NAME)]
 pub struct Confuse {
     state: State,
     tx: IpcSender<ModuleMessage>,
     rx: IpcReceiver<ClientMessage>,
+    tracer: Tracer,
+    detector: Detector,
 }
 
 impl Module for Confuse {
     fn init(obj: OwnedMutConfObjectPtr) -> Result<OwnedMutConfObjectPtr> {
+        SimicsLogger::new()
+            .with_dev(obj.clone())
+            .with_level(Level::Trace.to_level_filter())
+            .init()?;
+
+        info!("Initializing CONFUSE");
+
         let state = State::new();
         let sockname = var(BOOTSTRAP_SOCKNAME)?;
+
+        debug!("Connecting to bootstrap socket {}", sockname);
+
         let bootstrap = IpcSender::connect(sockname)?;
+
+        debug!("Connected to bootstrap socket");
 
         let (otx, rx) = channel::<ClientMessage>()?;
         let (tx, orx) = channel::<ModuleMessage>()?;
 
         bootstrap.send((otx, orx))?;
 
-        Ok(Confuse::new(obj, state, tx, rx))
+        debug!("Sent primary socket over bootstrap socket");
+
+        let detector = Detector::try_new()?;
+        let tracer = Tracer::try_new()?;
+
+        Ok(Confuse::new(obj, state, tx, rx, tracer, detector))
     }
 
     fn objects_finalized(obj: OwnedMutConfObjectPtr) -> Result<()> {
@@ -44,6 +66,8 @@ impl Module for Confuse {
 }
 
 impl Confuse {
+    /// Initialize the module. This transitions the state from `Uninitialized` to `HalfInitialized`
+    /// then from `HalfInitialized` to `Initialized`
     pub fn initialize(&mut self) -> Result<()> {
         let config = match self.recv_msg()? {
             ClientMessage::Initialize(config) => config,
@@ -81,7 +105,8 @@ impl Confuse {
 
 /// Implementation of the functionality accessible via the SIMICS Python or CLI interface
 impl Interface for Confuse {
-    /// Start the module side of the fuzzing loop
+    /// Start the module side of the fuzzing loop, this runs up until the first [`Magic`]
+    /// instruction is hit
     fn start(&mut self) -> Result<()> {
         Ok(())
     }
