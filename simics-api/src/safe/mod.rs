@@ -1,12 +1,12 @@
 pub mod base;
 pub mod internal;
-pub mod log;
+pub mod logging;
 pub mod model_interface;
 pub mod simulator;
 pub mod traits;
 pub mod util;
 
-pub use self::log::*;
+pub use self::logging::*;
 pub use base::*;
 pub use internal::*;
 pub use model_interface::*;

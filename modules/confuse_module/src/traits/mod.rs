@@ -6,7 +6,7 @@ use crate::{
     stops::StopReason,
 };
 use anyhow::Result;
-use simics_api::OwnedMutAttrValuePtr;
+use simics_api::{OwnedMutAttrValuePtr, OwnedMutConfObjectPtr};
 
 pub trait ConfuseState {
     /// Callback when the module's state is [`ConfuseModuleState::HalfInitialized`]. The
@@ -15,6 +15,7 @@ pub trait ConfuseState {
     /// the client containing any information it needs
     fn on_initialize(
         &mut self,
+        confuse: OwnedMutConfObjectPtr,
         input_config: &InputConfig,
         output_config: OutputConfig,
     ) -> Result<OutputConfig> {
@@ -23,31 +24,35 @@ pub trait ConfuseState {
 
     /// Callback when the module is ready to run, it has hit the first [`Magic`] instruction and
     /// can be started.
-    fn on_ready(&mut self) -> Result<()> {
+    fn on_ready(&mut self, confuse: OwnedMutConfObjectPtr) -> Result<()> {
         Ok(())
     }
 
     /// Callback when execution has stopped, with some reason
-    fn on_stopped(&mut self, reason: StopReason) -> Result<()> {
+    fn on_stopped(&mut self, confuse: OwnedMutConfObjectPtr, reason: StopReason) -> Result<()> {
         Ok(())
     }
 
     /// Callback when the module has ben signaled to exit by the client
-    fn on_exit(&mut self) -> Result<()> {
+    fn on_exit(&mut self, confuse: OwnedMutConfObjectPtr) -> Result<()> {
         Ok(())
     }
 }
 
 pub trait ConfuseInterface {
-    fn on_start(&mut self) -> Result<()> {
+    fn on_start(&mut self, confuse: OwnedMutConfObjectPtr) -> Result<()> {
         Ok(())
     }
 
-    fn on_add_processor(&mut self, processor: OwnedMutAttrValuePtr) -> Result<()> {
+    fn on_add_processor(
+        &mut self,
+        confuse: OwnedMutConfObjectPtr,
+        processor: OwnedMutAttrValuePtr,
+    ) -> Result<()> {
         Ok(())
     }
 
-    fn on_add_fault(&mut self, fault: i64) -> Result<()> {
+    fn on_add_fault(&mut self, confuse: OwnedMutConfObjectPtr, fault: i64) -> Result<()> {
         Ok(())
     }
 }

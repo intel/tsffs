@@ -67,6 +67,13 @@ impl From<&OwnedMutConfObjectPtr> for *mut ConfObject {
     }
 }
 
+impl From<OwnedMutConfObjectPtr> for *mut c_void {
+    fn from(value: OwnedMutConfObjectPtr) -> Self {
+        let ptr: *mut ConfObject = value.into();
+        ptr as *mut c_void
+    }
+}
+
 #[derive(Debug)]
 #[repr(C)]
 pub struct OwnedMutConfClassPtr {

@@ -19,7 +19,7 @@
 use anyhow::{bail, Context, Result};
 use bindgen::{
     callbacks::{MacroParsingBehavior, ParseCallbacks},
-    Builder, CargoCallbacks,
+    Builder, CargoCallbacks, FieldVisibilityKind,
 };
 use flate2::bufread::GzDecoder;
 use std::{
@@ -334,6 +334,7 @@ fn generate_bindings(args: &Args) -> Result<()> {
             .clang_arg("-fparse-all-comments")
             // We don't care at all what warnings simics has if they aren't errors :)
             .clang_arg("-Wno-everything")
+            .default_visibility(FieldVisibilityKind::Public)
             .derive_default(true)
             .derive_hash(true)
             .derive_partialord(true)
