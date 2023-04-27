@@ -1,8 +1,12 @@
-use crate::{last_error, ConfObject};
+use crate::{last_error, ConfObject, GenericTransaction};
 use anyhow::{bail, Result};
 use raw_cstr::raw_cstr;
 use simics_api_sys::{hap_handle_t, SIM_hap_add_callback};
-use std::{ffi::c_void, mem::transmute, ptr::null_mut};
+use std::{
+    ffi::{c_char, c_void},
+    mem::transmute,
+    ptr::null_mut,
+};
 
 pub type HapHandle = hap_handle_t;
 
@@ -399,128 +403,490 @@ impl ToString for Hap {
     }
 }
 
-pub type Arinc429WordCallback = unsafe extern "C" fn();
-pub type ArmInstructionModeChangeCallback = unsafe extern "C" fn();
-pub type ArmV8InterProcessingCallback = unsafe extern "C" fn();
-pub type CliCommandAddedCallback = unsafe extern "C" fn();
-pub type ComponentChangeCallback = unsafe extern "C" fn();
-pub type ComponentHierarchyChangeCallback = unsafe extern "C" fn();
-pub type ConsoleBreakStringCallback = unsafe extern "C" fn();
-pub type CoreAddressNotMappedCallback = unsafe extern "C" fn();
-pub type CoreAsynchronousTrapCallback = unsafe extern "C" fn();
-pub type CoreAtExitCallback = unsafe extern "C" fn();
-pub type CoreBackToFrontCallback = unsafe extern "C" fn();
-pub type CoreBreakpointChangeCallback = unsafe extern "C" fn();
-pub type CoreBreakpointMemopCallback = unsafe extern "C" fn();
-pub type CoreCleanAtExitCallback = unsafe extern "C" fn();
-pub type CoreConfClassRegisterCallback = unsafe extern "C" fn();
-pub type CoreConfClassUnregisterCallback = unsafe extern "C" fn();
-pub type CoreConfClockChangeCellCallback = unsafe extern "C" fn();
-pub type CoreConfObjectChangeClockCallback = unsafe extern "C" fn();
-pub type CoreConfObjectCreateCallback = unsafe extern "C" fn();
-pub type CoreConfObjectCreatedCallback = unsafe extern "C" fn();
-pub type CoreConfObjectDeleteCallback = unsafe extern "C" fn();
-pub type CoreConfObjectPreDeleteCallback = unsafe extern "C" fn();
-pub type CoreConfObjectRenameCallback = unsafe extern "C" fn();
-pub type CoreConfObjectsCreatedCallback = unsafe extern "C" fn();
-pub type CoreConfObjectsDeletedCallback = unsafe extern "C" fn();
-pub type CoreConfigurationLoadedCallback = unsafe extern "C" fn();
-pub type CoreContextActivateCallback = unsafe extern "C" fn();
-pub type CoreContextChangeCallback = unsafe extern "C" fn();
-pub type CoreContextDeactivateCallback = unsafe extern "C" fn();
-pub type CoreContextUpdatedCallback = unsafe extern "C" fn();
-pub type CoreContinuationCallback = unsafe extern "C" fn();
-pub type CoreControlRegisterReadCallback = unsafe extern "C" fn();
-pub type CoreControlRegisterWriteCallback = unsafe extern "C" fn();
-pub type CoreDeviceAccessMemopCallback = unsafe extern "C" fn();
-pub type CoreDisableBreakpointsCallback = unsafe extern "C" fn();
-pub type CoreDiscardFutureCallback = unsafe extern "C" fn();
-pub type CoreDstcFlushCounterCallback = unsafe extern "C" fn();
+// all HAPs are called with at least two parameters: callback_data: *mut c_void and
+// trigger_obj: *mut ConfObject
+
+pub type Arinc429WordCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type ArmInstructionModeChangeCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type ArmV8InterProcessingCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type CliCommandAddedCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    command_name: *mut c_char,
+);
+pub type ComponentChangeCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type ComponentHierarchyChangeCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    tope_level_component: *mut ConfObject,
+);
+pub type ConsoleBreakStringCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    break_string: *mut c_char,
+);
+pub type CoreAddressNotMappedCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    physical_address: i64,
+    access_type: i64,
+);
+pub type CoreAsynchronousTrapCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    trap_number: i64,
+);
+pub type CoreAtExitCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type CoreBackToFrontCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type CoreBreakpointChangeCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type CoreBreakpointMemopCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    breakpoint_number: i64,
+    memory_operation: *mut GenericTransaction,
+);
+pub type CoreCleanAtExitCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type CoreConfClassRegisterCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    class_name: *mut c_char,
+);
+pub type CoreConfClassUnregisterCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    class_name: *mut c_char,
+);
+pub type CoreConfClockChangeCellCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    old_cell: *mut ConfObject,
+    new_cell: *mut ConfObject,
+);
+
+pub type CoreConfObjectChangeClockCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type CoreConfObjectCreateCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type CoreConfObjectCreatedCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type CoreConfObjectDeleteCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    object_name: *mut c_char,
+);
+pub type CoreConfObjectPreDeleteCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type CoreConfObjectRenameCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    old_name: *mut c_char,
+);
+pub type CoreConfObjectsCreatedCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type CoreConfObjectsDeletedCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type CoreConfigurationLoadedCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type CoreContextActivateCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    other_ctx: *mut ConfObject,
+    cpu: *mut ConfObject,
+);
+pub type CoreContextChangeCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    cpu: *mut ConfObject,
+);
+pub type CoreContextDeactivateCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    other_ctx: *mut ConfObject,
+    cpu: *mut ConfObject,
+);
+pub type CoreContextUpdatedCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type CoreContinuationCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type CoreControlRegisterReadCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    register_number: i64,
+);
+pub type CoreControlRegisterWriteCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    register_number: i64,
+    register_value: i64,
+);
+pub type CoreDeviceAccessMemopCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    memop: *mut GenericTransaction,
+);
+
+pub type CoreDisableBreakpointsCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject, reenable: i32);
+pub type CoreDiscardFutureCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, *mut ConfObject);
+pub type CoreDstcFlushCounterCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    typ: i64,
+    virtual_address: i64,
+    physical_address: i64,
+    counter: i64,
+);
 pub type CoreExceptionCallback =
     unsafe extern "C" fn(data: *mut c_void, trigger_obj: *mut ConfObject, exception_number: i64);
-pub type CoreExceptionReturnCallback = unsafe extern "C" fn();
-pub type CoreExternalInterruptCallback = unsafe extern "C" fn();
-pub type CoreFrequencyChangedCallback = unsafe extern "C" fn();
-pub type CoreGlobalMessageCallback = unsafe extern "C" fn();
-pub type CoreHapCallbackInstalledCallback = unsafe extern "C" fn();
-pub type CoreHapCallbackRemovedCallback = unsafe extern "C" fn();
-pub type CoreHapTypeAddedCallback = unsafe extern "C" fn();
-pub type CoreImageActivityCallback = unsafe extern "C" fn();
-pub type CoreInitialConfigurationCallback = unsafe extern "C" fn();
-pub type CoreInterruptStatusCallback = unsafe extern "C" fn();
-pub type CoreLogGroupsChangeCallback = unsafe extern "C" fn();
-pub type CoreLogLevelChangeCallback = unsafe extern "C" fn();
-pub type CoreLogMessageCallback = unsafe extern "C" fn();
-pub type CoreLogMessageExtendedCallback = unsafe extern "C" fn();
-pub type CoreLogMessageFilteredCallback = unsafe extern "C" fn();
-pub type CoreMagicInstructionCallback = unsafe extern "C" fn();
-pub type CoreMemorySpaceMapChangedCallback = unsafe extern "C" fn();
-pub type CoreModeChangeCallback = unsafe extern "C" fn();
-pub type CoreModeSwitchCallback = unsafe extern "C" fn();
-pub type CoreModuleLoadedCallback = unsafe extern "C" fn();
-pub type CoreMulticoreAccelerationChangedCallback = unsafe extern "C" fn();
-pub type CoreMultithreadingChangedCallback = unsafe extern "C" fn();
-pub type CoreNotImplementedCallback = unsafe extern "C" fn();
-pub type CorePreferencesChangedCallback = unsafe extern "C" fn();
-pub type CoreProcessorScheduleChangedCallback = unsafe extern "C" fn();
-pub type CoreProjectChangedCallback = unsafe extern "C" fn();
-pub type CorePseudoExceptionCallback = unsafe extern "C" fn();
-pub type CoreRecentFilesChangedCallback = unsafe extern "C" fn();
-pub type CoreRexecActiveCallback = unsafe extern "C" fn();
-pub type CoreSimulationModeChangeCallback = unsafe extern "C" fn();
-pub type CoreSimulationStoppedCallback = unsafe extern "C" fn();
-pub type CoreSkiptoProgressCallback = unsafe extern "C" fn();
-pub type CoreSyncInstructionCallback = unsafe extern "C" fn();
-pub type CoreTimeTransitionCallback = unsafe extern "C" fn();
-pub type CoreTimingModelChangeCallback = unsafe extern "C" fn();
-pub type CoreUserCommentsChangedCallback = unsafe extern "C" fn();
-pub type CoreWriteConfigurationCallback = unsafe extern "C" fn();
-pub type EthInjectorPcapEofCallback = unsafe extern "C" fn();
-pub type FirewireResetCallback = unsafe extern "C" fn();
-pub type FirewireTransferCallback = unsafe extern "C" fn();
-pub type GfxBreakCallback = unsafe extern "C" fn();
-pub type GfxBreakStringCallback = unsafe extern "C" fn();
-pub type GraphicsConsoleNewTitleCallback = unsafe extern "C" fn();
-pub type GraphicsConsoleShowHideCallback = unsafe extern "C" fn();
-pub type InternalBookmarkListChangedCallback = unsafe extern "C" fn();
-pub type InternalBreakIoCallback = unsafe extern "C" fn();
-pub type InternalDeviceRegAccessCallback = unsafe extern "C" fn();
-pub type InternalMicroCheckpointLoadedCallback = unsafe extern "C" fn();
-pub type InternalSbWaitCallback = unsafe extern "C" fn();
-pub type InternalTimeDirectionChangedCallback = unsafe extern "C" fn();
-pub type InternalTimeQuantumChangedCallback = unsafe extern "C" fn();
-pub type RealtimeEnabledCallback = unsafe extern "C" fn();
-pub type RecStateChangedCallback = unsafe extern "C" fn();
-pub type RexecLimitExceededCallback = unsafe extern "C" fn();
-pub type RtcNvramUpdateCallback = unsafe extern "C" fn();
-pub type ScsiDiskCommandCallback = unsafe extern "C" fn();
-pub type SnNaptEnabledCallback = unsafe extern "C" fn();
-pub type TextConsoleNewTitleCallback = unsafe extern "C" fn();
-pub type TextConsoleShowHideCallback = unsafe extern "C" fn();
-pub type TlbFillDataCallback = unsafe extern "C" fn();
-pub type TlbFillInstructionCallback = unsafe extern "C" fn();
-pub type TlbInvalidateDataCallback = unsafe extern "C" fn();
-pub type TlbInvalidateInstructionCallback = unsafe extern "C" fn();
-pub type TlbMissDataCallback = unsafe extern "C" fn();
-pub type TlbMissInstructionCallback = unsafe extern "C" fn();
-pub type TlbReplaceDataCallback = unsafe extern "C" fn();
-pub type TlbReplaceInstructionCallback = unsafe extern "C" fn();
-pub type UiRecordStateChangedCallback = unsafe extern "C" fn();
-pub type UiRunStateChangedCallback = unsafe extern "C" fn();
-pub type VgaBreakStringCallback = unsafe extern "C" fn();
-pub type VgaRefreshTriggeredCallback = unsafe extern "C" fn();
-pub type X86DescriptorChangeCallback = unsafe extern "C" fn();
-pub type X86EnterSmmCallback = unsafe extern "C" fn();
-pub type X86LeaveSmmCallback = unsafe extern "C" fn();
-pub type X86MisplacedRexCallback = unsafe extern "C" fn();
-pub type X86ProcessorResetCallback = unsafe extern "C" fn();
-pub type X86SysenterCallback = unsafe extern "C" fn();
-pub type X86SysexitCallback = unsafe extern "C" fn();
-pub type X86TripleFaultCallback = unsafe extern "C" fn(*mut c_void, *mut ConfObject);
-pub type X86VmcsReadCallback = unsafe extern "C" fn();
-pub type X86VmcsWriteCallback = unsafe extern "C" fn();
-pub type X86VmxModeChangeCallback = unsafe extern "C" fn();
-pub type XtermBreakStringCallback = unsafe extern "C" fn();
+pub type CoreExceptionReturnCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    exception_number: i64,
+);
+pub type CoreExternalInterruptCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject, source_mid: i64);
+pub type CoreFrequencyChangedCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    old_freq: i64,
+    new_freq: i64,
+);
+pub type CoreGlobalMessageCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    message: *mut c_char,
+);
+pub type CoreHapCallbackInstalledCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    hap_number: i64,
+    range_low: i64,
+    range_high: i64,
+);
+pub type CoreHapCallbackRemovedCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    hap_number: i64,
+    range_low: i64,
+    range_high: i64,
+);
+pub type CoreHapTypeAddedCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    hap_name: *mut c_char,
+);
+pub type CoreImageActivityCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    typ: i32,
+    onoff: i32,
+);
+pub type CoreInitialConfigurationCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type CoreInterruptStatusCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject, status: i64);
+pub type CoreLogGroupsChangeCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    log_group_mask: i32,
+);
+pub type CoreLogLevelChangeCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    new_log_level: i32,
+);
+pub type CoreLogMessageCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    typ: i32,
+    message: *mut c_char,
+);
+pub type CoreLogMessageExtendedCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    typ: i32,
+    message: *mut c_char,
+    level: i32,
+    group: i64,
+);
+pub type CoreLogMessageFilteredCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    typ: i32,
+    message: *mut c_char,
+    level: i32,
+    group: i64,
+);
+pub type CoreMagicInstructionCallback =
+    unsafe extern "C" fn(*mut c_void, *const ConfObject, parameter: i64);
+pub type CoreMemorySpaceMapChangedCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type CoreModeChangeCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    old_mode: i64,
+    new_mode: i64,
+);
+pub type CoreModeSwitchCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject, mode: i64);
+pub type CoreModuleLoadedCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    module_name: *mut c_char,
+);
+pub type CoreMulticoreAccelerationChangedCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject, onoff: i32);
+pub type CoreMultithreadingChangedCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject, onoff: i32);
+pub type CoreNotImplementedCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    line: i32,
+    file: *mut c_char,
+    rcsid: *mut c_char,
+    message: *mut c_char,
+    data: i64,
+);
+pub type CorePreferencesChangedCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type CoreProcessorScheduleChangedCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type CoreProjectChangedCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type CorePseudoExceptionCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    exception_number: i64,
+);
+pub type CoreRecentFilesChangedCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type CoreRexecActiveCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    active_flag: i32,
+);
+pub type CoreSimulationModeChangeCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    simulation_mode: i32,
+);
+
+/// exception is *always* SimExc::NoException, error_string is always NULL
+pub type CoreSimulationStoppedCallback =
+    unsafe extern "C" fn(*mut c_void, *const ConfObject, exception: i64, error_string: *mut c_char);
+
+pub type CoreSkiptoProgressCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject, progress: i32);
+pub type CoreSyncInstructionCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject, typ: i64);
+pub type CoreTimeTransitionCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    in_the_past: i32,
+);
+pub type CoreTimingModelChangeCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type CoreUserCommentsChangedCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type CoreWriteConfigurationCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    file_name: *mut c_char,
+);
+pub type EthInjectorPcapEofCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    pcap_file: *mut c_char,
+    num_injected: i32,
+    pcap_num_pkgs: i32,
+    auto_restart: i32,
+);
+pub type FirewireResetCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type FirewireTransferCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type GfxBreakCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject, gfx_break: i64);
+pub type GfxBreakStringCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject, break_id: i64);
+pub type GraphicsConsoleNewTitleCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    title: *mut c_char,
+);
+pub type GraphicsConsoleShowHideCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject, state: i32);
+pub type InternalBookmarkListChangedCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type InternalBreakIoCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject, break_id: i32);
+pub type InternalDeviceRegAccessCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    memop: *mut GenericTransaction,
+    port: *mut c_char,
+    idx: i32,
+    func: i32,
+    offset: i64,
+);
+pub type InternalMicroCheckpointLoadedCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type InternalSbWaitCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type InternalTimeDirectionChangedCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject, rev: i32);
+pub type InternalTimeQuantumChangedCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type RealtimeEnabledCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject, enabled: i32);
+pub type RecStateChangedCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    recording: i32,
+    playback: i32,
+);
+pub type RexecLimitExceededCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject, limit_type: i32);
+pub type RtcNvramUpdateCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    index: i64,
+    old_value: i64,
+    new_value: i64,
+);
+pub type ScsiDiskCommandCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    command_number: i64,
+    start: i64,
+    len: i64,
+);
+pub type SnNaptEnabledCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject, enabled: i32);
+pub type TextConsoleNewTitleCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    new_title: *mut c_char,
+);
+pub type TextConsoleShowHideCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject, is_shown: i32);
+pub type TlbFillDataCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    linear: i64,
+    physical: i64,
+    page_size: i64,
+);
+pub type TlbFillInstructionCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    linear: i64,
+    physical: i64,
+    page_size: i64,
+);
+pub type TlbInvalidateDataCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    linear: i64,
+    physical: i64,
+    page_size: i64,
+);
+pub type TlbInvalidateInstructionCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    linear: i64,
+    physical: i64,
+    page_size: i64,
+);
+pub type TlbMissDataCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    linear_address: i64,
+);
+pub type TlbMissInstructionCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    linear_address: i64,
+);
+pub type TlbReplaceDataCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    linear: i64,
+    physical: i64,
+    page_size: i64,
+);
+pub type TlbReplaceInstructionCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    linear: i64,
+    physical: i64,
+    page_size: i64,
+);
+pub type UiRecordStateChangedCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    record: i32,
+    playback: i32,
+);
+pub type UiRunStateChangedCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    state: *mut c_char,
+);
+pub type VgaBreakStringCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    string: *mut c_char,
+);
+pub type VgaRefreshTriggeredCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type X86DescriptorChangeCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    // Segment number: ES=0, CS=1, SS=2, DS=3, FS=4, and GS=5
+    segment_number: i64,
+);
+pub type X86EnterSmmCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject, phase: i32);
+pub type X86LeaveSmmCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject, phase: i32);
+pub type X86MisplacedRexCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type X86ProcessorResetCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject, hard_reset: i32);
+pub type X86SysenterCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject, kind: i32);
+pub type X86SysexitCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject, kind: i32);
+pub type X86TripleFaultCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
+pub type X86VmcsReadCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    field_index: i64,
+);
+pub type X86VmcsWriteCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    field_index: i64,
+    value: i64,
+);
+pub type X86VmxModeChangeCallback =
+    unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject, mode: i64);
+pub type XtermBreakStringCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    break_string: *mut c_char,
+);
 
 pub struct ObjHapFunc {
     /// Function stored as integer

@@ -1,5 +1,5 @@
 ```mermaid
-flowchart LR
+flowchart TD
     MAP_SHM["AFL Map SHM (MemField)"]
     INIT_CORP["Initial Corpus"]
 

@@ -1,12 +1,14 @@
-use std::hash::{Hash, Hasher};
-
 use crate::{
     config::{InputConfig, OutputConfig},
+    messages::{client::ClientMessage, module::ModuleMessage},
     module::components::{detector::Detector, tracer::Tracer},
+    state::State,
     stops::StopReason,
 };
 use anyhow::Result;
+use ipc_channel::ipc::{IpcReceiver, IpcSender};
 use simics_api::{OwnedMutAttrValuePtr, OwnedMutConfObjectPtr};
+use std::hash::{Hash, Hasher};
 
 pub trait ConfuseState {
     /// Callback when the module's state is [`ConfuseModuleState::HalfInitialized`]. The
@@ -65,4 +67,52 @@ pub trait TracerDisassembler {
     fn last_was_call(&self) -> Result<bool>;
     fn last_was_ret(&self) -> Result<bool>;
     fn last_was_cmp(&self) -> Result<bool>;
+}
+
+pub trait ConfuseClient {
+    /// Get a mutable reference to the internal client state
+    fn state_mut(&mut self) -> &mut State;
+
+    /// Get a mutable reference to the internal client message sender channel, tx
+    fn tx_mut(&mut self) -> &mut IpcSender<ClientMessage>;
+
+    /// Get a mutable reference to the internal module message receiver channel, rx
+    fn rx_mut(&mut self) -> &mut IpcReceiver<ModuleMessage>;
+
+    /// Initialize the client with a configuration. The client will return an output
+    /// configuration which contains various information the SIMICS module needs to
+    /// inform the client of, including memory maps for coverage. Changes the
+    /// internal state from `Uninitialized` to `HalfInitialized` and then from
+    /// `HalfInitialized` to `ConfuseModuleState::Initialized`.
+    fn initialize(&mut self, config: InputConfig) -> Result<OutputConfig>;
+
+    /// Reset the module to the beginning of the fuzz loop (the state as snapshotted).
+    /// Changes the internal state from `Stopped` or `Initialized` to `HalfReady`, then
+    /// from `HalfReady` to `Ready`.
+    fn reset(&mut self) -> Result<()>;
+
+    /// Signal the module to run the target software. Changes the intenal state from `Ready` to
+    /// `Running`, then once the run finishes either with a normal stop, a timeout, or a crash,
+    /// from `Running` to `Stopped`. This function blocks until the target software stops and the
+    /// module detects it, so it may take a long time or if there is an unexpected bug it may
+    /// hang.
+    fn run(&mut self, input: Vec<u8>) -> Result<StopReason>;
+
+    /// Signal the module to exit SIMICS, stopping the fuzzing process. Changes the internal state
+    /// from any state to `Done`.
+    fn exit(&mut self) -> Result<()>;
+
+    /// Send a message to the module
+    fn send_msg(&mut self, msg: ClientMessage) -> Result<()> {
+        self.state_mut().consume(&msg)?;
+        self.tx_mut().send(msg)?;
+        Ok(())
+    }
+
+    /// Receive a message from the module
+    fn recv_msg(&mut self) -> Result<ModuleMessage> {
+        let msg = self.rx_mut().recv()?;
+        self.state_mut().consume(&msg)?;
+        Ok(msg)
+    }
 }

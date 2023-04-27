@@ -5,7 +5,7 @@ members = [
     # Provide real simics APIs
     "simics-api-sys",
     "simics-api",
-    "simics-api-derive",
+    "simics-api-macro",
     # Just provides common simics manifest tools for parsing/managing simics
     "confuse-simics-manifest",
     # Fuzzer
@@ -28,7 +28,7 @@ confuse-fuzz = { path = "./confuse-fuzz" }
 confuse_module = { path = "./modules/confuse_module" }
 simics-api-sys = { path = "./simics-api-sys" }
 simics-api = { path = "./simics-api" }
-simics-api-derive = { path = "./simics-api-derive" }
+simics-api-macro = { path = "./simics-api-macro" }
 ipc-shm = { path = "./util/ipc-shm" }
 raw-cstr = { path = "./util/raw-cstr" }
 version-tools = { path = "./util/version-tools" }

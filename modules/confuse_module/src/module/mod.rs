@@ -1,27 +1,35 @@
 use self::components::{detector::Detector, tracer::Tracer};
 use crate::{
+    client::{test::TestClient, Client},
     config::OutputConfig,
     interface::{ConfuseModuleInterface, Interface},
     messages::{client::ClientMessage, module::ModuleMessage},
     state::State,
     stops::StopReason,
-    BOOTSTRAP_SOCKNAME, CLASS_NAME,
+    traits::ConfuseClient,
+    BOOTSTRAP_SOCKNAME, CLASS_NAME, TESTMODE_VARNAME,
 };
 use anyhow::{bail, Context, Result};
+use const_format::concatcp;
 use ipc_channel::ipc::{channel, IpcReceiver, IpcSender};
-use log::{debug, info, trace, Level};
+use log::{debug, info, trace, Level, LevelFilter};
 use raffl_macro::callback_wrappers;
 use simics_api::{
     register_interface, ConfObject, OwnedMutAttrValuePtr, OwnedMutConfObjectPtr, SimicsLogger,
 };
 use simics_api::{Create, Module};
-use simics_api_derive::module;
-use std::env::var;
+use simics_api_macro::module;
+use std::{env::var, str::FromStr};
 
 pub mod components;
 
+pub const LOGLEVEL_VARNAME: &str = concatcp!(CLASS_NAME, "_LOGLEVEL");
+pub const DEFAULT_LOGLEVEL: Level = Level::Trace;
+
 #[module(class_name = CLASS_NAME)]
 pub struct Confuse {
+    /// In test mode, CONFUSE runs without a real client,
+    test_mode_client: Option<Box<dyn ConfuseClient>>,
     state: State,
     tx: IpcSender<ModuleMessage>,
     rx: IpcReceiver<ClientMessage>,
@@ -31,36 +39,54 @@ pub struct Confuse {
 
 impl Module for Confuse {
     fn init(module_instance: OwnedMutConfObjectPtr) -> Result<OwnedMutConfObjectPtr> {
+        let log_level = LevelFilter::from_str(&var(LOGLEVEL_VARNAME).unwrap_or_default())
+            .unwrap_or(DEFAULT_LOGLEVEL.to_level_filter());
+
+        let test_mode = if let Ok(name) = var(TESTMODE_VARNAME) {
+            match name.to_ascii_lowercase().as_str() {
+                "1" => true,
+                "true" => true,
+                "on" => true,
+                _ => false,
+            }
+        } else {
+            false
+        };
+
         SimicsLogger::new()
             // Dev is a misnomer here -- that's what SIMICS calls it but really it should just be
             // `object` because that's all we are doing here is creating a logger for our module object
             .with_dev(module_instance.clone())
-            .with_level(Level::Trace.to_level_filter())
+            .with_level(log_level)
             .init()?;
 
-        info!("Initializing CONFUSE");
-
         let state = State::new();
-        let sockname = var(BOOTSTRAP_SOCKNAME)?;
-
-        debug!("Connecting to bootstrap socket {}", sockname);
-
-        let bootstrap = IpcSender::connect(sockname)?;
-
-        debug!("Connected to bootstrap socket");
-
         let (otx, rx) = channel::<ClientMessage>()?;
         let (tx, orx) = channel::<ModuleMessage>()?;
+        let test_client = if test_mode {
+            Some(TestClient::new_boxed(otx, orx))
+        } else {
+            info!("Initializing CONFUSE");
 
-        bootstrap.send((otx, orx))?;
+            let sockname = var(BOOTSTRAP_SOCKNAME)?;
+            debug!("Connecting to bootstrap socket {}", sockname);
 
-        debug!("Sent primary socket over bootstrap socket");
+            let bootstrap = IpcSender::connect(sockname)?;
 
+            debug!("Connected to bootstrap socket");
+
+            bootstrap.send((otx, orx))?;
+
+            debug!("Sent primary socket over bootstrap socket");
+
+            None
+        };
         let detector = Detector::try_new()?;
         let tracer = Tracer::try_new()?;
 
         Ok(Confuse::new(
             module_instance,
+            test_client,
             state,
             tx,
             rx,
@@ -136,11 +162,7 @@ impl Confuse {
         parameter: i64,
     ) -> Result<()> {
         Ok(())
-
     }
-
-    #[params()]
-    pub fn 
 }
 
 #[no_mangle]

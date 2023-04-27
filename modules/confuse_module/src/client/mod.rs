@@ -42,11 +42,14 @@
 //! client.exit()?;
 //! ```
 
+pub mod test;
+
 use crate::{
     config::{InputConfig, OutputConfig},
     messages::{client::ClientMessage, module::ModuleMessage},
     state::State,
     stops::StopReason,
+    traits::ConfuseClient,
     BOOTSTRAP_SOCKNAME, CLASS_NAME, LOGLEVEL_VARNAME,
 };
 use anyhow::{bail, Result};
@@ -146,13 +149,15 @@ impl Client {
             project,
         })
     }
+}
 
+impl ConfuseClient for Client {
     /// Initialize the client with a configuration. The client will return an output
     /// configuration which contains various information the SIMICS module needs to
     /// inform the client of, including memory maps for coverage. Changes the
     /// internal state from `Uninitialized` to `HalfInitialized` and then from
     /// `HalfInitialized` to `ConfuseModuleState::Initialized`.
-    pub fn initialize(&mut self, config: InputConfig) -> Result<OutputConfig> {
+    fn initialize(&mut self, config: InputConfig) -> Result<OutputConfig> {
         info!("Sending initialize message");
         self.send_msg(ClientMessage::Initialize(config))?;
 
@@ -167,7 +172,7 @@ impl Client {
     /// Reset the module to the beginning of the fuzz loop (the state as snapshotted).
     /// Changes the internal state from `Stopped` or `Initialized` to `HalfReady`, then
     /// from `HalfReady` to `Ready`.
-    pub fn reset(&mut self) -> Result<()> {
+    fn reset(&mut self) -> Result<()> {
         info!("Sending reset message");
         self.send_msg(ClientMessage::Reset)?;
 
@@ -184,7 +189,7 @@ impl Client {
     /// from `Running` to `Stopped`. This function blocks until the target software stops and the
     /// module detects it, so it may take a long time or if there is an unexpected bug it may
     /// hang.
-    pub fn run(&mut self, input: Vec<u8>) -> Result<StopReason> {
+    fn run(&mut self, input: Vec<u8>) -> Result<StopReason> {
         info!("Sending run message");
         self.send_msg(ClientMessage::Run(input))?;
 
@@ -198,7 +203,7 @@ impl Client {
 
     /// Signal the module to exit SIMICS, stopping the fuzzing process. Changes the internal state
     /// from any state to `Done`.
-    pub fn exit(&mut self) -> Result<()> {
+    fn exit(&mut self) -> Result<()> {
         info!("Sending exit message");
         self.send_msg(ClientMessage::Exit)?;
 
@@ -208,17 +213,15 @@ impl Client {
         Ok(())
     }
 
-    /// Send a message to the module
-    fn send_msg(&mut self, msg: ClientMessage) -> Result<()> {
-        self.state.consume(&msg)?;
-        self.tx.send(msg)?;
-        Ok(())
+    fn state_mut(&mut self) -> &mut State {
+        &mut self.state
     }
 
-    /// Receive a message from the module
-    fn recv_msg(&mut self) -> Result<ModuleMessage> {
-        let msg = self.rx.recv()?;
-        self.state.consume(&msg)?;
-        Ok(msg)
+    fn rx_mut(&mut self) -> &mut IpcReceiver<ModuleMessage> {
+        &mut self.rx
+    }
+
+    fn tx_mut(&mut self) -> &mut IpcSender<ClientMessage> {
+        &mut self.tx
     }
 }
