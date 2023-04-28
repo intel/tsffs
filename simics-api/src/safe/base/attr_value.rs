@@ -1,4 +1,4 @@
-use crate::OwnedMutConfObjectPtr;
+use crate::ConfObject;
 use anyhow::{ensure, Context, Error, Result};
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{FromPrimitive as ConvertFromPrimitive, ToPrimitive as ConvertToPrimitive};
@@ -12,34 +12,6 @@ use simics_api_sys::{
 use std::{ffi::CStr, ptr::null_mut};
 
 pub type AttrValue = attr_value_t;
-
-#[derive(Debug, Clone)]
-#[repr(C)]
-pub struct OwnedMutAttrValuePtr {
-    object: *mut AttrValue,
-}
-
-impl OwnedMutAttrValuePtr {
-    pub fn new(object: *mut AttrValue) -> Self {
-        Self { object }
-    }
-
-    pub fn as_const(&self) -> *const AttrValue {
-        self.object as *const AttrValue
-    }
-}
-
-impl From<*mut AttrValue> for OwnedMutAttrValuePtr {
-    fn from(value: *mut AttrValue) -> Self {
-        Self::new(value)
-    }
-}
-
-impl From<OwnedMutAttrValuePtr> for *mut AttrValue {
-    fn from(value: OwnedMutAttrValuePtr) -> Self {
-        value.object
-    }
-}
 
 #[derive(Debug, FromPrimitive, ToPrimitive)]
 #[repr(u32)]
@@ -171,9 +143,9 @@ pub fn make_attr_floating(d: f64) -> Result<AttrValue> {
 
   <di name="EXECUTION CONTEXT">Cell Context</di>
 </add-fun> */
-pub fn make_attr_object(obj: OwnedMutConfObjectPtr) -> Result<AttrValue> {
+pub fn make_attr_object(obj: *mut ConfObject) -> Result<AttrValue> {
     Ok(AttrValue {
-        private_kind: if obj.as_const().is_null() {
+        private_kind: if (obj as *const ConfObject).is_null() {
             AttrKind::Nil.try_into()?
         } else {
             AttrKind::Object.try_into()?
@@ -340,9 +312,9 @@ pub fn attr_is_object(attr: AttrValue) -> Result<bool> {
 }
 
 /* <append-fun id="SIM_attr_integer"/> */
-pub fn attr_object(attr: AttrValue) -> Result<OwnedMutConfObjectPtr> {
+pub fn attr_object(attr: AttrValue) -> Result<*mut ConfObject> {
     ensure!(attr_is_object(attr)?, "Attribute must be object!");
-    Ok(OwnedMutConfObjectPtr::new(unsafe { attr.private_u.object }))
+    Ok(unsafe { attr.private_u.object })
 }
 
 /// Obtain a [`ConfObject`] pointer from an [`AttrValue`] pointer
@@ -351,21 +323,21 @@ pub fn attr_object(attr: AttrValue) -> Result<OwnedMutConfObjectPtr> {
 ///
 /// * `attr` may be a null or non-null pointer. If it is non-null, it must point to a valid
 ///   [`AttrValue`] instance
-pub fn attr_object_from_ptr(attr: OwnedMutAttrValuePtr) -> Result<OwnedMutConfObjectPtr> {
+pub fn attr_object_from_ptr(attr: *mut AttrValue) -> Result<*mut ConfObject> {
     let ptr: *mut AttrValue = attr.into();
     attr_object(unsafe { *ptr })
 }
 
 /* <append-fun id="SIM_attr_integer"/> */
-pub fn attr_object_or_nil(attr: AttrValue) -> Result<OwnedMutConfObjectPtr> {
+pub fn attr_object_or_nil(attr: AttrValue) -> Result<*mut ConfObject> {
     if attr_is_nil(attr)? {
-        Ok(OwnedMutConfObjectPtr::new(null_mut()))
+        Ok(null_mut())
     } else {
         attr_object(attr)
     }
 }
 
-pub fn attr_object_or_nil_from_ptr(attr: OwnedMutAttrValuePtr) -> Result<OwnedMutConfObjectPtr> {
+pub fn attr_object_or_nil_from_ptr(attr: *mut AttrValue) -> Result<*mut ConfObject> {
     let ptr: *mut AttrValue = attr.into();
     attr_object_or_nil(unsafe { *ptr })
 }
@@ -423,7 +395,7 @@ pub unsafe fn attr_list_item(attr: AttrValue, index: u32) -> Result<AttrValue> {
 }
 
 /* <append-fun id="SIM_attr_integer"/> */
-pub fn attr_list(attr: AttrValue) -> Result<OwnedMutAttrValuePtr> {
+pub fn attr_list(attr: AttrValue) -> Result<*mut AttrValue> {
     ensure!(attr_is_list(attr)?, "Attribute must be list!");
     Ok(unsafe { attr.private_u.list }.into())
 }
@@ -461,6 +433,6 @@ pub fn attr_dict_value(attr: AttrValue, index: u32) -> Result<AttrValue> {
     Ok(unsafe { *pair }.value)
 }
 
-pub fn get_attribute<S: AsRef<str>>(obj: OwnedMutConfObjectPtr, attribute: S) -> Result<AttrValue> {
+pub fn get_attribute<S: AsRef<str>>(obj: *mut ConfObject, attribute: S) -> Result<AttrValue> {
     Ok(unsafe { SIM_get_attribute(obj.into(), raw_cstr(attribute)?) })
 }

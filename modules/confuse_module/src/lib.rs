@@ -25,7 +25,6 @@ use const_format::concatcp;
 pub mod client;
 pub mod config;
 pub mod faults;
-mod interface;
 pub mod magic;
 pub mod maps;
 pub mod messages;

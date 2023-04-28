@@ -1,5 +1,5 @@
 use crate::{last_error, ConfObject, GenericTransaction};
-use anyhow::{bail, Result};
+use anyhow::{bail, ensure, Result};
 use raw_cstr::raw_cstr;
 use simics_api_sys::{hap_handle_t, SIM_hap_add_callback};
 use std::{
@@ -627,7 +627,7 @@ pub type CoreLogMessageFilteredCallback = unsafe extern "C" fn(
     group: i64,
 );
 pub type CoreMagicInstructionCallback =
-    unsafe extern "C" fn(*mut c_void, *const ConfObject, parameter: i64);
+    unsafe extern "C" fn(*mut c_void, *mut ConfObject, parameter: i64);
 pub type CoreMemorySpaceMapChangedCallback =
     unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject);
 pub type CoreModeChangeCallback = unsafe extern "C" fn(
@@ -681,8 +681,12 @@ pub type CoreSimulationModeChangeCallback = unsafe extern "C" fn(
 );
 
 /// exception is *always* SimExc::NoException, error_string is always NULL
-pub type CoreSimulationStoppedCallback =
-    unsafe extern "C" fn(*mut c_void, *const ConfObject, exception: i64, error_string: *mut c_char);
+pub type CoreSimulationStoppedCallback = unsafe extern "C" fn(
+    callback_data: *mut c_void,
+    trigger_obj: *mut ConfObject,
+    exception: i64,
+    error_string: *mut c_char,
+);
 
 pub type CoreSkiptoProgressCallback =
     unsafe extern "C" fn(callback_data: *mut c_void, trigger_obj: *mut ConfObject, progress: i32);
@@ -888,6 +892,423 @@ pub type XtermBreakStringCallback = unsafe extern "C" fn(
     break_string: *mut c_char,
 );
 
+pub enum HapCallback {
+    // Base HAPs from API reference manual part 12
+    Arinc429Word(Arinc429WordCallback),
+    CliCommandAdded(CliCommandAddedCallback),
+    ComponentChange(ComponentChangeCallback),
+    ComponentHierarchyChange(ComponentHierarchyChangeCallback),
+    ConsoleBreakString(ConsoleBreakStringCallback),
+    CoreAddressNotMapped(CoreAddressNotMappedCallback),
+    CoreAsynchronousTrap(CoreAsynchronousTrapCallback),
+    CoreAtExit(CoreAtExitCallback),
+    CoreBackToFront(CoreBackToFrontCallback),
+    CoreBreakpointChange(CoreBreakpointChangeCallback),
+    CoreBreakpointMemop(CoreBreakpointMemopCallback),
+    CoreCleanAtExit(CoreCleanAtExitCallback),
+    CoreConfClassRegister(CoreConfClassRegisterCallback),
+    CoreConfClassUnregister(CoreConfClassUnregisterCallback),
+    CoreConfClockChangeCell(CoreConfClockChangeCellCallback),
+    CoreConfObjectChangeClock(CoreConfObjectChangeClockCallback),
+    CoreConfObjectCreate(CoreConfObjectCreateCallback),
+    CoreConfObjectCreated(CoreConfObjectCreatedCallback),
+    CoreConfObjectDelete(CoreConfObjectDeleteCallback),
+    CoreConfObjectPreDelete(CoreConfObjectPreDeleteCallback),
+    CoreConfObjectRename(CoreConfObjectRenameCallback),
+    CoreConfObjectsCreated(CoreConfObjectsCreatedCallback),
+    CoreConfObjectsDeleted(CoreConfObjectsDeletedCallback),
+    CoreConfigurationLoaded(CoreConfigurationLoadedCallback),
+    CoreContextActivate(CoreContextActivateCallback),
+    CoreContextChange(CoreContextChangeCallback),
+    CoreContextDeactivate(CoreContextDeactivateCallback),
+    CoreContextUpdated(CoreContextUpdatedCallback),
+    CoreContinuation(CoreContinuationCallback),
+    CoreControlRegisterRead(CoreControlRegisterReadCallback),
+    CoreControlRegisterWrite(CoreControlRegisterWriteCallback),
+    CoreDeviceAccessMemop(CoreDeviceAccessMemopCallback),
+    CoreDisableBreakpoints(CoreDisableBreakpointsCallback),
+    CoreDiscardFuture(CoreDiscardFutureCallback),
+    CoreDstcFlushCounter(CoreDstcFlushCounterCallback),
+    CoreException(CoreExceptionCallback),
+    CoreExceptionReturn(CoreExceptionReturnCallback),
+    CoreExternalInterrupt(CoreExternalInterruptCallback),
+    CoreFrequencyChanged(CoreFrequencyChangedCallback),
+    CoreGlobalMessage(CoreGlobalMessageCallback),
+    CoreHapCallbackInstalled(CoreHapCallbackInstalledCallback),
+    CoreHapCallbackRemoved(CoreHapCallbackRemovedCallback),
+    CoreHapTypeAdded(CoreHapTypeAddedCallback),
+    CoreImageActivity(CoreImageActivityCallback),
+    CoreInitialConfiguration(CoreInitialConfigurationCallback),
+    CoreLogGroupsChange(CoreLogGroupsChangeCallback),
+    CoreLogLevelChange(CoreLogLevelChangeCallback),
+    CoreLogMessage(CoreLogMessageCallback),
+    CoreLogMessageExtended(CoreLogMessageExtendedCallback),
+    CoreLogMessageFiltered(CoreLogMessageFilteredCallback),
+    CoreMagicInstruction(CoreMagicInstructionCallback),
+    CoreMemorySpaceMapChanged(CoreMemorySpaceMapChangedCallback),
+    CoreModeChange(CoreModeChangeCallback),
+    CoreModuleLoaded(CoreModuleLoadedCallback),
+    CoreMulticoreAccelerationChanged(CoreMulticoreAccelerationChangedCallback),
+    CoreMultithreadingChanged(CoreMultithreadingChangedCallback),
+    CoreNotImplemented(CoreNotImplementedCallback),
+    CorePreferencesChanged(CorePreferencesChangedCallback),
+    CoreProcessorScheduleChanged(CoreProcessorScheduleChangedCallback),
+    CoreProjectChanged(CoreProjectChangedCallback),
+    CoreRecentFilesChanged(CoreRecentFilesChangedCallback),
+    CoreRexecActive(CoreRexecActiveCallback),
+    CoreSimulationModeChange(CoreSimulationModeChangeCallback),
+    CoreSimulationStopped(CoreSimulationStoppedCallback),
+    CoreSkiptoProgress(CoreSkiptoProgressCallback),
+    CoreSyncInstruction(CoreSyncInstructionCallback),
+    CoreTimeTransition(CoreTimeTransitionCallback),
+    CoreTimingModelChange(CoreTimingModelChangeCallback),
+    CoreUserCommentsChanged(CoreUserCommentsChangedCallback),
+    CoreWriteConfiguration(CoreWriteConfigurationCallback),
+    EthInjectorPcapEof(EthInjectorPcapEofCallback),
+    FirewireReset(FirewireResetCallback),
+    FirewireTransfer(FirewireTransferCallback),
+    GfxBreak(GfxBreakCallback),
+    GfxBreakString(GfxBreakStringCallback),
+    GraphicsConsoleNewTitle(GraphicsConsoleNewTitleCallback),
+    GraphicsConsoleShowHide(GraphicsConsoleShowHideCallback),
+    InternalBookmarkListChanged(InternalBookmarkListChangedCallback),
+    InternalBreakIo(InternalBreakIoCallback),
+    InternalDeviceRegAccess(InternalDeviceRegAccessCallback),
+    InternalMicroCheckpointLoaded(InternalMicroCheckpointLoadedCallback),
+    InternalSbWait(InternalSbWaitCallback),
+    InternalTimeDirectionChanged(InternalTimeDirectionChangedCallback),
+    InternalTimeQuantumChanged(InternalTimeQuantumChangedCallback),
+    RealtimeEnabled(RealtimeEnabledCallback),
+    RecStateChanged(RecStateChangedCallback),
+    RexecLimitExceeded(RexecLimitExceededCallback),
+    RtcNvramUpdate(RtcNvramUpdateCallback),
+    ScsiDiskCommand(ScsiDiskCommandCallback),
+    SnNaptEnabled(SnNaptEnabledCallback),
+    TextConsoleNewTitle(TextConsoleNewTitleCallback),
+    TextConsoleShowHide(TextConsoleShowHideCallback),
+    TlbFillData(TlbFillDataCallback),
+    TlbFillInstruction(TlbFillInstructionCallback),
+    TlbInvalidateData(TlbInvalidateDataCallback),
+    TlbInvalidateInstruction(TlbInvalidateInstructionCallback),
+    TlbMissData(TlbMissDataCallback),
+    TlbMissInstruction(TlbMissInstructionCallback),
+    TlbReplaceData(TlbReplaceDataCallback),
+    TlbReplaceInstruction(TlbReplaceInstructionCallback),
+    UiRecordStateChanged(UiRecordStateChangedCallback),
+    UiRunStateChanged(UiRunStateChangedCallback),
+    VgaBreakString(VgaBreakStringCallback),
+    VgaRefreshTriggered(VgaRefreshTriggeredCallback),
+    XtermBreakString(XtermBreakStringCallback),
+
+    // X86 QSP HAPs
+    CoreInterruptStatus(CoreInterruptStatusCallback),
+    CoreModeSwitch(CoreModeSwitchCallback),
+    CorePseudoException(CorePseudoExceptionCallback),
+    X86DescriptorChange(X86DescriptorChangeCallback),
+    X86EnterSmm(X86EnterSmmCallback),
+    X86LeaveSmm(X86LeaveSmmCallback),
+    X86MisplacedRex(X86MisplacedRexCallback),
+    X86ProcessorReset(X86ProcessorResetCallback),
+    X86Sysenter(X86SysenterCallback),
+    X86Sysexit(X86SysexitCallback),
+    X86TripleFault(X86TripleFaultCallback),
+    X86VmcsRead(X86VmcsReadCallback),
+    X86VmcsWrite(X86VmcsWriteCallback),
+    X86VmxModeChange(X86VmxModeChangeCallback),
+
+    // ARM HAPs
+    ArmInstructionModeChange(ArmInstructionModeChangeCallback),
+    ArmV8InterProcessing(ArmV8InterProcessingCallback),
+}
+
+impl HapCallback {
+    pub fn as_fn(&self) -> extern "C" fn() {
+        unsafe {
+            match *self {
+                HapCallback::Arinc429Word(func) => transmute(func),
+                HapCallback::CliCommandAdded(func) => transmute(func),
+                HapCallback::ComponentChange(func) => transmute(func),
+                HapCallback::ComponentHierarchyChange(func) => transmute(func),
+                HapCallback::ConsoleBreakString(func) => transmute(func),
+                HapCallback::CoreAddressNotMapped(func) => transmute(func),
+                HapCallback::CoreAsynchronousTrap(func) => transmute(func),
+                HapCallback::CoreAtExit(func) => transmute(func),
+                HapCallback::CoreBackToFront(func) => transmute(func),
+                HapCallback::CoreBreakpointChange(func) => transmute(func),
+                HapCallback::CoreBreakpointMemop(func) => transmute(func),
+                HapCallback::CoreCleanAtExit(func) => transmute(func),
+                HapCallback::CoreConfClassRegister(func) => transmute(func),
+                HapCallback::CoreConfClassUnregister(func) => transmute(func),
+                HapCallback::CoreConfClockChangeCell(func) => transmute(func),
+                HapCallback::CoreConfObjectChangeClock(func) => transmute(func),
+                HapCallback::CoreConfObjectCreate(func) => transmute(func),
+                HapCallback::CoreConfObjectCreated(func) => transmute(func),
+                HapCallback::CoreConfObjectDelete(func) => transmute(func),
+                HapCallback::CoreConfObjectPreDelete(func) => transmute(func),
+                HapCallback::CoreConfObjectRename(func) => transmute(func),
+                HapCallback::CoreConfObjectsCreated(func) => transmute(func),
+                HapCallback::CoreConfObjectsDeleted(func) => transmute(func),
+                HapCallback::CoreConfigurationLoaded(func) => transmute(func),
+                HapCallback::CoreContextActivate(func) => transmute(func),
+                HapCallback::CoreContextChange(func) => transmute(func),
+                HapCallback::CoreContextDeactivate(func) => transmute(func),
+                HapCallback::CoreContextUpdated(func) => transmute(func),
+                HapCallback::CoreContinuation(func) => transmute(func),
+                HapCallback::CoreControlRegisterRead(func) => transmute(func),
+                HapCallback::CoreControlRegisterWrite(func) => transmute(func),
+                HapCallback::CoreDeviceAccessMemop(func) => transmute(func),
+                HapCallback::CoreDisableBreakpoints(func) => transmute(func),
+                HapCallback::CoreDiscardFuture(func) => transmute(func),
+                HapCallback::CoreDstcFlushCounter(func) => transmute(func),
+                HapCallback::CoreException(func) => transmute(func),
+                HapCallback::CoreExceptionReturn(func) => transmute(func),
+                HapCallback::CoreExternalInterrupt(func) => transmute(func),
+                HapCallback::CoreFrequencyChanged(func) => transmute(func),
+                HapCallback::CoreGlobalMessage(func) => transmute(func),
+                HapCallback::CoreHapCallbackInstalled(func) => transmute(func),
+                HapCallback::CoreHapCallbackRemoved(func) => transmute(func),
+                HapCallback::CoreHapTypeAdded(func) => transmute(func),
+                HapCallback::CoreImageActivity(func) => transmute(func),
+                HapCallback::CoreInitialConfiguration(func) => transmute(func),
+                HapCallback::CoreLogGroupsChange(func) => transmute(func),
+                HapCallback::CoreLogLevelChange(func) => transmute(func),
+                HapCallback::CoreLogMessage(func) => transmute(func),
+                HapCallback::CoreLogMessageExtended(func) => transmute(func),
+                HapCallback::CoreLogMessageFiltered(func) => transmute(func),
+                HapCallback::CoreMagicInstruction(func) => transmute(func),
+                HapCallback::CoreMemorySpaceMapChanged(func) => transmute(func),
+                HapCallback::CoreModeChange(func) => transmute(func),
+                HapCallback::CoreModuleLoaded(func) => transmute(func),
+                HapCallback::CoreMulticoreAccelerationChanged(func) => transmute(func),
+                HapCallback::CoreMultithreadingChanged(func) => transmute(func),
+                HapCallback::CoreNotImplemented(func) => transmute(func),
+                HapCallback::CorePreferencesChanged(func) => transmute(func),
+                HapCallback::CoreProcessorScheduleChanged(func) => transmute(func),
+                HapCallback::CoreProjectChanged(func) => transmute(func),
+                HapCallback::CoreRecentFilesChanged(func) => transmute(func),
+                HapCallback::CoreRexecActive(func) => transmute(func),
+                HapCallback::CoreSimulationModeChange(func) => transmute(func),
+                HapCallback::CoreSimulationStopped(func) => transmute(func),
+                HapCallback::CoreSkiptoProgress(func) => transmute(func),
+                HapCallback::CoreSyncInstruction(func) => transmute(func),
+                HapCallback::CoreTimeTransition(func) => transmute(func),
+                HapCallback::CoreTimingModelChange(func) => transmute(func),
+                HapCallback::CoreUserCommentsChanged(func) => transmute(func),
+                HapCallback::CoreWriteConfiguration(func) => transmute(func),
+                HapCallback::EthInjectorPcapEof(func) => transmute(func),
+                HapCallback::FirewireReset(func) => transmute(func),
+                HapCallback::FirewireTransfer(func) => transmute(func),
+                HapCallback::GfxBreak(func) => transmute(func),
+                HapCallback::GfxBreakString(func) => transmute(func),
+                HapCallback::GraphicsConsoleNewTitle(func) => transmute(func),
+                HapCallback::GraphicsConsoleShowHide(func) => transmute(func),
+                HapCallback::InternalBookmarkListChanged(func) => transmute(func),
+                HapCallback::InternalBreakIo(func) => transmute(func),
+                HapCallback::InternalDeviceRegAccess(func) => transmute(func),
+                HapCallback::InternalMicroCheckpointLoaded(func) => transmute(func),
+                HapCallback::InternalSbWait(func) => transmute(func),
+                HapCallback::InternalTimeDirectionChanged(func) => transmute(func),
+                HapCallback::InternalTimeQuantumChanged(func) => transmute(func),
+                HapCallback::RealtimeEnabled(func) => transmute(func),
+                HapCallback::RecStateChanged(func) => transmute(func),
+                HapCallback::RexecLimitExceeded(func) => transmute(func),
+                HapCallback::RtcNvramUpdate(func) => transmute(func),
+                HapCallback::ScsiDiskCommand(func) => transmute(func),
+                HapCallback::SnNaptEnabled(func) => transmute(func),
+                HapCallback::TextConsoleNewTitle(func) => transmute(func),
+                HapCallback::TextConsoleShowHide(func) => transmute(func),
+                HapCallback::TlbFillData(func) => transmute(func),
+                HapCallback::TlbFillInstruction(func) => transmute(func),
+                HapCallback::TlbInvalidateData(func) => transmute(func),
+                HapCallback::TlbInvalidateInstruction(func) => transmute(func),
+                HapCallback::TlbMissData(func) => transmute(func),
+                HapCallback::TlbMissInstruction(func) => transmute(func),
+                HapCallback::TlbReplaceData(func) => transmute(func),
+                HapCallback::TlbReplaceInstruction(func) => transmute(func),
+                HapCallback::UiRecordStateChanged(func) => transmute(func),
+                HapCallback::UiRunStateChanged(func) => transmute(func),
+                HapCallback::VgaBreakString(func) => transmute(func),
+                HapCallback::VgaRefreshTriggered(func) => transmute(func),
+                HapCallback::XtermBreakString(func) => transmute(func),
+                HapCallback::CoreInterruptStatus(func) => transmute(func),
+                HapCallback::CoreModeSwitch(func) => transmute(func),
+                HapCallback::CorePseudoException(func) => transmute(func),
+                HapCallback::X86DescriptorChange(func) => transmute(func),
+                HapCallback::X86EnterSmm(func) => transmute(func),
+                HapCallback::X86LeaveSmm(func) => transmute(func),
+                HapCallback::X86MisplacedRex(func) => transmute(func),
+                HapCallback::X86ProcessorReset(func) => transmute(func),
+                HapCallback::X86Sysenter(func) => transmute(func),
+                HapCallback::X86Sysexit(func) => transmute(func),
+                HapCallback::X86TripleFault(func) => transmute(func),
+                HapCallback::X86VmcsRead(func) => transmute(func),
+                HapCallback::X86VmcsWrite(func) => transmute(func),
+                HapCallback::X86VmxModeChange(func) => transmute(func),
+                HapCallback::ArmInstructionModeChange(func) => transmute(func),
+                HapCallback::ArmV8InterProcessing(func) => transmute(func),
+            }
+        }
+    }
+
+    pub fn is_callback_for(&self, hap: &Hap) -> bool {
+        match *self {
+            HapCallback::Arinc429Word(_) => matches!(hap, Hap::Arinc429Word),
+            HapCallback::CliCommandAdded(_) => matches!(hap, Hap::CliCommandAdded),
+            HapCallback::ComponentChange(_) => matches!(hap, Hap::ComponentChange),
+            HapCallback::ComponentHierarchyChange(_) => {
+                matches!(hap, Hap::ComponentHierarchyChange)
+            }
+            HapCallback::ConsoleBreakString(_) => matches!(hap, Hap::ConsoleBreakString),
+            HapCallback::CoreAddressNotMapped(_) => matches!(hap, Hap::CoreAddressNotMapped),
+            HapCallback::CoreAsynchronousTrap(_) => matches!(hap, Hap::CoreAsynchronousTrap),
+            HapCallback::CoreAtExit(_) => matches!(hap, Hap::CoreAtExit),
+            HapCallback::CoreBackToFront(_) => matches!(hap, Hap::CoreBackToFront),
+            HapCallback::CoreBreakpointChange(_) => matches!(hap, Hap::CoreBreakpointChange),
+            HapCallback::CoreBreakpointMemop(_) => matches!(hap, Hap::CoreBreakpointMemop),
+            HapCallback::CoreCleanAtExit(_) => matches!(hap, Hap::CoreCleanAtExit),
+            HapCallback::CoreConfClassRegister(_) => matches!(hap, Hap::CoreConfClassRegister),
+            HapCallback::CoreConfClassUnregister(_) => matches!(hap, Hap::CoreConfClassUnregister),
+            HapCallback::CoreConfClockChangeCell(_) => matches!(hap, Hap::CoreConfClockChangeCell),
+            HapCallback::CoreConfObjectChangeClock(_) => {
+                matches!(hap, Hap::CoreConfObjectChangeClock)
+            }
+            HapCallback::CoreConfObjectCreate(_) => matches!(hap, Hap::CoreConfObjectCreate),
+            HapCallback::CoreConfObjectCreated(_) => matches!(hap, Hap::CoreConfObjectCreated),
+            HapCallback::CoreConfObjectDelete(_) => matches!(hap, Hap::CoreConfObjectDelete),
+            HapCallback::CoreConfObjectPreDelete(_) => matches!(hap, Hap::CoreConfObjectPreDelete),
+            HapCallback::CoreConfObjectRename(_) => matches!(hap, Hap::CoreConfObjectRename),
+            HapCallback::CoreConfObjectsCreated(_) => matches!(hap, Hap::CoreConfObjectsCreated),
+            HapCallback::CoreConfObjectsDeleted(_) => matches!(hap, Hap::CoreConfObjectsDeleted),
+            HapCallback::CoreConfigurationLoaded(_) => matches!(hap, Hap::CoreConfigurationLoaded),
+            HapCallback::CoreContextActivate(_) => matches!(hap, Hap::CoreContextActivate),
+            HapCallback::CoreContextChange(_) => matches!(hap, Hap::CoreContextChange),
+            HapCallback::CoreContextDeactivate(_) => matches!(hap, Hap::CoreContextDeactivate),
+            HapCallback::CoreContextUpdated(_) => matches!(hap, Hap::CoreContextUpdated),
+            HapCallback::CoreContinuation(_) => matches!(hap, Hap::CoreContinuation),
+            HapCallback::CoreControlRegisterRead(_) => matches!(hap, Hap::CoreControlRegisterRead),
+            HapCallback::CoreControlRegisterWrite(_) => {
+                matches!(hap, Hap::CoreControlRegisterWrite)
+            }
+            HapCallback::CoreDeviceAccessMemop(_) => matches!(hap, Hap::CoreDeviceAccessMemop),
+            HapCallback::CoreDisableBreakpoints(_) => matches!(hap, Hap::CoreDisableBreakpoints),
+            HapCallback::CoreDiscardFuture(_) => matches!(hap, Hap::CoreDiscardFuture),
+            HapCallback::CoreDstcFlushCounter(_) => matches!(hap, Hap::CoreDstcFlushCounter),
+            HapCallback::CoreException(_) => matches!(hap, Hap::CoreException),
+            HapCallback::CoreExceptionReturn(_) => matches!(hap, Hap::CoreExceptionReturn),
+            HapCallback::CoreExternalInterrupt(_) => matches!(hap, Hap::CoreExternalInterrupt),
+            HapCallback::CoreFrequencyChanged(_) => matches!(hap, Hap::CoreFrequencyChanged),
+            HapCallback::CoreGlobalMessage(_) => matches!(hap, Hap::CoreGlobalMessage),
+            HapCallback::CoreHapCallbackInstalled(_) => {
+                matches!(hap, Hap::CoreHapCallbackInstalled)
+            }
+            HapCallback::CoreHapCallbackRemoved(_) => matches!(hap, Hap::CoreHapCallbackRemoved),
+            HapCallback::CoreHapTypeAdded(_) => matches!(hap, Hap::CoreHapTypeAdded),
+            HapCallback::CoreImageActivity(_) => matches!(hap, Hap::CoreImageActivity),
+            HapCallback::CoreInitialConfiguration(_) => {
+                matches!(hap, Hap::CoreInitialConfiguration)
+            }
+            HapCallback::CoreLogGroupsChange(_) => matches!(hap, Hap::CoreLogGroupsChange),
+            HapCallback::CoreLogLevelChange(_) => matches!(hap, Hap::CoreLogLevelChange),
+            HapCallback::CoreLogMessage(_) => matches!(hap, Hap::CoreLogMessage),
+            HapCallback::CoreLogMessageExtended(_) => matches!(hap, Hap::CoreLogMessageExtended),
+            HapCallback::CoreLogMessageFiltered(_) => matches!(hap, Hap::CoreLogMessageFiltered),
+            HapCallback::CoreMagicInstruction(_) => matches!(hap, Hap::CoreMagicInstruction),
+            HapCallback::CoreMemorySpaceMapChanged(_) => {
+                matches!(hap, Hap::CoreMemorySpaceMapChanged)
+            }
+            HapCallback::CoreModeChange(_) => matches!(hap, Hap::CoreModeChange),
+            HapCallback::CoreModuleLoaded(_) => matches!(hap, Hap::CoreModuleLoaded),
+            HapCallback::CoreMulticoreAccelerationChanged(_) => {
+                matches!(hap, Hap::CoreMulticoreAccelerationChanged)
+            }
+            HapCallback::CoreMultithreadingChanged(_) => {
+                matches!(hap, Hap::CoreMultithreadingChanged)
+            }
+            HapCallback::CoreNotImplemented(_) => matches!(hap, Hap::CoreNotImplemented),
+            HapCallback::CorePreferencesChanged(_) => matches!(hap, Hap::CorePreferencesChanged),
+            HapCallback::CoreProcessorScheduleChanged(_) => {
+                matches!(hap, Hap::CoreProcessorScheduleChanged)
+            }
+            HapCallback::CoreProjectChanged(_) => matches!(hap, Hap::CoreProjectChanged),
+            HapCallback::CoreRecentFilesChanged(_) => matches!(hap, Hap::CoreRecentFilesChanged),
+            HapCallback::CoreRexecActive(_) => matches!(hap, Hap::CoreRexecActive),
+            HapCallback::CoreSimulationModeChange(_) => {
+                matches!(hap, Hap::CoreSimulationModeChange)
+            }
+            HapCallback::CoreSimulationStopped(_) => matches!(hap, Hap::CoreSimulationStopped),
+            HapCallback::CoreSkiptoProgress(_) => matches!(hap, Hap::CoreSkiptoProgress),
+            HapCallback::CoreSyncInstruction(_) => matches!(hap, Hap::CoreSyncInstruction),
+            HapCallback::CoreTimeTransition(_) => matches!(hap, Hap::CoreTimeTransition),
+            HapCallback::CoreTimingModelChange(_) => matches!(hap, Hap::CoreTimingModelChange),
+            HapCallback::CoreUserCommentsChanged(_) => matches!(hap, Hap::CoreUserCommentsChanged),
+            HapCallback::CoreWriteConfiguration(_) => matches!(hap, Hap::CoreWriteConfiguration),
+            HapCallback::EthInjectorPcapEof(_) => matches!(hap, Hap::EthInjectorPcapEof),
+            HapCallback::FirewireReset(_) => matches!(hap, Hap::FirewireReset),
+            HapCallback::FirewireTransfer(_) => matches!(hap, Hap::FirewireTransfer),
+            HapCallback::GfxBreak(_) => matches!(hap, Hap::GfxBreak),
+            HapCallback::GfxBreakString(_) => matches!(hap, Hap::GfxBreakString),
+            HapCallback::GraphicsConsoleNewTitle(_) => matches!(hap, Hap::GraphicsConsoleNewTitle),
+            HapCallback::GraphicsConsoleShowHide(_) => matches!(hap, Hap::GraphicsConsoleShowHide),
+            HapCallback::InternalBookmarkListChanged(_) => {
+                matches!(hap, Hap::InternalBookmarkListChanged)
+            }
+            HapCallback::InternalBreakIo(_) => matches!(hap, Hap::InternalBreakIo),
+            HapCallback::InternalDeviceRegAccess(_) => matches!(hap, Hap::InternalDeviceRegAccess),
+            HapCallback::InternalMicroCheckpointLoaded(_) => {
+                matches!(hap, Hap::InternalMicroCheckpointLoaded)
+            }
+            HapCallback::InternalSbWait(_) => matches!(hap, Hap::InternalSbWait),
+            HapCallback::InternalTimeDirectionChanged(_) => {
+                matches!(hap, Hap::InternalTimeDirectionChanged)
+            }
+            HapCallback::InternalTimeQuantumChanged(_) => {
+                matches!(hap, Hap::InternalTimeQuantumChanged)
+            }
+            HapCallback::RealtimeEnabled(_) => matches!(hap, Hap::RealtimeEnabled),
+            HapCallback::RecStateChanged(_) => matches!(hap, Hap::RecStateChanged),
+            HapCallback::RexecLimitExceeded(_) => matches!(hap, Hap::RexecLimitExceeded),
+            HapCallback::RtcNvramUpdate(_) => matches!(hap, Hap::RtcNvramUpdate),
+            HapCallback::ScsiDiskCommand(_) => matches!(hap, Hap::ScsiDiskCommand),
+            HapCallback::SnNaptEnabled(_) => matches!(hap, Hap::SnNaptEnabled),
+            HapCallback::TextConsoleNewTitle(_) => matches!(hap, Hap::TextConsoleNewTitle),
+            HapCallback::TextConsoleShowHide(_) => matches!(hap, Hap::TextConsoleShowHide),
+            HapCallback::TlbFillData(_) => matches!(hap, Hap::TlbFillData),
+            HapCallback::TlbFillInstruction(_) => matches!(hap, Hap::TlbFillInstruction),
+            HapCallback::TlbInvalidateData(_) => matches!(hap, Hap::TlbInvalidateData),
+            HapCallback::TlbInvalidateInstruction(_) => {
+                matches!(hap, Hap::TlbInvalidateInstruction)
+            }
+            HapCallback::TlbMissData(_) => matches!(hap, Hap::TlbMissData),
+            HapCallback::TlbMissInstruction(_) => matches!(hap, Hap::TlbMissInstruction),
+            HapCallback::TlbReplaceData(_) => matches!(hap, Hap::TlbReplaceData),
+            HapCallback::TlbReplaceInstruction(_) => matches!(hap, Hap::TlbReplaceInstruction),
+            HapCallback::UiRecordStateChanged(_) => matches!(hap, Hap::UiRecordStateChanged),
+            HapCallback::UiRunStateChanged(_) => matches!(hap, Hap::UiRunStateChanged),
+            HapCallback::VgaBreakString(_) => matches!(hap, Hap::VgaBreakString),
+            HapCallback::VgaRefreshTriggered(_) => matches!(hap, Hap::VgaRefreshTriggered),
+            HapCallback::XtermBreakString(_) => matches!(hap, Hap::XtermBreakString),
+            HapCallback::CoreInterruptStatus(_) => matches!(hap, Hap::CoreInterruptStatus),
+            HapCallback::CoreModeSwitch(_) => matches!(hap, Hap::CoreModeSwitch),
+            HapCallback::CorePseudoException(_) => matches!(hap, Hap::CorePseudoException),
+            HapCallback::X86DescriptorChange(_) => matches!(hap, Hap::X86DescriptorChange),
+            HapCallback::X86EnterSmm(_) => matches!(hap, Hap::X86EnterSmm),
+            HapCallback::X86LeaveSmm(_) => matches!(hap, Hap::X86LeaveSmm),
+            HapCallback::X86MisplacedRex(_) => matches!(hap, Hap::X86MisplacedRex),
+            HapCallback::X86ProcessorReset(_) => matches!(hap, Hap::X86ProcessorReset),
+            HapCallback::X86Sysenter(_) => matches!(hap, Hap::X86Sysenter),
+            HapCallback::X86Sysexit(_) => matches!(hap, Hap::X86Sysexit),
+            HapCallback::X86TripleFault(_) => matches!(hap, Hap::X86TripleFault),
+            HapCallback::X86VmcsRead(_) => matches!(hap, Hap::X86VmcsRead),
+            HapCallback::X86VmcsWrite(_) => matches!(hap, Hap::X86VmcsWrite),
+            HapCallback::X86VmxModeChange(_) => matches!(hap, Hap::X86VmxModeChange),
+            HapCallback::ArmInstructionModeChange(_) => {
+                matches!(hap, Hap::ArmInstructionModeChange)
+            }
+            HapCallback::ArmV8InterProcessing(_) => matches!(hap, Hap::ArmV8InterProcessing),
+        }
+    }
+}
+
 pub struct ObjHapFunc {
     /// Function stored as integer
     func: usize,
@@ -915,17 +1336,22 @@ impl From<X86TripleFaultCallback> for ObjHapFunc {
     }
 }
 
-pub fn hap_add_callback<D>(hap: Hap, func: ObjHapFunc, data: Option<D>) -> Result<HapHandle>
+pub fn hap_add_callback<D>(hap: Hap, func: HapCallback, data: Option<D>) -> Result<HapHandle>
 where
     D: Into<*mut c_void>,
 {
+    ensure!(
+        func.is_callback_for(&hap),
+        "Callback and Hap types must match!"
+    );
+
     let data = match data {
         Some(data) => data.into(),
         None => null_mut(),
     };
 
     let handle =
-        unsafe { SIM_hap_add_callback(raw_cstr(hap.to_string())?, Some(func.as_func()), data) };
+        unsafe { SIM_hap_add_callback(raw_cstr(hap.to_string())?, Some(func.as_fn()), data) };
 
     if handle == -1 {
         bail!(

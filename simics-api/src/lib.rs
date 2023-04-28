@@ -4,6 +4,7 @@
 //!
 //! This crate provides higher-level bindings to the SIMICS API for writing safe code for the
 //! SIMICS platform. This crate should be used instead of `simics-api-sys` for most purposes.
+#![allow(clippy::useless_conversion)]
 
 #[cfg(any(
     feature = "6.0.28",

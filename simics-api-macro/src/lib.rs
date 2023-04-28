@@ -306,8 +306,7 @@ pub fn module(args: TokenStream, input: TokenStream) -> TokenStream {
     let register_impl = create_impl(name.to_string(), &args);
     let from_impl = from_impl(name.to_string());
 
-    /* let r: TokenStream = */
-    quote! {
+    let r: TokenStream = quote! {
         #derive_attribute
         #[repr(C)]
         #item_struct
@@ -316,13 +315,13 @@ pub fn module(args: TokenStream, input: TokenStream) -> TokenStream {
         #raw_impl
         #from_impl
     }
-    .into()
+    .into();
 
-    // let s = r.to_string();
+    let _s = r.to_string();
 
-    // eprintln!("{}", s);
+    eprintln!("{}", _s);
 
-    // r
+    r
 }
 
 fn ffi_impl<S: AsRef<str>>(name: S) -> TokenStream2 {
@@ -338,7 +337,7 @@ fn ffi_impl<S: AsRef<str>>(name: S) -> TokenStream2 {
     quote! {
         #[no_mangle]
         pub extern "C" fn #alloc_fn_name(cls: *mut simics_api::ConfClass) -> *mut simics_api::ConfObject {
-            let cls: simics_api::OwnedMutConfClassPtr = cls.into();
+            let cls: *mut simics_api::ConfClass = cls.into();
             let obj: *mut simics_api::ConfObject  = #name::alloc::<#name>(cls)
                 .unwrap_or_else(|e| panic!("{}::alloc failed: {}", #name_string, e))
                 .into();
@@ -425,7 +424,7 @@ fn create_impl<S: AsRef<str>>(name: S, args: &Args) -> TokenStream2 {
         }
 
         impl simics_api::Create for #name {
-            fn create() -> anyhow::Result<simics_api::OwnedMutConfClassPtr> {
+            fn create() -> anyhow::Result<*mut simics_api::ConfClass> {
                 simics_api::create_class(#class_name, #name::CLASS)
             }
         }
@@ -459,9 +458,9 @@ fn raw_impl<S: AsRef<str>>(name: S, fields: &Fields) -> TokenStream2 {
     quote! {
         impl #name {
             fn new(
-                obj: simics_api::OwnedMutConfObjectPtr,
+                obj: *mut simics_api::ConfObject,
                 #(#field_parameters),*
-            ) -> simics_api::OwnedMutConfObjectPtr  {
+            ) -> *mut simics_api::ConfObject  {
                 let obj_ptr: *mut simics_api::ConfObject = obj.into();
                 let ptr: *mut #name = obj_ptr as *mut #name;
 
@@ -477,10 +476,9 @@ fn from_impl<S: AsRef<str>>(name: S) -> TokenStream2 {
     let name = format_ident!("{}", name.as_ref());
 
     quote! {
-        impl From<simics_api::OwnedMutConfObjectPtr> for &mut #name {
-            fn from(value: simics_api::OwnedMutConfObjectPtr) -> Self {
-                let obj_ptr: *mut simics_api::ConfObject = value.into();
-                let ptr: *mut #name = obj_ptr as *mut #name;
+        impl From<*mut simics_api::ConfObject> for &mut #name {
+            fn from(value: *mut simics_api::ConfObject) -> Self {
+                let ptr: *mut #name = value as *mut #name;
                 unsafe { &mut *ptr }
             }
         }

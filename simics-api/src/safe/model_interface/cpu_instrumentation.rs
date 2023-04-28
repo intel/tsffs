@@ -1,8 +1,8 @@
 use crate::{
-    attr_object_or_nil, get_interface, AttrValue, ConfObject, Interface, OwnedMutAttrValuePtr,
-    OwnedMutConfObjectPtr,
+    attr_object_or_nil, get_interface, AccessType, AttrValue, ConfObject, Interface, PhysicalBlock,
 };
-use anyhow::{bail, Result};
+use anyhow::{bail, ensure, Result};
+use raw_cstr::raw_cstr;
 use simics_api_sys::{
     cpu_bytes_t, cpu_cached_instruction_interface_t, cpu_instruction_query_interface_t,
     cpu_instrumentation_subscribe_interface_t, cycle_interface_t, instruction_handle_t,
@@ -19,49 +19,15 @@ pub type IntRegisterInterface = int_register_interface_t;
 pub type CycleInterface = cycle_interface_t;
 pub type CpuBytes = cpu_bytes_t;
 
-#[derive(Debug, Clone)]
-#[repr(C)]
-pub struct OwnedMutInstructionHandlePtr {
-    object: *mut InstructionHandle,
-}
-
-impl OwnedMutInstructionHandlePtr {
-    pub fn new(object: *mut InstructionHandle) -> Self {
-        Self { object }
-    }
-
-    pub fn as_const(&self) -> *const InstructionHandle {
-        self.object as *const InstructionHandle
-    }
-}
-
-impl From<*mut InstructionHandle> for OwnedMutInstructionHandlePtr {
-    fn from(value: *mut InstructionHandle) -> Self {
-        Self::new(value)
-    }
-}
-
-impl From<OwnedMutInstructionHandlePtr> for *mut InstructionHandle {
-    fn from(value: OwnedMutInstructionHandlePtr) -> Self {
-        value.object
-    }
-}
-
-impl From<&OwnedMutInstructionHandlePtr> for *mut InstructionHandle {
-    fn from(value: &OwnedMutInstructionHandlePtr) -> Self {
-        value.object
-    }
-}
-
 pub struct CpuInstrumentationSubscribe {
     iface: *mut CpuInstrumentationSubscribeInterface,
 }
 
 impl CpuInstrumentationSubscribe {
-    pub fn try_new(cpu: OwnedMutAttrValuePtr) -> Result<Self> {
+    pub fn try_new(cpu: *mut AttrValue) -> Result<Self> {
         let ptr: *mut AttrValue = cpu.into();
 
-        let cpu: OwnedMutConfObjectPtr = attr_object_or_nil(unsafe { *ptr })?;
+        let cpu: *mut ConfObject = attr_object_or_nil(unsafe { *ptr })?;
 
         let iface = get_interface::<CpuInstrumentationSubscribeInterface>(
             cpu,
@@ -80,7 +46,7 @@ impl CpuInstrumentationSubscribe {
 
     pub fn register_instruction_before_cb(
         &self,
-        cpu: OwnedMutConfObjectPtr,
+        cpu: *mut ConfObject,
         cb: unsafe extern "C" fn(
             *mut ConfObject,
             *mut ConfObject,
@@ -102,10 +68,10 @@ pub struct CpuInstructionQuery {
 }
 
 impl CpuInstructionQuery {
-    pub fn try_new(cpu: OwnedMutAttrValuePtr) -> Result<Self> {
+    pub fn try_new(cpu: *mut AttrValue) -> Result<Self> {
         let ptr: *mut AttrValue = cpu.into();
 
-        let cpu: OwnedMutConfObjectPtr = attr_object_or_nil(unsafe { *ptr })?;
+        let cpu: *mut ConfObject = attr_object_or_nil(unsafe { *ptr })?;
 
         let iface =
             get_interface::<CpuInstructionQueryInterface>(cpu, Interface::CpuInstructionQuery);
@@ -122,8 +88,8 @@ impl CpuInstructionQuery {
 
     pub fn get_instruction_bytes(
         &mut self,
-        cpu: OwnedMutConfObjectPtr,
-        instruction_query: OwnedMutInstructionHandlePtr,
+        cpu: *mut ConfObject,
+        instruction_query: *mut InstructionHandle,
     ) -> Result<&[u8]> {
         let bytes = match unsafe { *self.iface }.get_instruction_bytes {
             Some(get_instruction_bytes) => unsafe {
@@ -141,10 +107,10 @@ pub struct CpuCachedInstruction {
 }
 
 impl CpuCachedInstruction {
-    pub fn try_new(cpu: OwnedMutAttrValuePtr) -> Result<Self> {
+    pub fn try_new(cpu: *mut AttrValue) -> Result<Self> {
         let ptr: *mut AttrValue = cpu.into();
 
-        let cpu: OwnedMutConfObjectPtr = attr_object_or_nil(unsafe { *ptr })?;
+        let cpu: *mut ConfObject = attr_object_or_nil(unsafe { *ptr })?;
 
         let iface =
             get_interface::<CpuCachedInstructionInterface>(cpu, Interface::CpuCachedInstruction);
@@ -165,10 +131,10 @@ pub struct ProcessorInfoV2 {
 }
 
 impl ProcessorInfoV2 {
-    pub fn try_new(cpu: OwnedMutAttrValuePtr) -> Result<Self> {
+    pub fn try_new(cpu: *mut AttrValue) -> Result<Self> {
         let ptr: *mut AttrValue = cpu.into();
 
-        let cpu: OwnedMutConfObjectPtr = attr_object_or_nil(unsafe { *ptr })?;
+        let cpu: *mut ConfObject = attr_object_or_nil(unsafe { *ptr })?;
 
         let iface = get_interface::<ProcessorInfoV2Interface>(cpu, Interface::ProcessorInfoV2);
 
@@ -182,11 +148,35 @@ impl ProcessorInfoV2 {
         }
     }
 
-    pub fn get_program_counter(&self, cpu: OwnedMutConfObjectPtr) -> Result<u64> {
+    pub fn get_program_counter(&self, cpu: *mut ConfObject) -> Result<u64> {
         if let Some(get_program_counter) = unsafe { *self.iface }.get_program_counter {
             Ok(unsafe { get_program_counter(cpu.into()) })
         } else {
             bail!("No function get_program_counter in interface");
+        }
+    }
+
+    pub fn logical_to_physical(
+        &self,
+        cpu: *mut ConfObject,
+        logical_address: u64,
+    ) -> Result<PhysicalBlock> {
+        if let Some(logical_to_physical) = unsafe { *self.iface }.logical_to_physical {
+            let addr = unsafe {
+                logical_to_physical(cpu.into(), logical_address, AccessType::X86Vanilla as u32)
+            };
+            ensure!(addr.valid != 0, "Physical address is invalid");
+            Ok(addr)
+        } else {
+            bail!("No function logical_to_physical in interface");
+        }
+    }
+
+    pub fn get_physical_memory(&self, cpu: *mut ConfObject) -> Result<*mut ConfObject> {
+        if let Some(get_physical_memory) = unsafe { *self.iface }.get_physical_memory {
+            Ok(unsafe { get_physical_memory(cpu.into()) })
+        } else {
+            bail!("No function get_physical_memory in interface");
         }
     }
 }
@@ -196,10 +186,10 @@ pub struct IntRegister {
 }
 
 impl IntRegister {
-    pub fn try_new(cpu: OwnedMutAttrValuePtr) -> Result<Self> {
+    pub fn try_new(cpu: *mut AttrValue) -> Result<Self> {
         let ptr: *mut AttrValue = cpu.into();
 
-        let cpu: OwnedMutConfObjectPtr = attr_object_or_nil(unsafe { *ptr })?;
+        let cpu: *mut ConfObject = attr_object_or_nil(unsafe { *ptr })?;
 
         let iface = get_interface::<IntRegisterInterface>(cpu, Interface::IntRegister);
 
@@ -212,6 +202,22 @@ impl IntRegister {
             Ok(Self { iface })
         }
     }
+
+    pub fn get_number<S: AsRef<str>>(&self, cpu: *mut ConfObject, register: S) -> Result<i32> {
+        if let Some(get_number) = unsafe { *self.iface }.get_number {
+            Ok(unsafe { get_number(cpu.into(), raw_cstr(register.as_ref())?) })
+        } else {
+            bail!("No function get_number in interface");
+        }
+    }
+
+    pub fn read(&self, cpu: *mut ConfObject, register_number: i32) -> Result<u64> {
+        if let Some(read) = unsafe { *self.iface }.read {
+            Ok(unsafe { read(cpu.into(), register_number) })
+        } else {
+            bail!("No function read in interface");
+        }
+    }
 }
 
 pub struct Cycle {
@@ -219,10 +225,10 @@ pub struct Cycle {
 }
 
 impl Cycle {
-    pub fn try_new(cpu: OwnedMutAttrValuePtr) -> Result<Self> {
+    pub fn try_new(cpu: *mut AttrValue) -> Result<Self> {
         let ptr: *mut AttrValue = cpu.into();
 
-        let cpu: OwnedMutConfObjectPtr = attr_object_or_nil(unsafe { *ptr })?;
+        let cpu: *mut ConfObject = attr_object_or_nil(unsafe { *ptr })?;
 
         let iface = get_interface::<CycleInterface>(cpu, Interface::Cycle);
 

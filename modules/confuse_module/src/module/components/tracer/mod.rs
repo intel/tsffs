@@ -3,16 +3,18 @@ use std::{collections::HashMap, num::Wrapping};
 use crate::{
     config::{InputConfig, OutputConfig},
     maps::MapType,
+    module::Confuse,
     processor::Processor,
     stops::StopReason,
     traits::{ConfuseInterface, ConfuseState},
 };
 use anyhow::Result;
 use ipc_shm::{IpcShm, IpcShmWriter};
+use raffl_macro::{callback_wrappers, params};
 use rand::{thread_rng, Rng};
 use simics_api::{
-    attr_object_or_nil, attr_object_or_nil_from_ptr, get_processor_number, OwnedMutAttrValuePtr,
-    OwnedMutConfObjectPtr, OwnedMutInstructionHandlePtr,
+    attr_object_or_nil, attr_object_or_nil_from_ptr, get_processor_number, AttrValue, ConfObject,
+    InstructionHandle,
 };
 
 pub struct Tracer {
@@ -20,6 +22,14 @@ pub struct Tracer {
     coverage_writer: IpcShmWriter,
     coverage_prev_loc: u64,
     processors: HashMap<i32, Processor>,
+}
+impl<'a> From<*mut std::ffi::c_void> for &'a mut Tracer {
+    /// Convert from a *mut Confuse pointer to a mutable reference to tracer
+    fn from(value: *mut std::ffi::c_void) -> &'a mut Tracer {
+        let confuse_ptr: *mut Confuse = value as *mut Confuse;
+        let confuse = unsafe { &mut *confuse_ptr };
+        &mut confuse.tracer
+    }
 }
 
 impl Tracer {
@@ -49,27 +59,12 @@ impl Tracer {
         self.coverage_prev_loc = (pc >> 1) % self.coverage_writer.len() as u64;
         Ok(())
     }
-
-    pub fn on_instruction(
-        &mut self,
-        cpu: OwnedMutConfObjectPtr,
-        handle: OwnedMutInstructionHandlePtr,
-    ) -> Result<()> {
-        let processor_number = get_processor_number(&cpu);
-
-        if let Some(processor) = self.processors.get_mut(&processor_number) {
-            if let Some(pc) = processor.trace(cpu, handle)? {
-                self.log_pc(pc)?;
-            }
-        }
-
-        Ok(())
-    }
 }
 
 impl ConfuseState for Tracer {
     fn on_initialize(
         &mut self,
+        _confuse: *mut ConfObject,
         _input_config: &InputConfig,
         output_config: OutputConfig,
     ) -> Result<OutputConfig> {
@@ -78,14 +73,16 @@ impl ConfuseState for Tracer {
 }
 
 impl ConfuseInterface for Tracer {
-    fn on_add_processor(&mut self, processor_attr: OwnedMutAttrValuePtr) -> Result<()> {
-        let processor_obj: OwnedMutConfObjectPtr =
-            attr_object_or_nil_from_ptr(processor_attr.clone())?;
-        let processor_number = get_processor_number(&processor_obj);
-        let mut processor = Processor::try_new(processor_number, &processor_obj)?
-            .try_with_cpu_instrumentation_subscribe(processor_attr)?;
+    fn on_add_processor(&mut self, processor_attr: *mut AttrValue) -> Result<()> {
+        let processor_obj: *mut ConfObject = attr_object_or_nil_from_ptr(processor_attr)?;
+        let processor_number = get_processor_number(processor_obj);
+        let mut processor = Processor::try_new(processor_number, processor_obj)?
+            .try_with_cpu_instrumentation_subscribe(processor_attr)?
+            .try_with_processor_info_v2(processor_attr)?
+            .try_with_cpu_instruction_query(processor_attr)?;
 
-        processor.register_instruction_before_cb(processor_obj, callbacks::on_instruction)?;
+        processor
+            .register_instruction_before_cb(processor_obj, tracer_callbacks::on_instruction)?;
 
         self.processors.insert(processor_number, processor);
 
@@ -93,25 +90,23 @@ impl ConfuseInterface for Tracer {
     }
 }
 
-mod callbacks {
-    use std::ffi::c_void;
-
-    use simics_api::{ConfObject, InstructionHandle, OwnedMutConfObjectPtr};
-
-    use crate::module::Confuse;
-
-    #[no_mangle]
-    pub extern "C" fn on_instruction(
+#[callback_wrappers(pub, unwrap_result)]
+impl Tracer {
+    #[params(..., !slf: *mut std::ffi::c_void)]
+    pub fn on_instruction(
+        &mut self,
         obj: *mut ConfObject,
         cpu: *mut ConfObject,
         handle: *mut InstructionHandle,
-        _user_data: *mut c_void,
-    ) {
-        let obj: OwnedMutConfObjectPtr = obj.into();
-        let confuse: &mut Confuse = obj.into();
-        confuse
-            .tracer
-            .on_instruction(cpu.into(), handle.into())
-            .unwrap_or_else(|e| panic!("on_instruction failed: {}", e));
+    ) -> Result<()> {
+        let processor_number = get_processor_number(cpu);
+
+        if let Some(processor) = self.processors.get_mut(&processor_number) {
+            if let Some(pc) = processor.trace(cpu, handle)? {
+                self.log_pc(pc)?;
+            }
+        }
+
+        Ok(())
     }
 }

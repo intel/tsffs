@@ -1,6 +1,6 @@
 //! Tests that the derive macro can correctly parse an input struct
 
-use simics_api::{ClassKind, Create, Module, OwnedMutConfObjectPtr};
+use simics_api::{ClassKind, ConfObject, Create, Module};
 use simics_api_macro::module;
 
 #[macro_use]
@@ -12,8 +12,8 @@ extern crate simics_api_macro;
 pub struct TestModule {}
 
 impl Module for TestModule {
-    fn init(obj: simics_api::OwnedMutConfObjectPtr) -> OwnedMutConfObjectPtr {
-        obj
+    fn init(obj: *mut simics_api::ConfObject) -> anyhow::Result<*mut ConfObject> {
+        Ok(obj)
     }
 }
 

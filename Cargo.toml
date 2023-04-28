@@ -19,6 +19,7 @@ members = [
     "util/ipc-shm",
     "util/raw-cstr",
     "util/version-tools",
+    "util/raffl-macro",
 ]
 
 [workspace.dependencies]
@@ -32,6 +33,7 @@ simics-api-macro = { path = "./simics-api-macro" }
 ipc-shm = { path = "./util/ipc-shm" }
 raw-cstr = { path = "./util/raw-cstr" }
 version-tools = { path = "./util/version-tools" }
+raffl-macro = { path = "./util/raffl-macro" }
 ipc-channel = { git = "https://github.com/novafacing/ipc-channel.git", version = "0.16.0", features = [
     "memfd",
 ] }

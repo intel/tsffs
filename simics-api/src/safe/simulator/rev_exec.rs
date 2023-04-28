@@ -12,7 +12,7 @@ use simics_api_sys::{
     VT_delete_micro_checkpoint, VT_restore_micro_checkpoint, VT_save_micro_checkpoint,
 };
 
-#[derive(FromPrimitive, ToPrimitive)]
+#[derive(FromPrimitive, ToPrimitive, Copy, Clone)]
 #[repr(u32)]
 pub enum MicroCheckpointFlags {
     IdTemp = micro_checkpoint_flags_t_Sim_MC_ID_Tmp,
@@ -43,7 +43,11 @@ pub fn restore_micro_checkpoint(index: i32) {
     unsafe { VT_restore_micro_checkpoint(index) }
 }
 
-pub fn save_micro_checkpoint<S: AsRef<str>>(name: S, flags: MicroCheckpointFlags) -> Result<()> {
-    unsafe { VT_save_micro_checkpoint(raw_cstr(name)?, flags.try_into()?) };
+pub fn save_micro_checkpoint<S: AsRef<str>>(name: S, flags: &[MicroCheckpointFlags]) -> Result<()> {
+    let mut checkpoint_flags = 0;
+    for flag in flags {
+        checkpoint_flags |= *flag as u32;
+    }
+    unsafe { VT_save_micro_checkpoint(raw_cstr(name)?, checkpoint_flags) };
     Ok(())
 }

@@ -33,100 +33,26 @@ pub enum ClassKind {
     Extension = class_kind_t_Sim_Class_Kind_Extension,
 }
 
-#[derive(Debug, Clone)]
-#[repr(C)]
-pub struct OwnedMutConfObjectPtr {
-    object: *mut ConfObject,
-}
-
-impl OwnedMutConfObjectPtr {
-    pub fn new(object: *mut ConfObject) -> Self {
-        Self { object }
-    }
-
-    pub fn as_const(&self) -> *const ConfObject {
-        self.object as *const ConfObject
-    }
-}
-
-impl From<*mut ConfObject> for OwnedMutConfObjectPtr {
-    fn from(value: *mut ConfObject) -> Self {
-        Self::new(value)
-    }
-}
-
-impl From<OwnedMutConfObjectPtr> for *mut ConfObject {
-    fn from(value: OwnedMutConfObjectPtr) -> Self {
-        value.object
-    }
-}
-
-impl From<&OwnedMutConfObjectPtr> for *mut ConfObject {
-    fn from(value: &OwnedMutConfObjectPtr) -> Self {
-        value.object
-    }
-}
-
-impl From<OwnedMutConfObjectPtr> for *mut c_void {
-    fn from(value: OwnedMutConfObjectPtr) -> Self {
-        let ptr: *mut ConfObject = value.into();
-        ptr as *mut c_void
-    }
-}
-
-#[derive(Debug)]
-#[repr(C)]
-pub struct OwnedMutConfClassPtr {
-    cls: *mut ConfClass,
-}
-
-impl OwnedMutConfClassPtr {
-    pub fn new(cls: *mut ConfClass) -> Self {
-        Self { cls }
-    }
-}
-
-impl From<*mut ConfClass> for OwnedMutConfClassPtr {
-    fn from(value: *mut ConfClass) -> Self {
-        Self::new(value)
-    }
-}
-
-impl From<OwnedMutConfClassPtr> for *mut ConfClass {
-    fn from(val: OwnedMutConfClassPtr) -> Self {
-        val.cls
-    }
-}
-
-impl From<&OwnedMutConfClassPtr> for *mut ConfClass {
-    fn from(val: &OwnedMutConfClassPtr) -> Self {
-        val.cls
-    }
-}
-
-pub fn register_class<S: AsRef<str>>(
-    name: S,
-    class_data: ClassData,
-) -> Result<OwnedMutConfClassPtr> {
+pub fn register_class<S: AsRef<str>>(name: S, class_data: ClassData) -> Result<*mut ConfClass> {
     let name_raw = raw_cstr(name.as_ref())?;
 
     // The reference can be dropped after the `SIM_register_class` function returns,
     // so this is safe to call this way
-    let cls = unsafe { SIM_register_class(name_raw, &class_data as *const class_data_t) };
+    let cls = unsafe { SIM_register_class(name_raw, &class_data as *const ClassData) };
 
     if cls.is_null() {
         bail!("Failed to register class: {}", last_error());
     } else {
-        Ok(cls.into())
+        Ok(cls)
     }
 }
 
-pub fn create_class<S: AsRef<str>>(name: S, class_info: ClassInfo) -> Result<OwnedMutConfClassPtr> {
+pub fn create_class<S: AsRef<str>>(name: S, class_info: ClassInfo) -> Result<*mut ConfClass> {
     let name_raw = raw_cstr(name.as_ref())?;
 
     // The reference can be dropped after the `SIM_create_class` function returns,
     // so this is safe to call this way
-    let cls = unsafe { SIM_create_class(name_raw, &class_info as *const class_info_t) };
+    let cls = unsafe { SIM_create_class(name_raw, &class_info as *const ClassInfo) };
 
     if cls.is_null() {
         bail!(
@@ -135,11 +61,11 @@ pub fn create_class<S: AsRef<str>>(name: S, class_info: ClassInfo) -> Result<Own
             last_error()
         );
     } else {
-        Ok(cls.into())
+        Ok(cls)
     }
 }
 
-pub fn register_interface<S: AsRef<str>, T>(cls: OwnedMutConfClassPtr, name: S) -> Result<i32>
+pub fn register_interface<S: AsRef<str>, T>(cls: &ConfClass, name: S) -> Result<i32>
 where
     T: Default,
 {
@@ -148,7 +74,10 @@ where
     // Note: This allocates and never frees. This is *required* by SIMICS and it is an error to
     // free this pointer
     let iface_raw = Box::into_raw(iface_box);
-    let status = unsafe { SIM_register_interface(cls.into(), name_raw, iface_raw as *mut _) };
+    let mut cls = *cls;
+    let status = unsafe {
+        SIM_register_interface(&mut cls as *mut ConfClass, name_raw, iface_raw as *mut _)
+    };
 
     if status != 0 {
         bail!(
@@ -161,11 +90,16 @@ where
     }
 }
 
-pub fn get_interface<T>(obj: OwnedMutConfObjectPtr, iface: Interface) -> *mut T {
-    unsafe { SIM_c_get_interface(obj.as_const(), iface.as_slice().as_ptr() as *const i8) as *mut T }
+pub fn get_interface<T>(obj: *mut ConfObject, iface: Interface) -> *mut T {
+    unsafe {
+        SIM_c_get_interface(
+            obj as *const ConfObject,
+            iface.as_slice().as_ptr() as *const i8,
+        ) as *mut T
+    }
 }
 
-pub fn get_class<S: AsRef<str>>(name: S) -> Result<OwnedMutConfClassPtr> {
+pub fn get_class<S: AsRef<str>>(name: S) -> Result<*mut ConfClass> {
     let name_raw = raw_cstr(name.as_ref())?;
 
     let cls = unsafe { SIM_get_class(name_raw) };
@@ -173,19 +107,20 @@ pub fn get_class<S: AsRef<str>>(name: S) -> Result<OwnedMutConfClassPtr> {
     if cls.is_null() {
         bail!("Failed to get class {}: {}", name.as_ref(), last_error());
     } else {
-        Ok(cls.into())
+        Ok(cls)
     }
 }
 pub fn register_event<S: AsRef<str>>(
     name: S,
-    cls: OwnedMutConfClassPtr,
+    cls: &ConfClass,
     callback: unsafe extern "C" fn(*mut ConfObject, *mut c_void),
-) -> Result<EventClass> {
+) -> Result<*mut EventClass> {
     let name_raw = raw_cstr(name.as_ref())?;
+    let mut cls = *cls;
     let event = unsafe {
         SIM_register_event(
             name_raw,
-            cls.into(),
+            &mut cls as *mut ConfClass,
             0,
             transmute(callback),
             None,
@@ -202,6 +137,6 @@ pub fn register_event<S: AsRef<str>>(
             last_error()
         );
     } else {
-        Ok(event.into())
+        Ok(event)
     }
 }

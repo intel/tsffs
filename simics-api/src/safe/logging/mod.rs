@@ -1,8 +1,9 @@
-use crate::OwnedMutConfObjectPtr;
-use anyhow::{ensure, Context, Result};
+use anyhow::{ensure, Result};
 use log::{LevelFilter, Log};
 use simics_api_sys::{SIM_log_error, SIM_log_info};
 use std::{ffi::CString, ptr::null_mut};
+
+use crate::ConfObject;
 
 const DEFAULT_LEVEL: LevelFilter = LevelFilter::Trace;
 
@@ -19,7 +20,7 @@ fn filter_to_i32(filter: LevelFilter) -> i32 {
 
 pub struct SimicsLogger {
     level: LevelFilter,
-    dev: OwnedMutConfObjectPtr,
+    dev: *mut ConfObject,
 }
 
 unsafe impl Send for SimicsLogger {}
@@ -30,7 +31,7 @@ impl SimicsLogger {
     pub fn new() -> Self {
         Self {
             level: DEFAULT_LEVEL,
-            dev: OwnedMutConfObjectPtr::new(null_mut()),
+            dev: null_mut(),
         }
     }
 
@@ -50,7 +51,7 @@ impl SimicsLogger {
     /// use log::info;
     ///
     /// impl Module for MyMod {
-    ///     fn init(obj: OwnedMutConfObjectPtr) -> Result<OwnedMutConfObjectPtr> {
+    ///     fn init(obj: *mut ConfObject) -> Result<*mut ConfObject> {
     ///         SimicsLogger::new()
     ///             .with_level(Level::Info.to_level_filter())
     ///             .with_dev(obj)
@@ -60,7 +61,7 @@ impl SimicsLogger {
     ///     }
     /// }
     /// ```
-    pub fn with_dev(mut self, dev: OwnedMutConfObjectPtr) -> Self {
+    pub fn with_dev(mut self, dev: *mut ConfObject) -> Self {
         self.dev = dev;
         self
     }
@@ -68,7 +69,10 @@ impl SimicsLogger {
     /// Initialize the [`SimicsLogger`]. This function must be called to actually initialize the
     /// logger
     pub fn init(self) -> Result<()> {
-        ensure!(!self.dev.as_const().is_null(), "Device must be provided");
+        ensure!(
+            !(self.dev as *const ConfObject).is_null(),
+            "Device must be provided"
+        );
 
         log::set_max_level(self.level);
         let self_box = Box::new(self);
@@ -96,9 +100,9 @@ impl Log for SimicsLogger {
             let msg = record.args().to_string();
 
             if level <= 0 {
-                log_error(&self.dev, group, msg).ok();
+                log_error(self.dev, group, msg).ok();
             } else {
-                log_info(level, &self.dev, group, msg).ok();
+                log_info(level, self.dev, group, msg).ok();
             }
         }
     }
@@ -106,7 +110,7 @@ impl Log for SimicsLogger {
     fn flush(&self) {}
 }
 
-pub fn log_info(level: i32, device: &OwnedMutConfObjectPtr, group: i32, msg: String) -> Result<()> {
+pub fn log_info(level: i32, device: *mut ConfObject, group: i32, msg: String) -> Result<()> {
     let msg_cstring = CString::new(msg)?;
 
     unsafe {
@@ -116,7 +120,7 @@ pub fn log_info(level: i32, device: &OwnedMutConfObjectPtr, group: i32, msg: Str
     Ok(())
 }
 
-pub fn log_error(device: &OwnedMutConfObjectPtr, group: i32, msg: String) -> Result<()> {
+pub fn log_error(device: *mut ConfObject, group: i32, msg: String) -> Result<()> {
     let msg_cstring = CString::new(msg)?;
 
     unsafe {
