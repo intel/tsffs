@@ -7,7 +7,7 @@ use crate::{
     traits::{ConfuseInterface, ConfuseState},
     CLASS_NAME,
 };
-use anyhow::{bail, Result};
+use anyhow::{bail, ensure, Result};
 use log::{debug, info, trace};
 use raffl_macro::{callback_wrappers, params};
 use simics_api::{
@@ -76,11 +76,13 @@ impl ConfuseState for Detector {
 
         let confuse_cls = get_class(CLASS_NAME)?;
 
-        self.timeout_event = Some(register_event(
+        let event = register_event(
             Detector::TIMEOUT_EVENT_NAME,
             confuse_cls,
             detector_callbacks::on_timeout_event,
-        )?);
+        )?;
+
+        self.timeout_event = Some(event);
 
         info!("Initialized Detector");
 
@@ -93,6 +95,7 @@ impl ConfuseState for Detector {
             if let Some(timeout_seconds) = self.timeout_seconds {
                 for (processor_number, processor) in &self.processors {
                     let clock = object_clock(processor.cpu())?;
+
                     event_post_time(
                         clock,
                         timeout_event,

@@ -2,9 +2,9 @@
 use anyhow::{bail, Result};
 use raw_cstr::raw_cstr;
 use simics_api::{
-    attr_string, get_attribute, read_byte, write_byte, AttrValue, ConfObject, CpuCachedInstruction,
-    CpuInstructionQuery, CpuInstrumentationSubscribe, Cycle, InstructionHandle, IntRegister,
-    ProcessorInfoV2,
+    attr_string, get_attribute, read_byte, write_byte, AttrValue, CachedInstructionHandle,
+    ConfObject, CpuCachedInstruction, CpuInstructionQuery, CpuInstrumentationSubscribe, Cycle,
+    InstructionHandle, IntRegister, ProcessorInfoV2,
 };
 use std::{collections::HashMap, ffi::c_void, os::unix::process};
 
@@ -127,6 +127,29 @@ impl Processor {
         if let Some(cpu_instrumentation_subscribe) = self.cpu_instrumentation_subscribe.as_mut() {
             cpu_instrumentation_subscribe
                 .register_instruction_before_cb(self.cpu, cb, user_data)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn register_cached_instruction_cb<D>(
+        &mut self,
+        // cpu: *mut ConfObject,
+        cb: unsafe extern "C" fn(
+            *mut ConfObject,
+            *mut ConfObject,
+            *mut CachedInstructionHandle,
+            *mut InstructionHandle,
+            *mut c_void,
+        ),
+        user_data: Option<D>,
+    ) -> Result<()>
+    where
+        D: Into<*mut c_void>,
+    {
+        if let Some(cpu_instrumentation_subscribe) = self.cpu_instrumentation_subscribe.as_mut() {
+            cpu_instrumentation_subscribe
+                .register_cached_instruction_cb(self.cpu, cb, user_data)?;
         }
 
         Ok(())

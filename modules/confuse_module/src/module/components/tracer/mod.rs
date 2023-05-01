@@ -14,8 +14,8 @@ use log::{info, trace};
 use raffl_macro::{callback_wrappers, params};
 use rand::{thread_rng, Rng};
 use simics_api::{
-    attr_object_or_nil, attr_object_or_nil_from_ptr, get_processor_number, AttrValue, ConfObject,
-    InstructionHandle,
+    attr_object_or_nil, attr_object_or_nil_from_ptr, get_processor_number, AttrValue,
+    CachedInstructionHandle, ConfObject, InstructionHandle,
 };
 
 pub struct Tracer {
@@ -75,8 +75,12 @@ impl ConfuseState for Tracer {
 
     fn pre_first_run(&mut self, confuse: *mut ConfObject) -> Result<()> {
         for (_processor_number, processor) in self.processors.iter_mut() {
-            processor.register_instruction_before_cb(
-                tracer_callbacks::on_instruction,
+            // processor.register_instruction_before_cb(
+            //     tracer_callbacks::on_instruction_before,
+            //     Some(confuse as *mut c_void),
+            // )?;
+            processor.register_cached_instruction_cb(
+                tracer_callbacks::on_cached_instruction,
                 Some(confuse as *mut c_void),
             )?;
         }
@@ -104,10 +108,30 @@ impl ConfuseInterface for Tracer {
 #[callback_wrappers(pub, unwrap_result)]
 impl Tracer {
     #[params(..., !slf: *mut std::ffi::c_void)]
-    pub fn on_instruction(
+    pub fn on_instruction_before(
         &mut self,
         _obj: *mut ConfObject,
         cpu: *mut ConfObject,
+        handle: *mut InstructionHandle,
+    ) -> Result<()> {
+        let processor_number = get_processor_number(cpu);
+
+        if let Some(processor) = self.processors.get_mut(&processor_number) {
+            if let Ok(Some(pc)) = processor.trace(handle) {
+                // trace!("Traced execution was control flow: {:#x}", pc);
+                self.log_pc(pc)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    #[params(..., !slf: *mut std::ffi::c_void)]
+    pub fn on_cached_instruction(
+        &mut self,
+        _obj: *mut ConfObject,
+        cpu: *mut ConfObject,
+        _cached_instruction_data: *mut CachedInstructionHandle,
         handle: *mut InstructionHandle,
     ) -> Result<()> {
         let processor_number = get_processor_number(cpu);

@@ -4,13 +4,15 @@ use crate::{
 use anyhow::{bail, ensure, Result};
 use raw_cstr::raw_cstr;
 use simics_api_sys::{
-    cpu_bytes_t, cpu_cached_instruction_interface_t, cpu_instruction_query_interface_t,
-    cpu_instrumentation_subscribe_interface_t, cycle_interface_t, instruction_handle_t,
-    int_register_interface_t, processor_info_v2_interface_t,
+    cached_instruction_handle_t, cpu_bytes_t, cpu_cached_instruction_interface_t,
+    cpu_instruction_query_interface_t, cpu_instrumentation_subscribe_interface_t,
+    cycle_interface_t, instruction_handle_t, int_register_interface_t,
+    processor_info_v2_interface_t,
 };
 use std::{ffi::c_void, ptr::null_mut, slice::from_raw_parts};
 
 pub type InstructionHandle = instruction_handle_t;
+pub type CachedInstructionHandle = cached_instruction_handle_t;
 pub type CpuInstrumentationSubscribeInterface = cpu_instrumentation_subscribe_interface_t;
 pub type CpuInstructionQueryInterface = cpu_instruction_query_interface_t;
 pub type CpuCachedInstructionInterface = cpu_cached_instruction_interface_t;
@@ -64,6 +66,33 @@ impl CpuInstrumentationSubscribe {
         };
 
         if let Some(register) = unsafe { *self.iface }.register_instruction_before_cb {
+            unsafe { register(cpu.into(), null_mut(), Some(cb), user_data) };
+            Ok(())
+        } else {
+            bail!("Unable to register callback, no register function");
+        }
+    }
+    pub fn register_cached_instruction_cb<D>(
+        &self,
+        cpu: *mut ConfObject,
+        cb: unsafe extern "C" fn(
+            *mut ConfObject,
+            *mut ConfObject,
+            *mut CachedInstructionHandle,
+            *mut InstructionHandle,
+            *mut c_void,
+        ),
+        user_data: Option<D>,
+    ) -> Result<()>
+    where
+        D: Into<*mut c_void>,
+    {
+        let user_data = match user_data {
+            Some(data) => data.into(),
+            None => null_mut(),
+        };
+
+        if let Some(register) = unsafe { *self.iface }.register_cached_instruction_cb {
             unsafe { register(cpu.into(), null_mut(), Some(cb), user_data) };
             Ok(())
         } else {
