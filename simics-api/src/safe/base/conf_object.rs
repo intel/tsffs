@@ -65,7 +65,7 @@ pub fn create_class<S: AsRef<str>>(name: S, class_info: ClassInfo) -> Result<*mu
     }
 }
 
-pub fn register_interface<S: AsRef<str>, T>(cls: &ConfClass, name: S) -> Result<i32>
+pub fn register_interface<S: AsRef<str>, T>(cls: *mut ConfClass, name: S) -> Result<i32>
 where
     T: Default,
 {
@@ -74,10 +74,7 @@ where
     // Note: This allocates and never frees. This is *required* by SIMICS and it is an error to
     // free this pointer
     let iface_raw = Box::into_raw(iface_box);
-    let mut cls = *cls;
-    let status = unsafe {
-        SIM_register_interface(&mut cls as *mut ConfClass, name_raw, iface_raw as *mut _)
-    };
+    let status = unsafe { SIM_register_interface(cls.into(), name_raw, iface_raw as *mut _) };
 
     if status != 0 {
         bail!(

@@ -1,6 +1,6 @@
 use anyhow::{ensure, Result};
 use log::{LevelFilter, Log};
-use simics_api_sys::{SIM_log_error, SIM_log_info};
+use simics_api_sys::{SIM_log_error, SIM_log_info, SIM_log_level, SIM_set_log_level};
 use std::{ffi::CString, ptr::null_mut};
 
 use crate::ConfObject;
@@ -74,6 +74,8 @@ impl SimicsLogger {
             "Device must be provided"
         );
 
+        set_log_level(self.dev, filter_to_i32(self.level).try_into()?);
+
         log::set_max_level(self.level);
         let self_box = Box::new(self);
         log::set_logger(unsafe { &mut *Box::into_raw(self_box) }).expect("Failed to set logger");
@@ -97,7 +99,19 @@ impl Log for SimicsLogger {
         if self.enabled(record.metadata()) {
             let level = filter_to_i32(self.level);
             let group = 0;
-            let msg = record.args().to_string();
+            let file_str = if let Some(file) = record.file() {
+                file.to_string().replace("modules/confuse_module/src/", "") + ":"
+            } else {
+                "".to_string()
+            };
+
+            let line_str = if let Some(line) = record.line() {
+                line.to_string()
+            } else {
+                "".to_string()
+            };
+
+            let msg = format!("{}{} | {}", file_str, line_str, record.args());
 
             if level <= 0 {
                 log_error(self.dev, group, msg).ok();
@@ -110,8 +124,13 @@ impl Log for SimicsLogger {
     fn flush(&self) {}
 }
 
-pub fn log_info(level: i32, device: *mut ConfObject, group: i32, msg: String) -> Result<()> {
-    let msg_cstring = CString::new(msg)?;
+pub fn log_info<S: AsRef<str>>(
+    level: i32,
+    device: *mut ConfObject,
+    group: i32,
+    msg: S,
+) -> Result<()> {
+    let msg_cstring = CString::new(msg.as_ref())?;
 
     unsafe {
         SIM_log_info(level, device.into(), group, msg_cstring.as_ptr());
@@ -128,4 +147,12 @@ pub fn log_error(device: *mut ConfObject, group: i32, msg: String) -> Result<()>
     };
 
     Ok(())
+}
+
+pub fn log_level(obj: *mut ConfObject) -> u32 {
+    unsafe { SIM_log_level((obj as *const ConfObject).into()) }
+}
+
+pub fn set_log_level(obj: *mut ConfObject, level: u32) {
+    unsafe { SIM_set_log_level(obj.into(), level) };
 }

@@ -8,7 +8,7 @@ use crate::{
     CLASS_NAME,
 };
 use anyhow::{bail, Result};
-use log::{debug, info};
+use log::{debug, info, trace};
 use raffl_macro::{callback_wrappers, params};
 use simics_api::{
     attr_object_or_nil_from_ptr, break_simulation, event::register_event, event_cancel_time,
@@ -82,23 +82,34 @@ impl ConfuseState for Detector {
             detector_callbacks::on_timeout_event,
         )?);
 
+        info!("Initialized Detector");
+
         Ok(output_config)
     }
 
     fn on_run(&mut self, confuse: *mut ConfObject) -> Result<()> {
+        trace!("Setting up Detector before run");
         if let Some(timeout_event) = self.timeout_event {
             if let Some(timeout_seconds) = self.timeout_seconds {
                 for (processor_number, processor) in &self.processors {
                     let clock = object_clock(processor.cpu())?;
-                    event_post_time(clock, timeout_event, confuse, timeout_seconds);
+                    event_post_time(
+                        clock,
+                        timeout_event,
+                        confuse,
+                        timeout_seconds,
+                        Some(confuse as *mut c_void),
+                    );
                 }
             }
         }
+        trace!("Done setting up detector");
 
         Ok(())
     }
 
     fn on_stopped(&mut self, confuse: *mut ConfObject, reason: StopReason) -> Result<()> {
+        trace!("Detector handling stop with reason {:?}", reason);
         self.stop_reason = None;
 
         if let Some(timeout_event) = self.timeout_event {
@@ -128,13 +139,16 @@ impl ConfuseInterface for Detector {
 
         self.processors.insert(processor_number, processor);
 
+        info!("Detector added processor #{}", processor_number);
+
         Ok(())
     }
 
     fn on_add_fault(&mut self, fault: i64) -> Result<()> {
+        let fault = Fault::X86_64(X86_64Fault::try_from(fault)?);
+        info!("Detector adding fault {:?}", fault);
         // TODO: Arch independent
-        self.faults
-            .insert(Fault::X86_64(X86_64Fault::try_from(fault)?));
+        self.faults.insert(fault);
         Ok(())
     }
 }
@@ -156,20 +170,11 @@ impl Detector {
                 "x86-64" => {
                     if let Ok(fault) = X86_64Fault::try_from(exception_number) {
                         let fault = Fault::X86_64(fault);
-                        info!("Got exception with fault: {:?}", fault);
                         if self.faults.contains(&fault) {
+                            info!("Got exception with fault: {:?}", fault);
                             self.stop_reason = Some(StopReason::Crash((fault, processor_number)));
-                        } else {
-                            self.stop_reason = Some(StopReason::Error((
-                                StopError::NonErrorFault(fault),
-                                processor_number,
-                            )));
+                            break_simulation("crash")?;
                         }
-                    } else {
-                        self.stop_reason = Some(StopReason::Error((
-                            StopError::UnknownFault(exception_number),
-                            processor_number,
-                        )));
                     }
                 }
                 _ => {
@@ -183,6 +188,7 @@ impl Detector {
 
     #[params(..., !slf: *mut std::ffi::c_void)]
     pub fn on_timeout_event(&mut self, _obj: *mut ConfObject) -> Result<()> {
+        info!("Got timeout event");
         self.stop_reason = Some(StopReason::TimeOut);
         break_simulation("timeout")?;
         Ok(())
@@ -190,6 +196,7 @@ impl Detector {
 
     #[params(!slf: *mut std::ffi::c_void, ...)]
     pub fn on_x86_triple_fault(&mut self, trigger_obj: *mut ConfObject) -> Result<()> {
+        info!("Got triple fault");
         let processor_number = get_processor_number(trigger_obj);
         self.stop_reason = Some(StopReason::Crash((
             Fault::X86_64(X86_64Fault::Triple),

@@ -93,7 +93,7 @@ impl Client {
 
         project = project
             .with_batch_mode(true)
-            .with_command("@SIM_main_loop()")
+            // .with_command("@SIM_main_loop()")
             .with_env(BOOTSTRAP_SOCKNAME, &bootstrap_name)
             .with_env(LOGLEVEL_VARNAME, loglevel_str)
             .with_stdout_function(|stdout| {
@@ -110,7 +110,7 @@ impl Client {
                     }
                     let logline = line.trim();
                     if !logline.is_empty() {
-                        info!("[SIMICS OUT] {}", line.trim());
+                        info!("{}", line.trim());
                     }
                 }
                 info!("Output reader exited.");
@@ -129,7 +129,7 @@ impl Client {
                     }
                     let logline = line.trim();
                     if !logline.is_empty() {
-                        debug!("[SIMICS ERR] {}", line.trim());
+                        debug!("[sim  err] {}", line.trim());
                     }
                 }
                 info!("Err reader exited.");

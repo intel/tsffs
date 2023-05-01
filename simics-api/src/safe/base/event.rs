@@ -9,13 +9,21 @@ use std::{ffi::c_void, mem::transmute, ptr::null_mut};
 
 pub type EventClass = event_class_t;
 
-pub fn event_post_time(
+pub fn event_post_time<D>(
     clock: *mut ConfObject,
     event: *mut EventClass,
     obj: *mut ConfObject,
     seconds: f64,
-) {
-    unsafe { SIM_event_post_time(clock.into(), event.into(), obj.into(), seconds, null_mut()) };
+    user_data: Option<D>,
+) where
+    D: Into<*mut c_void>,
+{
+    let user_data = match user_data {
+        Some(data) => data.into(),
+        None => null_mut(),
+    };
+
+    unsafe { SIM_event_post_time(clock.into(), event.into(), obj.into(), seconds, user_data) };
 }
 
 pub fn event_find_next_time(

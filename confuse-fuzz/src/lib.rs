@@ -3,7 +3,9 @@
 //! This library contains abstractions over a fuzzing campaign using the SIMICS platform
 
 use anyhow::Result;
-use confuse_module::{client::Client, config::InputConfig, stops::StopReason};
+use confuse_module::{
+    client::Client, config::InputConfig, stops::StopReason, traits::ConfuseClient,
+};
 use confuse_simics_project::SimicsProject;
 use crossterm::{
     cursor::Show,
@@ -121,7 +123,7 @@ impl Fuzzer {
                         error!("Target crashed with fault {:?}, yeehaw!", fault);
                         exit_kind = ExitKind::Crash;
                     }
-                    StopReason::SimulationExit => {
+                    StopReason::SimulationExit(_) => {
                         info!("Target stopped normally ;_;");
 
                         exit_kind = ExitKind::Ok;
@@ -131,6 +133,10 @@ impl Fuzzer {
                         exit_kind = ExitKind::Timeout;
                     }
                     StopReason::Magic(_) => {
+                        exit_kind = ExitKind::Ok;
+                    }
+                    StopReason::Error((e, p)) => {
+                        error!("An error occurred during execution: {:?}", e);
                         exit_kind = ExitKind::Ok;
                     }
                 },

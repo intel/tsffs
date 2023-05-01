@@ -29,8 +29,15 @@ pub trait ConfuseState {
         Ok(output_config)
     }
 
+    /// Callback after executionr reaches the `Magic::Start` instruction for the first time. This
+    /// callback is called before `on_ready`
+    fn pre_first_run(&mut self, confuse: *mut ConfObject) -> Result<()> {
+        Ok(())
+    }
+
     /// Callback when the module is ready to run, it has hit the first [`Magic`] instruction and
     /// can be started. State that needs to be restored should be restored during this callback.
+    /// This callback will run on each iteration of the fuzzing loop
     fn on_ready(&mut self, confuse: *mut ConfObject) -> Result<()> {
         Ok(())
     }

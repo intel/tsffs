@@ -13,16 +13,17 @@ use crate::{
 use anyhow::{bail, ensure, Context, Result};
 use const_format::concatcp;
 use ipc_channel::ipc::{channel, IpcReceiver, IpcSender};
-use log::{debug, info, trace, Level, LevelFilter};
+use log::{debug, error, info, trace, Level, LevelFilter};
 use raffl_macro::{callback_wrappers, params};
+use raw_cstr::raw_cstr;
 use simics_api::{
     attr_object_or_nil_from_ptr, break_simulation, continue_simulation_alone, get_processor_number,
-    hap_add_callback, quit, register_interface, save_micro_checkpoint, AttrValue, ConfObject, Hap,
-    HapCallback, MicroCheckpointFlags, SimicsLogger,
+    hap_add_callback, log_info, quit, register_interface, save_micro_checkpoint, AttrValue,
+    ConfObject, Hap, HapCallback, MicroCheckpointFlags, SimicsLogger,
 };
 use simics_api::{Create, Module};
 use simics_api_macro::module;
-use std::{collections::HashMap, env::var, ffi::c_void, str::FromStr};
+use std::{collections::HashMap, env::var, ffi::c_void, ptr::null_mut, str::FromStr};
 
 pub mod components;
 
@@ -63,6 +64,8 @@ impl Module for Confuse {
             .with_dev(module_instance)
             .with_level(log_level)
             .init()?;
+
+        info!("Simics logger initialized");
 
         let state = State::new();
         let (otx, rx) = channel::<ClientMessage>()?;
@@ -170,6 +173,7 @@ impl Confuse {
         trace!("Received client message {:?}", msg);
 
         if matches!(msg, ClientMessage::Exit) {
+            error!("Received Exit message, exiting and quitting");
             let self_ptr = self as *mut Self as *mut ConfObject;
             self.detector.on_exit(self_ptr)?;
             self.tracer.on_exit(self_ptr)?;
@@ -240,6 +244,8 @@ impl Confuse {
         // Error string is always NULL
         _error_string: *mut std::ffi::c_char,
     ) -> Result<()> {
+        info!("Simulation stopped");
+
         ensure!(
             !(self.detector.stop_reason.is_some() && self.stop_reason.is_some()),
             "Confuse and Detector both have a stop reason - this should be impossible"
@@ -281,6 +287,8 @@ impl Confuse {
                                     MicroCheckpointFlags::Persistent,
                                 ],
                             )?;
+                            self.detector.pre_first_run(self_ptr)?;
+                            self.tracer.pre_first_run(self_ptr)?;
                             self.reset_and_run(processor_number)?;
                         } else {
                             self.iterations += 1;
@@ -298,6 +306,7 @@ impl Confuse {
                             magic,
                             processor_number,
                         ))))?;
+                        self.reset_and_run(processor_number)?;
                     }
                 }
             }
@@ -337,6 +346,7 @@ impl Confuse {
         trigger_obj: *mut ConfObject,
         parameter: i64,
     ) -> Result<()> {
+        trace!("Got Magic instruction callback");
         // The trigger obj is a CPU
         let processor_number = get_processor_number(trigger_obj);
 
@@ -359,28 +369,36 @@ impl Confuse {
 
     #[params(!slf: *mut simics_api::ConfObject, ...)]
     pub fn on_add_processor(&mut self, processor: *mut AttrValue) -> Result<()> {
+        info!("Adding processor");
         self.detector.on_add_processor(processor)?;
         self.tracer.on_add_processor(processor)?;
 
         let processor_obj: *mut ConfObject = attr_object_or_nil_from_ptr(processor)?;
         let processor_number = get_processor_number(processor_obj);
+
         let processor = Processor::try_new(processor_number, processor_obj)?
             .try_with_int_register(processor)?
             .try_with_processor_info_v2(processor)?;
 
         self.processors.insert(processor_number, processor);
 
+        info!("Added processor #{}", processor_number);
+
         Ok(())
     }
 
     #[params(!slf: *mut simics_api::ConfObject)]
     pub fn on_start(&mut self) -> Result<()> {
+        info!("Got start signal from client");
         // Trigger anything that needs to happen before we start up (run for the first time)
         self.detector.on_start()?;
         self.tracer.on_start()?;
 
         // Run -- we will get a callback on the Magic::Start instruction
+        trace!("Running until first `Magic::Start`");
         continue_simulation_alone();
+
+        trace!("Registered continue to run at next opportunity");
 
         Ok(())
     }
@@ -414,8 +432,13 @@ impl Default for ConfuseModuleInterface {
 /// Called by SIMICS C stub to initialize the module, this is the entrypoint of the entire
 /// module
 pub extern "C" fn confuse_init_local() {
+    eprintln!("Initializing CONFUSE");
+    // log_info(0, null_mut(), 0, "Initializing CONFUSE").expect("Couldn't initialize confuse");
+    // println!("Logged initializing confuse");
     let cls = Confuse::create().unwrap_or_else(|_| panic!("Failed to create class {}", CLASS_NAME));
 
-    register_interface::<_, ConfuseModuleInterface>(unsafe { &*cls }, CLASS_NAME)
+    eprintln!("Created CONFUSE class at {:#x}", cls as usize);
+
+    register_interface::<_, ConfuseModuleInterface>(cls, CLASS_NAME)
         .unwrap_or_else(|_| panic!("Failed to register interface for class {}", CLASS_NAME));
 }

@@ -44,7 +44,7 @@ impl CpuInstrumentationSubscribe {
         }
     }
 
-    pub fn register_instruction_before_cb(
+    pub fn register_instruction_before_cb<D>(
         &self,
         cpu: *mut ConfObject,
         cb: unsafe extern "C" fn(
@@ -53,9 +53,18 @@ impl CpuInstrumentationSubscribe {
             *mut InstructionHandle,
             *mut c_void,
         ),
-    ) -> Result<()> {
+        user_data: Option<D>,
+    ) -> Result<()>
+    where
+        D: Into<*mut c_void>,
+    {
+        let user_data = match user_data {
+            Some(data) => data.into(),
+            None => null_mut(),
+        };
+
         if let Some(register) = unsafe { *self.iface }.register_instruction_before_cb {
-            unsafe { register(cpu.into(), null_mut(), Some(cb), null_mut()) };
+            unsafe { register(cpu.into(), null_mut(), Some(cb), user_data) };
             Ok(())
         } else {
             bail!("Unable to register callback, no register function");

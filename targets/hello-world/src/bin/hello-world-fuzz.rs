@@ -1,9 +1,9 @@
 use anyhow::{Error, Result};
 use clap::Parser;
 use confuse_fuzz::Fuzzer;
-use confuse_module::module::{
-    components::detector::fault::{Fault, X86_64Fault},
-    config::InputConfig,
+use confuse_module::{
+    config::{InputConfig, OutputConfig},
+    faults::{x86_64::X86_64Fault, Fault},
 };
 use confuse_simics_manifest::PublicPackageNumber;
 use confuse_simics_project::SimicsProject;
@@ -34,16 +34,24 @@ struct Args {
     log_level: Level,
     #[arg(short, long, default_value_t = 1000)]
     cycles: u64,
+    #[arg(short = 'L', long)]
+    log_file: Option<PathBuf>,
 }
 
-fn init_logging(level: Level) -> Result<()> {
-    let logfile = NamedTempFileBuilder::new()
-        .prefix("confuse-log")
-        .suffix(".log")
-        .rand_bytes(4)
-        .tempfile()?;
+fn init_logging(level: Level, log_file: Option<PathBuf>) -> Result<()> {
     // This line is very important! Otherwise the file drops after this function returns :)
-    let logfile_path = logfile.into_temp_path().to_path_buf();
+    let logfile_path = if let Some(log_file) = log_file {
+        log_file
+    } else {
+        let logfile = NamedTempFileBuilder::new()
+            .prefix("confuse-log")
+            .suffix(".log")
+            .rand_bytes(4)
+            .tempfile()?;
+
+        logfile.into_temp_path().to_path_buf()
+    };
+
     let size_trigger = Box::new(SizeTrigger::new(100_000_000));
     let roller = Box::new(DeleteRoller::new());
     let policy = Box::new(CompoundPolicy::new(size_trigger, roller));
@@ -65,7 +73,8 @@ fn init_logging(level: Level) -> Result<()> {
 
 fn main() -> Result<()> {
     let args = Args::parse();
-    init_logging(args.log_level)?;
+
+    init_logging(args.log_level, args.log_file)?;
 
     // init_from_env(Env::default().filter_or(DEFAULT_FILTER_ENV, "info"));
     // Paths of

@@ -110,18 +110,23 @@ impl Processor {
 }
 
 impl Processor {
-    pub fn register_instruction_before_cb(
+    pub fn register_instruction_before_cb<D>(
         &mut self,
-        cpu: *mut ConfObject,
+        // cpu: *mut ConfObject,
         cb: unsafe extern "C" fn(
             *mut ConfObject,
             *mut ConfObject,
             *mut InstructionHandle,
             *mut c_void,
         ),
-    ) -> Result<()> {
+        user_data: Option<D>,
+    ) -> Result<()>
+    where
+        D: Into<*mut c_void>,
+    {
         if let Some(cpu_instrumentation_subscribe) = self.cpu_instrumentation_subscribe.as_mut() {
-            cpu_instrumentation_subscribe.register_instruction_before_cb(cpu, cb)?;
+            cpu_instrumentation_subscribe
+                .register_instruction_before_cb(self.cpu, cb, user_data)?;
         }
 
         Ok(())
@@ -129,11 +134,11 @@ impl Processor {
 
     pub fn trace(
         &mut self,
-        cpu: *mut ConfObject,
+        // cpu: *mut ConfObject,
         instruction_query: *mut InstructionHandle,
     ) -> Result<Option<u64>> {
         if let Some(cpu_instruction_query) = self.cpu_instruction_query.as_mut() {
-            let bytes = cpu_instruction_query.get_instruction_bytes(cpu, instruction_query)?;
+            let bytes = cpu_instruction_query.get_instruction_bytes(self.cpu, instruction_query)?;
             self.disassembler.disassemble(bytes)?;
 
             if self.disassembler.last_was_call()?
@@ -141,7 +146,7 @@ impl Processor {
                 || self.disassembler.last_was_ret()?
             {
                 if let Some(processor_info_v2) = self.processor_info_v2.as_mut() {
-                    Ok(processor_info_v2.get_program_counter(cpu).ok())
+                    Ok(processor_info_v2.get_program_counter(self.cpu).ok())
                 } else {
                     bail!("No ProcessorInfoV2 interface registered in processor. Try building with `try_with_processor_info_v2`");
                 }

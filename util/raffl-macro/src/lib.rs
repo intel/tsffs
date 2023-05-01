@@ -59,6 +59,8 @@ enum CallbackWrapperArgType {
     /// Whether result types should be unwrapped by the wrapper function (to allow the callback
     /// function to return `Result<T, E>` instead of `T`).
     UnwrapResult,
+    /// Trace callback entrypoints with log::trace!
+    Trace,
 }
 
 impl Parse for CallbackWrapperArgType {
@@ -68,6 +70,7 @@ impl Parse for CallbackWrapperArgType {
         } else if let Ok(ident) = input.parse::<Ident>() {
             match ident.to_string().as_str() {
                 "unwrap_result" => Ok(Self::UnwrapResult),
+                "trace" => Ok(Self::Trace),
                 _ => abort!(ident.span(), "Unknown callback wrapper argument type"),
             }
         } else {
@@ -89,9 +92,9 @@ impl Parse for CallbackWrapperArg {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let typ = input.parse::<CallbackWrapperArgType>()?;
         let _value = match typ {
-            CallbackWrapperArgType::Pub | CallbackWrapperArgType::UnwrapResult => {
-                CallbackWrapperArgValue::None
-            }
+            CallbackWrapperArgType::Pub
+            | CallbackWrapperArgType::UnwrapResult
+            | CallbackWrapperArgType::Trace => CallbackWrapperArgValue::None,
         };
         Ok(Self { typ, _value })
     }
@@ -125,6 +128,18 @@ impl CallbackWrapperArgs {
         self.args
             .iter()
             .any(|arg| matches!(arg.typ, CallbackWrapperArgType::Pub))
+    }
+
+    pub fn has_unwrap_result(&self) -> bool {
+        self.args
+            .iter()
+            .any(|arg| matches!(arg.typ, CallbackWrapperArgType::UnwrapResult))
+    }
+
+    pub fn has_trace(&self) -> bool {
+        self.args
+            .iter()
+            .any(|arg| matches!(arg.typ, CallbackWrapperArgType::Trace))
     }
 }
 
@@ -201,6 +216,8 @@ pub fn callback_wrappers(args: TokenStream, input: TokenStream) -> TokenStream {
             }
         })
         .collect::<Vec<_>>();
+
+    let cb_mod_name = format_ident!("{}_callbacks", struct_name_string);
 
     let callbacks = impl_fns
         .iter()
@@ -349,8 +366,20 @@ pub fn callback_wrappers(args: TokenStream, input: TokenStream) -> TokenStream {
                 })
                 .collect::<Vec<_>>();
 
-            let unwrap_mb = if is_result {
+            let unwrap_mb = if is_result && impl_args.has_unwrap_result() {
                 quote! { .unwrap(); }
+            } else if is_result {
+                abort! { f.sig.output, "Result output, but `unwrap_result` was not specified" }
+            } else {
+                quote! {}
+            };
+
+            let fname_string = f.sig.ident.to_string();
+
+            let trace_mb = if impl_args.has_trace() {
+                quote! {
+                    log::trace!("Callback {}::{} executed", #struct_name_string, #fname_string);
+                }
             } else {
                 quote! {}
             };
@@ -366,14 +395,13 @@ pub fn callback_wrappers(args: TokenStream, input: TokenStream) -> TokenStream {
                 pub extern "C" fn #fname(
                     #( #cb_args ),*
                 ) #frty {
+                    #trace_mb
                     #receive
                     #call
                 }
             }
         })
         .collect::<Vec<_>>();
-
-    let cb_mod_name = format_ident!("{}_callbacks", struct_name_string);
 
     let r: TokenStream = quote! {
         #implementation

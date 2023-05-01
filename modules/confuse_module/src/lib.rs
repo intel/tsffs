@@ -32,7 +32,7 @@ mod module;
 mod processor;
 pub mod state;
 pub mod stops;
-mod traits;
+pub mod traits;
 mod util;
 
 /// The class name used for all operations interfacing with SIMICS

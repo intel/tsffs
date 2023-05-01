@@ -3,7 +3,10 @@ use std::path::PathBuf;
 use anyhow::{Error, Result};
 use clap::Parser;
 use confuse_fuzz::Fuzzer;
-use confuse_module::module::{components::detector::fault::X86_64Fault, config::InputConfig};
+use confuse_module::{
+    config::{InputConfig, OutputConfig},
+    faults::x86_64::X86_64Fault,
+};
 use confuse_simics_manifest::PublicPackageNumber;
 use confuse_simics_project::SimicsProject;
 use log::{error, info, Level};
