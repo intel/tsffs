@@ -1,12 +1,12 @@
 //! Implements generic processor operations on the simulated CPU or CPUs
 use anyhow::{bail, Result};
-use raw_cstr::raw_cstr;
+
 use simics_api::{
-    attr_string, get_attribute, read_byte, write_byte, AttrValue, CachedInstructionHandle,
+    attr_string, get_attribute, write_byte, AttrValue, CachedInstructionHandle,
     ConfObject, CpuCachedInstruction, CpuInstructionQuery, CpuInstrumentationSubscribe, Cycle,
     InstructionHandle, IntRegister, ProcessorInfoV2,
 };
-use std::{collections::HashMap, ffi::c_void, os::unix::process};
+use std::{collections::HashMap, ffi::c_void};
 
 mod disassembler;
 

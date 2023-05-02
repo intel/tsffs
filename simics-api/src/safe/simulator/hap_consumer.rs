@@ -1309,33 +1309,6 @@ impl HapCallback {
     }
 }
 
-pub struct ObjHapFunc {
-    /// Function stored as integer
-    func: usize,
-}
-
-impl ObjHapFunc {
-    unsafe fn as_func(&self) -> extern "C" fn() {
-        transmute(self.func)
-    }
-}
-
-impl From<CoreExceptionCallback> for ObjHapFunc {
-    fn from(value: CoreExceptionCallback) -> Self {
-        Self {
-            func: value as usize,
-        }
-    }
-}
-
-impl From<X86TripleFaultCallback> for ObjHapFunc {
-    fn from(value: X86TripleFaultCallback) -> Self {
-        Self {
-            func: value as usize,
-        }
-    }
-}
-
 pub fn hap_add_callback<D>(hap: Hap, func: HapCallback, data: Option<D>) -> Result<HapHandle>
 where
     D: Into<*mut c_void>,

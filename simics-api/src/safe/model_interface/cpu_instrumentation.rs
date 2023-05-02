@@ -141,7 +141,7 @@ impl CpuInstructionQuery {
 }
 
 pub struct CpuCachedInstruction {
-    iface: *mut CpuCachedInstructionInterface,
+    _iface: *mut CpuCachedInstructionInterface,
 }
 
 impl CpuCachedInstruction {
@@ -159,7 +159,7 @@ impl CpuCachedInstruction {
                 String::from_utf8_lossy(Interface::CpuCachedInstruction.as_slice())
             )
         } else {
-            Ok(Self { iface })
+            Ok(Self { _iface: iface })
         }
     }
 }
@@ -259,7 +259,7 @@ impl IntRegister {
 }
 
 pub struct Cycle {
-    iface: *mut CycleInterface,
+    _iface: *mut CycleInterface,
 }
 
 impl Cycle {
@@ -276,7 +276,7 @@ impl Cycle {
                 String::from_utf8_lossy(Interface::Cycle.as_slice())
             )
         } else {
-            Ok(Self { iface })
+            Ok(Self { _iface: iface })
         }
     }
 }

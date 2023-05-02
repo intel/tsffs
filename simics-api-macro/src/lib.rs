@@ -317,9 +317,9 @@ pub fn module(args: TokenStream, input: TokenStream) -> TokenStream {
     }
     .into();
 
-    let _s = r.to_string();
+    // let _s = r.to_string();
 
-    eprintln!("{}", _s);
+    // eprintln!("{}", _s);
 
     r
 }

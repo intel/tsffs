@@ -4,7 +4,7 @@ use anyhow::{Error, Result};
 use clap::Parser;
 use confuse_fuzz::Fuzzer;
 use confuse_module::{
-    config::{InputConfig, OutputConfig, TraceMode},
+    config::{InputConfig, TraceMode},
     faults::x86_64::X86_64Fault,
 };
 use confuse_simics_manifest::PublicPackageNumber;

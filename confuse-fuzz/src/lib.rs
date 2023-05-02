@@ -13,7 +13,7 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, Clear, ClearType, LeaveAlternateScreen},
 };
-use ctrlc::set_handler;
+
 use ipc_shm::{IpcShm, IpcShmWriter};
 use libafl::{
     prelude::{tui::TuiMonitor, *},
@@ -136,7 +136,7 @@ impl Fuzzer {
                     StopReason::Magic(_) => {
                         exit_kind = ExitKind::Ok;
                     }
-                    StopReason::Error((e, p)) => {
+                    StopReason::Error((e, _p)) => {
                         error!("An error occurred during execution: {:?}", e);
                         exit_kind = ExitKind::Ok;
                     }

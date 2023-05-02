@@ -10,21 +10,21 @@ use crate::{
     traits::{ConfuseClient, ConfuseInterface, ConfuseState},
     BOOTSTRAP_SOCKNAME, CLASS_NAME, TESTMODE_VARNAME,
 };
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{bail, Context, Result};
 use const_format::concatcp;
 use ipc_channel::ipc::{channel, IpcReceiver, IpcSender};
 use log::{debug, error, info, trace, Level, LevelFilter};
 use raffl_macro::{callback_wrappers, params};
-use raw_cstr::raw_cstr;
+
 use simics_api::{
     attr_object_or_nil_from_ptr, break_simulation, continue_simulation_alone, discard_future,
-    get_processor_number, hap_add_callback, log_info, quit, register_interface,
-    restore_micro_checkpoint, save_micro_checkpoint, AttrValue, ConfObject, Hap, HapCallback,
-    MicroCheckpointFlags, SimicsLogger,
+    get_processor_number, hap_add_callback, quit, register_interface, restore_micro_checkpoint,
+    save_micro_checkpoint, AttrValue, ConfObject, Hap, HapCallback, MicroCheckpointFlags,
+    SimicsLogger,
 };
 use simics_api::{Create, Module};
 use simics_api_macro::module;
-use std::{collections::HashMap, env::var, ffi::c_void, ptr::null_mut, str::FromStr};
+use std::{collections::HashMap, env::var, ffi::c_void, str::FromStr};
 
 pub mod components;
 
@@ -419,12 +419,6 @@ pub struct ConfuseModuleInterface {
     pub start: extern "C" fn(obj: *mut ConfObject),
     pub add_processor: extern "C" fn(obj: *mut ConfObject, processor: *mut AttrValue),
     pub add_fault: extern "C" fn(obj: *mut ConfObject, fault: i64),
-}
-
-impl ConfuseModuleInterface {
-    pub const INTERFACE_NAME: &str = CLASS_NAME;
-    pub const INTERFACE_TYPENAME: &str =
-        concatcp!(ConfuseModuleInterface::INTERFACE_NAME, "_interface_t");
 }
 
 impl Default for ConfuseModuleInterface {

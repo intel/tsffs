@@ -1,17 +1,13 @@
 use crate::{
     config::{InputConfig, OutputConfig},
     messages::{client::ClientMessage, module::ModuleMessage},
-    module::{
-        components::{detector::Detector, tracer::Tracer},
-        Confuse,
-    },
     state::State,
     stops::StopReason,
 };
 use anyhow::Result;
 use ipc_channel::ipc::{IpcReceiver, IpcSender};
 use simics_api::{AttrValue, ConfObject};
-use std::hash::{Hash, Hasher};
+
 
 pub trait ConfuseState {
     /// Callback when the module's state is [`ConfuseModuleState::HalfInitialized`]. The
@@ -22,8 +18,8 @@ pub trait ConfuseState {
     /// Any one-time configuration (registering callbacks, etc) should be done here.
     fn on_initialize(
         &mut self,
-        confuse: *mut ConfObject,
-        input_config: &InputConfig,
+        _confuse: *mut ConfObject,
+        _input_config: &InputConfig,
         output_config: OutputConfig,
     ) -> Result<OutputConfig> {
         Ok(output_config)
@@ -31,33 +27,33 @@ pub trait ConfuseState {
 
     /// Callback after executionr reaches the `Magic::Start` instruction for the first time. This
     /// callback is called before `on_ready`
-    fn pre_first_run(&mut self, confuse: *mut ConfObject) -> Result<()> {
+    fn pre_first_run(&mut self, _confuse: *mut ConfObject) -> Result<()> {
         Ok(())
     }
 
     /// Callback when the module is ready to run, it has hit the first [`Magic`] instruction and
     /// can be started. State that needs to be restored should be restored during this callback.
     /// This callback will run on each iteration of the fuzzing loop
-    fn on_ready(&mut self, confuse: *mut ConfObject) -> Result<()> {
+    fn on_ready(&mut self, _confuse: *mut ConfObject) -> Result<()> {
         Ok(())
     }
 
     /// Callback when the module is about to run, just before the simulation is continued. Any
     /// setup that needs to be done before every run should be done here (for example, resetting
     /// the timeout duration).
-    fn on_run(&mut self, confuse: *mut ConfObject) -> Result<()> {
+    fn on_run(&mut self, _confuse: *mut ConfObject) -> Result<()> {
         Ok(())
     }
 
     /// Callback after execution has stopped, with some reason. Any cleanup or reporting that
     /// needs to be done after each run should be done here.
-    fn on_stopped(&mut self, confuse: *mut ConfObject, reason: StopReason) -> Result<()> {
+    fn on_stopped(&mut self, _confuse: *mut ConfObject, _reason: StopReason) -> Result<()> {
         Ok(())
     }
 
     /// Callback when the module has ben signaled to exit by the client. Any one-time cleanup or
     /// reporting should be done here.
-    fn on_exit(&mut self, confuse: *mut ConfObject) -> Result<()> {
+    fn on_exit(&mut self, _confuse: *mut ConfObject) -> Result<()> {
         Ok(())
     }
 }
@@ -67,11 +63,11 @@ pub trait ConfuseInterface {
         Ok(())
     }
 
-    fn on_add_processor(&mut self, processor: *mut AttrValue) -> Result<()> {
+    fn on_add_processor(&mut self, _processor: *mut AttrValue) -> Result<()> {
         Ok(())
     }
 
-    fn on_add_fault(&mut self, fault: i64) -> Result<()> {
+    fn on_add_fault(&mut self, _fault: i64) -> Result<()> {
         Ok(())
     }
 }

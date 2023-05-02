@@ -1,7 +1,6 @@
 //! Rust Asynchronous FFI Library
 //!
 
-use anyhow::Context;
 use proc_macro::TokenStream;
 use proc_macro_error::{abort, proc_macro_error};
 use quote::{format_ident, quote};
@@ -414,7 +413,7 @@ pub fn callback_wrappers(args: TokenStream, input: TokenStream) -> TokenStream {
     }
     .into();
 
-    let _s = r.to_string();
+    // let _s = r.to_string();
 
     // eprintln!("{}", s);
 

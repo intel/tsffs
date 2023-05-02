@@ -1,6 +1,6 @@
 //! Tests that the derive macro can correctly parse an input struct
 
-use simics_api::{ClassKind, ConfObject, Create, Module};
+use simics_api::{ClassKind, ConfObject, Module};
 use simics_api_macro::module;
 
 #[macro_use]

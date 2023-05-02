@@ -5,18 +5,17 @@ use crate::{
     maps::MapType,
     module::Confuse,
     processor::Processor,
-    stops::StopReason,
     traits::{ConfuseInterface, ConfuseState},
 };
 use anyhow::Result;
-use crc32fast::hash;
+
 use ipc_shm::{IpcShm, IpcShmWriter};
-use log::{info, trace};
+use log::{info};
 use raffl_macro::{callback_wrappers, params};
 use rand::{thread_rng, Rng};
-use serde::{Deserialize, Serialize};
+
 use simics_api::{
-    attr_object_or_nil, attr_object_or_nil_from_ptr, get_processor_number, AttrValue,
+    attr_object_or_nil_from_ptr, get_processor_number, AttrValue,
     CachedInstructionHandle, ConfObject, InstructionHandle,
 };
 

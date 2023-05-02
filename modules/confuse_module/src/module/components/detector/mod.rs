@@ -3,23 +3,22 @@ use crate::{
     faults::{x86_64::X86_64Fault, Fault},
     module::Confuse,
     processor::Processor,
-    stops::{StopError, StopReason},
+    stops::{StopReason},
     traits::{ConfuseInterface, ConfuseState},
     CLASS_NAME,
 };
-use anyhow::{bail, ensure, Result};
+use anyhow::{bail, Result};
 use log::{debug, info, trace};
 use raffl_macro::{callback_wrappers, params};
 use simics_api::{
     attr_object_or_nil_from_ptr, break_simulation, event::register_event, event_cancel_time,
     event_find_next_time, event_post_time, get_class, get_processor_number, hap_add_callback,
-    object_clock, AttrValue, ConfObject, CoreExceptionCallback, EventClass, EventFlags, Hap,
+    object_clock, AttrValue, ConfObject, CoreExceptionCallback, EventClass, Hap,
     HapCallback, X86TripleFaultCallback,
 };
 use std::{
     collections::{HashMap, HashSet},
     ffi::c_void,
-    ptr::null_mut,
 };
 
 #[derive(Default)]
@@ -80,7 +79,7 @@ impl ConfuseState for Detector {
         Ok(output_config)
     }
 
-    fn pre_first_run(&mut self, confuse: *mut ConfObject) -> Result<()> {
+    fn pre_first_run(&mut self, _confuse: *mut ConfObject) -> Result<()> {
         let confuse_cls = get_class(CLASS_NAME)?;
 
         let event = register_event(
@@ -95,7 +94,7 @@ impl ConfuseState for Detector {
         Ok(())
     }
 
-    fn on_ready(&mut self, confuse: *mut ConfObject) -> Result<()> {
+    fn on_ready(&mut self, _confuse: *mut ConfObject) -> Result<()> {
         self.stop_reason = None;
         Ok(())
     }
