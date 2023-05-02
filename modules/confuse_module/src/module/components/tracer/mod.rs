@@ -1,7 +1,7 @@
 use std::{collections::HashMap, ffi::c_void, num::Wrapping};
 
 use crate::{
-    config::{InputConfig, OutputConfig},
+    config::{InputConfig, OutputConfig, TraceMode},
     maps::MapType,
     module::Confuse,
     processor::Processor,
@@ -13,6 +13,7 @@ use ipc_shm::{IpcShm, IpcShmWriter};
 use log::{info, trace};
 use raffl_macro::{callback_wrappers, params};
 use rand::{thread_rng, Rng};
+use serde::{Deserialize, Serialize};
 use simics_api::{
     attr_object_or_nil, attr_object_or_nil_from_ptr, get_processor_number, AttrValue,
     CachedInstructionHandle, ConfObject, InstructionHandle,
@@ -23,6 +24,7 @@ pub struct Tracer {
     coverage_writer: IpcShmWriter,
     coverage_prev_loc: u64,
     processors: HashMap<i32, Processor>,
+    mode: TraceMode,
 }
 impl<'a> From<*mut std::ffi::c_void> for &'a mut Tracer {
     /// Convert from a *mut Confuse pointer to a mutable reference to tracer
@@ -47,6 +49,7 @@ impl Tracer {
             coverage_writer,
             coverage_prev_loc,
             processors: HashMap::new(),
+            mode: TraceMode::Once,
         })
     }
 
@@ -67,22 +70,29 @@ impl ConfuseState for Tracer {
     fn on_initialize(
         &mut self,
         _confuse: *mut ConfObject,
-        _input_config: &InputConfig,
+        input_config: &InputConfig,
         output_config: OutputConfig,
     ) -> Result<OutputConfig> {
+        self.mode = input_config.trace_mode.clone();
         Ok(output_config.with_map(MapType::Coverage(self.coverage.try_clone()?)))
     }
 
     fn pre_first_run(&mut self, confuse: *mut ConfObject) -> Result<()> {
         for (_processor_number, processor) in self.processors.iter_mut() {
-            // processor.register_instruction_before_cb(
-            //     tracer_callbacks::on_instruction_before,
-            //     Some(confuse as *mut c_void),
-            // )?;
-            processor.register_cached_instruction_cb(
-                tracer_callbacks::on_cached_instruction,
-                Some(confuse as *mut c_void),
-            )?;
+            match self.mode {
+                TraceMode::Once => {
+                    processor.register_cached_instruction_cb(
+                        tracer_callbacks::on_cached_instruction,
+                        Some(confuse as *mut c_void),
+                    )?;
+                }
+                TraceMode::HitCount => {
+                    processor.register_instruction_before_cb(
+                        tracer_callbacks::on_instruction_before,
+                        Some(confuse as *mut c_void),
+                    )?;
+                }
+            }
         }
         Ok(())
     }

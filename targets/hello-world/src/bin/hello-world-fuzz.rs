@@ -2,7 +2,7 @@ use anyhow::{Error, Result};
 use clap::Parser;
 use confuse_fuzz::Fuzzer;
 use confuse_module::{
-    config::{InputConfig, OutputConfig},
+    config::{InputConfig, OutputConfig, TraceMode},
     faults::{x86_64::X86_64Fault, Fault},
 };
 use confuse_simics_manifest::PublicPackageNumber;
@@ -36,6 +36,8 @@ struct Args {
     cycles: u64,
     #[arg(short = 'L', long)]
     log_file: Option<PathBuf>,
+    #[arg(short, long, default_value_t = TraceMode::HitCount)]
+    trace_mode: TraceMode,
 }
 
 fn init_logging(level: Level, log_file: Option<PathBuf>) -> Result<()> {
@@ -108,7 +110,8 @@ fn main() -> Result<()> {
             Fault::X86_64(X86_64Fault::Page),
             Fault::X86_64(X86_64Fault::InvalidOpcode),
         ])
-        .with_timeout_seconds(3.0);
+        .with_timeout_seconds(3.0)
+        .with_trace_mode(args.trace_mode);
 
     info!("Creating fuzzer");
 
@@ -122,6 +125,7 @@ fn main() -> Result<()> {
             Ok::<(), Error>(())
         })
         .ok();
+
     fuzzer.stop()?;
 
     Ok(())

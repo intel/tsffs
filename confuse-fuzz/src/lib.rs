@@ -13,6 +13,7 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, Clear, ClearType, LeaveAlternateScreen},
 };
+use ctrlc::set_handler;
 use ipc_shm::{IpcShm, IpcShmWriter};
 use libafl::{
     prelude::{tui::TuiMonitor, *},
