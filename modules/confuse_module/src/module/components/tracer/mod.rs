@@ -10,13 +10,13 @@ use crate::{
 use anyhow::Result;
 
 use ipc_shm::{IpcShm, IpcShmWriter};
-use log::{info};
+use log::info;
 use raffl_macro::{callback_wrappers, params};
 use rand::{thread_rng, Rng};
 
 use simics_api::{
-    attr_object_or_nil_from_ptr, get_processor_number, AttrValue,
-    CachedInstructionHandle, ConfObject, InstructionHandle,
+    attr_object_or_nil_from_ptr, get_processor_number, AttrValue, CachedInstructionHandle,
+    ConfObject, InstructionHandle,
 };
 
 pub struct Tracer {

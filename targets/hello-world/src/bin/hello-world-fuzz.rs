@@ -125,7 +125,6 @@ fn main() -> Result<()> {
             Ok::<(), Error>(())
         })
         .ok();
-
     fuzzer.stop()?;
 
     Ok(())

@@ -24,4 +24,3 @@ log4rs = "1.2.0"
 confuse-simics-project = { workspace = true }
 crossterm = "0.26.1"
 confuse_module = { workspace = true }
-ctrlc = "3.2.5"

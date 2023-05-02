@@ -3,7 +3,7 @@ use crate::{
     faults::{x86_64::X86_64Fault, Fault},
     module::Confuse,
     processor::Processor,
-    stops::{StopReason},
+    stops::StopReason,
     traits::{ConfuseInterface, ConfuseState},
     CLASS_NAME,
 };
@@ -13,8 +13,8 @@ use raffl_macro::{callback_wrappers, params};
 use simics_api::{
     attr_object_or_nil_from_ptr, break_simulation, event::register_event, event_cancel_time,
     event_find_next_time, event_post_time, get_class, get_processor_number, hap_add_callback,
-    object_clock, AttrValue, ConfObject, CoreExceptionCallback, EventClass, Hap,
-    HapCallback, X86TripleFaultCallback,
+    object_clock, AttrValue, ConfObject, CoreExceptionCallback, EventClass, Hap, HapCallback,
+    X86TripleFaultCallback,
 };
 use std::{
     collections::{HashMap, HashSet},

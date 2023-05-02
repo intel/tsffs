@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 confuse-host-if/lib
 confuse-host-if/obj
 simple-example/obj
@@ -99,3 +100,8 @@ dkms.conf
 /Cargo.lock
 .env
 >>>>>>> origin/novafacing/initial-rc
+=======
+/target
+/Cargo.lock
+.env
+>>>>>>> d37965d506e1e76372519c1790fe16741384b0a0
