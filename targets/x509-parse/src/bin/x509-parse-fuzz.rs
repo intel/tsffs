@@ -36,16 +36,24 @@ struct Args {
     log_level: Level,
     #[arg(short, long, default_value_t = 1000)]
     cycles: u64,
+    #[arg(short = 'L', long)]
+    log_file: Option<PathBuf>,
 }
 
-fn init_logging(level: Level) -> Result<()> {
-    let logfile = NamedTempFileBuilder::new()
-        .prefix("confuse-log")
-        .suffix(".log")
-        .rand_bytes(4)
-        .tempfile()?;
+fn init_logging(level: Level, log_file: Option<PathBuf>) -> Result<()> {
     // This line is very important! Otherwise the file drops after this function returns :)
-    let logfile_path = logfile.into_temp_path().to_path_buf();
+    let logfile_path = if let Some(log_file) = log_file {
+        log_file
+    } else {
+        let logfile = NamedTempFileBuilder::new()
+            .prefix("confuse-log")
+            .suffix(".log")
+            .rand_bytes(4)
+            .tempfile()?;
+
+        logfile.into_temp_path().to_path_buf()
+    };
+
     let size_trigger = Box::new(SizeTrigger::new(100_000_000));
     let roller = Box::new(DeleteRoller::new());
     let policy = Box::new(CompoundPolicy::new(size_trigger, roller));
@@ -69,7 +77,7 @@ fn main() -> Result<()> {
     let args = Args::parse();
     // Set up logging to a temp file that will roll around every 100mb (this is pretty small for
     // the amount of output we get, so you can increase this if you are debugging)
-    init_logging(args.log_level)?;
+    init_logging(args.log_level, args.log_file)?;
 
     // Paths of
     const APP_SCRIPT_PATH: &str = "scripts/app.py";

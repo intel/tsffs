@@ -1,9 +1,11 @@
 use crate::{last_error, ConfClass, ConfObject};
-use anyhow::{ensure, Result};
+use anyhow::{bail, ensure, Result};
 use raw_cstr::raw_cstr;
 use simics_api_sys::{
-    event_class_t, SIM_event_cancel_time, SIM_event_find_next_time, SIM_event_post_time,
-    SIM_register_event,
+    event_class_flag_t_Sim_EC_Machine_Sync, event_class_flag_t_Sim_EC_No_Flags,
+    event_class_flag_t_Sim_EC_No_Serialize, event_class_flag_t_Sim_EC_Notsaved,
+    event_class_flag_t_Sim_EC_Slot_Early, event_class_flag_t_Sim_EC_Slot_Late, event_class_t,
+    SIM_event_cancel_time, SIM_event_find_next_time, SIM_event_post_time, SIM_register_event,
 };
 use std::{ffi::c_void, mem::transmute, ptr::null_mut};
 
@@ -30,24 +32,51 @@ pub fn event_find_next_time(
     clock: *mut ConfObject,
     event: *mut EventClass,
     obj: *mut ConfObject,
-) -> f64 {
-    unsafe { SIM_event_find_next_time(clock.into(), event.into(), obj.into(), None, null_mut()) }
+) -> Result<f64> {
+    let time = unsafe {
+        SIM_event_find_next_time(clock.into(), event.into(), obj.into(), None, null_mut())
+    };
+
+    if time == -1.0 {
+        bail!("No matching event was found");
+    } else {
+        Ok(time)
+    }
 }
 
 pub fn event_cancel_time(clock: *mut ConfObject, event: *mut EventClass, obj: *mut ConfObject) {
     unsafe { SIM_event_cancel_time(clock.into(), event.into(), obj.into(), None, null_mut()) }
 }
 
+#[derive(Copy, Clone, Debug)]
+#[repr(u32)]
+pub enum EventFlags {
+    None = event_class_flag_t_Sim_EC_No_Flags,
+    NotSaved = event_class_flag_t_Sim_EC_Notsaved,
+    MachineSync = event_class_flag_t_Sim_EC_Machine_Sync,
+    NoSerialize = event_class_flag_t_Sim_EC_No_Serialize,
+    SlotEarly = event_class_flag_t_Sim_EC_Slot_Early,
+    SlotLate = event_class_flag_t_Sim_EC_Slot_Late,
+}
+
+/// Register an event with a callback. If `flags` is `&[EventFlags::NotSaved]`, `cls` may be
+/// null.
 pub fn register_event<S: AsRef<str>>(
     name: S,
     cls: *mut ConfClass,
     callback: extern "C" fn(trigger_obj: *mut ConfObject, user_data: *mut c_void),
+    flags: &[EventFlags],
 ) -> Result<*mut EventClass> {
+    let mut event_flags = EventFlags::None as u32;
+    for flag in flags {
+        event_flags |= *flag as u32;
+    }
+
     let event = unsafe {
         SIM_register_event(
             raw_cstr(name.as_ref())?,
             cls.into(),
-            0,
+            event_flags,
             transmute(callback),
             None,
             None,

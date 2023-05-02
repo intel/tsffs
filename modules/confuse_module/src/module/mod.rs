@@ -17,9 +17,10 @@ use log::{debug, error, info, trace, Level, LevelFilter};
 use raffl_macro::{callback_wrappers, params};
 use raw_cstr::raw_cstr;
 use simics_api::{
-    attr_object_or_nil_from_ptr, break_simulation, continue_simulation_alone, get_processor_number,
-    hap_add_callback, log_info, quit, register_interface, save_micro_checkpoint, AttrValue,
-    ConfObject, Hap, HapCallback, MicroCheckpointFlags, SimicsLogger,
+    attr_object_or_nil_from_ptr, break_simulation, continue_simulation_alone, discard_future,
+    get_processor_number, hap_add_callback, log_info, quit, register_interface,
+    restore_micro_checkpoint, save_micro_checkpoint, AttrValue, ConfObject, Hap, HapCallback,
+    MicroCheckpointFlags, SimicsLogger,
 };
 use simics_api::{Create, Module};
 use simics_api_macro::module;
@@ -193,6 +194,9 @@ impl Confuse {
             bail!("Unexpected message. Expected Reset.");
         }
 
+        restore_micro_checkpoint(0);
+        discard_future();
+
         self.detector.on_ready(self_ptr)?;
         self.tracer.on_ready(self_ptr)?;
 
@@ -205,19 +209,19 @@ impl Confuse {
         };
 
         input.truncate(self.buffer_size as usize);
+
         {
             let processor = self
                 .processors
                 .get_mut(&processor_number)
                 .with_context(|| format!("No processor number {}", processor_number))?;
+            // Write the testcase to the guest's memory
             processor.write_bytes(self.buffer_address, &input)?;
         }
 
-        self.detector.on_run(self_ptr)?;
-        self.tracer.on_run(self_ptr)?;
-
+        // Run the simulation until the magic start instruction, where we will receive a stop
+        // callback
         self.stop_reason = None;
-        self.last_start_processor_number = processor_number;
 
         continue_simulation_alone();
 
@@ -244,11 +248,9 @@ impl Confuse {
         // Error string is always NULL
         _error_string: *mut std::ffi::c_char,
     ) -> Result<()> {
-        info!("Simulation stopped");
-
-        ensure!(
-            !(self.detector.stop_reason.is_some() && self.stop_reason.is_some()),
-            "Confuse and Detector both have a stop reason - this should be impossible"
+        info!(
+            "Confuse got stopped simulation with reason {:?}",
+            self.stop_reason
         );
 
         let reason = if let Some(detector_reason) = &self.detector.stop_reason {
@@ -292,6 +294,13 @@ impl Confuse {
                             self.reset_and_run(processor_number)?;
                         } else {
                             self.iterations += 1;
+
+                            self.detector.on_run(self_ptr)?;
+                            self.tracer.on_run(self_ptr)?;
+
+                            self.stop_reason = None;
+                            self.last_start_processor_number = processor_number;
+
                             continue_simulation_alone();
                         }
                     }

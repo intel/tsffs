@@ -13,12 +13,13 @@ use raffl_macro::{callback_wrappers, params};
 use simics_api::{
     attr_object_or_nil_from_ptr, break_simulation, event::register_event, event_cancel_time,
     event_find_next_time, event_post_time, get_class, get_processor_number, hap_add_callback,
-    object_clock, AttrValue, ConfObject, CoreExceptionCallback, EventClass, Hap, HapCallback,
-    X86TripleFaultCallback,
+    object_clock, AttrValue, ConfObject, CoreExceptionCallback, EventClass, EventFlags, Hap,
+    HapCallback, X86TripleFaultCallback,
 };
 use std::{
     collections::{HashMap, HashSet},
     ffi::c_void,
+    ptr::null_mut,
 };
 
 #[derive(Default)]
@@ -74,38 +75,58 @@ impl ConfuseState for Detector {
             )?;
         }
 
+        info!("Initialized Detector");
+
+        Ok(output_config)
+    }
+
+    fn pre_first_run(&mut self, confuse: *mut ConfObject) -> Result<()> {
         let confuse_cls = get_class(CLASS_NAME)?;
 
         let event = register_event(
             Detector::TIMEOUT_EVENT_NAME,
             confuse_cls,
             detector_callbacks::on_timeout_event,
+            &[],
         )?;
 
         self.timeout_event = Some(event);
 
-        info!("Initialized Detector");
+        Ok(())
+    }
 
-        Ok(output_config)
+    fn on_ready(&mut self, confuse: *mut ConfObject) -> Result<()> {
+        self.stop_reason = None;
+        Ok(())
     }
 
     fn on_run(&mut self, confuse: *mut ConfObject) -> Result<()> {
         trace!("Setting up Detector before run");
+
+        self.stop_reason = None;
+
         if let Some(timeout_event) = self.timeout_event {
             if let Some(timeout_seconds) = self.timeout_seconds {
                 for (processor_number, processor) in &self.processors {
                     let clock = object_clock(processor.cpu())?;
 
+                    trace!(
+                        "Setting up timeout event with {} seconds on processor #{}",
+                        timeout_seconds,
+                        processor_number
+                    );
+
                     event_post_time(
                         clock,
                         timeout_event,
-                        confuse,
+                        processor.cpu(),
                         timeout_seconds,
                         Some(confuse as *mut c_void),
                     );
                 }
             }
         }
+
         trace!("Done setting up detector");
 
         Ok(())
@@ -113,19 +134,25 @@ impl ConfuseState for Detector {
 
     fn on_stopped(&mut self, confuse: *mut ConfObject, reason: StopReason) -> Result<()> {
         trace!("Detector handling stop with reason {:?}", reason);
-        self.stop_reason = None;
 
         if let Some(timeout_event) = self.timeout_event {
-            for (processor_number, processor) in &self.processors {
-                let clock = object_clock(processor.cpu())?;
-                let remaining = event_find_next_time(clock, timeout_event, confuse);
+            if !timeout_event.is_null() {
+                for (processor_number, processor) in &self.processors {
+                    let clock = object_clock(processor.cpu())?;
 
-                debug!(
-                    "Remaining time on stop for processor {}: {} seconds",
-                    processor_number, remaining
-                );
+                    if let Ok(remaining) = event_find_next_time(clock, timeout_event, confuse) {
+                        debug!(
+                            "Remaining time on stop for processor {}: {} seconds, cancelling event",
+                            processor_number, remaining
+                        );
 
-                event_cancel_time(clock, timeout_event, confuse);
+                        event_cancel_time(clock, timeout_event, confuse);
+                    } else {
+                        debug!("Stopped without timeout event, unable to cancel nonexistent event");
+                    }
+                }
+            } else {
+                debug!("Timeout event is null, not initialized yet, so skipping cancellation");
             }
         }
         Ok(())
