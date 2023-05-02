@@ -1,0 +1,7 @@
+error: expected `#[params(...)]`
+ --> tests/ui/test_missing_params.rs:7:5
+  |
+7 | /     pub fn test(&self, a: i32, b: i32) -> i32 {
+8 | |         a + b
+9 | |     }
+  | |_____^

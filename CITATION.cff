@@ -11,8 +11,8 @@ authors:
   given-names: "Rowan"
   orcid: "https://orcid.org/0000-0001-9932-3798"
 
-title: "Intel CONFUSED -- COntrolled FUzzing with Simics Enhanced"
-version: 0.5.0
+title: "Intel CONFUSE -- COntrolled FUzzing with Simics Enhanced"
+version: 0.1.0
 doi: ""
 date-released: 2023-01-01
-url: "https://github.com/intel-sandbox/tool.fuzzing.simics.simics-fuzzing"
+url: "https://github.com/intel-innersource/applications.security.fuzzing.confuse"

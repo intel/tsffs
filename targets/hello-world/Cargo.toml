@@ -1,0 +1,26 @@
+[package]
+name = "hello-world"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+confuse_module = { workspace = true, features = ["6.0.162"] }
+confuse-simics-project = { workspace = true }
+confuse-fuzz = { workspace = true }
+anyhow = "1.0.69"
+log = "0.4.17"
+confuse-simics-manifest = { workspace = true }
+indoc = "2.0.1"
+ipc-channel = { workspace = true }
+libafl = { workspace = true, features = ["tui_monitor"] }
+tempfile = "3.4.0"
+chrono = "0.4.24"
+log4rs = "1.2.0"
+clap = { version = "4.1.13", features = ["derive"] }
+
+[dev-dependencies]
+
+[build-dependencies]
+anyhow = "1.0.69"
+confuse-simics-project = { workspace = true }
+dockerfile-rs = "0.3.0"
