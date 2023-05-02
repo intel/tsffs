@@ -1,4 +1,0 @@
-[wrap-git]
-directory=AFLplusplus
-url=https://github.com/intel-sandbox/tool.fuzzing.AFLplusplus-wrap
-revision=head
