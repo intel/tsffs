@@ -4,6 +4,7 @@ use crate::{config::OutputConfig, stops::StopReason};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+/// Messages from the CONFUSE module
 pub enum ModuleMessage {
     /// Mesage
     Initialized(OutputConfig),

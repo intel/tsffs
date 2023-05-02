@@ -1,3 +1,5 @@
+//! Traits for common functionality used throughout the CONFUSE module
+
 use crate::{
     config::{InputConfig, OutputConfig},
     messages::{client::ClientMessage, module::ModuleMessage},
@@ -7,7 +9,6 @@ use crate::{
 use anyhow::Result;
 use ipc_channel::ipc::{IpcReceiver, IpcSender};
 use simics_api::{AttrValue, ConfObject};
-
 
 pub trait ConfuseState {
     /// Callback when the module's state is [`ConfuseModuleState::HalfInitialized`]. The

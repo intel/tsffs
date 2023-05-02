@@ -51,6 +51,7 @@ impl TryFrom<i64> for X86_64Fault {
 }
 
 impl X86_64Fault {
+    /// All faults. Using this isn't recommended.
     pub fn all() -> Vec<Fault> {
         vec![
             Fault::X86_64(X86_64Fault::Triple),

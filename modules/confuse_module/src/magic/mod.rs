@@ -1,3 +1,5 @@
+//! Magic instructions raised by guest software
+
 extern crate num_traits;
 use anyhow::{Context, Error, Result};
 use num_derive::{FromPrimitive, ToPrimitive};

@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::config::InputConfig;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+/// Messages from the CONFUSE client
 pub enum ClientMessage {
     /// Initialize event, the fuzzer signals the Confuse SIMICS module to initialize itself with
     /// a given set of global campaign settings
