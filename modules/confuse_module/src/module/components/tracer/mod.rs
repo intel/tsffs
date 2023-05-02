@@ -9,6 +9,7 @@ use crate::{
     traits::{ConfuseInterface, ConfuseState},
 };
 use anyhow::Result;
+use crc32fast::hash;
 use ipc_shm::{IpcShm, IpcShmWriter};
 use log::{info, trace};
 use raffl_macro::{callback_wrappers, params};
@@ -96,6 +97,15 @@ impl ConfuseState for Tracer {
         }
         Ok(())
     }
+
+    // Uncomment to check map hash
+    // fn on_stopped(&mut self, confuse: *mut ConfObject, reason: StopReason) -> Result<()> {
+    //     let buf = self.coverage_writer.read_all()?;
+
+    //     info!("Hash of AFL Map: {:#x}", hash(&buf));
+
+    //     Ok(())
+    // }
 }
 
 impl ConfuseInterface for Tracer {
