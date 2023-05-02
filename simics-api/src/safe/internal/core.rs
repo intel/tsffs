@@ -3,6 +3,7 @@ extern "C" {
     pub fn CORE_discard_future();
 }
 
+/// Discard future events that are scheduled
 pub fn discard_future() {
     unsafe { CORE_discard_future() };
 }

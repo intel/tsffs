@@ -1,3 +1,9 @@
+//! Safe wrappers for attr_value_t operations
+//!
+//! `attr_value_t` instances are basically Python objects as tagged unions (like an `enum`), these
+//! functions convert the objects back and forth between anonymous `attr_value_t` and actual data
+//! types like `bool`, `String`, etc.
+
 use crate::ConfObject;
 use anyhow::{ensure, Context, Error, Result};
 use num_derive::{FromPrimitive, ToPrimitive};
@@ -15,6 +21,7 @@ pub type AttrValue = attr_value_t;
 
 #[derive(Debug, FromPrimitive, ToPrimitive)]
 #[repr(u32)]
+/// The possible types of an `AttrValue`
 pub enum AttrKind {
     Boolean = attr_kind_t_Sim_Val_Boolean,
     Data = attr_kind_t_Sim_Val_Data,
@@ -44,6 +51,7 @@ impl TryFrom<u32> for AttrKind {
     }
 }
 
+/// Create a new invalid [`AttrValue`]
 pub fn make_attr_invalid() -> Result<AttrValue> {
     Ok(AttrValue {
         private_kind: AttrKind::Invalid.try_into()?,
@@ -52,12 +60,7 @@ pub fn make_attr_invalid() -> Result<AttrValue> {
     })
 }
 
-/* <add-fun id="device api attr_value_t">
-  <short>make nil attribute</short>
-  Returns an <type>attr_value_t</type> of type nil.
-
-  <di name="EXECUTION CONTEXT">Cell Context</di>
-</add-fun> */
+/// Create a new nil [`AttrValue`]
 pub fn make_attr_nil() -> Result<AttrValue> {
     Ok(AttrValue {
         private_kind: AttrKind::Nil.try_into()?,
@@ -66,7 +69,7 @@ pub fn make_attr_nil() -> Result<AttrValue> {
     })
 }
 
-/* <append-fun id="SIM_make_attr_int64"></append-fun> */
+/// Create a new uint64 [`AttrValue`] with a value of `i`
 pub fn make_attr_uint64(i: u64) -> Result<AttrValue> {
     Ok(AttrValue {
         private_kind: AttrKind::Integer.try_into()?,
@@ -77,13 +80,7 @@ pub fn make_attr_uint64(i: u64) -> Result<AttrValue> {
     })
 }
 
-/* <add-fun id="device api attr_value_t">
-  <short>make integer attribute</short>
-  Returns an <type>attr_value_t</type> of integer type with value
-  <param>i</param>.
-
-  <di name="EXECUTION CONTEXT">Cell Context</di>
-</add-fun> */
+/// Create a new int64 [`AttrValue`] with a value of `i`
 pub fn make_attr_int64(i: i64) -> Result<AttrValue> {
     Ok(AttrValue {
         private_kind: AttrKind::Integer.try_into()?,
@@ -92,12 +89,7 @@ pub fn make_attr_int64(i: i64) -> Result<AttrValue> {
     })
 }
 
-/* <add-fun id="device api attr_value_t">
-  <short>make boolean attribute</short>
-  Returns an <type>attr_value_t</type> of boolean type.
-
-  <di name="EXECUTION CONTEXT">Cell Context</di>
-</add-fun> */
+/// Create a new boolean [`AttrValue`] with a value of `b`
 pub fn make_attr_boolean(b: bool) -> Result<AttrValue> {
     Ok(AttrValue {
         private_kind: AttrKind::Boolean.try_into()?,
@@ -106,7 +98,7 @@ pub fn make_attr_boolean(b: bool) -> Result<AttrValue> {
     })
 }
 
-/* <append-fun id="SIM_make_attr_string"></append-fun> */
+/// Create a newly allocated string [`AttrValue`] with a value of `s`
 pub fn make_attr_string_adopt<S: AsRef<str>>(s: S) -> Result<AttrValue> {
     let string = raw_cstr(s)?;
     Ok(AttrValue {
@@ -120,13 +112,7 @@ pub fn make_attr_string_adopt<S: AsRef<str>>(s: S) -> Result<AttrValue> {
     })
 }
 
-/* <add-fun id="device api attr_value_t">
-  <short>make floating point attribute</short>
-  Returns an <type>attr_value_t</type> of floating type with value
-  <param>d</param>.
-
-  <di name="EXECUTION CONTEXT">Cell Context</di>
-</add-fun> */
+/// Create a new floating point [`AttrValue`] with a value of `d`
 pub fn make_attr_floating(d: f64) -> Result<AttrValue> {
     Ok(AttrValue {
         private_kind: AttrKind::Floating.try_into()?,
@@ -135,14 +121,7 @@ pub fn make_attr_floating(d: f64) -> Result<AttrValue> {
     })
 }
 
-/* <add-fun id="device api attr_value_t">
-  <short>make object attribute</short>
-  Returns an <type>attr_value_t</type> of object type
-  with value <param>obj</param>. Returns a nil value if
-  <param>obj</param> is <const>NULL</const>.
-
-  <di name="EXECUTION CONTEXT">Cell Context</di>
-</add-fun> */
+/// Create a new object [`AttrValue`] with a value of `obj`
 pub fn make_attr_object(obj: *mut ConfObject) -> Result<AttrValue> {
     Ok(AttrValue {
         private_kind: if (obj as *const ConfObject).is_null() {
@@ -155,7 +134,8 @@ pub fn make_attr_object(obj: *mut ConfObject) -> Result<AttrValue> {
     })
 }
 
-/* <append-fun id="SIM_make_attr_data"></append-fun> */
+/// Create a new data [`AttrValue`], which is effectively a fat pointer to the data, with a given
+/// size
 pub fn make_attr_data_adopt<T>(size: usize, data: T) -> Result<AttrValue> {
     let data = Box::new(data);
     let data_ptr = Box::into_raw(data);
@@ -172,108 +152,51 @@ pub fn make_attr_data_adopt<T>(size: usize, data: T) -> Result<AttrValue> {
     })
 }
 
-/* <append-fun id="SIM_attr_is_integer"/> */
+/// Check whether an [`AttrValue`] is nil
 pub fn attr_is_nil(attr: AttrValue) -> Result<bool> {
     Ok(attr.private_kind == AttrKind::Nil.try_into()?)
 }
 
-/* <append-fun id="SIM_attr_is_integer"/> */
+/// Check whether an [`AttrValue`] is int64
 pub fn attr_is_int64(attr: AttrValue) -> Result<bool> {
     Ok(attr.private_kind == AttrKind::Integer.try_into()?
         && (attr.private_size == 0 || unsafe { attr.private_u.integer } >= 0))
 }
 
-/* <append-fun id="SIM_attr_is_integer"/> */
+/// Check whether an [`AttrValue`] is uint64
 pub fn attr_is_uint64(attr: AttrValue) -> Result<bool> {
     Ok(attr.private_kind == AttrKind::Integer.try_into()?
         && (attr.private_size != 0 || unsafe { attr.private_u.integer } >= 0))
 }
 
-/* <add-fun id="device api attr_value_t">
-  <short><type>attr_value_t</type> type predicates</short>
-
-  Indicates whether the value stored in <arg>attr</arg> is of the specified
-  type. <fun>SIM_attr_is_int64</fun> and <fun>SIM_attr_is_uint64</fun>
-  additionally test whether the integer value would fit in the given C type.
-
-  <di name="EXECUTION CONTEXT">Cell Context</di>
-</add-fun> */
+/// Check whether an [`AttrValue`] is an integer
 pub fn attr_is_integer(attr: AttrValue) -> Result<bool> {
     Ok(attr.private_kind == AttrKind::Integer.try_into()?)
 }
 
-/* <add-fun id="device api attr_value_t">
-  <short>extract values stored in <type>attr_value_t</type> values</short>
-
-  Extract a value encapsulated in <param>attr</param>. It is an error to
-  call an accessor function with an <param>attr</param> of the wrong type.
-
-  <fun>SIM_attr_integer</fun> returns the integer attribute value
-  modulo-reduced to the interval
-  <math>[-2<sup>63</sup>,2<sup>63</sup>-1]</math>.
-  (Converting the return value to <type>uint64</type> gives the integer
-  attribute value modulo-reduced to <math>[0,2<sup>64</sup>-1]</math>.)
-
-  <fun>SIM_attr_string()</fun>, <fun>SIM_attr_data()</fun> and
-  <fun>SIM_attr_list()</fun> return values owned by <param>attr</param>.
-  Ownership is not transferred to the caller.
-
-  <fun>SIM_attr_string_detach()</fun> returns the string
-  in <param>attr</param> and changes the value pointed to by
-  <param>attr</param> into a nil attribute. Ownership of the string is
-  transferred to the caller.
-
-  <fun>SIM_attr_object_or_nil</fun> accepts an <param>attr</param> parameter
-  of either object or nil type. In case of a nil attribute, the function
-  returns NULL.
-
-  <fun>SIM_attr_list_size()</fun> and <fun>SIM_attr_dict_size</fun> return
-  the number of items in the list and key-value pairs in the dict
-  respectively. <fun>SIM_attr_data_size()</fun> returns the number of bytes
-  in the data value.
-
-  <fun>SIM_attr_list_item()</fun> returns the item at <param>index</param>.
-  The index must be less than the number of items in the list. The item
-  returned is still owned by <param>attr</param>. Ownership is not
-  transferred to the caller.
-
-  <fun>SIM_attr_list()</fun> returns a pointer directly into the internal
-  array of the attribute value; it is mainly present as an optimisation. Use
-  <fun>SIM_attr_list_item()</fun> and <fun>SIM_attr_list_set_item()</fun>
-  for type-safety instead.
-
-  <fun>SIM_attr_dict_key()</fun> and <fun>SIM_attr_dict_value()</fun> return
-  the key and value at <param>index</param>. The index must be less than the
-  number of items in the dict. The value returned is still owned by
-  <param>attr</param>. Ownership is not transferred to the caller.
-
-  <di name="EXECUTION CONTEXT">
-  All contexts (including Threaded Context)
-  </di>
-
-</add-fun> */
+/// Get an [`AttrValue`] as an integer
 pub fn attr_integer(attr: AttrValue) -> Result<i64> {
     ensure!(attr_is_integer(attr)?, "Attribute must be integer!");
     Ok(unsafe { attr.private_u.integer })
 }
 
-/* <append-fun id="SIM_attr_is_integer"/> */
+/// Check whether an [`AttrValue`] is a boolean
 pub fn attr_is_boolean(attr: AttrValue) -> Result<bool> {
     Ok(attr.private_kind == AttrKind::Boolean.try_into()?)
 }
 
-/* <append-fun id="SIM_attr_integer"/> */
+/// Get an [`AttrValue`] as a boolean
 pub fn attr_boolean(attr: AttrValue) -> Result<bool> {
     ensure!(attr_is_boolean(attr)?, "Attribute must be bool!");
     Ok(unsafe { attr.private_u.boolean })
 }
 
-/* <append-fun id="SIM_attr_is_integer"/> */
+/// Check whether an [`AttrValue`] is a String
 pub fn attr_is_string(attr: AttrValue) -> Result<bool> {
     Ok(attr.private_kind == AttrKind::String.try_into()?)
 }
 
-/* <append-fun id="SIM_attr_integer"/> */
+/// Get an [`AttrValue`] as a String
 pub fn attr_string(attr: AttrValue) -> Result<String> {
     ensure!(attr_is_string(attr)?, "Attribute must be string!");
     Ok(unsafe { CStr::from_ptr(attr.private_u.string) }
@@ -295,40 +218,35 @@ pub fn attr_string(attr: AttrValue) -> Result<String> {
 //         return ret;
 // }
 
-/* <append-fun id="SIM_attr_is_integer"/> */
+/// Check whether an [`AttrValue`] is a String
 pub fn attr_is_floating(attr: AttrValue) -> Result<bool> {
     Ok(attr.private_kind == AttrKind::Floating.try_into()?)
 }
 
-/* <append-fun id="SIM_attr_integer"/> */
+/// Get an [`AttrValue`] as a f64
 pub fn attr_floating(attr: AttrValue) -> Result<f64> {
     ensure!(attr_is_floating(attr)?, "Attribute must be floating point!");
     Ok(unsafe { attr.private_u.floating })
 }
 
-/* <append-fun id="SIM_attr_is_integer"/> */
+/// Check whether an [`AttrValue`] is a String
 pub fn attr_is_object(attr: AttrValue) -> Result<bool> {
     Ok(attr.private_kind == AttrKind::Object.try_into()?)
 }
 
-/* <append-fun id="SIM_attr_integer"/> */
+/// Get an [`AttrValue`] as an object
 pub fn attr_object(attr: AttrValue) -> Result<*mut ConfObject> {
     ensure!(attr_is_object(attr)?, "Attribute must be object!");
     Ok(unsafe { attr.private_u.object })
 }
 
 /// Obtain a [`ConfObject`] pointer from an [`AttrValue`] pointer
-///
-/// # Safety
-///
-/// * `attr` may be a null or non-null pointer. If it is non-null, it must point to a valid
-///   [`AttrValue`] instance
 pub fn attr_object_from_ptr(attr: *mut AttrValue) -> Result<*mut ConfObject> {
     let ptr: *mut AttrValue = attr.into();
     attr_object(unsafe { *ptr })
 }
 
-/* <append-fun id="SIM_attr_integer"/> */
+/// Get an [`AttrValue`] as an object or nil if the object is a null pointer
 pub fn attr_object_or_nil(attr: AttrValue) -> Result<*mut ConfObject> {
     if attr_is_nil(attr)? {
         Ok(null_mut())
@@ -337,28 +255,28 @@ pub fn attr_object_or_nil(attr: AttrValue) -> Result<*mut ConfObject> {
     }
 }
 
+/// Get an [`AttrValue`] as an object or nil if the object is a null pointer
 pub fn attr_object_or_nil_from_ptr(attr: *mut AttrValue) -> Result<*mut ConfObject> {
     let ptr: *mut AttrValue = attr.into();
     attr_object_or_nil(unsafe { *ptr })
 }
 
-/* <append-fun id="SIM_attr_is_integer"/> */
+/// Check whether an [`AttrValue`] is invalid
 pub fn attr_is_invalid(attr: AttrValue) -> Result<bool> {
     Ok(attr.private_kind == AttrKind::Invalid.try_into()?)
 }
 
-/* <append-fun id="SIM_attr_is_integer"/> */
+/// Check whether an [`AttrValue`] is data
 pub fn attr_is_data(attr: AttrValue) -> Result<bool> {
     Ok(attr.private_kind == AttrKind::Data.try_into()?)
 }
 
-/* <append-fun id="SIM_attr_integer"/> */
+/// Get the size of an [`AttrValue`]'s data
 pub fn attr_data_size(attr: AttrValue) -> Result<u32> {
     ensure!(attr_is_data(attr)?, "Attribute must be data!");
     Ok(attr.private_size)
 }
 
-/* <append-fun id="SIM_attr_integer"/> */
 pub fn attr_data(attr: AttrValue) -> Result<Vec<u8>> {
     ensure!(attr_is_data(attr)?, "Attribute must be data!");
     Ok(unsafe {
@@ -370,48 +288,47 @@ pub fn attr_data(attr: AttrValue) -> Result<Vec<u8>> {
     })
 }
 
-/* <append-fun id="SIM_attr_is_integer"/> */
+/// Check whether an [`AttrValue`] is a list
 pub fn attr_is_list(attr: AttrValue) -> Result<bool> {
     Ok(attr.private_kind == AttrKind::List.try_into()?)
 }
 
-/* <append-fun id="SIM_attr_integer"/> */
+/// Get the size of an [`AttrValue`]'s list
 pub fn attr_list_size(attr: AttrValue) -> Result<u32> {
     ensure!(attr_is_list(attr)?, "Attribute must be list!");
     Ok(attr.private_size)
 }
 
-/* <append-fun id="SIM_attr_integer"/> */
 /// Retrieve a list item from an attr
 ///
 /// # Safety
 ///
 /// The bounds of the list are checked before obtaining an offset, so this function will never
-/// crash unless the list size is incorrectly set
+/// crash unless the list size is incorrectly set by SIMICS
 pub unsafe fn attr_list_item(attr: AttrValue, index: u32) -> Result<AttrValue> {
     ensure!(attr_is_list(attr)?, "Attribute must be list!");
     ensure!(index < attr_list_size(attr)?, "Index out of bounds of list");
     Ok(unsafe { *attr.private_u.list.offset(index.try_into()?) })
 }
 
-/* <append-fun id="SIM_attr_integer"/> */
+/// Get the an [`AttrValue`] as a list
 pub fn attr_list(attr: AttrValue) -> Result<*mut AttrValue> {
     ensure!(attr_is_list(attr)?, "Attribute must be list!");
     Ok(unsafe { attr.private_u.list }.into())
 }
 
-/* <append-fun id="SIM_attr_is_integer"/> */
+/// Check whether an [`AttrValue`] is a dict
 pub fn attr_is_dict(attr: AttrValue) -> bool {
     attr.private_kind == attr_kind_t_Sim_Val_Dict
 }
 
-/* <append-fun id="SIM_attr_integer"/> */
+/// Get the size of an an [`AttrValue`]'s dict
 pub fn attr_dict_size(attr: AttrValue) -> Result<u32> {
     ensure!(attr_is_dict(attr), "Attribute must be dict!");
     Ok(attr.private_size)
 }
 
-/* <append-fun id="SIM_attr_integer"/> */
+/// Get a key for an [`AttrValue`]'s dict
 pub fn attr_dict_key(attr: AttrValue, index: u32) -> Result<AttrValue> {
     ensure!(attr_is_dict(attr), "Attribute must be dict!");
     ensure!(
@@ -422,7 +339,7 @@ pub fn attr_dict_key(attr: AttrValue, index: u32) -> Result<AttrValue> {
     Ok(unsafe { *pair }.key)
 }
 
-/* <append-fun id="SIM_attr_integer"/> */
+/// Get a value for an [`AttrValue`]'s dict
 pub fn attr_dict_value(attr: AttrValue, index: u32) -> Result<AttrValue> {
     ensure!(attr_is_dict(attr), "Attribute must be dict!");
     ensure!(
@@ -433,6 +350,7 @@ pub fn attr_dict_value(attr: AttrValue, index: u32) -> Result<AttrValue> {
     Ok(unsafe { *pair }.value)
 }
 
+/// Get an attribute of an object
 pub fn get_attribute<S: AsRef<str>>(obj: *mut ConfObject, attribute: S) -> Result<AttrValue> {
     Ok(unsafe { SIM_get_attribute(obj.into(), raw_cstr(attribute)?) })
 }

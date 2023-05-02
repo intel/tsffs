@@ -1,6 +1,7 @@
 //! Confuse-Fuzz
 //!
-//! This library contains abstractions over a fuzzing campaign using the SIMICS platform
+//! This library implements a Fuzzer wrapping a [`SimicsProject`] using a [`Client`] to
+//! communicate with the `Confuse` SIMICS module.
 
 use anyhow::Result;
 use confuse_module::{

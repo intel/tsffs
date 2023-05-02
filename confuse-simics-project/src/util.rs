@@ -65,6 +65,7 @@ impl LibraryType {
     }
 }
 
+/// Find a dynamic or static library that is a build result of a particular crate
 pub fn find_library<S: AsRef<str>>(crate_name: S, library_type: LibraryType) -> Result<PathBuf> {
     let suffix = library_type.suffix();
     let metadata = MetadataCommand::new().no_deps().exec()?;
@@ -110,6 +111,7 @@ pub fn find_library<S: AsRef<str>>(crate_name: S, library_type: LibraryType) -> 
     Ok(lib_path.into())
 }
 
+/// Find the [`Package`] outputs of a crate
 pub fn find_crate<S: AsRef<str>>(crate_name: S) -> Result<Package> {
     let metadata = MetadataCommand::new().no_deps().exec()?;
     let ws_root = metadata.workspace_root;

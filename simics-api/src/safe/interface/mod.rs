@@ -78,6 +78,8 @@ use simics_api_sys::{
     XTENSA_TIE_IMPORT_WIRE_INTERFACE, XTENSA_TIE_INPUT_QUEUE_INTERFACE,
     XTENSA_TIE_LOOKUP_INTERFACE, XTENSA_TIE_OUTPUT_QUEUE_INTERFACE,
 };
+
+/// Available interfaces
 pub enum Interface {
     A20,
     AbsPointer,
@@ -333,6 +335,7 @@ pub enum Interface {
 }
 
 impl Interface {
+    /// Get the interface name as a null-terminated character slice
     pub fn as_slice(&self) -> &'static [u8] {
         match *self {
             Interface::A20 => A20_INTERFACE,

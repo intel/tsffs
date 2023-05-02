@@ -11,6 +11,7 @@ use std::{ffi::c_void, mem::transmute, ptr::null_mut};
 
 pub type EventClass = event_class_t;
 
+/// Post an event to be triggered after a particular amount of time
 pub fn event_post_time<D>(
     clock: *mut ConfObject,
     event: *mut EventClass,
@@ -28,6 +29,7 @@ pub fn event_post_time<D>(
     unsafe { SIM_event_post_time(clock.into(), event.into(), obj.into(), seconds, user_data) };
 }
 
+/// Find the next time an event is scheduled to be triggered
 pub fn event_find_next_time(
     clock: *mut ConfObject,
     event: *mut EventClass,
@@ -44,12 +46,14 @@ pub fn event_find_next_time(
     }
 }
 
+/// Cancel an event that was posted with [`event_post_time`]
 pub fn event_cancel_time(clock: *mut ConfObject, event: *mut EventClass, obj: *mut ConfObject) {
     unsafe { SIM_event_cancel_time(clock.into(), event.into(), obj.into(), None, null_mut()) }
 }
 
 #[derive(Copy, Clone, Debug)]
 #[repr(u32)]
+/// Flags for an event
 pub enum EventFlags {
     None = event_class_flag_t_Sim_EC_No_Flags,
     NotSaved = event_class_flag_t_Sim_EC_Notsaved,

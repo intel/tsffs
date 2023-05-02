@@ -24,6 +24,8 @@ pub type PackageVersion = String;
 
 #[derive(Hash, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, FromPrimitive, ToPrimitive)]
 #[repr(i64)]
+/// Numbers for public SIMICS packages. These numbers can be used to conveniently specify package
+/// numbers
 pub enum PublicPackageNumber {
     QspClearLinux = 4094,
     QspCpu = 8112,
@@ -62,6 +64,7 @@ pub fn simics_base_latest<P: AsRef<Path>>(simics_home: P) -> Result<PackageInfo>
     Ok(max_base.1)
 }
 
+/// Find the latest version of the Simics Base package with a particular constraint.
 pub fn simics_base_version<P: AsRef<Path>, S: AsRef<str>>(
     simics_home: P,
     base_version_constraint: S,
@@ -86,25 +89,38 @@ pub fn simics_base_version<P: AsRef<Path>, S: AsRef<str>>(
 /// a simics package, for example SIMICS_HOME/simics-6.0.157/packageinfo/Simics-Base-linux64
 /// and is not *quite* YAML but is close.
 pub struct PackageInfo {
+    /// The package name
     pub name: String,
+    /// The package description
     pub description: String,
+    /// The version string for the package
     pub version: String,
     #[serde(rename = "extra-version")]
+    /// The extra version string for the package, usually blank
     pub extra_version: String,
+    //// Host type, e.g. `linux64`
     pub host: String,
+    /// Whether the package is public or private
     pub confidentiality: String,
     #[serde(rename = "package-name")]
+    /// The name of the package, again (this field is typically the same as `name`)
     pub package_name: String,
     #[serde(rename = "package-number")]
+    /// The package number
     pub package_number: PackageNumber,
     #[serde(rename = "build-id")]
+    /// A monotonically increasing build ID for the package number
     pub build_id: u64,
     #[serde(rename = "build-id-namespace")]
+    /// Namespace for build IDs, `simics` for public/official packages
     pub build_id_namespace: String,
     #[serde(rename = "type")]
+    /// The type of package, typically either `base` or `addon`
     pub typ: String,
     #[serde(rename = "package-name-full")]
+    /// Long package name
     pub package_name_full: String,
+    /// Complete list of files in the package
     pub files: Vec<String>,
 }
 
@@ -130,7 +146,7 @@ impl Default for PackageInfo {
 }
 
 impl PackageInfo {
-    /// Get the path to a package relative to the simics home installation directory
+    /// Get the path to a package relative to the `simics_home` installation directory
     pub fn get_package_path<P: AsRef<Path>>(&self, simics_home: P) -> Result<PathBuf> {
         Ok(simics_home.as_ref().to_path_buf().join(
             self.files
@@ -146,7 +162,9 @@ impl PackageInfo {
     }
 }
 
-/// Get all the package information of all packages in the simics home installation directory
+/// Get all the package information of all packages in the `simics_home` installation directory as
+/// a mapping between the package number and a nested mapping of package version to the package
+/// info for the package
 pub fn package_infos<P: AsRef<Path>>(
     simics_home: P,
 ) -> Result<HashMap<PackageNumber, HashMap<PackageVersion, PackageInfo>>> {

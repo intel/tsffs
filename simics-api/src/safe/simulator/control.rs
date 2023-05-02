@@ -4,6 +4,7 @@ use anyhow::Result;
 use raw_cstr::raw_cstr;
 use simics_api_sys::{SIM_break_simulation, SIM_continue, SIM_quit, SIM_run_alone};
 
+/// Quit simics and exit with a code
 pub fn quit(exit_code: i32) {
     unsafe {
         SIM_quit(exit_code);

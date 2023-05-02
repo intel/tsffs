@@ -10,6 +10,7 @@ use std::{
 
 pub type HapHandle = hap_handle_t;
 
+/// Set of HAPs
 pub enum Hap {
     // Base HAPs from API reference manual part 12
     Arinc429Word,
@@ -268,6 +269,7 @@ impl Hap {
 }
 
 impl ToString for Hap {
+    /// Convert a HAP enum to the name of the HAP
     fn to_string(&self) -> String {
         match *self {
             Hap::Arinc429Word => Hap::HAP_ARINC429_WORD.to_string(),
@@ -892,6 +894,7 @@ pub type XtermBreakStringCallback = unsafe extern "C" fn(
     break_string: *mut c_char,
 );
 
+/// Types for HAP callbacks
 pub enum HapCallback {
     // Base HAPs from API reference manual part 12
     Arinc429Word(Arinc429WordCallback),
@@ -1022,6 +1025,8 @@ pub enum HapCallback {
 }
 
 impl HapCallback {
+    /// Coerce any HAP callback type to a CFFI compatible function pointer that takes no arguments
+    /// and returns no data, required by the SIMICS API
     pub fn as_fn(&self) -> extern "C" fn() {
         unsafe {
             match *self {
@@ -1150,6 +1155,7 @@ impl HapCallback {
         }
     }
 
+    /// Check if a HAP callback is the correct callback type for a HAP
     pub fn is_callback_for(&self, hap: &Hap) -> bool {
         match *self {
             HapCallback::Arinc429Word(_) => matches!(hap, Hap::Arinc429Word),
@@ -1309,6 +1315,8 @@ impl HapCallback {
     }
 }
 
+/// Add a callback on a particular HAP occurrence, with some user data (which should generally be
+/// a raw pointer to the module object you are running)
 pub fn hap_add_callback<D>(hap: Hap, func: HapCallback, data: Option<D>) -> Result<HapHandle>
 where
     D: Into<*mut c_void>,

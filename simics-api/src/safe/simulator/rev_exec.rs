@@ -35,14 +35,17 @@ impl TryFrom<MicroCheckpointFlags> for u32 {
     }
 }
 
+/// Remove a micro checkpoint
 pub fn delete_micro_checkpoint(index: i32) {
     unsafe { VT_delete_micro_checkpoint(index) }
 }
 
+/// Restore a micro checkpoint, loading it as a snapshot
 pub fn restore_micro_checkpoint(index: i32) {
     unsafe { VT_restore_micro_checkpoint(index) }
 }
 
+/// Save a micro checkpoint with some set of flags
 pub fn save_micro_checkpoint<S: AsRef<str>>(name: S, flags: &[MicroCheckpointFlags]) -> Result<()> {
     let mut checkpoint_flags = 0;
     for flag in flags {

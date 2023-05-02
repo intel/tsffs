@@ -26,6 +26,7 @@ pub type ClassInfo = class_info_t;
 
 #[derive(Debug, Eq, PartialEq)]
 #[repr(u32)]
+/// Kinds of classes
 pub enum ClassKind {
     Vanilla = class_kind_t_Sim_Class_Kind_Vanilla,
     Session = class_kind_t_Sim_Class_Kind_Session,
@@ -33,6 +34,7 @@ pub enum ClassKind {
     Extension = class_kind_t_Sim_Class_Kind_Extension,
 }
 
+/// Register a class with a given name
 pub fn register_class<S: AsRef<str>>(name: S, class_data: ClassData) -> Result<*mut ConfClass> {
     let name_raw = raw_cstr(name.as_ref())?;
 
@@ -47,6 +49,7 @@ pub fn register_class<S: AsRef<str>>(name: S, class_data: ClassData) -> Result<*
     }
 }
 
+/// Create a class instance
 pub fn create_class<S: AsRef<str>>(name: S, class_info: ClassInfo) -> Result<*mut ConfClass> {
     let name_raw = raw_cstr(name.as_ref())?;
 
@@ -65,6 +68,7 @@ pub fn create_class<S: AsRef<str>>(name: S, class_info: ClassInfo) -> Result<*mu
     }
 }
 
+/// Register an interface for a class
 pub fn register_interface<S: AsRef<str>, T>(cls: *mut ConfClass, name: S) -> Result<i32>
 where
     T: Default,
@@ -87,6 +91,7 @@ where
     }
 }
 
+/// Get an interface of an object
 pub fn get_interface<T>(obj: *mut ConfObject, iface: Interface) -> *mut T {
     unsafe {
         SIM_c_get_interface(
@@ -96,6 +101,7 @@ pub fn get_interface<T>(obj: *mut ConfObject, iface: Interface) -> *mut T {
     }
 }
 
+/// Get a class instance by name
 pub fn get_class<S: AsRef<str>>(name: S) -> Result<*mut ConfClass> {
     let name_raw = raw_cstr(name.as_ref())?;
 
@@ -107,6 +113,8 @@ pub fn get_class<S: AsRef<str>>(name: S) -> Result<*mut ConfClass> {
         Ok(cls)
     }
 }
+
+/// Register an event that can be posted
 pub fn register_event<S: AsRef<str>>(
     name: S,
     cls: &ConfClass,

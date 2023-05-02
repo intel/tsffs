@@ -9,6 +9,7 @@ use confuse_simics_manifest::simics_base_version;
 use log::info;
 use regex::Regex;
 
+/// Emit cargo directives to link to SIMICS given a particular version constraint
 pub fn link_simics<S: AsRef<str>>(version_constraint: S) -> Result<()> {
     let simics_home_dir = simics_home()?;
 

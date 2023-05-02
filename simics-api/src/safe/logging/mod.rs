@@ -7,6 +7,7 @@ use crate::ConfObject;
 
 const DEFAULT_LEVEL: LevelFilter = LevelFilter::Trace;
 
+/// Convert a filter to `i32` for use as a log level in the SIMICS API
 fn filter_to_i32(filter: LevelFilter) -> i32 {
     match filter {
         LevelFilter::Off => -1,
@@ -18,8 +19,11 @@ fn filter_to_i32(filter: LevelFilter) -> i32 {
     }
 }
 
+/// Logger wrapping the simics logging functions
 pub struct SimicsLogger {
+    /// The level the logger is set as
     level: LevelFilter,
+    /// The device (in actuality, the module object) logs are output for
     dev: *mut ConfObject,
 }
 
@@ -124,6 +128,7 @@ impl Log for SimicsLogger {
     fn flush(&self) {}
 }
 
+/// Log an info-level message through the SIMICS logging functions
 pub fn log_info<S: AsRef<str>>(
     level: i32,
     device: *mut ConfObject,
@@ -139,6 +144,7 @@ pub fn log_info<S: AsRef<str>>(
     Ok(())
 }
 
+/// Log an error-level message through the SIMICS logging functions
 pub fn log_error(device: *mut ConfObject, group: i32, msg: String) -> Result<()> {
     let msg_cstring = CString::new(msg)?;
 
@@ -149,10 +155,12 @@ pub fn log_error(device: *mut ConfObject, group: i32, msg: String) -> Result<()>
     Ok(())
 }
 
+/// Get the current log level of an object
 pub fn log_level(obj: *mut ConfObject) -> u32 {
     unsafe { SIM_log_level((obj as *const ConfObject).into()) }
 }
 
+/// Set the global SIMICS log level
 pub fn set_log_level(obj: *mut ConfObject, level: u32) {
     unsafe { SIM_set_log_level(obj.into(), level) };
 }

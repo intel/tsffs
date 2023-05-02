@@ -4,12 +4,14 @@ use simics_api_sys::{mm_free, mm_zalloc};
 use std::{ffi::c_void, mem::transmute};
 
 #[macro_export]
+/// Allocate memory with a size, of some type
 macro_rules! simics_alloc {
     ($typ:ty, $sz:expr) => {
         $crate::alloc($sz, stringify!($typ), file!(), line!() as i32)
     };
 }
 
+/// Allocate using the SIMICS zalloc implementation
 pub fn alloc<T, S: AsRef<str>>(
     size: usize,
     typename: S,
@@ -28,6 +30,7 @@ pub fn alloc<T, S: AsRef<str>>(
     }
 }
 
+/// Free a pointer that was allocated with [`alloc`]
 pub fn free<T>(ptr: *mut T) {
     unsafe { mm_free(ptr as *mut c_void) };
 }

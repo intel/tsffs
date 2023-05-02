@@ -46,6 +46,7 @@ impl CpuInstrumentationSubscribe {
         }
     }
 
+    /// Run a callback to be run before every instruction is executed
     pub fn register_instruction_before_cb<D>(
         &self,
         cpu: *mut ConfObject,
@@ -72,6 +73,9 @@ impl CpuInstrumentationSubscribe {
             bail!("Unable to register callback, no register function");
         }
     }
+
+    /// Run a callback to be run when an instruction is cached. This means for example the
+    /// instructions in a loop will be called-back on *once*, not for every execution of the loop
     pub fn register_cached_instruction_cb<D>(
         &self,
         cpu: *mut ConfObject,
@@ -124,6 +128,8 @@ impl CpuInstructionQuery {
         }
     }
 
+    /// Get the bytes of an instruction given an instruction handle retrieved during an
+    /// instruction callback
     pub fn get_instruction_bytes(
         &mut self,
         cpu: *mut ConfObject,
@@ -186,6 +192,7 @@ impl ProcessorInfoV2 {
         }
     }
 
+    /// Get the program counter of a CPU
     pub fn get_program_counter(&self, cpu: *mut ConfObject) -> Result<u64> {
         if let Some(get_program_counter) = unsafe { *self.iface }.get_program_counter {
             Ok(unsafe { get_program_counter(cpu.into()) })
@@ -194,6 +201,7 @@ impl ProcessorInfoV2 {
         }
     }
 
+    /// Translate a logical address to a physical address
     pub fn logical_to_physical(
         &self,
         cpu: *mut ConfObject,
@@ -210,6 +218,7 @@ impl ProcessorInfoV2 {
         }
     }
 
+    /// Get the physical memory object associated with a CPU
     pub fn get_physical_memory(&self, cpu: *mut ConfObject) -> Result<*mut ConfObject> {
         if let Some(get_physical_memory) = unsafe { *self.iface }.get_physical_memory {
             Ok(unsafe { get_physical_memory(cpu.into()) })
@@ -241,6 +250,7 @@ impl IntRegister {
         }
     }
 
+    /// Get the number for a register name
     pub fn get_number<S: AsRef<str>>(&self, cpu: *mut ConfObject, register: S) -> Result<i32> {
         if let Some(get_number) = unsafe { *self.iface }.get_number {
             Ok(unsafe { get_number(cpu.into(), raw_cstr(register.as_ref())?) })
@@ -249,6 +259,7 @@ impl IntRegister {
         }
     }
 
+    /// Read a register
     pub fn read(&self, cpu: *mut ConfObject, register_number: i32) -> Result<u64> {
         if let Some(read) = unsafe { *self.iface }.read {
             Ok(unsafe { read(cpu.into(), register_number) })
