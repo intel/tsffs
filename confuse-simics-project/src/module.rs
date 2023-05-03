@@ -61,7 +61,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-#[derive(Eq, Hash, PartialEq)]
+#[derive(Clone, Eq, Hash, PartialEq)]
 /// Represents a simics module that can be added to a project
 pub struct SimicsModule {
     /// The crate name of the crate implementing the module
@@ -79,7 +79,7 @@ pub struct SimicsModule {
     interface_path: Option<PathBuf>,
 }
 
-#[derive(Eq, Hash, PartialEq, Debug, Deserialize)]
+#[derive(Clone, Eq, Hash, PartialEq, Debug, Deserialize)]
 pub struct SimicsModuleConfuseMetadata {
     /// A relative path inside the module crate to the directory containing the module
     /// Makefile for the module
@@ -92,7 +92,7 @@ pub struct SimicsModuleConfuseMetadata {
     interface: Option<String>,
 }
 
-#[derive(Eq, Hash, PartialEq, Debug, Deserialize)]
+#[derive(Clone, Eq, Hash, PartialEq, Debug, Deserialize)]
 struct SimicsModuleMetadata {
     /// Confuse metadata
     confuse: SimicsModuleConfuseMetadata,

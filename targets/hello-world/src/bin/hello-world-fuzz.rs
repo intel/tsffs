@@ -1,6 +1,6 @@
 use anyhow::{Error, Result};
 use clap::Parser;
-use confuse_fuzz::Fuzzer;
+use confuse_fuzz::{fuzz, FuzzerClient};
 use confuse_module::{
     config::{InputConfig, TraceMode},
     faults::{x86_64::X86_64Fault, Fault},
@@ -26,18 +26,30 @@ use tempfile::Builder as NamedTempFileBuilder;
 #[derive(Parser)]
 #[command(author, version, about)]
 struct Args {
-    /// Path to the initial input corpus for the fuzzer
     #[arg(short, long)]
+    /// Path to the initial input corpus for the fuzzer
     input: PathBuf,
-    /// Logging level
+    #[arg(short, long)]
+    /// Path to the initial input corpus for the fuzzer
+    output: PathBuf,
     #[arg(short, long, default_value_t = Level::Error)]
+    /// Logging level
     log_level: Level,
-    #[arg(short, long, default_value_t = 1000)]
+    #[arg(short, long, default_value_t = 0)]
+    /// Number of cycles to fuzz for, or forever if zero
     cycles: u64,
     #[arg(short = 'L', long)]
+    /// Log file path to use. A new tmp file with the pattern confuse-log.XXXXX.log will be used
+    /// if not specified
     log_file: Option<PathBuf>,
     #[arg(short, long, default_value_t = TraceMode::HitCount)]
+    /// Mode to trace executions with
     trace_mode: TraceMode,
+    #[arg(short, long)]
+    /// Expression for the set of cores. For example
+    /// 1,2-4,6: clients run in cores 1,2,3,4,6
+    /// all: one client runs on each available core
+    cores: String,
 }
 
 fn init_logging(level: Level, log_file: Option<PathBuf>) -> Result<()> {
@@ -115,17 +127,19 @@ fn main() -> Result<()> {
 
     info!("Creating fuzzer");
 
-    let mut fuzzer = Fuzzer::try_new(args.input, config, simics_project, args.log_level)?;
-
-    // This should be enough cycles to hit a bug
-    fuzzer
-        .run_cycles(args.cycles)
-        .or_else(|e| {
-            error!("Error running cycles: {}", e);
-            Ok::<(), Error>(())
-        })
-        .ok();
-    fuzzer.stop()?;
+    fuzz(
+        args.cores,
+        args.input,
+        args.output,
+        config,
+        simics_project,
+        args.log_level,
+        if args.cycles == 0 {
+            None
+        } else {
+            Some(args.cycles)
+        },
+    )?;
 
     Ok(())
 }
