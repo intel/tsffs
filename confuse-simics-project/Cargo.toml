@@ -18,6 +18,7 @@ version-tools.workspace = true
 regex = "1.7.2"
 cargo_metadata = "0.15.3"
 serde_json = "1.0.95"
+rand = "0.8.5"
 
 [build-dependencies]
 confuse-simics-manifest = { workspace = true }

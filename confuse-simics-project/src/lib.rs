@@ -11,8 +11,9 @@ mod util;
 use anyhow::{bail, ensure, Context, Result};
 use confuse_simics_manifest::{package_infos, simics_base_version, PackageNumber};
 use dotenvy_macro::dotenv;
-use log::{error, info, Level};
+use log::{debug, error, info, Level};
 use module::SimicsModule;
+use rand::{distributions::Alphanumeric, Rng};
 use std::{
     collections::{HashMap, HashSet},
     fs::{copy, create_dir_all, remove_dir_all, OpenOptions},
@@ -57,8 +58,8 @@ pub fn simics_home() -> Result<PathBuf> {
 struct SimicsCommand {
     /// Whether SIMICS runs in batch mode. Defaults to `true`.
     pub batch_mode: bool,
-    /// Configuration files. Defaults to no configuration files.
-    pub configurations: Vec<PathBuf>,
+    /// Configuration files. Defaults to no configuration files. Relative paths from project base
+    pub configurations: Vec<String>,
     /// CLI Commands that will be executed in order they were added. Defaults to no commands.
     pub commands: Vec<String>,
     /// Whether to enable the GUI. Defaults to `false`.
@@ -71,11 +72,11 @@ struct SimicsCommand {
     /// know you're running bug-free and want a slight cleanup of initial logs.
     pub quiet: bool,
     /// Files to run Python code from.
-    pub python_files: Vec<PathBuf>,
+    pub python_files: Vec<String>,
     /// Files to run additional scripts or configs from, for example `.yml` configurations
-    pub files: Vec<PathBuf>,
+    pub files: Vec<String>,
     /// Directories to search for SIMICS modules in
-    pub library_paths: Vec<PathBuf>,
+    pub library_paths: Vec<String>,
     /// Whether the STC (Simulator Translation Cache) is enabled. Defaults to `true`.
     pub stc: bool,
     // Below here are non-simics settings that we use internally
@@ -112,7 +113,10 @@ impl SimicsCommand {
     /// containing various files, configurations, and scripts which can't be run with
     /// absolute paths.
     pub fn run<P: AsRef<Path>>(&mut self, base_path: P) -> Result<()> {
-        self.simics = Some(base_path.as_ref().to_path_buf().join("simics"));
+        let base_path = base_path.as_ref().to_path_buf();
+
+        self.simics = Some(base_path.join("simics"));
+
         ensure!(
             self.simics.clone().context("No simics path")?.is_file(),
             "Simics executable does not exist at {}",
@@ -126,7 +130,11 @@ impl SimicsCommand {
 
         for configuration in &self.configurations {
             args.push("-c".to_string());
-            args.push(configuration.to_string_lossy().to_string());
+            args.push(
+                abs_or_rel_base_relpath(&base_path, configuration)?
+                    .to_string_lossy()
+                    .to_string(),
+            );
         }
 
         if self.gui {
@@ -150,12 +158,20 @@ impl SimicsCommand {
 
         for python_file in &self.python_files {
             args.push("-p".to_string());
-            args.push(python_file.to_string_lossy().to_string());
+            args.push(
+                abs_or_rel_base_relpath(&base_path, python_file)?
+                    .to_string_lossy()
+                    .to_string(),
+            );
         }
 
         for library_path in &self.library_paths {
             args.push("-L".to_string());
-            args.push(library_path.to_string_lossy().to_string());
+            args.push(
+                abs_or_rel_base_relpath(&base_path, library_path)?
+                    .to_string_lossy()
+                    .to_string(),
+            );
         }
 
         if self.stc {
@@ -168,7 +184,11 @@ impl SimicsCommand {
         }
 
         for file in &self.files {
-            args.push(file.to_string_lossy().to_string());
+            args.push(
+                abs_or_rel_base_relpath(&base_path, file)?
+                    .to_string_lossy()
+                    .to_string(),
+            );
         }
 
         for command in &self.commands {
@@ -183,7 +203,7 @@ impl SimicsCommand {
         let mut simics_command = command
             .args(args)
             .envs(self.env.clone())
-            .current_dir(base_path);
+            .current_dir(&base_path);
 
         if self.stdout_function.is_some() {
             simics_command = simics_command.stdout(Stdio::piped());
@@ -228,6 +248,7 @@ impl SimicsCommand {
 
         if let Some(ref mut simics_process) = self.simics_process {
             simics_process.kill()?;
+            self.simics_process = None;
         }
 
         if let Some(r) = self.stdout_thread.take().map(JoinHandle::join) {
@@ -252,6 +273,38 @@ impl SimicsCommand {
         }
 
         Ok(())
+    }
+
+    pub fn try_clone(&self) -> Result<Self> {
+        ensure!(
+            self.simics_process.is_none()
+                && self.stdin_thread.is_none()
+                && self.stdout_thread.is_none()
+                && self.stderr_thread.is_none(),
+            "Cannot clone simics command after it has been run."
+        );
+        Ok(Self {
+            batch_mode: self.batch_mode,
+            configurations: self.configurations.clone(),
+            commands: self.commands.clone(),
+            gui: self.gui,
+            license: self.license.clone(),
+            win: self.win,
+            quiet: self.quiet,
+            python_files: self.python_files.clone(),
+            files: self.files.clone(),
+            library_paths: self.library_paths.clone(),
+            stc: self.stc,
+            simics: self.simics.clone(),
+            env: self.env.clone(),
+            simics_process: None,
+            stdin_function: self.stdin_function.clone(),
+            stdout_function: self.stdout_function.clone(),
+            stderr_function: self.stderr_function.clone(),
+            stdin_thread: None,
+            stdout_thread: None,
+            stderr_thread: None,
+        })
     }
 }
 
@@ -283,17 +336,32 @@ impl Default for SimicsCommand {
     }
 }
 
+#[derive(Clone)]
+enum Content {
+    /// A directory whose contents will be copied wholesale into the project
+    DirContents(PathBuf),
+    /// A file pair (src, dst) that will be copied into a relative path in the project
+    File((PathBuf, String)),
+    /// A file contents that will be copied into a relative path in the project
+    FileContents((Vec<u8>, String)),
+    /// A path that will be symlinked into a relative path in the project
+    PathSymlink((PathBuf, String)),
+}
+
 /// Structure for managing simics projects on disk, including the packages added to the project
 /// and the modules loaded in it.
 pub struct SimicsProject {
     pub base_path: PathBuf,
+    base_version_constraint: String,
     pub home: PathBuf,
-    packages: HashSet<PackageNumber>,
+    // Mapping of package number to its package path on disk (in SIMICS_HOME)
+    packages: HashMap<PackageNumber, String>,
     modules: HashSet<SimicsModule>,
     tmp: bool,
     command: SimicsCommand,
     pub loglevel: Level,
     built: bool,
+    contents: Vec<Content>,
 }
 
 impl SimicsProject {
@@ -337,42 +405,83 @@ impl SimicsProject {
 
         info!("Created new simics project at {}", base_path.display());
 
-        let simics_home = PathBuf::from(SIMICS_HOME).canonicalize()?;
-        let simics_manifest = simics_base_version(&simics_home, &base_version_constraint)?;
-        let simics_base_dir = simics_home.join(format!("simics-{}", simics_manifest.version));
+        let home = PathBuf::from(SIMICS_HOME).canonicalize()?;
 
+        Ok(Self {
+            base_path,
+            base_version_constraint: base_version_constraint.as_ref().to_string(),
+            home,
+            packages: HashMap::new(),
+            modules: HashSet::new(),
+            tmp: false,
+            command: SimicsCommand::default(),
+            loglevel: Level::Error,
+            built: false,
+            contents: Vec::new(),
+        })
+    }
+
+    fn build_setup(&mut self) -> Result<()> {
+        let simics_manifest = simics_base_version(&self.home, &self.base_version_constraint)?;
+        let simics_base_dir = self
+            .home
+            .join(format!("simics-{}", simics_manifest.version));
         let simics_base_project_setup = simics_base_dir.join("bin").join("project-setup");
 
         info!("Installing simics packages to project");
 
         Command::new(simics_base_project_setup)
             .arg("--ignore-existing-files")
-            .arg(&base_path)
-            .current_dir(&base_path)
+            .arg(&self.base_path)
+            .current_dir(&self.base_path)
             .output()?;
 
         info!("Project setup complete");
 
-        Ok(Self {
-            base_path,
-            home: simics_home,
-            packages: HashSet::new(),
-            modules: HashSet::new(),
-            tmp: false,
-            command: SimicsCommand::default(),
-            loglevel: Level::Error,
-            built: false,
-        })
+        Ok(())
     }
 
-    /// Build this project, including any modules.
-    pub fn build(mut self) -> Result<Self> {
+    fn build_install_packages(&mut self) -> Result<()> {
+        let simics_package_list_path = self.base_path.join(".package-list");
+        let mut simics_package_list = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .append(true)
+            .open(simics_package_list_path)?;
+
+        for package_path in self.packages.values() {
+            writeln!(&simics_package_list, "{}", package_path)?;
+        }
+
+        simics_package_list.flush()?;
+
+        let simics_project_project_setup = self.base_path.join("bin").join("project-setup");
+
+        info!(
+            "Running project setup command {:?}",
+            simics_project_project_setup
+        );
+
+        Command::new(&simics_project_project_setup)
+            .current_dir(&self.base_path)
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()?;
+
+        Ok(())
+    }
+
+    fn build_install_modules(&mut self) -> Result<()> {
         for module in &self.modules {
-            info!("Installing module {}", module.crate_name);
+            info!(
+                "Installing module {} to {}",
+                module.crate_name,
+                self.base_path.display()
+            );
             module.install(&self.base_path)?;
         }
 
-        info!("Building simics project");
+        info!("Building simics project at {}", self.base_path.display());
 
         let res = Command::new("make")
             .current_dir(&self.base_path)
@@ -388,6 +497,58 @@ impl SimicsProject {
             String::from_utf8_lossy(&res.stdout),
             String::from_utf8_lossy(&res.stderr)
         );
+
+        Ok(())
+    }
+
+    fn build_add_contents(&mut self) -> Result<()> {
+        for content in &self.contents {
+            match content {
+                Content::DirContents(src_dir) => copy_dir_contents(&src_dir, &&self.base_path)?,
+                Content::File((src_path, dst_relative_path)) => {
+                    let dst_path = self.base_path.join(dst_relative_path);
+                    let dst_path_dir = dst_path
+                        .parent()
+                        .context("Destination path has no parent.")?;
+
+                    create_dir_all(dst_path_dir)?;
+
+                    copy(src_path, &dst_path)?;
+                }
+                Content::FileContents((contents, dst_relative_path)) => {
+                    let dst_path = self.base_path.join(dst_relative_path);
+                    let dst_path_dir = dst_path
+                        .parent()
+                        .context("Destination path has no parent.")?;
+
+                    create_dir_all(dst_path_dir)?;
+
+                    let mut file = OpenOptions::new()
+                        .write(true)
+                        .truncate(true)
+                        .create(true)
+                        .open(&dst_path)?;
+
+                    file.write_all(contents)?;
+
+                    info!("Added contents to file {}", dst_relative_path);
+                }
+                Content::PathSymlink((src_path, dst_relative_path)) => {
+                    let dst_path = self.base_path.join(dst_relative_path);
+                    symlink(src_path, dst_path)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Build this project, including any modules.
+    pub fn build(mut self) -> Result<Self> {
+        self.build_setup()?;
+        self.build_add_contents()?;
+        self.build_install_packages()?;
+        self.build_install_modules()?;
 
         self.built = true;
 
@@ -452,7 +613,7 @@ impl SimicsProject {
 
         info!("Adding package {}", package);
 
-        if self.packages.contains(&package) {
+        if self.packages.contains_key(&package) {
             return Ok(self);
         }
 
@@ -473,8 +634,6 @@ impl SimicsProject {
             .max()
             .context("No matching version")?;
 
-        let simics_package_list_path = self.base_path.join(".package-list");
-
         let package_info = package_infos
             .get(&version.to_string())
             .context("No such version")?;
@@ -484,30 +643,7 @@ impl SimicsProject {
             .to_string_lossy()
             .to_string();
 
-        let simics_package_list = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .append(true)
-            .open(simics_package_list_path)?;
-
-        writeln!(&simics_package_list, "{}", package_path)?;
-
-        let simics_project_project_setup = self.base_path.join("bin").join("project-setup");
-
-        info!(
-            "Running project setup command {:?}",
-            simics_project_project_setup
-        );
-
-        Command::new(&simics_project_project_setup)
-            .current_dir(&self.base_path)
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()?;
-
-        info!("Finished running project setup command");
-
-        self.packages.insert(package);
+        self.packages.insert(package, package_path);
 
         Ok(self)
     }
@@ -536,9 +672,10 @@ impl SimicsProject {
     ///
     /// Then this function would copy the simics-scripts directory and the targets directory
     /// into the simics project root, recursively
-    pub fn try_with_contents<P: AsRef<Path>>(self, src_dir: P) -> Result<Self> {
+    pub fn try_with_contents<P: AsRef<Path>>(mut self, src_dir: P) -> Result<Self> {
         let src_dir = src_dir.as_ref().to_path_buf();
-        copy_dir_contents(&src_dir, &self.base_path)?;
+        ensure!(src_dir.is_dir(), "Source directory is not a directory");
+        self.contents.push(Content::DirContents(src_dir));
         Ok(self)
     }
 
@@ -550,7 +687,7 @@ impl SimicsProject {
     ///
     /// This would copy /tmp/some_file into the simics project in the modules directory as mod.so
     pub fn try_with_file<P: AsRef<Path>, S: AsRef<str>>(
-        self,
+        mut self,
         src_path: P,
         dst_relative_path: S,
     ) -> Result<Self> {
@@ -561,21 +698,17 @@ impl SimicsProject {
                 .any(|c| c == Component::ParentDir),
             "Path must be relative to the project directory and contain no parent directories!"
         );
-        let dst_path = self.base_path.join(dst_relative_path.as_ref());
-        let dst_path_dir = dst_path
-            .parent()
-            .context("Destination path has no parent.")?;
-
-        create_dir_all(dst_path_dir)?;
-
-        copy(src_path, &dst_path)?;
+        self.contents.push(Content::File((
+            src_path.as_ref().to_path_buf(),
+            dst_relative_path.as_ref().to_string(),
+        )));
 
         Ok(self)
     }
 
     /// Add a file into the simics project at a path relative to the project directory.
     pub fn try_with_file_contents<S: AsRef<str>>(
-        self,
+        mut self,
         contents: &[u8],
         dst_relative_path: S,
     ) -> Result<Self> {
@@ -586,22 +719,11 @@ impl SimicsProject {
                 .any(|c| c == Component::ParentDir),
             "Path must be relative to the project directory and contain no parent directories!"
         );
-        let dst_path = self.base_path.join(dst_relative_path.as_ref());
-        let dst_path_dir = dst_path
-            .parent()
-            .context("Destination path has no parent.")?;
 
-        create_dir_all(dst_path_dir)?;
-
-        let mut file = OpenOptions::new()
-            .write(true)
-            .truncate(true)
-            .create(true)
-            .open(&dst_path)?;
-
-        file.write_all(contents)?;
-
-        info!("Added contents to file {}", dst_relative_path.as_ref());
+        self.contents.push(Content::FileContents((
+            contents.to_vec(),
+            dst_relative_path.as_ref().to_string(),
+        )));
 
         Ok(self)
     }
@@ -611,7 +733,7 @@ impl SimicsProject {
     /// This is useful when a very large file needs to be available in the project but you
     /// don't necessarily want to copy or move it.
     pub fn try_with_file_symlink<P: AsRef<Path>, S: AsRef<str>>(
-        self,
+        mut self,
         src_path: P,
         dst_relative_path: S,
     ) -> Result<Self> {
@@ -620,8 +742,10 @@ impl SimicsProject {
             "Path {} does not exist or is not a file",
             src_path.as_ref().display()
         );
-        let dst_path = self.base_path.join(dst_relative_path.as_ref());
-        symlink(src_path, dst_path)?;
+        self.contents.push(Content::PathSymlink((
+            src_path.as_ref().to_path_buf(),
+            dst_relative_path.as_ref().to_string(),
+        )));
         Ok(self)
     }
 
@@ -640,7 +764,7 @@ impl SimicsProject {
     pub fn try_with_configuration<S: AsRef<str>>(mut self, configuration: S) -> Result<Self> {
         self.command
             .configurations
-            .push(abs_or_rel_base_relpath(&self.base_path, configuration)?);
+            .push(configuration.as_ref().to_string());
         Ok(self)
     }
 
@@ -688,7 +812,7 @@ impl SimicsProject {
     pub fn try_with_python_file<S: AsRef<str>>(mut self, python_file: S) -> Result<Self> {
         self.command
             .python_files
-            .push(abs_or_rel_base_relpath(&self.base_path, python_file)?);
+            .push(python_file.as_ref().to_string());
         Ok(self)
     }
 
@@ -699,9 +823,7 @@ impl SimicsProject {
     /// The file must exist. If you expect this file to be created by a `try_with` method on this
     /// project, be sure to call that method *before* this one.
     pub fn try_with_file_argument<S: AsRef<str>>(mut self, file: S) -> Result<Self> {
-        self.command
-            .files
-            .push(abs_or_rel_base_relpath(&self.base_path, file)?);
+        self.command.files.push(file.as_ref().to_string());
         Ok(self)
     }
 
@@ -715,7 +837,7 @@ impl SimicsProject {
     pub fn try_with_library_path<S: AsRef<str>>(mut self, library_path: S) -> Result<Self> {
         self.command
             .library_paths
-            .push(abs_or_rel_base_relpath(&self.base_path, library_path)?);
+            .push(library_path.as_ref().to_string());
         Ok(self)
     }
 
@@ -783,5 +905,67 @@ impl Drop for SimicsProject {
             info!("Removing SIMICS project from disk");
             remove_dir_all(&self.base_path).ok();
         }
+    }
+}
+
+impl SimicsProject {
+    /// Try to clone the project. This is possible as long as the project command is not yet
+    /// running. Running multiple copies of SIMICS from the same project is not supported, so this
+    /// clone will copy the project to a new directory at a given location
+    pub fn try_clone_at<P: AsRef<Path>>(&self, location: P) -> Result<Self> {
+        let location = location.as_ref().to_path_buf();
+
+        if !location.is_dir() {
+            create_dir_all(&location)?;
+            copy_dir_contents(&self.base_path, &location)?;
+        } else {
+            bail!("Target location {} already exists", location.display());
+        }
+
+        Ok(Self {
+            base_path: location,
+            base_version_constraint: self.base_version_constraint.clone(),
+            home: self.home.clone(),
+            packages: self.packages.clone(),
+            modules: self.modules.clone(),
+            tmp: self.tmp,
+            command: self.command.try_clone()?,
+            loglevel: self.loglevel,
+            built: self.built,
+            contents: self.contents.clone(),
+        })
+    }
+
+    /// Try to clone the project. This is possible as long as the project command is not yet
+    /// running. Running multiple copies of SIMICS from the same project is not supported, so this
+    /// clone will copy the project to a new directory with a random suffix name next to the
+    /// original one
+    pub fn try_clone(&self) -> Result<Self> {
+        let suffix: String = rand::thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(4)
+            .map(char::from)
+            .collect();
+        let location = self
+            .base_path
+            .parent()
+            .context("No base path parent")?
+            .join(
+                self.base_path
+                    .components()
+                    .last()
+                    .context("No final path component")?
+                    .as_os_str()
+                    .to_string_lossy()
+                    .to_string()
+                    + &suffix,
+            );
+
+        debug!(
+            "Cloning simics project to new location {}",
+            location.display()
+        );
+
+        self.try_clone_at(location)
     }
 }
