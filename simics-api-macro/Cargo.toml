@@ -153,3 +153,6 @@ trybuild = { version = "1.0.80", features = ["diff"] }
 "6.0.160" = ["simics-api/6.0.160"]
 "6.0.161" = ["simics-api/6.0.161"]
 "6.0.162" = ["simics-api/6.0.162"]
+"6.0.163" = ["simics-api/6.0.163"]
+"6.0.164" = ["simics-api/6.0.164"]
+"6.0.165" = ["simics-api/6.0.165"]

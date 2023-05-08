@@ -16,7 +16,7 @@ tempfile = "3.4.0"
 chrono = "0.4.24"
 log4rs = { version = "1.2.0", features = ["all_components"] }
 clap = { version = "4.1.13", features = ["derive"] }
-confuse_module = { workspace = true, features = ["6.0.162"] }
+confuse_module = { workspace = true, features = ["6.0.165"] }
 
 [dev-dependencies]
 

@@ -138,6 +138,9 @@
     feature = "6.0.160",
     feature = "6.0.161",
     feature = "6.0.162",
+    feature = "6.0.163",
+    feature = "6.0.164",
+    feature = "6.0.165",
 ))]
 pub mod safe;
 
@@ -273,5 +276,8 @@ pub mod safe;
     feature = "6.0.160",
     feature = "6.0.161",
     feature = "6.0.162",
+    feature = "6.0.163",
+    feature = "6.0.164",
+    feature = "6.0.165",
 ))]
 pub use safe::*;
