@@ -1,6 +1,6 @@
-use anyhow::{Error, Result};
+use anyhow::Result;
 use clap::Parser;
-use confuse_fuzz::{fuzz, FuzzerClient};
+use confuse_fuzz::fuzz;
 use confuse_module::{
     config::{InputConfig, TraceMode},
     faults::{x86_64::X86_64Fault, Fault},
@@ -8,7 +8,7 @@ use confuse_module::{
 use confuse_simics_manifest::PublicPackageNumber;
 use confuse_simics_project::SimicsProject;
 use hello_world::HELLO_WORLD_EFI_MODULE;
-use log::{error, info, Level};
+use log::{info, Level};
 use log4rs::{
     append::rolling_file::{
         policy::compound::{

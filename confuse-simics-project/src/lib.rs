@@ -6,7 +6,7 @@
 
 pub mod link;
 pub mod module;
-mod util;
+pub mod util;
 
 use anyhow::{bail, ensure, Context, Result};
 use confuse_simics_manifest::{package_infos, simics_base_version, PackageNumber};

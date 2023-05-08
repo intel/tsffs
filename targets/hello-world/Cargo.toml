@@ -24,3 +24,4 @@ clap = { version = "4.1.13", features = ["derive"] }
 anyhow = "1.0.69"
 confuse-simics-project = { workspace = true }
 dockerfile-rs = "0.3.0"
+rand = "0.8.5"

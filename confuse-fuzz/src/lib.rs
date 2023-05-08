@@ -3,7 +3,7 @@
 //! This library implements a Fuzzer wrapping a [`SimicsProject`] using a [`Client`] to
 //! communicate with the `Confuse` SIMICS module.
 
-use anyhow::{bail, ensure, Error, Result};
+use anyhow::{bail, Result};
 use confuse_module::{
     client::Client, config::InputConfig, stops::StopReason, traits::ConfuseClient,
 };
@@ -14,21 +14,15 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, Clear, ClearType, LeaveAlternateScreen},
 };
-use ipc_shm::{IpcShm, IpcShmWriter};
 use libafl::{
     prelude::{
         tui::{ui::TuiUI, TuiMonitor},
         *,
     },
     schedulers::powersched::PowerSchedule,
-    Fuzzer as _,
 };
 use log::{debug, error, info, Level};
-use std::{
-    fs::create_dir_all,
-    io::stdout,
-    path::{Path, PathBuf},
-};
+use std::{fs::create_dir_all, io::stdout, path::Path};
 
 fn libafl_err<T>(r: Result<T>) -> Result<T, libafl::Error> {
     r.map_err(|e| libafl::Error::Unknown(e.to_string(), ErrorBacktrace::new()))

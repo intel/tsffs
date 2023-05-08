@@ -1,4 +1,4 @@
-error: expected `#[params(...)]`
+error: Expected `params` attribute
  --> tests/ui/test_missing_params.rs:7:5
   |
 7 | /     pub fn test(&self, a: i32, b: i32) -> i32 {

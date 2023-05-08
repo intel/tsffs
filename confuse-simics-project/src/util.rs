@@ -174,7 +174,7 @@ pub fn find_file_in_simics_base<P: AsRef<Path>, S: AsRef<str>>(
 /// Construct a relative path from a provided base directory path to the provided path.
 ///
 /// ```rust
-/// use pathdiff::diff_paths;
+/// use confuse_simics_project::util::diff_paths;
 /// use std::path::*;
 ///
 /// let baz = "/foo/bar/baz";
