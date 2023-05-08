@@ -11,35 +11,48 @@
 //! without using LibAFL. This loop is consistent with the state machine used
 //! internally by the client and module that keeps them in sync.
 //!
-//! ```
-//! let simics_script_path = PathBuf::from("./script.simics");
-//! let project = SimicsProject::try_new_latest()?
-//!     // Add a file to the created simics project at `PROJECT_ROOT/scripts/script.simics`
-//!     .try_with_file(&simics_script_path, "scripts/script.simics")?
-//!     // This script will be our entrypoint when we run SIMICS
-//!     .try_with_file_argument("scripts/script.simics")?;
+//! ```text
+//! use anyhow::Result;
+//! use std::path::PathBuf;
+//! use confuse_simics_project::SimicsProject;
+//! use confuse_module::{
+//!     client::Client,
+//!     config::InputConfig,
+//!     traits::ConfuseClient,
+//! };
 //!
-//! // Create a client that owns the project we just created
-//! let mut client = Client::try_new(project)?;
+//! fn main() -> Result<()> {
+//!     let simics_script_path = PathBuf::from("./script.simics");
+//!     let project = SimicsProject::try_new_latest()?
+//!         // Add a file to the created simics project at `PROJECT_ROOT/scripts/script.simics`
+//!         .try_with_file(&simics_script_path, "scripts/script.simics")?
+//!         // This script will be our entrypoint when we run SIMICS
+//!         .try_with_file_argument("scripts/script.simics")?;
 //!
-//! // Create a blank configuration
-//! let config = InputConfig::default();
+//!     // Create a client that owns the project we just created
+//!     let mut client = Client::try_new(project)?;
 //!
-//! // Initialize the client. This takes us up to the point where the module is ready
-//! // to start the fuzzing loop
-//! let output_config = client.initialize(config)?;
+//!     // Create a blank configuration
+//!     let config = InputConfig::default();
+//!
+//!     // Initialize the client. This takes us up to the point where the module is ready
+//!     // to start the fuzzing loop
+//!     let output_config = client.initialize(config)?;
 //!
 //!
-//! for _ in 0..100 {
-//!     // Reset the target to its initial state once it has been initialized. We could also
-//!     client.reset()?;
-//!     // Run the target with the same input every time. In real life, we want to
-//!     // swap this out with a fuzzer, of course
-//!     let stop_reason = client.run(vec![0x41; 64])?;
+//!     for _ in 0..100 {
+//!         // Reset the target to its initial state once it has been initialized. We could also
+//!         client.reset()?;
+//!         // Run the target with the same input every time. In real life, we want to
+//!         // swap this out with a fuzzer, of course
+//!         let stop_reason = client.run(vec![0x41; 64])?;
+//!     }
+//!
+//!     // Cleanly exit SIMICS and stop the client
+//!     client.exit()?;
+//!
+//!     Ok(())
 //! }
-//!
-//! // Cleanly exit SIMICS and stop the client
-//! client.exit()?;
 //! ```
 
 pub mod test;
