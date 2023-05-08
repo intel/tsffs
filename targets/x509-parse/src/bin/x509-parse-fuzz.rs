@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use anyhow::{Error, Result};
+use anyhow::Result;
 use clap::Parser;
 use confuse_fuzz::fuzz;
 use confuse_module::{
@@ -9,7 +9,7 @@ use confuse_module::{
 };
 use confuse_simics_manifest::PublicPackageNumber;
 use confuse_simics_project::SimicsProject;
-use log::{error, info, Level};
+use log::{info, Level};
 use log4rs::{
     append::rolling_file::{
         policy::compound::{

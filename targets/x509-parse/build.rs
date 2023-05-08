@@ -1,5 +1,6 @@
 use anyhow::{ensure, Result};
 use dockerfile_rs::{Copy, DockerFile, From, TagOrDigest, RUN, WORKDIR};
+use rand::{distributions::Alphanumeric, Rng};
 use std::{
     env::var,
     fs::{read_dir, OpenOptions},
@@ -131,10 +132,17 @@ fn build_efi_module() -> Result<()> {
 
     ensure!(build_status.success(), "Build error: {}", build_status);
 
+    let container_name_suffix: String = rand::thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(4)
+        .map(char::from)
+        .collect();
+    let container_name = format!("edk2-build-x509-parse-tmp-{}", container_name_suffix);
+
     let create_status = Command::new("docker")
         .arg("create")
         .arg("--name")
-        .arg("edk2-build-x509-parse-tmp")
+        .arg(&container_name)
         .arg("edk2-build-x509-parse")
         .status()?;
 
@@ -142,7 +150,10 @@ fn build_efi_module() -> Result<()> {
 
     let cp_status = Command::new("docker")
         .arg("cp")
-        .arg("edk2-build-x509-parse-tmp:/edk2/X509Parse/Build/CryptoPkg/All/DEBUG_GCC5/X64/X509Parse.efi")
+        .arg(format!(
+            "{}:/edk2/X509Parse/Build/CryptoPkg/All/DEBUG_GCC5/X64/X509Parse.efi",
+            &container_name
+        ))
         .arg(&hello_world_efi_out_path)
         // Ignore errors here, we will need to rm for cleanup regardless
         .status()?;
@@ -152,7 +163,7 @@ fn build_efi_module() -> Result<()> {
     let rm_status = Command::new("docker")
         .arg("rm")
         .arg("-f")
-        .arg("edk2-build-x509-parse-tmp")
+        .arg(&container_name)
         .status()?;
 
     ensure!(rm_status.success(), "rm error: {}", rm_status);

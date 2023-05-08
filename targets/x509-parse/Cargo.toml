@@ -24,3 +24,4 @@ confuse_module = { workspace = true, features = ["6.0.162"] }
 anyhow = "1.0.69"
 confuse-simics-project = { workspace = true }
 dockerfile-rs = "0.3.0"
+rand = "0.8.5"
