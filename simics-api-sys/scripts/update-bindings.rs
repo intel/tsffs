@@ -62,7 +62,7 @@ const SIMICS_BASE_VERSIONS: &[&str] = &[
     "6.0.136", "6.0.137", "6.0.138", "6.0.139", "6.0.140", "6.0.141", "6.0.142", "6.0.143",
     "6.0.144", "6.0.145", "6.0.146", "6.0.147", "6.0.148", "6.0.149", "6.0.150", "6.0.151",
     "6.0.152", "6.0.153", "6.0.154", "6.0.155", "6.0.156", "6.0.157", "6.0.158", "6.0.159",
-    "6.0.160", "6.0.161", "6.0.162",
+    "6.0.160", "6.0.161", "6.0.162", "6.0.163", "6.0.164", "6.0.165",
 ];
 
 struct Args {
@@ -527,6 +527,8 @@ fn generate_bindings(args: &Args) -> Result<()> {
             .blocklist_item("Py_MATH_El")
             .blocklist_item("Py_MATH_E")
             .blocklist_item("Py_MATH_TAU")
+            // Blocklisted because the doc comments cause doc tests to fail
+            .blocklist_function("_PyErr_TrySetFromCause")
             .generate()?;
         bindings.write_to_file(&bindings_file)?;
     }

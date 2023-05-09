@@ -24054,13 +24054,6 @@ extern "C" {
     ) -> *mut PyObject;
 }
 extern "C" {
-    #[doc = " Helper that attempts to replace the current exception with one of the\n same type but with a prefix added to the exception text. The resulting\n exception description looks like:\n\n     prefix (exc_type: original_exc_str)\n\n Only some exceptions can be safely replaced. If the function determines\n it isn't safe to perform the replacement, it will leave the original\n unmodified exception in place.\n\n Returns a borrowed reference to the new exception (if any), NULL if the\n existing exception was left in place."]
-    pub fn _PyErr_TrySetFromCause(
-        prefix_format: *const ::std::os::raw::c_char,
-        ...
-    ) -> *mut PyObject;
-}
-extern "C" {
     #[doc = " In signalmodule.c"]
     pub fn PySignal_SetWakeupFd(fd: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
 }
