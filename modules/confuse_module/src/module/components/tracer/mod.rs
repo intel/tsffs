@@ -26,6 +26,7 @@ pub struct Tracer {
     processors: HashMap<i32, Processor>,
     mode: TraceMode,
 }
+
 impl<'a> From<*mut std::ffi::c_void> for &'a mut Tracer {
     /// Convert from a *mut Confuse pointer to a mutable reference to tracer
     fn from(value: *mut std::ffi::c_void) -> &'a mut Tracer {

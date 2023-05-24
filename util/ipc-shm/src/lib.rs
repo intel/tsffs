@@ -115,7 +115,7 @@ impl IpcShm {
     /// Obtain a non-unique writer to the shared memory. Other writers may be created before and
     /// after this one, all of which may write to the mapped memory. Using this method,
     /// synchronization should be used to ensure ordered mutable access
-    pub fn writer(&mut self) -> Result<IpcShmWriter> {
+    pub fn sealed_writer(&mut self) -> Result<IpcShmWriter> {
         let mmap = unsafe { MmapOptions::new().map_mut(&self.memfd)? };
 
         // Make it so we can't apply any more seals, specifically SealFutureWrite to ensure
@@ -123,6 +123,16 @@ impl IpcShm {
         if self.memfd.seals()?.contains(&FileSeal::SealSeal) {
             self.memfd.add_seal(FileSeal::SealSeal)?;
         }
+
+        Ok(IpcShmWriter {
+            size: self.size,
+            mmap,
+        })
+    }
+
+    /// Obtain an unsealed writer to the shared memory. Seals can still be applied
+    pub fn writer(&mut self) -> Result<IpcShmWriter> {
+        let mmap = unsafe { MmapOptions::new().map_mut(&self.memfd)? };
 
         Ok(IpcShmWriter {
             size: self.size,

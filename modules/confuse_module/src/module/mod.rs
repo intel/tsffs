@@ -184,6 +184,7 @@ impl Confuse {
         self.state
             .consume(&msg)
             .context(format!("Error consuming received message {:?}", msg))?;
+
         Ok(msg)
     }
 

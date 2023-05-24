@@ -64,7 +64,7 @@ pub fn fuzz<S: AsRef<str>, P: AsRef<Path>>(
 
         let mut shm = libafl_err(output_config.coverage())?;
 
-        let mut shm_writer = libafl_err(shm.writer())?;
+        let mut shm_writer = libafl_err(shm.unique_writer())?;
 
         libafl_err(client.reset())?;
 
