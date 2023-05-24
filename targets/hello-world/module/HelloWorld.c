@@ -50,8 +50,8 @@ UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable) {
             gBS->Stall(10 * 1000 * 1000);
         }
         case 'C': {
-            // This should double or triple fault (or both)
-            UINT8* ptr = (UINT8*)0xffffffffffffffff;
+            // This will page fault
+            UINT8 *ptr = (UINT8 *)0xffffffffffffffff;
             *ptr = 0x00;
         }
         default: {
