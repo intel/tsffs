@@ -13,7 +13,8 @@ use simics_api_sys::{
     attr_kind_t_Sim_Val_Boolean, attr_kind_t_Sim_Val_Data, attr_kind_t_Sim_Val_Dict,
     attr_kind_t_Sim_Val_Floating, attr_kind_t_Sim_Val_Integer, attr_kind_t_Sim_Val_Invalid,
     attr_kind_t_Sim_Val_List, attr_kind_t_Sim_Val_Nil, attr_kind_t_Sim_Val_Object,
-    attr_kind_t_Sim_Val_String, attr_value__bindgen_ty_1, attr_value_t, SIM_get_attribute,
+    attr_kind_t_Sim_Val_String, attr_value__bindgen_ty_1, attr_value_t, SIM_attr_free,
+    SIM_free_attribute, SIM_get_attribute, SIM_make_attr_list,
 };
 use std::{ffi::CStr, ptr::null_mut};
 
@@ -353,4 +354,12 @@ pub fn attr_dict_value(attr: AttrValue, index: u32) -> Result<AttrValue> {
 /// Get an attribute of an object
 pub fn get_attribute<S: AsRef<str>>(obj: *mut ConfObject, attribute: S) -> Result<AttrValue> {
     Ok(unsafe { SIM_get_attribute(obj.into(), raw_cstr(attribute)?) })
+}
+
+pub fn free_attribute(attr: AttrValue) {
+    unsafe { SIM_free_attribute(attr) }
+}
+
+pub fn attr_free(attr: *mut AttrValue) {
+    unsafe { SIM_attr_free(attr.into()) }
 }

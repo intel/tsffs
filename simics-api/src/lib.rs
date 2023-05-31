@@ -281,3 +281,5 @@ pub mod safe;
     feature = "6.0.165",
 ))]
 pub use safe::*;
+
+pub use simics_api_sys as unsafe_api;

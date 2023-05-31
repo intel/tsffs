@@ -6,6 +6,8 @@ members = [
     "simics-api-sys",
     "simics-api",
     "simics-api-macro",
+    "simics",
+    # Simics client library, linked against SIMICS. Drop-in 
     # Just provides common simics manifest tools for parsing/managing simics
     "confuse-simics-manifest",
     # Fuzzer

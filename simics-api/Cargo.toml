@@ -14,6 +14,9 @@ num-traits = "0.2.15"
 num = "0.4.0"
 simics-api-macro = { workspace = true, optional = true }
 log = "0.4.17"
+const-str = "0.5.4"
+paste = "1.0.12"
+clap = { version = "4.3.0", features = ["derive"] }
 
 [features]
 # Derive is provided by default to provide #[derive(Module)] and #[module]

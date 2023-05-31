@@ -7,4 +7,4 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.70"
-versions = "4.1.0"
+versions = "5.0.0"
