@@ -5,11 +5,10 @@ edition = "2021"
 
 [dependencies]
 confuse_module = { workspace = true, features = ["6.0.165"] }
-confuse-simics-project = { workspace = true }
+simics = { workspace = true, features = ["6.0.165"] }
 confuse-fuzz = { workspace = true }
 anyhow = "1.0.69"
 log = "0.4.17"
-confuse-simics-manifest = { workspace = true }
 indoc = "2.0.1"
 ipc-channel = { workspace = true }
 libafl = { workspace = true, features = ["tui_monitor"] }
@@ -22,6 +21,5 @@ clap = { version = "4.1.13", features = ["derive"] }
 
 [build-dependencies]
 anyhow = "1.0.69"
-confuse-simics-project = { workspace = true }
 dockerfile-rs = "0.3.0"
 rand = "0.8.5"

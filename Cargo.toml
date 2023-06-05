@@ -1,15 +1,12 @@
 [workspace]
 members = [
     # Provide simics 
-    "confuse-simics-project",
     # Provide real simics APIs
     "simics-api-sys",
     "simics-api",
     "simics-api-macro",
     "simics",
-    # Simics client library, linked against SIMICS. Drop-in 
-    # Just provides common simics manifest tools for parsing/managing simics
-    "confuse-simics-manifest",
+    "simics-cli",
     # Fuzzer
     "confuse-fuzz",
     # Modules
@@ -25,8 +22,7 @@ members = [
 ]
 
 [workspace.dependencies]
-confuse-simics-project = { path = "./confuse-simics-project" }
-confuse-simics-manifest = { path = "./confuse-simics-manifest" }
+simics = { path = "./simics" }
 confuse-fuzz = { path = "./confuse-fuzz" }
 confuse_module = { path = "./modules/confuse_module" }
 simics-api-sys = { path = "./simics-api-sys" }
@@ -40,3 +36,9 @@ ipc-channel = { git = "https://github.com/novafacing/ipc-channel.git", version =
     "memfd",
 ] }
 libafl = { git = "https://github.com/AFLplusplus/LibAFL", rev = "c8c5d89f336208112ff91889865e6bedb62aa23d" }
+
+[profile.dev]
+rpath = true
+
+[profile.release]
+rpath = true

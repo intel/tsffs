@@ -4,12 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-confuse-simics-project = { workspace = true }
 confuse-fuzz = { workspace = true }
 anyhow = "1.0.69"
 log = "0.4.17"
-confuse-simics-manifest = { workspace = true }
 indoc = "2.0.1"
+simics = { workspace = true, features = ["6.0.165"] }
 ipc-channel = { workspace = true }
 libafl = { workspace = true }
 tempfile = "3.4.0"
@@ -22,6 +21,5 @@ confuse_module = { workspace = true, features = ["6.0.165"] }
 
 [build-dependencies]
 anyhow = "1.0.69"
-confuse-simics-project = { workspace = true }
 dockerfile-rs = "0.3.0"
 rand = "0.8.5"

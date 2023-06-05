@@ -5,8 +5,6 @@ use confuse_module::{
     config::{InputConfig, TraceMode},
     faults::{x86_64::X86_64Fault, Fault},
 };
-use confuse_simics_manifest::PublicPackageNumber;
-use confuse_simics_project::SimicsProject;
 use hello_world::HELLO_WORLD_EFI_MODULE;
 use log::{info, Level};
 use log4rs::{
@@ -20,6 +18,8 @@ use log4rs::{
     encode::pattern::PatternEncoder,
     init_config, Config,
 };
+use simics::manifest::PublicPackageNumber;
+use simics::project::SimicsProject;
 use std::path::PathBuf;
 use tempfile::Builder as NamedTempFileBuilder;
 

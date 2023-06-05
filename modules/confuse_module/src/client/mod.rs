@@ -66,9 +66,9 @@ use crate::{
     BOOTSTRAP_SOCKNAME, CLASS_NAME, LOGLEVEL_VARNAME,
 };
 use anyhow::{bail, Result};
-use confuse_simics_project::SimicsProject;
 use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender};
 use log::{debug, info};
+use simics::project::SimicsProject;
 use std::io::{BufRead, BufReader};
 
 /// The client for the CONFUSE module. Allows controlling the module over IPC using the child

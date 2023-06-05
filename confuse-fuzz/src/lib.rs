@@ -7,7 +7,6 @@ use anyhow::{bail, Result};
 use confuse_module::{
     client::Client, config::InputConfig, stops::StopReason, traits::ConfuseClient,
 };
-use confuse_simics_project::SimicsProject;
 use crossterm::{
     cursor::Show,
     event::DisableMouseCapture,
@@ -22,6 +21,7 @@ use libafl::{
     schedulers::powersched::PowerSchedule,
 };
 use log::{debug, error, info, Level};
+use simics::project::SimicsProject;
 use std::{fs::create_dir_all, io::stdout, path::Path};
 
 fn libafl_err<T>(r: Result<T>) -> Result<T, libafl::Error> {

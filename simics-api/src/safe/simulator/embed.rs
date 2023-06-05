@@ -21,8 +21,13 @@ pub enum GuiMode {
 
 impl ToString for GuiMode {
     fn to_string(&self) -> String {
-        let val: u32 = *self as u32;
-        val.to_string()
+        match self {
+            GuiMode::None => "no-gui",
+            GuiMode::Mixed => "mixed",
+            GuiMode::Only => "only",
+            GuiMode::Default => "no-gui",
+        }
+        .to_string()
     }
 }
 
@@ -52,6 +57,7 @@ impl ToString for DeprecationLevel {
 
 /// Initialization arguments. See:
 /// https://simics-download.pdx.intel.com/simics-6/docs/html/rm-base/simics.html
+#[derive(Clone)]
 pub struct InitArg(init_arg_t);
 
 impl From<InitArg> for init_arg_t {
@@ -150,6 +156,7 @@ impl_bool_arg!(InitArg, "as-py-module");
 impl_bool_arg!(InitArg, "py-import-all");
 impl_bool_arg!(InitArg, "use-module-cache");
 
+#[derive(Clone)]
 pub struct InitArgs {
     args: Vec<init_arg_t>,
 }

@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug simics-cli-6-0-165",
+            "cargo": {
+                "args": ["build", "--bin", "simics-cli-6-0-165", "--features=6.0.165"]
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
