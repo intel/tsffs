@@ -25,18 +25,16 @@ impl Simics {
 
         let exe = current_exe()?;
         let argv = &[exe.to_string_lossy()];
-        println!("Initializing environment");
         init_environment(argv, false, false)?;
-        println!("Initializing simulator");
         init_simulator(&mut args);
         Ok(Self {})
     }
 
-    pub fn run() -> ! {
+    pub fn run(&self) -> ! {
         main_loop()
     }
 
-    pub fn interactive() -> ! {
+    pub fn interactive(&self) -> ! {
         init_command_line();
         main_loop()
     }

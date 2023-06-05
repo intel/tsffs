@@ -61,6 +61,8 @@ pub struct Args {
     script_trace: bool,
     #[arg(long)]
     verbose: bool,
+    #[arg(long)]
+    pub interactive: bool,
     /// Command or file of the form `'TYPE=VALUE'` where `TYPE` is one of
     /// `PYTHON`, `COMMAND`, or `CONFIG` and `VALUE` is a path to a file when
     /// `TYPE` is `PYTHON` or `CONFIG` and a string to run as a command otherwise

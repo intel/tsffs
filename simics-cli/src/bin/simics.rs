@@ -17,5 +17,9 @@ fn main() -> Result<()> {
         };
     }
 
+    if args.interactive {
+        simics.interactive();
+    }
+
     Ok(())
 }
