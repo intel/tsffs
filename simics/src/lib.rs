@@ -6,3 +6,4 @@ pub(crate) mod bootstrap;
 pub mod manifest;
 pub mod project;
 pub mod simics;
+pub use bootstrap::{link_simics_linux, simics_home};

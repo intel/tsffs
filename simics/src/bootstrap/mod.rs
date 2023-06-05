@@ -300,6 +300,10 @@ pub fn simics_home() -> Result<PathBuf> {
 
 /// Emit cargo directives to link to SIMICS given a particular version constraint
 pub fn link_simics_linux<S: AsRef<str>>(version_constraint: S) -> Result<()> {
+    // NOTE: If you need more than this, you are on your own!
+
+    const UPDIR_MAX: &str = "../../../../../../../../../../../../../../../../../../../..";
+
     let simics_home_dir = simics_home()?;
 
     let simics_base_info = simics_base_version(&simics_home_dir, &version_constraint)?;
@@ -374,41 +378,8 @@ pub fn link_simics_linux<S: AsRef<str>>(version_constraint: S) -> Result<()> {
         if let Ok(found_lib) = find_file_in_simics_base(&simics_base_dir, &lib_name) {
             // If we are running a build script right now, we will copy the library
             let found_lib_parent = found_lib.parent().context("No parent path found")?;
-            lib_search_dirs.insert(found_lib_parent.to_path_buf());
-
-            if let Ok(out_dir) = var("OUT_DIR") {
-                let out_dir_path = PathBuf::from(out_dir);
-                let mut got_build = false;
-                let target_dir_components = out_dir_path
-                    .components()
-                    .rev()
-                    .skip_while(|c| {
-                        if c.as_os_str() == "build" {
-                            got_build = true;
-                            true
-                        } else {
-                            !got_build
-                        }
-                    })
-                    .collect::<Vec<_>>();
-                let target_dir = target_dir_components.iter().rev().collect::<PathBuf>();
-                println!(
-                    "Symlinking located library from '{}' to '{}'",
-                    found_lib.display(),
-                    target_dir.display()
-                );
-
-                // copy(&found_lib, target_dir.join(&lib_name))?;
-                // let lib_rename = format!("{}.{}", &lib_name, &simics_base_version);
-                println!("cargo:rustc-link-lib=dylib:+verbatim={}", &lib_name);
-                // let target_path = target_dir.join(&lib_rename);
-
-                // if let Err(e) = symlink(&found_lib, &target_path) {
-                //     eprintln!("Error symlinking: {}", e);
-                // }
-
-                println!("cargo:rustc-link-search=native={}", target_dir.display());
-            }
+            lib_search_dirs.insert(found_lib_parent.to_path_buf().canonicalize()?);
+            println!("cargo:rustc-link-lib=dylib:+verbatim={}", &lib_name);
         } else {
             eprintln!("Warning! Could not find simics dependency library {}. Chances are, it is a system library and this is OK.", lib_name);
         }
@@ -419,6 +390,11 @@ pub fn link_simics_linux<S: AsRef<str>>(version_constraint: S) -> Result<()> {
             "cargo:rustc-link-search=native={}",
             lib_search_dir.display()
         );
+        println!(
+            "cargo:rustc-link-arg=-Wl,-rpath,$ORIGIN/{}{}",
+            UPDIR_MAX,
+            lib_search_dir.display()
+        )
     }
 
     // NOTE: This only works for `cargo run` and `cargo test` and won't work for just running

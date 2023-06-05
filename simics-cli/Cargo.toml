@@ -8,8 +8,13 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.71"
 clap = "4.3.0"
-simics = { workspace = true, features = ["link"] }
+simics = { workspace = true }
 simics-api.workspace = true
+
+[build-dependencies]
+simics = { workspace = true }
+simics-api = { workspace = true }
+anyhow = "1.0.71"
 
 [[bin]]
 name = "simics-cli-6-0-28"
