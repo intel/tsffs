@@ -47,7 +47,6 @@ walkdir = "2.3.3"
 
 
 [features]
-"link" = []
 "6.0.28" = ["simics-api/6.0.28"]
 "6.0.31" = ["simics-api/6.0.31"]
 "6.0.33" = ["simics-api/6.0.33"]

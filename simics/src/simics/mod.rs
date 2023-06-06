@@ -2,15 +2,16 @@ use anyhow::Result;
 use simics_api::{
     call_python_module_function, free_attribute, init_command_line, init_environment,
     init_simulator, main_loop, make_attr_string_adopt, run_command, source_python,
-    unsafe_api::{SIM_make_attr_list, SIMICS_VERSION},
-    AttrValue, InitArg, InitArgs,
+    unsafe_api::SIM_make_attr_list, AttrValue, InitArgs,
 };
 use std::{
     env::{current_exe, set_var},
     path::Path,
 };
 
-use crate::bootstrap::simics_home;
+pub mod home;
+
+use home::simics_home;
 
 pub struct Simics {}
 
@@ -63,13 +64,5 @@ impl Simics {
         free_attribute(args);
 
         Ok(())
-    }
-}
-
-pub struct SimicsBinary {}
-
-impl SimicsBinary {
-    pub fn try_new<S: AsRef<str>>(name: S) -> Result<Self> {
-        Ok(SimicsBinary {})
     }
 }

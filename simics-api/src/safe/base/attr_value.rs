@@ -14,7 +14,7 @@ use simics_api_sys::{
     attr_kind_t_Sim_Val_Floating, attr_kind_t_Sim_Val_Integer, attr_kind_t_Sim_Val_Invalid,
     attr_kind_t_Sim_Val_List, attr_kind_t_Sim_Val_Nil, attr_kind_t_Sim_Val_Object,
     attr_kind_t_Sim_Val_String, attr_value__bindgen_ty_1, attr_value_t, SIM_attr_free,
-    SIM_free_attribute, SIM_get_attribute, SIM_make_attr_list,
+    SIM_free_attribute, SIM_get_attribute,
 };
 use std::{ffi::CStr, ptr::null_mut};
 

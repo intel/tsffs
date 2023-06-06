@@ -19,7 +19,7 @@ use log4rs::{
     encode::pattern::PatternEncoder,
     init_config, Config,
 };
-use simics::manifest::PublicPackageNumber;
+use simics::package::PublicPackageNumber;
 use simics::project::SimicsProject;
 use tempfile::Builder as NamedTempFileBuilder;
 

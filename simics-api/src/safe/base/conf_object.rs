@@ -7,17 +7,15 @@
 //! - conf_object_t
 //! - object_iter_t
 
-use crate::{last_error, EventClass, Interface};
+use crate::{last_error, Interface};
 use anyhow::{bail, Result};
 use raw_cstr::raw_cstr;
 use simics_api_sys::{
     class_data_t, class_info_t, class_kind_t_Sim_Class_Kind_Extension,
     class_kind_t_Sim_Class_Kind_Pseudo, class_kind_t_Sim_Class_Kind_Session,
     class_kind_t_Sim_Class_Kind_Vanilla, conf_class_t, conf_object_t, SIM_c_get_interface,
-    SIM_create_class, SIM_get_class, SIM_register_class, SIM_register_event,
-    SIM_register_interface,
+    SIM_create_class, SIM_get_class, SIM_register_class, SIM_register_interface,
 };
-use std::{ffi::c_void, mem::transmute};
 
 pub type ConfObject = conf_object_t;
 pub type ConfClass = conf_class_t;
@@ -111,37 +109,5 @@ pub fn get_class<S: AsRef<str>>(name: S) -> Result<*mut ConfClass> {
         bail!("Failed to get class {}: {}", name.as_ref(), last_error());
     } else {
         Ok(cls)
-    }
-}
-
-/// Register an event that can be posted
-pub fn register_event<S: AsRef<str>>(
-    name: S,
-    cls: &ConfClass,
-    callback: unsafe extern "C" fn(*mut ConfObject, *mut c_void),
-) -> Result<*mut EventClass> {
-    let name_raw = raw_cstr(name.as_ref())?;
-    let mut cls = *cls;
-    let event = unsafe {
-        SIM_register_event(
-            name_raw,
-            &mut cls as *mut ConfClass,
-            0,
-            transmute(callback),
-            None,
-            None,
-            None,
-            None,
-        )
-    };
-
-    if event.is_null() {
-        bail!(
-            "Unable to register event {}: {}",
-            name.as_ref(),
-            last_error()
-        );
-    } else {
-        Ok(event)
     }
 }

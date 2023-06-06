@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Error, Result};
+use anyhow::Result;
 use clap::Parser;
 use simics::simics::Simics;
 use simics_cli::{Args, Command};

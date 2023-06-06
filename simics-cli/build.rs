@@ -1,5 +1,5 @@
 use anyhow::Result;
-use simics::link_simics_linux;
+use simics::link::link_simics_linux;
 use simics_api::unsafe_api::SIMICS_VERSION;
 
 fn main() -> Result<()> {

@@ -4,14 +4,15 @@
 //! modules, and creating and destroying temporary project directories, and actually running
 //! the SIMICS process after configuration
 
-pub mod module;
-pub mod util;
-
-use crate::bootstrap::{package_infos, simics_base_version, PackageNumber};
+use crate::{
+    manifest::simics_base_version,
+    module::SimicsModule,
+    package::{package_infos, PackageNumber},
+    simics::home::simics_home,
+    util::{abs_or_rel_base_relpath, copy_dir_contents},
+};
 use anyhow::{bail, ensure, Context, Result};
-use dotenvy_macro::dotenv;
 use log::{debug, error, info, Level};
-use module::SimicsModule;
 use rand::{distributions::Alphanumeric, Rng};
 use std::{
     collections::{HashMap, HashSet},
@@ -25,32 +26,11 @@ use std::{
     thread::{spawn, JoinHandle},
 };
 use tempdir::TempDir;
-use util::{abs_or_rel_base_relpath, copy_dir_contents};
 use version_tools::VersionConstraint;
 use versions::Versioning;
 
-/// The SIMICS home installation directory. A `.env` file containing a line like:
-/// SIMICS_HOME=/home/username/simics/ must be present in the workspace tree
-const SIMICS_HOME: &str = dotenv!("SIMICS_HOME");
-
 /// Prefix for naming temporary directories
 const SIMICS_PROJECT_PREFIX: &str = "simics_project";
-
-/// Return the SIMICS_HOME directory as a PathBuf. This depends on the SIMICS_HOME environment
-/// variable being defined at compile time, and runtime changes to this variable will have no
-/// effect.
-pub fn simics_home() -> Result<PathBuf> {
-    let simics_home = PathBuf::from(SIMICS_HOME);
-    match simics_home.exists() {
-        true => Ok(simics_home),
-        false => {
-            bail!(
-                "SIMICS_HOME is defined, but {} does not exist.",
-                SIMICS_HOME
-            )
-        }
-    }
-}
 
 /// A SIMICS command, this struct holds the arguments to a SIMICS command as configured with the
 /// project builder API as well as its running state.
@@ -404,7 +384,7 @@ impl SimicsProject {
 
         info!("Created new simics project at {}", base_path.display());
 
-        let home = PathBuf::from(SIMICS_HOME).canonicalize()?;
+        let home = simics_home()?.canonicalize()?;
 
         Ok(Self {
             base_path,
