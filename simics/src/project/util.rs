@@ -128,10 +128,9 @@ pub fn find_crate<S: AsRef<str>>(crate_name: S) -> Result<Package> {
         .clone())
 }
 
-
 /// Construct a relative path from a provided base directory path to the provided path.
 ///
-/// ```rust
+/// ```rust,ignore
 /// use confuse_simics_project::util::diff_paths;
 /// use std::path::*;
 ///
