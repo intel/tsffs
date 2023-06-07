@@ -1,14 +1,28 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
+use anyhow::Result;
+use simics::{
+    api::{GuiMode, InitArg, InitArgs},
+    simics::Simics,
+};
+
+pub fn test_init() -> Result<()> {
+    let args = InitArgs::default()
+        .arg(InitArg::batch_mode()?)
+        .arg(InitArg::gui_mode(GuiMode::None.to_string())?)
+        .arg(InitArg::quiet()?)
+        .arg(InitArg::no_windows()?)
+        .arg(InitArg::no_settings()?);
+
+    Simics::try_init(args)?;
+    Ok(())
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
+mod test {
+    use super::test_init;
+    use anyhow::Result;
 
     #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+    pub fn init() -> Result<()> {
+        test_init()
     }
 }

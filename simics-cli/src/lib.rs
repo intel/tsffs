@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Error, Result};
 use clap::{Parser, ValueEnum};
-use simics_api::{DeprecationLevel, GuiMode, InitArg, InitArgs};
+use simics::api::{DeprecationLevel, GuiMode, InitArg, InitArgs};
 use std::{path::PathBuf, str::FromStr};
 
 #[derive(Clone, Copy, Debug, ValueEnum)]

@@ -27,26 +27,14 @@ walkdir = "2.3.3"
 
 [build-dependencies]
 anyhow = "1.0.71"
-clap = { version = "4.3.0", features = ["derive"] }
-dotenvy_macro = "0.15.7"
-itertools = "0.10.5"
-log = "0.4.18"
-num = "0.4.0"
-num-derive = "0.3.3"
-num-traits = "0.2.15"
-rand = "0.8.5"
-regex = "1.8.3"
-serde = { version = "1.0.163", features = ["derive"] }
-simics-api = { workspace = true }
-tempdir = "0.3.7"
-version-tools.workspace = true
-versions = "5.0.0"
-walkdir = "2.3.3"
+simics-api.workspace = true
+simics-link.workspace = true
 
 [dev-dependencies]
 
 
 [features]
+link = []
 "6.0.28" = ["simics-api/6.0.28"]
 "6.0.31" = ["simics-api/6.0.31"]
 "6.0.33" = ["simics-api/6.0.33"]

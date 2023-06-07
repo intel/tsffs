@@ -1,11 +1,10 @@
+use crate::{manifest::simics_base_version, simics::home::simics_home, util::find_file_in_dir};
+use anyhow::{ensure, Context, Result};
+use regex::Regex;
 use std::{
     collections::HashSet,
     process::{Command, Stdio},
 };
-
-use crate::{manifest::simics_base_version, simics::home::simics_home, util::find_file_in_dir};
-use anyhow::{ensure, Context, Result};
-use regex::Regex;
 
 /// Emit cargo directives to link to SIMICS given a particular version constraint
 pub fn link_simics_linux<S: AsRef<str>>(version_constraint: S) -> Result<()> {

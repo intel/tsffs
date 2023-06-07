@@ -7,18 +7,18 @@ fn main() -> Result<()> {
     let args = Args::parse();
     let simics_args = Args::parse_as_init_args()?;
 
-    let simics = Simics::try_new(simics_args)?;
+    Simics::try_init(simics_args)?;
 
     for command in args.command {
         match command {
-            Command::Command { command } => simics.command(command)?,
-            Command::Python { file } => simics.python(file)?,
-            Command::Config { config } => simics.config(config)?,
+            Command::Command { command } => Simics::command(command)?,
+            Command::Python { file } => Simics::python(file)?,
+            Command::Config { config } => Simics::config(config)?,
         };
     }
 
     if args.interactive {
-        simics.interactive();
+        Simics::interactive();
     }
 
     Ok(())

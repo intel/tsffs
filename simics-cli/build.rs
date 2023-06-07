@@ -1,6 +1,6 @@
 use anyhow::Result;
-use simics::link::link_simics_linux;
-use simics_api::unsafe_api::SIMICS_VERSION;
+use simics_api::sys::SIMICS_VERSION;
+use simics_link::link_simics_linux;
 
 fn main() -> Result<()> {
     #[cfg(target_family = "unix")]

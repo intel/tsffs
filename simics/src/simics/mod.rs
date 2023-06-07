@@ -2,7 +2,7 @@ use anyhow::Result;
 use simics_api::{
     call_python_module_function, free_attribute, init_command_line, init_environment,
     init_simulator, main_loop, make_attr_string_adopt, run_command, source_python,
-    unsafe_api::SIM_make_attr_list, AttrValue, InitArgs,
+    sys::SIM_make_attr_list, AttrValue, InitArgs,
 };
 use std::{env::current_exe, path::Path};
 
@@ -11,34 +11,34 @@ pub mod home;
 pub struct Simics {}
 
 impl Simics {
-    pub fn try_new(mut args: InitArgs) -> Result<Self> {
+    pub fn try_init(mut args: InitArgs) -> Result<()> {
         let exe = current_exe()?;
         let argv = &[exe.to_string_lossy()];
         init_environment(argv, false, false)?;
         init_simulator(&mut args);
-        Ok(Self {})
+        Ok(())
     }
 
-    pub fn run(&self) -> ! {
+    pub fn run() -> ! {
         main_loop()
     }
 
-    pub fn interactive(&self) -> ! {
+    pub fn interactive() -> ! {
         init_command_line();
         main_loop()
     }
 
-    pub fn command<S: AsRef<str>>(&self, command: S) -> Result<()> {
+    pub fn command<S: AsRef<str>>(command: S) -> Result<()> {
         free_attribute(run_command(command)?);
 
         Ok(())
     }
 
-    pub fn python<P: AsRef<Path>>(&self, file: P) -> Result<()> {
+    pub fn python<P: AsRef<Path>>(file: P) -> Result<()> {
         source_python(file)
     }
 
-    pub fn config<P: AsRef<Path>>(&self, file: P) -> Result<()> {
+    pub fn config<P: AsRef<Path>>(file: P) -> Result<()> {
         let mut args = unsafe {
             SIM_make_attr_list(1, make_attr_string_adopt(file.as_ref().to_string_lossy()))
         };

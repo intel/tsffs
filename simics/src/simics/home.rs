@@ -1,7 +1,6 @@
-use std::path::PathBuf;
-
 use anyhow::{bail, Result};
 use dotenvy_macro::dotenv;
+use std::path::PathBuf;
 
 const SIMICS_HOME: &str = dotenv!("SIMICS_HOME");
 
