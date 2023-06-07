@@ -19,6 +19,7 @@ members = [
     "util/raw-cstr",
     "util/version-tools",
     "util/raffl-macro",
+    "util/artifact-dependency",
 ]
 
 [workspace.dependencies]
