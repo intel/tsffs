@@ -9,10 +9,6 @@ use regex::Regex;
 
 /// Emit cargo directives to link to SIMICS given a particular version constraint
 pub fn link_simics_linux<S: AsRef<str>>(version_constraint: S) -> Result<()> {
-    // NOTE: If you need more than this, you are on your own!
-
-    // const UPDIR_MAX: &str = "../../../../../../../../../../../../../../../../../../../..";
-
     let simics_home_dir = simics_home()?;
 
     let simics_base_info = simics_base_version(&simics_home_dir, &version_constraint)?;

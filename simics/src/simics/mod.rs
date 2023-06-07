@@ -4,26 +4,14 @@ use simics_api::{
     init_simulator, main_loop, make_attr_string_adopt, run_command, source_python,
     unsafe_api::SIM_make_attr_list, AttrValue, InitArgs,
 };
-use std::{
-    env::{current_exe, set_var},
-    path::Path,
-};
+use std::{env::current_exe, path::Path};
 
 pub mod home;
-
-use home::simics_home;
 
 pub struct Simics {}
 
 impl Simics {
     pub fn try_new(mut args: InitArgs) -> Result<Self> {
-        #[cfg(target_family = "unix")]
-        let python_home = simics_home()?.join("linux64");
-        #[cfg(not(target_family = "unix"))]
-        compile_error!("Target families other than unix-like are not supported yet");
-
-        set_var("PYTHONHOME", python_home.to_string_lossy().to_string());
-
         let exe = current_exe()?;
         let argv = &[exe.to_string_lossy()];
         init_environment(argv, false, false)?;

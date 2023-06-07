@@ -27,21 +27,44 @@ pub enum Profile {
 }
 
 #[derive(Builder)]
-#[builder(setter(strip_option))]
-#[builder(build_fn(skip))]
+/// Builder to find and optionally build an artifact dependency from a particular workspace
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use artifact_dependency::{ArtifactDependencyBuilder, CrateType};
+///
+/// let dep_path = ArtifactDependencyBuilder::default()
+///     // Build the artifact dependency if it is missing
+///     .build_missing(true)
+///     // Artifact type of CDylib
+///     .artifact_type(CrateType::CDynamicLibrary)
+///     // Name of the crate in the workspace
+///     .crate_name("the-crate-name")
+///     // The path to the workspace root containing the crate. If this isn't specified, it will
+///     // be looked up in the current workspace.
+///     .workspace_root(PathBuf::from("/path/to/workspace/root/"))
+///     .build()
+///     .expect("Couldn't build artifact dependency search")
+///     .search()
+///     .expect("Couldn't locate artifact dependency");
+/// ```
 pub struct ArtifactDependency {
+    #[builder(setter(into, strip_option), default)]
     /// Workspace root to search for an artifact dependency in. Defaults to the current workspace
     /// if one is not provided.
     pub workspace_root: Option<PathBuf>,
     /// Crate name to search for an artifact dependency for.
+    #[builder(setter(into))]
     pub crate_name: String,
     /// Type of artifact to search for
     pub artifact_type: CrateType,
+    #[builder(setter(into, strip_option), default)]
     /// Profile, defaults to the current profile
     pub profile: Option<Profile>,
     /// Build the artifact if it is missing
     pub build_missing: bool,
-    #[builder(setter(each = "feature"))]
+    #[builder(setter(each = "feature"), default)]
     pub features: Vec<String>,
 }
 
@@ -111,6 +134,7 @@ impl ArtifactDependency {
             })?;
 
         let package_name = package.name.clone();
+        let package_result_name = package_name.replace('-', "_");
 
         let (dll_prefix, dll_suffix, staticlib_prefix, staticlib_suffix, exe_suffix) =
             ARTIFACT_NAMEPARTS;
@@ -125,14 +149,15 @@ impl ArtifactDependency {
 
         let artifact_path = match self.artifact_type {
             CrateType::Executable => {
-                profile_target_path.join(format!("{}{}", &package.name, exe_suffix))
+                profile_target_path.join(format!("{}{}", &package_result_name, exe_suffix))
             }
-            CrateType::CDynamicLibrary => {
-                profile_target_path.join(format!("{}{}{}", dll_prefix, &package.name, dll_suffix))
-            }
+            CrateType::CDynamicLibrary => profile_target_path.join(format!(
+                "{}{}{}",
+                dll_prefix, &package_result_name, dll_suffix
+            )),
             CrateType::StaticLibrary => profile_target_path.join(format!(
                 "{}{}{}",
-                staticlib_prefix, package.name, staticlib_suffix
+                staticlib_prefix, package_result_name, staticlib_suffix
             )),
             _ => bail!(
                 "Crate type {:?} is not supported as an artifact dependency source",
@@ -145,11 +170,11 @@ impl ArtifactDependency {
                 let cargo = var("CARGO")?;
                 let mut cargo_command = Command::new(cargo);
                 cargo_command
-                    .arg("--build")
+                    .arg("build")
                     .arg("--manifest-path")
                     .arg(workspace_root.join("Cargo.toml"))
                     .arg("--package")
-                    .arg(&package.name);
+                    .arg(&package_name);
 
                 match &profile {
                     Profile::Release => {

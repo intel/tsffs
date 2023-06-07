@@ -10,9 +10,5 @@ fn main() -> Result<()> {
     compile_error!("Non-unix-like platforms are not yet supported");
 
     println!("cargo:rerun-if-changed=build.rs");
-    println!(
-        "cargo:rerun-if-changed={}",
-        concat!(env!("CARGO_MANIFEST_DIR"), "/src/bootstrap/mod.rs")
-    );
     Ok(())
 }

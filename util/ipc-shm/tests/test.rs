@@ -82,3 +82,25 @@ fn test_unidirectional_write_multi_read() -> Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn test_sealed_writer() -> Result<()> {
+    let mut shm = IpcShm::default();
+
+    let mut writer = shm.writer()?;
+
+    let writer2 = shm.unique_writer()?;
+
+    writer.write(b"Hello, world!")?;
+
+    let res = writer2.read(13)?;
+
+    assert_eq!(res, b"Hello, world!", "Not equal");
+
+    assert!(
+        shm.sealed_writer().is_err(),
+        "Should not be able to create a writable mapping after a unique writer is mapped"
+    );
+
+    Ok(())
+}
