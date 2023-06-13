@@ -53,7 +53,8 @@
 //!                `Makefile` for the interface
 
 use crate::util::{copy_dir_contents, find_crate, find_library, LibraryType};
-use anyhow::{ensure, Context, Result};
+use anyhow::{ensure, Context, Error, Result};
+use derive_builder::Builder;
 use serde::Deserialize;
 use serde_json::from_value as from_json_value;
 use std::{
@@ -220,3 +221,7 @@ impl SimicsModule {
         Ok(())
     }
 }
+
+#[derive(Builder, Debug, Clone)]
+#[builder(build_fn(error = "Error"))]
+pub struct Module {}

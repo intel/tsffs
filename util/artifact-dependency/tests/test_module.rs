@@ -11,5 +11,5 @@ fn test() {
         .search()
         .expect("Couldn't find dependency");
 
-    assert!(dep.exists(), "Dep did not exist");
+    assert!(dep.path.exists(), "Dep did not exist");
 }

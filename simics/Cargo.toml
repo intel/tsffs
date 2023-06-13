@@ -9,6 +9,7 @@ edition = "2021"
 anyhow = "1.0.71"
 cargo_metadata = "0.15.4"
 clap = { version = "4.3.0", features = ["derive"] }
+derive_builder = "0.12.0"
 dotenvy_macro = "0.15.7"
 itertools = "0.10.5"
 log = "0.4.18"
@@ -31,7 +32,6 @@ simics-api.workspace = true
 simics-link.workspace = true
 
 [dev-dependencies]
-
 
 [features]
 link = []

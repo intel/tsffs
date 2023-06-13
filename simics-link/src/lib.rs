@@ -1,4 +1,5 @@
-//! Standalone simics linking functionality
+//! Standalone simics linking functionality. This copies from the `simics` crate and should be updated
+//! if the linking strategy there changes.
 
 extern crate num_traits;
 #[macro_use]

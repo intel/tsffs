@@ -6,14 +6,16 @@
 
 use crate::{
     manifest::simics_base_version,
-    module::SimicsModule,
-    package::{package_infos, PackageNumber},
+    module::{Module, SimicsModule},
+    package::{package_infos, Package, PackageNumber},
     simics::home::simics_home,
     util::{abs_or_rel_base_relpath, copy_dir_contents},
 };
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{bail, ensure, Context, Error, Result};
+use derive_builder::Builder;
 use log::{debug, error, info, Level};
 use rand::{distributions::Alphanumeric, Rng};
+use simics_api::sys::SIMICS_VERSION;
 use std::{
     collections::{HashMap, HashSet},
     fs::{copy, create_dir_all, remove_dir_all, OpenOptions},
@@ -946,5 +948,78 @@ impl SimicsProject {
         );
 
         self.try_clone_at(location)
+    }
+}
+
+#[derive(Builder, Debug, Clone)]
+#[builder(build_fn(error = "Error", validate = "Self::validate"))]
+pub struct ProjectConfig {
+    #[builder(setter(into), default = "self.default_path()?")]
+    /// The path to the project base directory.
+    path: PathBuf,
+    #[builder(setter(into))]
+    /// Whether the path for this project was the result of
+    /// [`ProjectBuilder::default_path`]. If so, the project will be destroyed when it
+    /// is dropped. To prevent this behavior, manually set `drop_default(false)`.
+    temporary: bool,
+    #[builder(setter(into), default = "self.default_version_constraint()?")]
+    /// The base version constraint to use when building the project. You should never
+    /// have to specify this.
+    base_version_constraint: VersionConstraint,
+    #[builder(setter(into), default = "self.default_home()?")]
+    /// The SIMICS Home directory. You should never need to manually specify this.
+    home: PathBuf,
+    #[builder(setter(each(name = "package", into), into), default)]
+    packages: HashSet<Package>,
+    #[builder(setter(each(name = "module", into), into), default)]
+    modules: HashSet<Module>,
+    #[builder(setter(each(name = "directory", into), into), default)]
+    directories: HashMap<PathBuf, String>,
+    #[builder(setter(each(name = "file", into), into), default)]
+    files: HashMap<PathBuf, String>,
+    #[builder(setter(each(name = "file_content", into), into), default)]
+    file_contents: HashMap<Vec<u8>, String>,
+    #[builder(setter(each(name = "path_symlink", into), into), default)]
+    path_symlinks: HashMap<PathBuf, String>,
+}
+
+impl ProjectConfigBuilder {
+    const PREFIX: &str = "project";
+
+    /// Create a new project in a temporary directory. The directory will actually be
+    /// created, because to securely create a tmpdir we need to hold it until we use it
+    /// once we choose a name.
+    fn default_path(&self) -> Result<PathBuf> {
+        Ok(TempDir::new(Self::PREFIX)?.into_path())
+    }
+
+    /// The default version constraint is `==SIMICS_VERSION`
+    fn default_version_constraint(&self) -> Result<VersionConstraint> {
+        let constraint_str = format!("=={}", SIMICS_VERSION);
+        constraint_str.parse()
+    }
+
+    fn default_home(&self) -> Result<PathBuf> {
+        simics_home()
+    }
+
+    fn validate(&self) -> Result<()> {
+        ensure!(
+            self.path.as_ref().is_some_and(|p| p.exists()),
+            "Path '{:?}' is not defined or does not exist",
+            self.path
+        );
+        ensure!(
+            self.home.as_ref().is_some_and(|p| p.exists()),
+            "Simics Home path '{:?}' is not defined or does not exist",
+            self.home
+        );
+        ensure!(
+            self.packages.as_ref().is_some_and(|pkgs| pkgs
+                .iter()
+                .all(|p| p.path.exists() && self.home.as_ref().is_some_and(|h| h == &p.home))),
+            "One or more packages was not found, or a package was found outside the project home directory"
+        );
+        Ok(())
     }
 }

@@ -8,6 +8,8 @@ members = [
     "simics",
     "simics-cli",
     "simics-tests",
+    "simics-link",
+    "simics-fuzz",
     # Fuzzer
     "confuse-fuzz",
     # Modules
@@ -24,12 +26,15 @@ members = [
 ]
 
 [workspace.dependencies]
+artifact-dependency = { path = "./util/artifact-dependency" }
+simics-link = { path = "./simics-link" }
 simics = { path = "./simics" }
 confuse-fuzz = { path = "./confuse-fuzz" }
 confuse_module = { path = "./modules/confuse_module" }
 simics-api-sys = { path = "./simics-api-sys" }
 simics-api = { path = "./simics-api" }
 simics-api-macro = { path = "./simics-api-macro" }
+simics-fuzz = { path = "./simics-fuzz" }
 ipc-shm = { path = "./util/ipc-shm" }
 raw-cstr = { path = "./util/raw-cstr" }
 version-tools = { path = "./util/version-tools" }

@@ -4,6 +4,7 @@ use std::str::FromStr;
 use versions::Versioning;
 
 #[non_exhaustive]
+#[derive(Debug, Clone)]
 enum Op {
     Exact,
     Greater,
@@ -15,6 +16,7 @@ enum Op {
     Wildcard,
 }
 
+#[derive(Debug, Clone)]
 pub struct VersionConstraint {
     op: Op,
     version: Option<Versioning>,

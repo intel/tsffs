@@ -1,5 +1,5 @@
 use anyhow::{anyhow, bail, ensure, Result};
-use cargo_metadata::MetadataCommand;
+use cargo_metadata::{MetadataCommand, Package};
 use derive_builder::Builder;
 use std::{
     env::var,
@@ -64,7 +64,7 @@ pub struct ArtifactDependency {
     pub profile: Option<Profile>,
     /// Build the artifact if it is missing
     pub build_missing: bool,
-    #[builder(setter(each = "feature"), default)]
+    #[builder(setter(each(name = "feature", into), into), default)]
     pub features: Vec<String>,
 }
 
@@ -106,8 +106,20 @@ const PROFILE: Profile = Profile::Dev;
 #[cfg(not(debug_assertions))]
 const PROFILE: Profile = Profile::Release;
 
+#[derive(Clone, Debug)]
+pub struct Artifact {
+    pub path: PathBuf,
+    pub package: Package,
+}
+
+impl Artifact {
+    fn new(path: PathBuf, package: Package) -> Self {
+        Self { path, package }
+    }
+}
+
 impl ArtifactDependency {
-    pub fn search(&mut self) -> Result<PathBuf> {
+    pub fn search(&mut self) -> Result<Artifact> {
         let workspace_root = self.workspace_root.clone().unwrap_or(
             MetadataCommand::new()
                 .no_deps()
@@ -219,6 +231,6 @@ impl ArtifactDependency {
             artifact_path.into()
         };
 
-        Ok(artifact_path)
+        Ok(Artifact::new(artifact_path, package.clone()))
     }
 }

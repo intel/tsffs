@@ -1,4 +1,5 @@
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
+use derive_builder::Builder;
 use itertools::Itertools;
 use log::{error, warn};
 use num::{FromPrimitive, ToPrimitive};
@@ -8,6 +9,8 @@ use std::{
     fs::{read_dir, read_to_string},
     path::{Path, PathBuf},
 };
+
+use crate::simics::home::simics_home;
 
 pub type PackageVersion = String;
 pub type PackageNumber = i64;
@@ -220,4 +223,215 @@ pub fn package_infos<P: AsRef<Path>>(
             )
         })
         .collect())
+}
+
+/// Get all the package information of all packages in the `simics_home` installation directory as
+/// a mapping between the package number and a nested mapping of package version to the package
+/// info for the package
+pub fn packages<P: AsRef<Path>>(
+    home: P,
+) -> Result<HashMap<PackageNumber, HashMap<PackageVersion, Package>>> {
+    let infos: Vec<Package> = read_dir(&home)?
+        .filter_map(|d| {
+            d.map_err(|e| error!("Could not read directory entry: {}", e))
+                .ok()
+        })
+        .filter_map(|d| match d.path().join("packageinfo").is_dir() {
+            true => Some(d.path().join("packageinfo")),
+            false => {
+                warn!(
+                    "Package info path {:?} is not a directory",
+                    d.path().join("packageinfo")
+                );
+                None
+            }
+        })
+        .filter_map(|pid| match read_dir(&pid) {
+            Ok(rd) => rd.into_iter().take(1).next().or_else(|| {
+                warn!("No contents of packageinfo directory {:?}", pid);
+                None
+            }),
+            Err(_) => None,
+        })
+        .filter_map(|pi| {
+            pi.map_err(|e| {
+                error!("Could not get directory entry: {}", e);
+                e
+            })
+            .ok()
+        })
+        .filter_map(|pi| {
+            let path = pi.path();
+            read_to_string(&path)
+                .map_err(|e| {
+                    error!("Could not read file {:?} to string: {}", pi.path(), e);
+                    e
+                })
+                .map(|c| (path, c))
+                .ok()
+        })
+        .filter_map(|(path, pis)| {
+            // TODO: This should be worked out with a real parser if possible
+            // We're parsing it bespoke because...it's not yaml! yay
+            let mut package = Package::blank_in_at(home.as_ref().to_path_buf(), path);
+
+            pis.lines().for_each(|l| {
+                if l.trim_start() != l {
+                    // There is some whitespace at the front
+                    package.files.push(l.trim().to_string());
+                } else {
+                    let kv: Vec<&str> = l.split(':').map(|lp| lp.trim()).collect();
+                    if let Some(k) = kv.first() {
+                        if let Some(v) = kv.get(1) {
+                            match k.to_string().as_str() {
+                                "name" => package.name = v.to_string(),
+                                "description" => package.description = v.to_string(),
+                                "version" => package.version = v.to_string(),
+                                "extra-version" => package.extra_version = v.to_string(),
+                                "host" => package.host = v.to_string(),
+                                "confidentiality" => package.confidentiality = v.to_string(),
+                                "package-name" => package.package_name = v.to_string(),
+                                "package-number" => {
+                                    package.package_number =
+                                        v.to_string().parse().unwrap_or(0).try_into().unwrap_or(-1)
+                                }
+                                "build-id" => package.build_id = v.to_string().parse().unwrap_or(0),
+                                "build-id-namespace" => package.build_id_namespace = v.to_string(),
+                                "type" => package.typ = v.to_string(),
+                                "package-name-full" => package.package_name_full = v.to_string(),
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+            });
+            Some(package)
+        })
+        .collect();
+
+    Ok(infos
+        .iter()
+        .group_by(|p| p.package_number)
+        .into_iter()
+        .map(|(k, g)| {
+            let g: Vec<_> = g.collect();
+            (
+                k,
+                g.iter()
+                    .map(|p| (p.version.clone(), (*p).clone()))
+                    .collect(),
+            )
+        })
+        .collect())
+}
+
+#[derive(Builder, Debug, Clone, Serialize, Deserialize)]
+#[builder(setter(skip), build_fn(skip))]
+pub struct Package {
+    #[serde(skip)]
+    #[builder(setter(into), default = "self.default_home()?")]
+    /// The SIMICS Home directory. You should never need to manually specify this.
+    pub home: PathBuf,
+    #[serde(skip)]
+    pub path: PathBuf,
+    /// The package name
+    pub name: String,
+    /// The package description
+    pub description: String,
+    #[builder(setter(into))]
+    /// The version string for the package
+    pub version: String,
+    #[serde(rename = "extra-version")]
+    /// The extra version string for the package, usually blank
+    pub extra_version: String,
+    //// Host type, e.g. `linux64`
+    pub host: String,
+    /// Whether the package is public or private
+    pub confidentiality: String,
+    #[serde(rename = "package-name")]
+    /// The name of the package, again (this field is typically the same as `name`)
+    pub package_name: String,
+    #[serde(rename = "package-number")]
+    #[builder(setter(into))]
+    /// The package number
+    pub package_number: PackageNumber,
+    #[serde(rename = "build-id")]
+    /// A monotonically increasing build ID for the package number
+    pub build_id: u64,
+    #[serde(rename = "build-id-namespace")]
+    /// Namespace for build IDs, `simics` for public/official packages
+    pub build_id_namespace: String,
+    #[serde(rename = "type")]
+    /// The type of package, typically either `base` or `addon`
+    pub typ: String,
+    #[serde(rename = "package-name-full")]
+    /// Long package name
+    pub package_name_full: String,
+    /// Complete list of files in the package
+    pub files: Vec<String>,
+}
+
+impl PackageBuilder {
+    fn default_home(&self) -> Result<PathBuf> {
+        simics_home()
+    }
+
+    fn build(&self) -> Result<Package> {
+        let home = self.home.ok_or_else(|| anyhow!("No home directory set"))?;
+
+        let package_number = self
+            .package_number
+            .ok_or_else(|| anyhow!("No package number set"))?;
+
+        let package_version = self
+            .version
+            .ok_or_else(|| anyhow!("No package version set"))?;
+
+        packages(&home)?
+            .get(&package_number)
+            .ok_or_else(|| {
+                anyhow!(
+                    "No package found with number {} in {}",
+                    package_number,
+                    home.display()
+                )
+            })?
+            .get(&package_version)
+            .ok_or_else(|| {
+                anyhow!(
+                    "No version {} found for package {} in {}",
+                    package_version,
+                    package_number,
+                    home.display()
+                )
+            })
+            .cloned()
+    }
+}
+
+impl Package {
+    /// A default, blank, package info structure
+    fn try_default() -> Result<Self> {
+        Ok(Self::blank_in_at(simics_home()?, PathBuf::from("")))
+    }
+
+    fn blank_in_at(home: PathBuf, path: PathBuf) -> Self {
+        Self {
+            home,
+            path,
+            name: "".to_string(),
+            description: "".to_string(),
+            version: "".to_string(),
+            extra_version: "".to_string(),
+            host: "".to_string(),
+            confidentiality: "".to_string(),
+            package_name: "".to_string(),
+            package_number: -1,
+            build_id: 0,
+            build_id_namespace: "".to_string(),
+            typ: "".to_string(),
+            package_name_full: "".to_string(),
+            files: vec![],
+        }
+    }
 }

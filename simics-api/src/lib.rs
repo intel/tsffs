@@ -420,4 +420,4 @@ pub mod safe;
 ))]
 pub use safe::*;
 
-pub use simics_api_sys as unsafe_api;
+pub use simics_api_sys as sys;
