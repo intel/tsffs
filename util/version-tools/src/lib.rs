@@ -1,11 +1,11 @@
 use anyhow::{bail, Context, Error, Result};
 use std::str::FromStr;
 
-use versions::Versioning;
+use versions::{Chunk, Versioning};
 
 #[non_exhaustive]
-#[derive(Debug, Clone)]
-enum Op {
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+pub enum Op {
     Exact,
     Greater,
     GreaterEq,
@@ -16,7 +16,7 @@ enum Op {
     Wildcard,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub struct VersionConstraint {
     op: Op,
     version: Option<Versioning>,
@@ -40,6 +40,7 @@ impl FromStr for VersionConstraint {
             "~" => Op::Tilde,
             "^" => Op::Caret,
             "*" => Op::Wildcard,
+            "" => Op::Exact,
             _ => bail!("Invalid constraint {}", comparator),
         };
 
@@ -57,8 +58,54 @@ impl FromStr for VersionConstraint {
     }
 }
 
+/// For tilde matches, the v2 patch can be greater than the v1 patch
+fn version_triples_match_tilde(v1: &Versioning, v2: &Versioning) -> bool {
+    match v1 {
+        Versioning::Ideal(v1) => {
+            if let Versioning::Ideal(v2) = v2 {
+                v1.major == v2.major && v1.minor == v2.minor && v2.patch >= v1.patch
+            } else {
+                false
+            }
+        }
+        Versioning::General(v1) => {
+            if let Versioning::General(v2) = v2 {
+                if v1.chunks.0.len() != v2.chunks.0.len() {
+                    false
+                } else {
+                    // Check all but the last
+                    for (v1_chunk, v2_chunk) in v1
+                        .chunks
+                        .0
+                        .iter()
+                        .rev()
+                        .skip(1)
+                        .rev()
+                        .zip(v2.chunks.0.iter().rev().skip(1).rev())
+                    {
+                        if v1_chunk != v2_chunk {
+                            return false;
+                        }
+                    }
+                    match (v1.chunks.0.last(), v2.chunks.0.last()) {
+                        // TODO: Do our best with strings. Right now, the alpha patch version can be "less" than the
+                        // first one and this will still be true
+                        (Some(Chunk::Alphanum(a1)), Some(Chunk::Alphanum(a2))) => true,
+                        (Some(Chunk::Numeric(n1)), Some(Chunk::Numeric(n2))) => n2 >= n1,
+                        _ => false,
+                    }
+                }
+            } else {
+                false
+            }
+        }
+        // Complex can't be tilde-equal because they're not semantic
+        Versioning::Complex(svc) => false,
+    }
+}
+
 impl VersionConstraint {
-    fn matches_tilde(&self, _v: &Versioning) -> bool {
+    fn matches_tilde(&self, v: &Versioning) -> bool {
         panic!("Tilde constraint not implemented.");
     }
 
@@ -80,6 +127,15 @@ impl VersionConstraint {
             }
         } else {
             matches!(self.op, Op::Wildcard)
+        }
+    }
+}
+
+impl Default for VersionConstraint {
+    fn default() -> Self {
+        Self {
+            op: Op::Wildcard,
+            version: None,
         }
     }
 }

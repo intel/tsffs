@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 # This metadata table configures the `SimicsProject` we'll eventually add this module to
-[package.metadata.confuse]
+[package.metadata.module]
 # The relative path in this crate's root to the directory containing the Makefile for this module
 module = "./stubs/confuse_module"
 # The relative path in the resulting SIMICS project where the built library should be placed so the

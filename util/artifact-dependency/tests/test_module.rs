@@ -8,7 +8,7 @@ fn test() {
         .crate_name("confuse_module")
         .build()
         .expect("Couldn't build dependency")
-        .search()
+        .build()
         .expect("Couldn't find dependency");
 
     assert!(dep.path.exists(), "Dep did not exist");

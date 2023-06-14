@@ -1,6 +1,8 @@
 use anyhow::{ensure, Result};
 use dockerfile_rs::{Copy, DockerFile, From, TagOrDigest, RUN, WORKDIR};
 use rand::{distributions::Alphanumeric, Rng};
+use simics_api::sys::SIMICS_VERSION;
+use simics_link::link_simics_linux;
 use std::{
     env::var,
     fs::{read_dir, OpenOptions},
@@ -178,5 +180,10 @@ fn build_efi_module() -> Result<()> {
 fn main() -> Result<()> {
     println!("cargo:rerun-if-changed=build.rs");
     build_efi_module()?;
+    #[cfg(target_family = "unix")]
+    link_simics_linux(SIMICS_VERSION)?;
+
+    #[cfg(not(target_family = "unix"))]
+    compile_error!("Non-unix-like platforms are not yet supported");
     Ok(())
 }

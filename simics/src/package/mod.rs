@@ -6,9 +6,12 @@ use num::{FromPrimitive, ToPrimitive};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
+    fmt::Debug,
     fs::{read_dir, read_to_string},
     path::{Path, PathBuf},
 };
+use version_tools::{Op, VersionConstraint};
+use versions::{Version, Versioning};
 
 use crate::simics::home::simics_home;
 
@@ -232,45 +235,66 @@ pub fn packages<P: AsRef<Path>>(
     home: P,
 ) -> Result<HashMap<PackageNumber, HashMap<PackageVersion, Package>>> {
     let infos: Vec<Package> = read_dir(&home)?
-        .filter_map(|d| {
-            d.map_err(|e| error!("Could not read directory entry: {}", e))
+        .filter_map(|home_dir_entry| {
+            home_dir_entry
+                .map_err(|e| error!("Could not read directory entry: {}", e))
                 .ok()
         })
-        .filter_map(|d| match d.path().join("packageinfo").is_dir() {
-            true => Some(d.path().join("packageinfo")),
-            false => {
-                warn!(
-                    "Package info path {:?} is not a directory",
-                    d.path().join("packageinfo")
-                );
-                None
+        .filter_map(|home_dir_entry| {
+            let package_path = home_dir_entry.path();
+            let package_packageinfo_path = package_path.join("packageinfo");
+            match package_packageinfo_path.is_dir() {
+                true => Some((package_path, package_packageinfo_path)),
+                false => {
+                    warn!(
+                        "Package info path {} is not a directory",
+                        package_packageinfo_path.display()
+                    );
+                    None
+                }
             }
         })
-        .filter_map(|pid| match read_dir(&pid) {
-            Ok(rd) => rd.into_iter().take(1).next().or_else(|| {
-                warn!("No contents of packageinfo directory {:?}", pid);
-                None
-            }),
-            Err(_) => None,
+        .filter_map(|(package_path, package_packageinfo_path)| {
+            match read_dir(&package_packageinfo_path) {
+                Ok(rd) => rd
+                    .into_iter()
+                    .take(1)
+                    .next()
+                    .or_else(|| {
+                        warn!(
+                            "No contents of packageinfo directory {:?}",
+                            package_packageinfo_path
+                        );
+                        None
+                    })
+                    .map(|p| (package_path, p)),
+                Err(_) => None,
+            }
         })
-        .filter_map(|pi| {
-            pi.map_err(|e| {
-                error!("Could not get directory entry: {}", e);
-                e
-            })
-            .ok()
-        })
-        .filter_map(|pi| {
-            let path = pi.path();
-            read_to_string(&path)
+        .filter_map(|(package_path, packageinfo_file)| {
+            packageinfo_file
                 .map_err(|e| {
-                    error!("Could not read file {:?} to string: {}", pi.path(), e);
+                    error!("Could not get directory entry: {}", e);
                     e
                 })
-                .map(|c| (path, c))
+                .ok()
+                .map(|p| (package_path, p))
+        })
+        .filter_map(|(package_path, packageinfo_file)| {
+            let packageinfo_file_path = packageinfo_file.path();
+            read_to_string(&packageinfo_file_path)
+                .map_err(|e| {
+                    error!(
+                        "Could not read file {} to string: {}",
+                        packageinfo_file_path.display(),
+                        e
+                    );
+                    e
+                })
+                .map(|c| (package_path, c))
                 .ok()
         })
-        .filter_map(|(path, pis)| {
+        .map(|(path, pis)| {
             // TODO: This should be worked out with a real parser if possible
             // We're parsing it bespoke because...it's not yaml! yay
             let mut package = Package::blank_in_at(home.as_ref().to_path_buf(), path);
@@ -305,7 +329,7 @@ pub fn packages<P: AsRef<Path>>(
                     }
                 }
             });
-            Some(package)
+            package
         })
         .collect();
 
@@ -325,7 +349,7 @@ pub fn packages<P: AsRef<Path>>(
         .collect())
 }
 
-#[derive(Builder, Debug, Clone, Serialize, Deserialize)]
+#[derive(Builder, Clone, Serialize, Deserialize, Hash, Eq, PartialEq)]
 #[builder(setter(skip), build_fn(skip))]
 pub struct Package {
     #[serde(skip)]
@@ -333,12 +357,15 @@ pub struct Package {
     /// The SIMICS Home directory. You should never need to manually specify this.
     pub home: PathBuf,
     #[serde(skip)]
+    #[builder(setter(into, name = "version"))]
+    /// The version string for the package
+    pub version_constraint: VersionConstraint,
+    #[serde(skip)]
     pub path: PathBuf,
     /// The package name
     pub name: String,
     /// The package description
     pub description: String,
-    #[builder(setter(into))]
     /// The version string for the package
     pub version: String,
     #[serde(rename = "extra-version")]
@@ -371,36 +398,69 @@ pub struct Package {
     pub files: Vec<String>,
 }
 
+impl Debug for Package {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Package")
+            .field("home", &self.home)
+            .field("version_constraint", &self.version_constraint)
+            .field("path", &self.path)
+            .field("name", &self.name)
+            .field("description", &self.description)
+            .field("version", &self.version)
+            .field("extra_version", &self.extra_version)
+            .field("host", &self.host)
+            .field("confidentiality", &self.confidentiality)
+            .field("package_name", &self.package_name)
+            .field("package_number", &self.package_number)
+            .field("build_id", &self.build_id)
+            .field("build_id_namespace", &self.build_id_namespace)
+            .field("typ", &self.typ)
+            .field("package_name_full", &self.package_name_full)
+            .field("files", &"[...]")
+            .finish()
+    }
+}
+
 impl PackageBuilder {
     fn default_home(&self) -> Result<PathBuf> {
         simics_home()
     }
 
-    fn build(&self) -> Result<Package> {
-        let home = self.home.ok_or_else(|| anyhow!("No home directory set"))?;
+    pub fn build(&mut self) -> Result<Package> {
+        let home = self.home.as_ref().cloned().unwrap_or(simics_home()?);
 
         let package_number = self
             .package_number
             .ok_or_else(|| anyhow!("No package number set"))?;
 
-        let package_version = self
-            .version
-            .ok_or_else(|| anyhow!("No package version set"))?;
+        let packages = packages(&home)?;
+        let packages_for_number = packages.get(&package_number).ok_or_else(|| {
+            anyhow!(
+                "No package found with number {} in {}",
+                package_number,
+                home.display()
+            )
+        })?;
 
-        packages(&home)?
-            .get(&package_number)
-            .ok_or_else(|| {
-                anyhow!(
-                    "No package found with number {} in {}",
-                    package_number,
-                    home.display()
-                )
-            })?
-            .get(&package_version)
+        let package_version = self
+            .version_constraint
+            .as_ref()
+            .cloned()
+            .unwrap_or("*".parse()?);
+
+        let version = packages_for_number
+            .keys()
+            .filter_map(|k| Versioning::new(k))
+            .filter(|v| package_version.matches(v))
+            .max()
+            .ok_or_else(|| anyhow!("No version found"))?;
+
+        packages_for_number
+            .get(&version.to_string())
             .ok_or_else(|| {
                 anyhow!(
                     "No version {} found for package {} in {}",
-                    package_version,
+                    version,
                     package_number,
                     home.display()
                 )
@@ -419,6 +479,7 @@ impl Package {
         Self {
             home,
             path,
+            version_constraint: VersionConstraint::default(),
             name: "".to_string(),
             description: "".to_string(),
             version: "".to_string(),

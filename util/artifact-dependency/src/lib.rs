@@ -1,8 +1,10 @@
 use anyhow::{anyhow, bail, ensure, Result};
 use cargo_metadata::{MetadataCommand, Package};
 use derive_builder::Builder;
+use serde::{Deserialize, Serialize};
 use std::{
     env::var,
+    hash::Hash,
     path::PathBuf,
     process::{Command, Stdio},
 };
@@ -26,7 +28,7 @@ pub enum Profile {
     Other(String),
 }
 
-#[derive(Builder)]
+#[derive(Builder, Clone, Debug)]
 /// Builder to find and optionally build an artifact dependency from a particular workspace
 ///
 /// # Example
@@ -106,10 +108,36 @@ const PROFILE: Profile = Profile::Dev;
 #[cfg(not(debug_assertions))]
 const PROFILE: Profile = Profile::Release;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Artifact {
     pub path: PathBuf,
     pub package: Package,
+}
+
+impl Hash for Artifact {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.path.hash(state);
+        self.package.name.hash(state);
+        self.package.version.hash(state);
+        self.package.authors.hash(state);
+        self.package.id.hash(state);
+        self.package.description.hash(state);
+        self.package.license.hash(state);
+        self.package.license_file.hash(state);
+        self.package.targets.hash(state);
+        self.package.manifest_path.hash(state);
+        self.package.categories.hash(state);
+        self.package.keywords.hash(state);
+        self.package.readme.hash(state);
+        self.package.repository.hash(state);
+        self.package.homepage.hash(state);
+        self.package.documentation.hash(state);
+        self.package.edition.hash(state);
+        self.package.links.hash(state);
+        self.package.publish.hash(state);
+        self.package.default_run.hash(state);
+        self.package.rust_version.hash(state);
+    }
 }
 
 impl Artifact {
@@ -119,7 +147,7 @@ impl Artifact {
 }
 
 impl ArtifactDependency {
-    pub fn search(&mut self) -> Result<Artifact> {
+    pub fn build(&mut self) -> Result<Artifact> {
         let workspace_root = self.workspace_root.clone().unwrap_or(
             MetadataCommand::new()
                 .no_deps()

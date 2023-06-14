@@ -2,7 +2,7 @@
 
 use anyhow::{bail, ensure, Context, Error, Result};
 use cargo_metadata::{MetadataCommand, Package};
-use log::info;
+use log::{debug, info};
 use regex::Regex;
 use std::{
     fs::{copy, create_dir_all},
@@ -17,6 +17,15 @@ pub fn copy_dir_contents<P: AsRef<Path>>(src_dir: P, dst_dir: P) -> Result<()> {
     let src_dir = src_dir.as_ref().to_path_buf();
     ensure!(src_dir.is_dir(), "Source must be a directory");
     let dst_dir = dst_dir.as_ref().to_path_buf();
+    if !dst_dir.is_dir() {
+        create_dir_all(&dst_dir)?;
+    }
+
+    debug!(
+        "Copying directory contents from {} to {}",
+        src_dir.display(),
+        dst_dir.display()
+    );
 
     for (src, dst) in WalkDir::new(&src_dir)
         .into_iter()

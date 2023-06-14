@@ -1,4 +1,5 @@
 use anyhow::Result;
+use artifact_dependency::{ArtifactDependencyBuilder, CrateType};
 use clap::Parser;
 use confuse_fuzz::fuzz;
 use confuse_module::{
@@ -18,8 +19,15 @@ use log4rs::{
     encode::pattern::PatternEncoder,
     init_config, Config,
 };
-use simics::package::PublicPackageNumber;
-use simics::project::SimicsProject;
+use simics::{
+    api::sys::SIMICS_VERSION,
+    module::ModuleBuilder,
+    project::{ProjectPathBuilder, SimicsProject},
+};
+use simics::{
+    package::{PackageBuilder, PublicPackageNumber},
+    project::{Project, ProjectBuilder},
+};
 use std::path::PathBuf;
 use tempfile::Builder as NamedTempFileBuilder;
 
@@ -45,7 +53,7 @@ struct Args {
     #[arg(short, long, default_value_t = TraceMode::HitCount)]
     /// Mode to trace executions with
     trace_mode: TraceMode,
-    #[arg(short, long)]
+    #[arg(short = 'C', long)]
     /// Expression for the set of cores. For example
     /// 1,2-4,6: clients run in cores 1,2,3,4,6
     /// all: one client runs on each available core
@@ -92,54 +100,52 @@ fn main() -> Result<()> {
 
     // init_from_env(Env::default().filter_or(DEFAULT_FILTER_ENV, "info"));
     // Paths of
-    const APP_SCRIPT_PATH: &str = "scripts/app.py";
-    const APP_YML_PATH: &str = "scripts/app.yml";
-    const BOOT_DISK_PATH: &str = "targets/hello-world/minimal_boot_disk.craff";
-    const STARTUP_NSH_PATH: &str = "targets/hello-world/run_uefi_app.nsh";
-    const STARTUP_SIMICS_PATH: &str = "targets/hello-world/run-uefi-app.simics";
-    const UEFI_APP_PATH: &str = "targets/hello-world/HelloWorld.efi";
+    const APP_SCRIPT_PATH: &str = "%simics%/scripts/app.py";
+    const APP_YML_PATH: &str = "%simics%/scripts/app.yml";
+    const BOOT_DISK_PATH: &str = "%simics%/targets/hello-world/minimal_boot_disk.craff";
+    const STARTUP_NSH_PATH: &str = "%simics%/targets/hello-world/run_uefi_app.nsh";
+    const STARTUP_SIMICS_PATH: &str = "%simics%/targets/hello-world/run-uefi-app.simics";
+    const UEFI_APP_PATH: &str = "%simics%/targets/hello-world/HelloWorld.efi";
 
     let app_yml = include_bytes!("resource/app.yml");
     let app_script = include_bytes!("resource/app.py");
     let boot_disk = include_bytes!("resource/minimal_boot_disk.craff");
-
     let run_uefi_app_nsh_script = include_bytes!("resource/run_uefi_app.nsh");
-
     let run_uefi_app_simics_script = include_bytes!("resource/run-uefi-app.simics");
 
-    let simics_project = SimicsProject::try_new_latest()?
-        .try_with_package_latest(PublicPackageNumber::QspX86)?
-        .try_with_file_contents(HELLO_WORLD_EFI_MODULE, UEFI_APP_PATH)?
-        .try_with_file_contents(app_yml, APP_YML_PATH)?
-        .try_with_file_contents(app_script, APP_SCRIPT_PATH)?
-        .try_with_file_contents(boot_disk, BOOT_DISK_PATH)?
-        .try_with_file_contents(run_uefi_app_nsh_script, STARTUP_NSH_PATH)?
-        .try_with_file_contents(run_uefi_app_simics_script, STARTUP_SIMICS_PATH)?
-        .try_with_file_argument(APP_YML_PATH)?;
+    let project = ProjectBuilder::default()
+        .path(ProjectPathBuilder::default().temporary(false).build()?)
+        .package(
+            PackageBuilder::default()
+                .package_number(PublicPackageNumber::QspX86)
+                .build()?,
+        )
+        .module(
+            ModuleBuilder::default()
+                .artifact(
+                    ArtifactDependencyBuilder::default()
+                        .crate_name("confuse_module")
+                        .artifact_type(CrateType::CDynamicLibrary)
+                        .build_missing(true)
+                        .feature(SIMICS_VERSION)
+                        .build()?
+                        .build()?,
+                )
+                .build()?,
+        )
+        .file_content((HELLO_WORLD_EFI_MODULE.to_vec(), UEFI_APP_PATH.parse()?))
+        .file_content((app_yml.to_vec(), APP_YML_PATH.parse()?))
+        .file_content((app_script.to_vec(), APP_SCRIPT_PATH.parse()?))
+        .file_content((boot_disk.to_vec(), BOOT_DISK_PATH.parse()?))
+        .file_content((run_uefi_app_nsh_script.to_vec(), STARTUP_NSH_PATH.parse()?))
+        .file_content((
+            run_uefi_app_simics_script.to_vec(),
+            STARTUP_SIMICS_PATH.parse()?,
+        ))
+        .build()?
+        .setup()?;
 
-    let config = InputConfig::default()
-        .with_faults([
-            Fault::X86_64(X86_64Fault::Page),
-            Fault::X86_64(X86_64Fault::InvalidOpcode),
-        ])
-        .with_timeout_seconds(3.0)
-        .with_trace_mode(args.trace_mode);
-
-    info!("Creating fuzzer");
-
-    fuzz(
-        args.cores,
-        args.input,
-        args.output,
-        config,
-        simics_project,
-        args.log_level,
-        if args.cycles == 0 {
-            None
-        } else {
-            Some(args.cycles)
-        },
-    )?;
+    info!("Project: {:?}", project);
 
     Ok(())
 }

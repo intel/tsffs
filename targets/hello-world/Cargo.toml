@@ -16,6 +16,7 @@ tempfile = "3.4.0"
 chrono = "0.4.24"
 log4rs = "1.2.0"
 clap = { version = "4.1.13", features = ["derive"] }
+artifact-dependency.workspace = true
 
 [dev-dependencies]
 
@@ -23,3 +24,5 @@ clap = { version = "4.1.13", features = ["derive"] }
 anyhow = "1.0.69"
 dockerfile-rs = "0.3.0"
 rand = "0.8.5"
+simics-api = { workspace = true, features = ["6.0.165"] }
+simics-link.workspace = true

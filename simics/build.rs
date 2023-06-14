@@ -7,7 +7,7 @@ fn main() -> Result<()> {
         use simics_link::link_simics_linux;
 
         #[cfg(target_family = "unix")]
-        link_simics_linux(format!("=={}", SIMICS_VERSION))?;
+        link_simics_linux(SIMICS_VERSION)?;
 
         #[cfg(not(target_family = "unix"))]
         compile_error!("Non-unix-like platforms are not yet supported");

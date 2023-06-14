@@ -9,4 +9,5 @@ pub mod module;
 pub mod package;
 pub mod project;
 pub mod simics;
+pub mod traits;
 pub mod util;

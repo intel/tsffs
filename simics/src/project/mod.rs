@@ -7,17 +7,19 @@
 use crate::{
     manifest::simics_base_version,
     module::{Module, SimicsModule},
-    package::{package_infos, Package, PackageNumber},
+    package::{package_infos, Package, PackageBuilder, PackageNumber, PublicPackageNumber},
     simics::home::simics_home,
+    traits::Setup,
     util::{abs_or_rel_base_relpath, copy_dir_contents},
 };
-use anyhow::{bail, ensure, Context, Error, Result};
+use anyhow::{anyhow, bail, ensure, Context, Error, Result};
 use derive_builder::Builder;
 use log::{debug, error, info, Level};
 use rand::{distributions::Alphanumeric, Rng};
 use simics_api::sys::SIMICS_VERSION;
 use std::{
     collections::{HashMap, HashSet},
+    fmt::{Debug, Display},
     fs::{copy, create_dir_all, remove_dir_all, OpenOptions},
     io::Write,
     os::unix::fs::symlink,
@@ -27,6 +29,7 @@ use std::{
     sync::Arc,
     thread::{spawn, JoinHandle},
 };
+use strum::{AsRefStr, Display};
 use tempdir::TempDir;
 use version_tools::VersionConstraint;
 use versions::Versioning;
@@ -951,21 +954,149 @@ impl SimicsProject {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct SimicsPath {
+    from: Option<SimicsPathMarker>,
+    to: PathBuf,
+}
+
+impl SimicsPath {
+    fn new<P: AsRef<Path>>(p: P, from: Option<SimicsPathMarker>) -> Self {
+        if from.is_some() {
+            let to = p.as_ref().to_path_buf().components().skip(1).collect();
+            Self { from, to }
+        } else {
+            Self {
+                from: None,
+                to: p.as_ref().to_path_buf(),
+            }
+        }
+    }
+
+    fn simics<P: AsRef<Path>>(p: P) -> Self {
+        Self::new(p, Some(SimicsPathMarker::Simics))
+    }
+
+    fn script<P: AsRef<Path>>(p: P) -> Self {
+        Self::new(p, Some(SimicsPathMarker::Script))
+    }
+
+    fn path<P: AsRef<Path>>(p: P) -> Self {
+        Self::new(p, None)
+    }
+
+    fn canonicalize<P: AsRef<Path>>(&self, base: P) -> Result<PathBuf> {
+        debug!(
+            "Canonicalizing {:?} on base {}",
+            self,
+            base.as_ref().display()
+        );
+        let canonicalized = match self.from {
+            Some(SimicsPathMarker::Script) => bail!("Script relative paths are not supported"),
+            Some(SimicsPathMarker::Simics) => {
+                base.as_ref().to_path_buf().canonicalize()?.join(&self.to)
+            }
+            None => self.to.clone(),
+        };
+        debug!(
+            "Canonicalized simics path {:?} to {}",
+            self,
+            canonicalized.display()
+        );
+        Ok(canonicalized)
+    }
+}
+
+impl From<PathBuf> for SimicsPath {
+    fn from(value: PathBuf) -> Self {
+        Self::path(value)
+    }
+}
+
+impl FromStr for SimicsPath {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let p = PathBuf::from(s);
+        Ok(match p.components().next() {
+            Some(c) if c.as_os_str() == SimicsPathMarker::Script.as_ref() => Self::script(s),
+            Some(c) if c.as_os_str() == SimicsPathMarker::Simics.as_ref() => Self::simics(s),
+            _ => Self::path(PathBuf::from(s).canonicalize()?),
+        })
+    }
+}
+
+impl TryFrom<&str> for SimicsPath {
+    type Error = Error;
+
+    fn try_from(value: &str) -> Result<Self> {
+        value.parse()
+    }
+}
+
+#[derive(Debug, Clone, AsRefStr, Display)]
+enum SimicsPathMarker {
+    /// `%simics%`
+    #[strum(serialize = "%simics%")]
+    Simics,
+    /// `%script%`
+    #[strum(serialize = "%script%")]
+    Script,
+}
+
 #[derive(Builder, Debug, Clone)]
-#[builder(build_fn(error = "Error", validate = "Self::validate"))]
-pub struct ProjectConfig {
+#[builder(build_fn(error = "Error"))]
+pub struct ProjectPath {
+    #[builder(setter(into), default = "self.default_path()?")]
+    pub path: PathBuf,
+    #[builder(default = "true")]
+    temporary: bool,
+}
+
+impl ProjectPathBuilder {
+    fn default_path(&self) -> Result<PathBuf> {
+        let path = TempDir::new(ProjectPath::PREFIX)?.into_path();
+        Ok(path)
+    }
+}
+
+impl ProjectPath {
+    const PREFIX: &str = "project";
+
+    fn default_path() -> Result<PathBuf> {
+        Ok(TempDir::new(Self::PREFIX)?.into_path())
+    }
+
+    fn default() -> Result<Self> {
+        Ok(Self {
+            path: Self::default_path()?,
+            temporary: true,
+        })
+    }
+}
+
+impl<P> From<P> for ProjectPath
+where
+    P: AsRef<Path>,
+{
+    fn from(value: P) -> Self {
+        Self {
+            path: value.as_ref().to_path_buf(),
+            temporary: false,
+        }
+    }
+}
+
+#[derive(Builder, Clone)]
+#[builder(build_fn(error = "Error"))]
+pub struct Project {
     #[builder(setter(into), default = "self.default_path()?")]
     /// The path to the project base directory.
-    path: PathBuf,
-    #[builder(setter(into))]
-    /// Whether the path for this project was the result of
-    /// [`ProjectBuilder::default_path`]. If so, the project will be destroyed when it
-    /// is dropped. To prevent this behavior, manually set `drop_default(false)`.
-    temporary: bool,
-    #[builder(setter(into), default = "self.default_version_constraint()?")]
+    pub path: ProjectPath,
+    #[builder(setter(into), default = "self.default_base()?")]
     /// The base version constraint to use when building the project. You should never
     /// have to specify this.
-    base_version_constraint: VersionConstraint,
+    base: Package,
     #[builder(setter(into), default = "self.default_home()?")]
     /// The SIMICS Home directory. You should never need to manually specify this.
     home: PathBuf,
@@ -974,52 +1105,247 @@ pub struct ProjectConfig {
     #[builder(setter(each(name = "module", into), into), default)]
     modules: HashSet<Module>,
     #[builder(setter(each(name = "directory", into), into), default)]
-    directories: HashMap<PathBuf, String>,
+    directories: HashMap<PathBuf, SimicsPath>,
     #[builder(setter(each(name = "file", into), into), default)]
-    files: HashMap<PathBuf, String>,
+    files: HashMap<PathBuf, SimicsPath>,
     #[builder(setter(each(name = "file_content", into), into), default)]
-    file_contents: HashMap<Vec<u8>, String>,
+    file_contents: HashMap<Vec<u8>, SimicsPath>,
     #[builder(setter(each(name = "path_symlink", into), into), default)]
-    path_symlinks: HashMap<PathBuf, String>,
+    path_symlinks: HashMap<PathBuf, SimicsPath>,
 }
 
-impl ProjectConfigBuilder {
-    const PREFIX: &str = "project";
+impl Project {
+    fn setup_project(&self) -> Result<()> {
+        let project_setup = self.base.path.join("bin").join("project-setup");
+        ensure!(
+            project_setup.exists(),
+            "Could not find `project-setup` binary in '{}'",
+            self.base.path.display()
+        );
 
+        let output = Command::new(&project_setup)
+            .arg("--ignore-existing-files")
+            .arg("--with-gmake")
+            .arg("--with-cmake")
+            .arg(&self.path.path)
+            .current_dir(&self.path.path)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()?;
+
+        output.status.success().then_some(()).ok_or_else(|| {
+            anyhow!(
+                "Failed to run {}:\nstdout: {}\nstderr: {}",
+                project_setup.display(),
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            )
+        })
+    }
+
+    fn setup_project_directories(&self) -> Result<()> {
+        self.directories.iter().try_for_each(|(src, dst)| {
+            debug!("Adding directory {} to {:?}", src.display(), dst);
+            dst.canonicalize(&self.path.path)
+                .and_then(|dst| copy_dir_contents(src, &dst))
+        })
+    }
+
+    fn setup_project_files(&self) -> Result<()> {
+        self.files.iter().try_for_each(|(src, dst)| {
+            debug!("Adding file {} to {:?}", src.display(), dst);
+            dst.canonicalize(&self.path.path).and_then(|dst| {
+                dst.parent()
+                    .ok_or_else(|| {
+                        anyhow!("No parent directory of destination path {}", dst.display())
+                    })
+                    .and_then(|p| {
+                        create_dir_all(p).map_err(|e| {
+                            anyhow!("Couldn't create directory {}: {}", p.display(), e)
+                        })
+                    })
+                    .and_then(|_| {
+                        copy(src, &dst).map_err(|e| {
+                            anyhow!("Couldn't copy {} to {:?}: {}", src.display(), dst, e)
+                        })
+                    })
+                    .map(|_| ())
+            })
+        })
+    }
+
+    fn setup_project_file_contents(&self) -> Result<()> {
+        self.file_contents.iter().try_for_each(|(contents, dst)| {
+            debug!("Adding contents to {:?}", dst);
+            dst.canonicalize(&self.path.path).and_then(|dst| {
+                dst.parent()
+                    .ok_or_else(|| {
+                        anyhow!("No parent directory of destination path {}", dst.display())
+                    })
+                    .and_then(|p| {
+                        debug!("Creating directory {}", p.display());
+                        create_dir_all(p).map_err(|e| {
+                            anyhow!("Couldn't create directory {}: {}", p.display(), e)
+                        })
+                    })
+                    .and_then(|_| {
+                        debug!("Writing file {}", dst.display());
+                        OpenOptions::new()
+                            .write(true)
+                            .truncate(true)
+                            .create(true)
+                            .open(&dst)
+                            .map_err(|e| anyhow!("Couldn't open file {}: {}", dst.display(), e))
+                            .and_then(|mut f| {
+                                f.write_all(contents).map_err(|e| {
+                                    anyhow!("Couldn't write to file {}: {}", dst.display(), e)
+                                })
+                            })
+                    })
+            })
+        })
+    }
+
+    fn setup_project_symlinks(&self) -> Result<()> {
+        self.path_symlinks.iter().try_for_each(|(src, dst)| {
+            debug!("Adding symlink from {} to {:?}", src.display(), dst);
+            dst.canonicalize(&self.path.path).and_then(|dst| {
+                dst.parent()
+                    .ok_or_else(|| {
+                        anyhow!("No parent directory of destination path {}", dst.display())
+                    })
+                    .and_then(|p| {
+                        create_dir_all(p).map_err(|e| {
+                            anyhow!("Couldn't create directory {}: {}", p.display(), e)
+                        })
+                    })
+                    .and_then(|_| {
+                        symlink(src, &dst).map_err(|e| {
+                            anyhow!(
+                                "Couldn't create symlink from {} to {}: {}",
+                                src.display(),
+                                dst.display(),
+                                e
+                            )
+                        })
+                    })
+            })
+        })
+    }
+
+    fn setup_project_contents(&self) -> Result<()> {
+        info!("Setting up project contents");
+        self.setup_project_directories()?;
+        self.setup_project_files()?;
+        self.setup_project_file_contents()?;
+        self.setup_project_symlinks()?;
+        Ok(())
+    }
+
+    fn setup_packages(&self) -> Result<()> {
+        info!("Setting up packages");
+        // TODO: Fix the case where there's already a file and there's no trailing newline
+        let packages = self
+            .packages
+            .iter()
+            .map(|p| p.path.to_string_lossy().to_string())
+            .collect::<Vec<_>>()
+            .join("\n");
+        OpenOptions::new()
+            .create(true)
+            .write(true)
+            .append(true)
+            .open(self.path.path.join(".package-list"))
+            .map_err(|e| {
+                anyhow!(
+                    "Couldn't open file {}: {}",
+                    self.path.path.join(".package-list").display(),
+                    e
+                )
+            })
+            .and_then(|mut f| {
+                f.write_all(packages.as_bytes())
+                    .map_err(|e| anyhow!("Couldn't write packages list: {}", e))
+                    .map(|_| ())
+            })?;
+
+        let project_setup = self.path.path.join("bin").join("project-setup");
+
+        ensure!(
+            project_setup.exists(),
+            "Could not find `project-setup` binary in '{}'",
+            self.base.path.display()
+        );
+
+        let output = Command::new(&project_setup)
+            .arg(&self.path.path)
+            .current_dir(&self.path.path)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()?;
+
+        output.status.success().then_some(()).ok_or_else(|| {
+            anyhow!(
+                "Failed to run {}:\nstdout: {}\nstderr: {}",
+                project_setup.display(),
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            )
+        })
+    }
+
+    fn setup_modules(&self) -> Result<()> {
+        info!("Setting up modules");
+        self.modules
+            .iter()
+            .try_for_each(|m| m.setup(self).map(|_| ()))
+    }
+
+    pub fn setup(self) -> Result<Self> {
+        debug!("Setting up project at {}", self.path.path.display());
+        self.setup_project()?;
+        self.setup_project_contents()?;
+        self.setup_packages()?;
+        self.setup_modules()?;
+        Ok(self)
+    }
+}
+
+impl ProjectBuilder {
     /// Create a new project in a temporary directory. The directory will actually be
     /// created, because to securely create a tmpdir we need to hold it until we use it
     /// once we choose a name.
-    fn default_path(&self) -> Result<PathBuf> {
-        Ok(TempDir::new(Self::PREFIX)?.into_path())
+    fn default_path(&self) -> Result<ProjectPath> {
+        ProjectPath::default()
     }
 
     /// The default version constraint is `==SIMICS_VERSION`
-    fn default_version_constraint(&self) -> Result<VersionConstraint> {
-        let constraint_str = format!("=={}", SIMICS_VERSION);
-        constraint_str.parse()
+    fn default_base(&self) -> Result<Package> {
+        let constraint: VersionConstraint = SIMICS_VERSION.parse()?;
+        PackageBuilder::default()
+            .package_number(PublicPackageNumber::Base)
+            .version(constraint)
+            .home(self.home.as_ref().cloned().unwrap_or(self.default_home()?))
+            .build()
     }
 
     fn default_home(&self) -> Result<PathBuf> {
         simics_home()
     }
+}
 
-    fn validate(&self) -> Result<()> {
-        ensure!(
-            self.path.as_ref().is_some_and(|p| p.exists()),
-            "Path '{:?}' is not defined or does not exist",
-            self.path
-        );
-        ensure!(
-            self.home.as_ref().is_some_and(|p| p.exists()),
-            "Simics Home path '{:?}' is not defined or does not exist",
-            self.home
-        );
-        ensure!(
-            self.packages.as_ref().is_some_and(|pkgs| pkgs
-                .iter()
-                .all(|p| p.path.exists() && self.home.as_ref().is_some_and(|h| h == &p.home))),
-            "One or more packages was not found, or a package was found outside the project home directory"
-        );
-        Ok(())
+impl Debug for Project {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Project")
+            .field("path", &self.path)
+            .field("base", &self.base)
+            .field("home", &self.home)
+            .field("packages", &self.packages)
+            .field("modules", &self.modules)
+            .field("directories", &self.directories)
+            .field("files", &self.files)
+            .field("file_contents", &self.file_contents.values())
+            .field("path_symlinks", &self.path_symlinks)
+            .finish()
     }
 }

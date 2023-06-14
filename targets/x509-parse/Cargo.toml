@@ -16,6 +16,7 @@ chrono = "0.4.24"
 log4rs = { version = "1.2.0", features = ["all_components"] }
 clap = { version = "4.1.13", features = ["derive"] }
 confuse_module = { workspace = true, features = ["6.0.165"] }
+simics-link.workspace = true
 
 [dev-dependencies]
 
@@ -23,3 +24,4 @@ confuse_module = { workspace = true, features = ["6.0.165"] }
 anyhow = "1.0.69"
 dockerfile-rs = "0.3.0"
 rand = "0.8.5"
+simics-api = { workspace = true, features = ["6.0.165"] }
