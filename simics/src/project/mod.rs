@@ -20,7 +20,7 @@ use simics_api::sys::SIMICS_VERSION;
 use std::{
     collections::{HashMap, HashSet},
     fmt::{Debug, Display},
-    fs::{copy, create_dir_all, remove_dir_all, OpenOptions},
+    fs::{copy, create_dir_all, read_to_string, remove_dir_all, OpenOptions},
     io::Write,
     os::unix::fs::symlink,
     path::{Component, Path, PathBuf},
@@ -1087,6 +1087,127 @@ where
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct PropertiesMd5Entry {
+    path: String,
+    // Always 'MD5'
+    hash_type: String,
+    hash: String,
+}
+
+impl PropertiesMd5Entry {
+    pub const SEPARATOR: &str = "MD5";
+}
+
+impl FromStr for PropertiesMd5Entry {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self> {
+        let cols = s
+            .split(Self::SEPARATOR)
+            .map(|c| s.trim())
+            .collect::<Vec<_>>();
+        Ok(Self {
+            path: cols
+                .first()
+                .ok_or_else(|| anyhow!("No path column in {}", s))?
+                .to_string(),
+            hash_type: Self::SEPARATOR.to_string(),
+            hash: cols
+                .get(1)
+                .ok_or_else(|| anyhow!("No hash column in {}", s))?
+                .to_string(),
+        })
+    }
+}
+
+pub struct PropertiesMd5 {
+    md5: HashSet<PropertiesMd5Entry>,
+}
+
+impl FromStr for PropertiesMd5 {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self> {
+        Ok(Self {
+            md5: s
+                .lines()
+                .filter_map(|l| {
+                    l.parse()
+                        .map_err(|e| {
+                            error!("Error parsing line {} into md5 entry", e);
+                            e
+                        })
+                        .ok()
+                })
+                .collect(),
+        })
+    }
+}
+
+pub struct PropertiesPaths {
+    project: String,
+    simics_root: String,
+    simics_model_builder: String,
+    mingw: String,
+}
+
+impl FromStr for PropertiesPaths {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self> {
+        let paths = s
+            .lines()
+            .map(|l| l.split(':').map(|l| l.trim()).collect::<Vec<_>>())
+            .map(|l| {
+                (
+                    l.get(0).map(|k| k.to_string()).unwrap_or("".to_owned()),
+                    l.get(1).map(|v| v.to_string()).unwrap_or("".to_owned()),
+                )
+            })
+            .collect::<HashMap<_, _>>();
+        Ok(Self {
+            project: paths
+                .get("project")
+                .cloned()
+                .ok_or_else(|| anyhow!("No field project in {}", s))?,
+            simics_root: paths
+                .get("simics-root")
+                .cloned()
+                .ok_or_else(|| anyhow!("No field simics-root in {}", s))?,
+            simics_model_builder: paths
+                .get("simics-model-builder")
+                .cloned()
+                .ok_or_else(|| anyhow!("No field simics-model-builder in {}", s))?,
+            mingw: paths
+                .get("mingw")
+                .cloned()
+                .ok_or_else(|| anyhow!("No field mingw in {}", s))?,
+        })
+    }
+}
+
+pub struct Properties {
+    md5: PropertiesMd5,
+    paths: PropertiesPaths,
+}
+
+impl TryFrom<PathBuf> for Properties {
+    type Error = Error;
+    fn try_from(value: PathBuf) -> Result<Self> {
+        Self::try_from(&value)
+    }
+}
+impl TryFrom<&PathBuf> for Properties {
+    type Error = Error;
+    fn try_from(value: &PathBuf) -> Result<Self> {
+        let properties_dir = value.join(".project-properties");
+        let md5_path = properties_dir.join("project-md5");
+        let paths_path = properties_dir.join("project-paths");
+        Ok(Self {
+            md5: read_to_string(md5_path)?.parse()?,
+            paths: read_to_string(paths_path)?.parse()?,
+        })
+    }
+}
+
 #[derive(Builder, Clone)]
 #[builder(build_fn(error = "Error"))]
 pub struct Project {
@@ -1112,6 +1233,49 @@ pub struct Project {
     file_contents: HashMap<Vec<u8>, SimicsPath>,
     #[builder(setter(each(name = "path_symlink", into), into), default)]
     path_symlinks: HashMap<PathBuf, SimicsPath>,
+}
+
+impl TryFrom<PathBuf> for Project {
+    type Error = Error;
+
+    /// Initialize a project from an existing project on disk
+    fn try_from(value: PathBuf) -> Result<Self> {
+        let properties = Properties::try_from(&value)?;
+        let simics_root = PathBuf::from(&properties.paths.simics_root);
+        let home = simics_root
+            .parent()
+            .ok_or_else(|| anyhow!("No parent found for {}", properties.paths.simics_root))?;
+        let base = Package::try_from(PathBuf::from(properties.paths.simics_root))?;
+        let packages = read_to_string(value.join(".package-list"))?
+            .lines()
+            .filter_map(|l| PathBuf::from(l).canonicalize().ok())
+            .map(Package::try_from)
+            .filter_map(|p| {
+                p.map_err(|e| {
+                    error!("Error parsing package: {}", e);
+                    e
+                })
+                .ok()
+            })
+            .collect::<HashSet<_>>();
+        Ok(Self {
+            path: value.into(),
+            base,
+            home: home.to_path_buf(),
+            packages,
+            // TODO: Get modules back from disk by grabbing the manifest or something, we probably
+            // want to know a module came from us
+            modules: HashSet::new(),
+            // TODO: We don't *need* to keep track of dir/file/contents/symlinks
+            // (if the project already exists, we can assume we aren't responsible for cleaning
+            // up files or dirs from disk or anything, and they already exist so we don't ened to
+            // configure them. That said, we *could* and it might be helpful)
+            directories: HashMap::new(),
+            files: HashMap::new(),
+            file_contents: HashMap::new(),
+            path_symlinks: HashMap::new(),
+        })
+    }
 }
 
 impl Project {

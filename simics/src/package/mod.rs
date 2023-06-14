@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Error, Result};
 use derive_builder::Builder;
 use itertools::Itertools;
 use log::{error, warn};
@@ -9,6 +9,7 @@ use std::{
     fmt::Debug,
     fs::{read_dir, read_to_string},
     path::{Path, PathBuf},
+    str::FromStr,
 };
 use version_tools::{Op, VersionConstraint};
 use versions::{Version, Versioning};
@@ -228,6 +229,74 @@ pub fn package_infos<P: AsRef<Path>>(
         .collect())
 }
 
+pub fn parse_packageinfo<P: AsRef<Path>>(package_path: P) -> Result<Package> {
+    let package_path = package_path.as_ref().to_path_buf();
+
+    if !package_path.is_dir() {
+        bail!(
+            "Package path {} does not exist or is not a directory",
+            package_path.display()
+        );
+    }
+
+    let packageinfo_path = package_path.join("packageinfo");
+
+    if !packageinfo_path.is_dir() {
+        bail!(
+            "Package info path {} does not exist or is not a directory",
+            packageinfo_path.display()
+        );
+    }
+
+    let package_home = package_path
+        .parent()
+        .ok_or_else(|| anyhow!("No parent of package path {}", package_path.display()))?
+        .to_path_buf();
+
+    read_dir(&packageinfo_path)
+        .map_err(|e| {
+            anyhow!(
+                "Failed to read packageinfo directory {}: {}",
+                packageinfo_path.display(),
+                e
+            )
+        })
+        .and_then(|packageinfo_entries| {
+            packageinfo_entries
+                .into_iter()
+                .take(1)
+                .next()
+                .ok_or_else(|| {
+                    anyhow!(
+                        "No entries in packageinfo directory {}",
+                        packageinfo_path.display()
+                    )
+                })
+                .map(|packageinfo_manifest| {
+                    packageinfo_manifest
+                        .map(|packageinfo_manifest| packageinfo_manifest.path())
+                        .map_err(|e| anyhow!("Couldn't get entry for manifest: {}", e))
+                })
+        })?
+        .and_then(|packageinfo_manifest| {
+            read_to_string(&packageinfo_manifest)
+                .map_err(|e| {
+                    anyhow!(
+                        "Failed to read manifest {}: {}",
+                        packageinfo_manifest.display(),
+                        e
+                    )
+                })
+                .map(|packageinfo_contents| {
+                    packageinfo_contents.parse().map(|mut package: Package| {
+                        package.home = package_home.clone();
+                        package.path = package_path.clone();
+                        package
+                    })
+                })
+        })?
+}
+
 /// Get all the package information of all packages in the `simics_home` installation directory as
 /// a mapping between the package number and a nested mapping of package version to the package
 /// info for the package
@@ -242,94 +311,15 @@ pub fn packages<P: AsRef<Path>>(
         })
         .filter_map(|home_dir_entry| {
             let package_path = home_dir_entry.path();
-            let package_packageinfo_path = package_path.join("packageinfo");
-            match package_packageinfo_path.is_dir() {
-                true => Some((package_path, package_packageinfo_path)),
-                false => {
-                    warn!(
-                        "Package info path {} is not a directory",
-                        package_packageinfo_path.display()
-                    );
-                    None
-                }
-            }
-        })
-        .filter_map(|(package_path, package_packageinfo_path)| {
-            match read_dir(&package_packageinfo_path) {
-                Ok(rd) => rd
-                    .into_iter()
-                    .take(1)
-                    .next()
-                    .or_else(|| {
-                        warn!(
-                            "No contents of packageinfo directory {:?}",
-                            package_packageinfo_path
-                        );
-                        None
-                    })
-                    .map(|p| (package_path, p)),
-                Err(_) => None,
-            }
-        })
-        .filter_map(|(package_path, packageinfo_file)| {
-            packageinfo_file
-                .map_err(|e| {
-                    error!("Could not get directory entry: {}", e);
-                    e
-                })
-                .ok()
-                .map(|p| (package_path, p))
-        })
-        .filter_map(|(package_path, packageinfo_file)| {
-            let packageinfo_file_path = packageinfo_file.path();
-            read_to_string(&packageinfo_file_path)
+            parse_packageinfo(&package_path)
                 .map_err(|e| {
                     error!(
-                        "Could not read file {} to string: {}",
-                        packageinfo_file_path.display(),
+                        "Error parsing package info from package at {}: {}",
+                        package_path.display(),
                         e
-                    );
-                    e
+                    )
                 })
-                .map(|c| (package_path, c))
                 .ok()
-        })
-        .map(|(path, pis)| {
-            // TODO: This should be worked out with a real parser if possible
-            // We're parsing it bespoke because...it's not yaml! yay
-            let mut package = Package::blank_in_at(home.as_ref().to_path_buf(), path);
-
-            pis.lines().for_each(|l| {
-                if l.trim_start() != l {
-                    // There is some whitespace at the front
-                    package.files.push(l.trim().to_string());
-                } else {
-                    let kv: Vec<&str> = l.split(':').map(|lp| lp.trim()).collect();
-                    if let Some(k) = kv.first() {
-                        if let Some(v) = kv.get(1) {
-                            match k.to_string().as_str() {
-                                "name" => package.name = v.to_string(),
-                                "description" => package.description = v.to_string(),
-                                "version" => package.version = v.to_string(),
-                                "extra-version" => package.extra_version = v.to_string(),
-                                "host" => package.host = v.to_string(),
-                                "confidentiality" => package.confidentiality = v.to_string(),
-                                "package-name" => package.package_name = v.to_string(),
-                                "package-number" => {
-                                    package.package_number =
-                                        v.to_string().parse().unwrap_or(0).try_into().unwrap_or(-1)
-                                }
-                                "build-id" => package.build_id = v.to_string().parse().unwrap_or(0),
-                                "build-id-namespace" => package.build_id_namespace = v.to_string(),
-                                "type" => package.typ = v.to_string(),
-                                "package-name-full" => package.package_name_full = v.to_string(),
-                                _ => {}
-                            }
-                        }
-                    }
-                }
-            });
-            package
         })
         .collect();
 
@@ -396,6 +386,19 @@ pub struct Package {
     pub package_name_full: String,
     /// Complete list of files in the package
     pub files: Vec<String>,
+}
+
+impl TryFrom<PathBuf> for Package {
+    type Error = Error;
+    fn try_from(value: PathBuf) -> Result<Self> {
+        let mut package = parse_packageinfo(&value)?;
+        package.home = value
+            .parent()
+            .ok_or_else(|| anyhow!("No parent directory for package path {}", value.display()))?
+            .to_path_buf();
+        package.path = value;
+        Ok(package)
+    }
 }
 
 impl Debug for Package {
@@ -494,5 +497,45 @@ impl Package {
             package_name_full: "".to_string(),
             files: vec![],
         }
+    }
+}
+
+impl FromStr for Package {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self> {
+        let mut package = Package::try_default()?;
+
+        s.lines().for_each(|l| {
+            if l.trim_start() != l {
+                // There is some whitespace at the front
+                package.files.push(l.trim().to_string());
+            } else {
+                let kv: Vec<&str> = l.split(':').map(|lp| lp.trim()).collect();
+                if let Some(k) = kv.first() {
+                    if let Some(v) = kv.get(1) {
+                        match k.to_string().as_str() {
+                            "name" => package.name = v.to_string(),
+                            "description" => package.description = v.to_string(),
+                            "version" => package.version = v.to_string(),
+                            "extra-version" => package.extra_version = v.to_string(),
+                            "host" => package.host = v.to_string(),
+                            "confidentiality" => package.confidentiality = v.to_string(),
+                            "package-name" => package.package_name = v.to_string(),
+                            "package-number" => {
+                                package.package_number =
+                                    v.to_string().parse().unwrap_or(0).try_into().unwrap_or(-1)
+                            }
+                            "build-id" => package.build_id = v.to_string().parse().unwrap_or(0),
+                            "build-id-namespace" => package.build_id_namespace = v.to_string(),
+                            "type" => package.typ = v.to_string(),
+                            "package-name-full" => package.package_name_full = v.to_string(),
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        });
+
+        Ok(package)
     }
 }
