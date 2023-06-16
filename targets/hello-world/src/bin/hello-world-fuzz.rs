@@ -1,7 +1,6 @@
 use anyhow::Result;
 use artifact_dependency::{ArtifactDependencyBuilder, CrateType};
 use clap::Parser;
-use confuse_fuzz::fuzz;
 use confuse_module::{
     config::{InputConfig, TraceMode},
     faults::{x86_64::X86_64Fault, Fault},

@@ -10,8 +10,6 @@ members = [
     "simics-tests",
     "simics-link",
     "simics-fuzz",
-    # Fuzzer
-    "confuse-fuzz",
     # Modules
     "modules/confuse_module",
     # Targets
@@ -29,7 +27,6 @@ members = [
 artifact-dependency = { path = "./util/artifact-dependency" }
 simics-link = { path = "./simics-link" }
 simics = { path = "./simics" }
-confuse-fuzz = { path = "./confuse-fuzz" }
 confuse_module = { path = "./modules/confuse_module" }
 simics-api-sys = { path = "./simics-api-sys" }
 simics-api = { path = "./simics-api" }

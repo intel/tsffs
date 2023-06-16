@@ -4,9 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-confuse_module = { workspace = true, features = ["6.0.165"] }
-simics = { workspace = true, features = ["6.0.165"] }
-confuse-fuzz = { workspace = true }
+confuse_module = { workspace = true, features = ["6.0.166"] }
+simics = { workspace = true, features = ["6.0.166"] }
 anyhow = "1.0.69"
 log = "0.4.17"
 indoc = "2.0.1"
@@ -24,5 +23,5 @@ artifact-dependency.workspace = true
 anyhow = "1.0.69"
 dockerfile-rs = "0.3.0"
 rand = "0.8.5"
-simics-api = { workspace = true, features = ["6.0.165"] }
+simics-api = { workspace = true, features = ["6.0.166"] }
 simics-link.workspace = true

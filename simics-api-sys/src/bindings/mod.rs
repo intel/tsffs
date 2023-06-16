@@ -8,6 +8,7 @@
 #![allow(clippy::type_complexity)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::unnecessary_cast)]
+
 #[cfg(feature = "6.0.28")]
 include!("bindings-6.0.28.rs");
 #[cfg(feature = "6.0.31")]
@@ -276,3 +277,5 @@ include!("bindings-6.0.163.rs");
 include!("bindings-6.0.164.rs");
 #[cfg(feature = "6.0.165")]
 include!("bindings-6.0.165.rs");
+#[cfg(feature = "6.0.166")]
+include!("bindings-6.0.166.rs");

@@ -156,3 +156,4 @@ simics-link.workspace = true
 "6.0.163" = ["simics/6.0.163", "simics-api/6.0.163", "confuse_module/6.0.163"]
 "6.0.164" = ["simics/6.0.164", "simics-api/6.0.164", "confuse_module/6.0.164"]
 "6.0.165" = ["simics/6.0.165", "simics-api/6.0.165", "confuse_module/6.0.165"]
+"6.0.166" = ["simics/6.0.166", "simics-api/6.0.166", "confuse_module/6.0.166"]

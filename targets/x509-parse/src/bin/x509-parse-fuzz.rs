@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use clap::Parser;
-use confuse_fuzz::fuzz;
 use confuse_module::{
     config::{InputConfig, TraceMode},
     faults::x86_64::X86_64Fault,
@@ -125,22 +124,6 @@ fn main() -> Result<()> {
         .with_faults(X86_64Fault::all())
         .with_timeout_seconds(3.0)
         .with_trace_mode(args.trace_mode);
-
-    info!("Creating fuzzer");
-
-    fuzz(
-        args.cores,
-        args.input,
-        args.output,
-        config,
-        simics_project,
-        args.log_level,
-        if args.cycles == 0 {
-            None
-        } else {
-            Some(args.cycles)
-        },
-    )?;
 
     Ok(())
 }

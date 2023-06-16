@@ -178,3 +178,4 @@ crc32fast = "1.3.2"
 "6.0.163" = ["simics-api/6.0.163", "simics/6.0.163", "simics-api-macro/6.0.163"]
 "6.0.164" = ["simics-api/6.0.164", "simics/6.0.164", "simics-api-macro/6.0.164"]
 "6.0.165" = ["simics-api/6.0.165", "simics/6.0.165", "simics-api-macro/6.0.165"]
+"6.0.166" = ["simics-api/6.0.166", "simics/6.0.166", "simics-api-macro/6.0.166"]

@@ -258,7 +258,9 @@ fn simics_base_version<P: AsRef<Path>, S: AsRef<str>>(
     base_version_constraint: S,
 ) -> Result<PackageInfo> {
     let constraint: VersionConstraint = base_version_constraint.as_ref().parse()?;
+    println!("Constraint: {:?}", constraint);
     let infos = package_infos(simics_home)?[&1000].clone();
+    println!("Infos: {:?}", infos);
     let version = infos
         .keys()
         .filter_map(|k| Versioning::new(k))
