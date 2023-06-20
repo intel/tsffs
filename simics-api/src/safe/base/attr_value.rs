@@ -13,8 +13,8 @@ use simics_api_sys::{
     attr_kind_t_Sim_Val_Boolean, attr_kind_t_Sim_Val_Data, attr_kind_t_Sim_Val_Dict,
     attr_kind_t_Sim_Val_Floating, attr_kind_t_Sim_Val_Integer, attr_kind_t_Sim_Val_Invalid,
     attr_kind_t_Sim_Val_List, attr_kind_t_Sim_Val_Nil, attr_kind_t_Sim_Val_Object,
-    attr_kind_t_Sim_Val_String, attr_value__bindgen_ty_1, attr_value_t, SIM_attr_free,
-    SIM_free_attribute, SIM_get_attribute,
+    attr_kind_t_Sim_Val_String, attr_value__bindgen_ty_1, attr_value_t, SIM_alloc_attr_list,
+    SIM_attr_free, SIM_free_attribute, SIM_get_attribute,
 };
 use std::{ffi::CStr, ptr::null_mut};
 
@@ -362,4 +362,8 @@ pub fn free_attribute(attr: AttrValue) {
 
 pub fn attr_free(attr: *mut AttrValue) {
     unsafe { SIM_attr_free(attr.into()) }
+}
+
+pub fn alloc_attr_list(length: u32) -> AttrValue {
+    unsafe { SIM_alloc_attr_list(length) }
 }

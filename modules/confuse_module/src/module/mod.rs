@@ -1,44 +1,40 @@
 use self::components::{detector::Detector, tracer::Tracer};
 use crate::{
-    client::test::TestClient,
     config::OutputConfig,
     magic::Magic,
     messages::{client::ClientMessage, module::ModuleMessage},
     processor::Processor,
     state::State,
     stops::StopReason,
-    traits::{ConfuseClient, ConfuseInterface, ConfuseState},
-    BOOTSTRAP_SOCKNAME, CLASS_NAME, TESTMODE_VARNAME,
+    traits::{ConfuseInterface, ConfuseState},
+    CLASS_NAME,
 };
-use anyhow::{bail, Context, Result};
-use const_format::concatcp;
-use ipc_channel::ipc::{channel, IpcReceiver, IpcSender};
-use log::{debug, error, info, trace, Level, LevelFilter};
+use anyhow::{anyhow, bail, Context, Result};
 use raffl_macro::{callback_wrappers, params};
+use tracing::{error, info, trace};
 
 use simics_api::{
     attr_object_or_nil_from_ptr, break_simulation, continue_simulation_alone, discard_future,
     get_processor_number, hap_add_callback, quit, register_interface, restore_micro_checkpoint,
     save_micro_checkpoint, AttrValue, ConfObject, Hap, HapCallback, MicroCheckpointFlags,
-    SimicsLogger,
 };
 use simics_api::{Create, Module};
 use simics_api_macro::module;
-use std::{collections::HashMap, env::var, ffi::c_void, str::FromStr};
+use std::{
+    collections::HashMap,
+    ffi::c_void,
+    sync::mpsc::{Receiver, Sender},
+};
 
 pub mod components;
 
-pub const LOGLEVEL_VARNAME: &str = concatcp!(CLASS_NAME, "_LOGLEVEL");
-pub const DEFAULT_LOGLEVEL: Level = Level::Trace;
-
 #[module(class_name = CLASS_NAME)]
-pub struct Confuse {
+pub struct Confuse<'a> {
     /// In test mode, CONFUSE runs without a real client,
-    test_mode_client: Option<Box<dyn ConfuseClient>>,
     state: State,
-    tx: IpcSender<ModuleMessage>,
-    rx: IpcReceiver<ClientMessage>,
-    tracer: Tracer,
+    tx: Option<Sender<ModuleMessage>>,
+    rx: Option<Receiver<ClientMessage>>,
+    tracer: Tracer<'a>,
     detector: Detector,
     processors: HashMap<i32, Processor>,
     stop_reason: Option<StopReason>,
@@ -48,56 +44,19 @@ pub struct Confuse {
     last_start_processor_number: i32,
 }
 
-impl Module for Confuse {
+impl<'a> Module for Confuse<'a> {
     fn init(module_instance: *mut ConfObject) -> Result<*mut ConfObject> {
-        let log_level = LevelFilter::from_str(&var(LOGLEVEL_VARNAME).unwrap_or_default())
-            .unwrap_or(DEFAULT_LOGLEVEL.to_level_filter());
-
-        let test_mode = if let Ok(name) = var(TESTMODE_VARNAME) {
-            matches!(name.to_ascii_lowercase().as_str(), "1" | "true" | "on")
-        } else {
-            false
-        };
-
-        SimicsLogger::new()
-            // Dev is a misnomer here -- that's what SIMICS calls it but really it should just be
-            // `object` because that's all we are doing here is creating a logger for our module object
-            .with_dev(module_instance)
-            .with_level(log_level)
-            .init()?;
-
         info!("Simics logger initialized");
 
         let state = State::new();
-        let (otx, rx) = channel::<ClientMessage>()?;
-        let (tx, orx) = channel::<ModuleMessage>()?;
-        let test_client = if test_mode {
-            Some(TestClient::new_boxed(otx, orx))
-        } else {
-            info!("Initializing CONFUSE");
-
-            let sockname = var(BOOTSTRAP_SOCKNAME)?;
-            debug!("Connecting to bootstrap socket {}", sockname);
-
-            let bootstrap = IpcSender::connect(sockname)?;
-
-            debug!("Connected to bootstrap socket");
-
-            bootstrap.send((otx, orx))?;
-
-            debug!("Sent primary socket over bootstrap socket");
-
-            None
-        };
         let detector = Detector::try_new()?;
         let tracer = Tracer::try_new()?;
 
         Ok(Confuse::new(
             module_instance,
-            test_client,
             state,
-            tx,
-            rx,
+            None,
+            None,
             tracer,
             detector,
             HashMap::new(),
@@ -109,21 +68,13 @@ impl Module for Confuse {
         ))
     }
 
-    fn objects_finalized(module_instance: *mut ConfObject) -> Result<()> {
-        let confuse: &mut Confuse = module_instance.into();
-        confuse.initialize()?;
-
+    fn objects_finalized(_module_instance: *mut ConfObject) -> Result<()> {
         Ok(())
     }
 }
 
-impl Confuse {
+impl<'a> Confuse<'a> {
     pub fn initialize(&mut self) -> Result<()> {
-        let input_config = match self.recv_msg()? {
-            ClientMessage::Initialize(config) => config,
-            _ => bail!("Expected initialize command"),
-        };
-
         // Add callbacks on stops and magic instructions
 
         // TODO: bruh
@@ -143,12 +94,17 @@ impl Confuse {
 
         let mut output_config = OutputConfig::default();
 
+        let mut input_config = match self.recv_msg()? {
+            ClientMessage::Initialize(config) => config,
+            _ => bail!("Expected initialize command"),
+        };
+
         output_config = self
             .detector
-            .on_initialize(self_ptr, &input_config, output_config)?;
+            .on_initialize(self_ptr, &mut input_config, output_config)?;
         output_config = self
             .tracer
-            .on_initialize(self_ptr, &input_config, output_config)?;
+            .on_initialize(self_ptr, &mut input_config, output_config)?;
 
         self.send_msg(ModuleMessage::Initialized(output_config))?;
 
@@ -156,21 +112,27 @@ impl Confuse {
     }
 }
 
-impl Confuse {
+impl<'a> Confuse<'a> {
     /// Send a message to the client
     fn send_msg(&mut self, msg: ModuleMessage) -> Result<()> {
         trace!("Sending module message {:?}", msg);
         self.state
             .consume(&msg)
             .context(format!("Error consuming sent message {:?}", msg))?;
-        self.tx.send(msg)?;
+        self.tx
+            .as_ref()
+            .map(|tx| tx.send(msg))
+            .ok_or_else(|| anyhow!("Attempted to send a message before channels were set"))??;
         Ok(())
     }
 
     /// Receive a message from the client
     fn recv_msg(&mut self) -> Result<ClientMessage> {
         trace!("Waiting to receive client message");
-        let msg = self.rx.recv()?;
+        let msg =
+            self.rx.as_ref().map(|rx| rx.recv()).ok_or_else(|| {
+                anyhow!("Attempted to receive a message before channels were set")
+            })??;
         trace!("Received client message {:?}", msg);
 
         if matches!(msg, ClientMessage::Exit) {
@@ -230,16 +192,16 @@ impl Confuse {
     }
 }
 
-impl<'a> From<*mut std::ffi::c_void> for &'a mut Confuse {
+impl<'a> From<*mut std::ffi::c_void> for &'a mut Confuse<'a> {
     /// Convert from a *mut Confuse pointer to a mutable reference to Confuse
-    fn from(value: *mut std::ffi::c_void) -> &'a mut Confuse {
+    fn from(value: *mut std::ffi::c_void) -> &'a mut Confuse<'a> {
         let confuse_ptr: *mut Confuse = value as *mut Confuse;
         unsafe { &mut *confuse_ptr }
     }
 }
 
 #[callback_wrappers(pub, unwrap_result)]
-impl Confuse {
+impl<'a> Confuse<'a> {
     #[params(!slf: *mut std::ffi::c_void, ...)]
     pub fn on_simulation_stopped(
         &mut self,
@@ -399,6 +361,8 @@ impl Confuse {
 
     #[params(!slf: *mut simics_api::ConfObject)]
     pub fn on_start(&mut self) -> Result<()> {
+        self.initialize()?;
+
         info!("Got start signal from client");
         // Trigger anything that needs to happen before we start up (run for the first time)
         self.detector.on_start()?;
@@ -412,14 +376,35 @@ impl Confuse {
 
         Ok(())
     }
+
+    #[params(!slf: *mut simics_api::ConfObject, ...)]
+    // TODO: Enhance raffl-macro to unbox void * passed locals
+    #[allow(clippy::boxed_local)]
+    pub fn on_set_channel(
+        &mut self,
+        tx: Box<Sender<ModuleMessage>>,
+        rx: Box<Receiver<ClientMessage>>,
+    ) -> Result<()> {
+        info!("Got channel");
+        self.tx = Some(*tx);
+        self.rx = Some(*rx);
+
+        Ok(())
+    }
 }
 
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 /// This is the rust definition for the confuse_module_interface_t declaration in the stubs, which
 /// are used to generate the interface module. This struct definition must match that one exactly
 pub struct ConfuseModuleInterface {
     pub start: extern "C" fn(obj: *mut ConfObject),
     pub add_processor: extern "C" fn(obj: *mut ConfObject, processor: *mut AttrValue),
     pub add_fault: extern "C" fn(obj: *mut ConfObject, fault: i64),
+    pub set_channel: extern "C" fn(
+        obj: *mut ConfObject,
+        tx: Box<Sender<ModuleMessage>>,
+        rx: Box<Receiver<ClientMessage>>,
+    ),
 }
 
 impl Default for ConfuseModuleInterface {
@@ -428,6 +413,7 @@ impl Default for ConfuseModuleInterface {
             start: confuse_callbacks::on_start,
             add_processor: confuse_callbacks::on_add_processor,
             add_fault: confuse_callbacks::on_add_fault,
+            set_channel: confuse_callbacks::on_set_channel,
         }
     }
 }

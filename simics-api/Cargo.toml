@@ -17,6 +17,7 @@ log = "0.4.17"
 const-str = "0.5.4"
 paste = "1.0.12"
 clap = { version = "4.3.0", features = ["derive"] }
+tracing = "0.1.37"
 
 [features]
 # Derive is provided by default to provide #[derive(Module)] and #[module]

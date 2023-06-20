@@ -59,7 +59,7 @@ impl FromStr for VersionConstraint {
 }
 
 /// For tilde matches, the v2 patch can be greater than the v1 patch
-fn version_triples_match_tilde(v1: &Versioning, v2: &Versioning) -> bool {
+pub fn version_triples_match_tilde(v1: &Versioning, v2: &Versioning) -> bool {
     match v1 {
         Versioning::Ideal(v1) => {
             if let Versioning::Ideal(v2) = v2 {
@@ -90,7 +90,7 @@ fn version_triples_match_tilde(v1: &Versioning, v2: &Versioning) -> bool {
                     match (v1.chunks.0.last(), v2.chunks.0.last()) {
                         // TODO: Do our best with strings. Right now, the alpha patch version can be "less" than the
                         // first one and this will still be true
-                        (Some(Chunk::Alphanum(a1)), Some(Chunk::Alphanum(a2))) => true,
+                        (Some(Chunk::Alphanum(_a1)), Some(Chunk::Alphanum(_a2))) => true,
                         (Some(Chunk::Numeric(n1)), Some(Chunk::Numeric(n2))) => n2 >= n1,
                         _ => false,
                     }
@@ -100,12 +100,12 @@ fn version_triples_match_tilde(v1: &Versioning, v2: &Versioning) -> bool {
             }
         }
         // Complex can't be tilde-equal because they're not semantic
-        Versioning::Complex(svc) => false,
+        Versioning::Complex(_svc) => false,
     }
 }
 
 impl VersionConstraint {
-    fn matches_tilde(&self, v: &Versioning) -> bool {
+    fn matches_tilde(&self, _v: &Versioning) -> bool {
         panic!("Tilde constraint not implemented.");
     }
 

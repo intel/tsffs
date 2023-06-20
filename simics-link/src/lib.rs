@@ -5,7 +5,8 @@ extern crate num_traits;
 #[macro_use]
 extern crate num_derive;
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{anyhow, bail, ensure, Error, Result};
+use derive_builder::Builder;
 use dotenvy_macro::dotenv;
 use itertools::Itertools;
 use num::{FromPrimitive, ToPrimitive};
@@ -13,10 +14,13 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
+    fmt::Debug,
     fs::{read_dir, read_to_string},
     path::{Path, PathBuf},
     process::{Command, Stdio},
+    str::FromStr,
 };
+use tracing::error;
 use version_tools::VersionConstraint;
 use versions::Versioning;
 use walkdir::WalkDir;
@@ -28,7 +32,7 @@ type PackageNumber = i64;
 #[repr(i64)]
 /// Numbers for public SIMICS packages. These numbers can be used to conveniently specify package
 /// numbers
-enum PublicPackageNumber {
+pub enum PublicPackageNumber {
     QspClearLinux = 4094,
     QspCpu = 8112,
     QspIsim = 8144,
@@ -53,11 +57,129 @@ impl From<PublicPackageNumber> for i64 {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-/// Information about a package. This package info is located in the packageinfo subdirectory of
-/// a simics package, for example SIMICS_HOME/simics-6.0.157/packageinfo/Simics-Base-linux64
-/// and is not *quite* YAML but is close.
-struct PackageInfo {
+pub fn parse_packageinfo<P: AsRef<Path>>(package_path: P) -> Result<Package> {
+    let package_path = package_path.as_ref().to_path_buf();
+
+    if !package_path.is_dir() {
+        bail!(
+            "Package path {} does not exist or is not a directory",
+            package_path.display()
+        );
+    }
+
+    let packageinfo_path = package_path.join("packageinfo");
+
+    if !packageinfo_path.is_dir() {
+        bail!(
+            "Package info path {} does not exist or is not a directory",
+            packageinfo_path.display()
+        );
+    }
+
+    let package_home = package_path
+        .parent()
+        .ok_or_else(|| anyhow!("No parent of package path {}", package_path.display()))?
+        .to_path_buf();
+
+    read_dir(&packageinfo_path)
+        .map_err(|e| {
+            anyhow!(
+                "Failed to read packageinfo directory {}: {}",
+                packageinfo_path.display(),
+                e
+            )
+        })
+        .and_then(|packageinfo_entries| {
+            packageinfo_entries
+                .into_iter()
+                .take(1)
+                .next()
+                .ok_or_else(|| {
+                    anyhow!(
+                        "No entries in packageinfo directory {}",
+                        packageinfo_path.display()
+                    )
+                })
+                .map(|packageinfo_manifest| {
+                    packageinfo_manifest
+                        .map(|packageinfo_manifest| packageinfo_manifest.path())
+                        .map_err(|e| anyhow!("Couldn't get entry for manifest: {}", e))
+                })
+        })?
+        .and_then(|packageinfo_manifest| {
+            read_to_string(&packageinfo_manifest)
+                .map_err(|e| {
+                    anyhow!(
+                        "Failed to read manifest {}: {}",
+                        packageinfo_manifest.display(),
+                        e
+                    )
+                })
+                .map(|packageinfo_contents| {
+                    packageinfo_contents.parse().map(|mut package: Package| {
+                        package.home = package_home.clone();
+                        package.path = package_path.clone();
+                        package
+                    })
+                })
+        })?
+}
+
+/// Get all the package information of all packages in the `simics_home` installation directory as
+/// a mapping between the package number and a nested mapping of package version to the package
+/// info for the package
+pub fn packages<P: AsRef<Path>>(
+    home: P,
+) -> Result<HashMap<PackageNumber, HashMap<PackageVersion, Package>>> {
+    let infos: Vec<Package> = read_dir(&home)?
+        .filter_map(|home_dir_entry| {
+            home_dir_entry
+                .map_err(|e| error!("Could not read directory entry: {}", e))
+                .ok()
+        })
+        .filter_map(|home_dir_entry| {
+            let package_path = home_dir_entry.path();
+            parse_packageinfo(&package_path)
+                .map_err(|e| {
+                    error!(
+                        "Error parsing package info from package at {}: {}",
+                        package_path.display(),
+                        e
+                    )
+                })
+                .ok()
+        })
+        .collect();
+
+    Ok(infos
+        .iter()
+        .group_by(|p| p.package_number)
+        .into_iter()
+        .map(|(k, g)| {
+            let g: Vec<_> = g.collect();
+            (
+                k,
+                g.iter()
+                    .map(|p| (p.version.clone(), (*p).clone()))
+                    .collect(),
+            )
+        })
+        .collect())
+}
+
+#[derive(Builder, Clone, Serialize, Deserialize, Hash, Eq, PartialEq)]
+#[builder(setter(skip), build_fn(skip))]
+pub struct Package {
+    #[serde(skip)]
+    #[builder(setter(into))]
+    /// The SIMICS Home directory. You should never need to manually specify this.
+    pub home: PathBuf,
+    #[serde(skip)]
+    #[builder(setter(into, name = "version"))]
+    /// The version string for the package
+    pub version_constraint: VersionConstraint,
+    #[serde(skip)]
+    pub path: PathBuf,
     /// The package name
     pub name: String,
     /// The package description
@@ -75,6 +197,7 @@ struct PackageInfo {
     /// The name of the package, again (this field is typically the same as `name`)
     pub package_name: String,
     #[serde(rename = "package-number")]
+    #[builder(setter(into))]
     /// The package number
     pub package_number: PackageNumber,
     #[serde(rename = "build-id")]
@@ -93,10 +216,97 @@ struct PackageInfo {
     pub files: Vec<String>,
 }
 
-impl Default for PackageInfo {
+impl TryFrom<PathBuf> for Package {
+    type Error = Error;
+    fn try_from(value: PathBuf) -> Result<Self> {
+        let mut package = parse_packageinfo(&value)?;
+        package.home = value
+            .parent()
+            .ok_or_else(|| anyhow!("No parent directory for package path {}", value.display()))?
+            .to_path_buf();
+        package.path = value;
+        Ok(package)
+    }
+}
+
+impl Debug for Package {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Package")
+            .field("home", &self.home)
+            .field("version_constraint", &self.version_constraint)
+            .field("path", &self.path)
+            .field("name", &self.name)
+            .field("description", &self.description)
+            .field("version", &self.version)
+            .field("extra_version", &self.extra_version)
+            .field("host", &self.host)
+            .field("confidentiality", &self.confidentiality)
+            .field("package_name", &self.package_name)
+            .field("package_number", &self.package_number)
+            .field("build_id", &self.build_id)
+            .field("build_id_namespace", &self.build_id_namespace)
+            .field("typ", &self.typ)
+            .field("package_name_full", &self.package_name_full)
+            .field("files", &"[...]")
+            .finish()
+    }
+}
+
+impl PackageBuilder {
+    pub fn build(&mut self) -> Result<Package> {
+        let home = self.home.as_ref().cloned().unwrap_or(simics_home()?);
+
+        let package_number = self
+            .package_number
+            .ok_or_else(|| anyhow!("No package number set"))?;
+
+        let packages = packages(&home)?;
+        let packages_for_number = packages.get(&package_number).ok_or_else(|| {
+            anyhow!(
+                "No package found with number {} in {}",
+                package_number,
+                home.display()
+            )
+        })?;
+
+        let package_version = self
+            .version_constraint
+            .as_ref()
+            .cloned()
+            .unwrap_or("*".parse()?);
+
+        let version = packages_for_number
+            .keys()
+            .filter_map(|k| Versioning::new(k))
+            .filter(|v| package_version.matches(v))
+            .max()
+            .ok_or_else(|| anyhow!("No version found"))?;
+
+        packages_for_number
+            .get(&version.to_string())
+            .ok_or_else(|| {
+                anyhow!(
+                    "No version {} found for package {} in {}",
+                    version,
+                    package_number,
+                    home.display()
+                )
+            })
+            .cloned()
+    }
+}
+
+impl Package {
     /// A default, blank, package info structure
-    fn default() -> Self {
+    fn try_default() -> Result<Self> {
+        Ok(Self::blank_in_at(simics_home()?, PathBuf::from("")))
+    }
+
+    fn blank_in_at(home: PathBuf, path: PathBuf) -> Self {
         Self {
+            home,
+            path,
+            version_constraint: VersionConstraint::default(),
             name: "".to_string(),
             description: "".to_string(),
             version: "".to_string(),
@@ -114,124 +324,44 @@ impl Default for PackageInfo {
     }
 }
 
-impl PackageInfo {
-    /// Get the path to a package relative to the `simics_home` installation directory
-    fn get_package_path<P: AsRef<Path>>(&self, simics_home: P) -> Result<PathBuf> {
-        Ok(simics_home.as_ref().to_path_buf().join(
-            self.files
-                .iter()
-                .take(1)
-                .next()
-                .context("No files in package.")?
-                .split('/')
-                .take(1)
-                .next()
-                .context("No base path.")?,
-        ))
-    }
-}
+impl FromStr for Package {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self> {
+        let mut package = Package::try_default()?;
 
-/// Get all the package information of all packages in the `simics_home` installation directory as
-/// a mapping between the package number and a nested mapping of package version to the package
-/// info for the package
-fn package_infos<P: AsRef<Path>>(
-    simics_home: P,
-) -> Result<HashMap<PackageNumber, HashMap<PackageVersion, PackageInfo>>> {
-    let infos: Vec<PackageInfo> = read_dir(&simics_home)?
-        .filter_map(|d| {
-            d.map_err(|e| eprintln!("Could not read directory entry: {}", e))
-                .ok()
-        })
-        .filter_map(|d| match d.path().join("packageinfo").is_dir() {
-            true => Some(d.path().join("packageinfo")),
-            false => {
-                eprintln!(
-                    "Package info path {:?} is not a directory",
-                    d.path().join("packageinfo")
-                );
-                None
-            }
-        })
-        .filter_map(|pid| match read_dir(&pid) {
-            Ok(rd) => rd.into_iter().take(1).next().or_else(|| {
-                eprintln!("No contents of packageinfo directory {:?}", pid);
-                None
-            }),
-            Err(_) => None,
-        })
-        .filter_map(|pi| {
-            pi.map_err(|e| {
-                eprintln!("Could not get directory entry: {}", e);
-                e
-            })
-            .ok()
-        })
-        .filter_map(|pi| {
-            read_to_string(pi.path())
-                .map_err(|e| {
-                    eprintln!("Could not read file {:?} to string: {}", pi.path(), e);
-                    e
-                })
-                .ok()
-        })
-        .map(|pis| {
-            // TODO: This should be worked out with a real parser if possible
-            // We're parsing it bespoke because...it's not yaml! yay
-            let mut package_info = PackageInfo::default();
-            pis.lines().for_each(|l| {
-                if l.trim_start() != l {
-                    // There is some whitespace at the front
-                    package_info.files.push(l.trim().to_string());
-                } else {
-                    let kv: Vec<&str> = l.split(':').map(|lp| lp.trim()).collect();
-                    if let Some(k) = kv.first() {
-                        if let Some(v) = kv.get(1) {
-                            match k.to_string().as_str() {
-                                "name" => package_info.name = v.to_string(),
-                                "description" => package_info.description = v.to_string(),
-                                "version" => package_info.version = v.to_string(),
-                                "extra-version" => package_info.extra_version = v.to_string(),
-                                "host" => package_info.host = v.to_string(),
-                                "confidentiality" => package_info.confidentiality = v.to_string(),
-                                "package-name" => package_info.package_name = v.to_string(),
-                                "package-number" => {
-                                    package_info.package_number =
-                                        v.to_string().parse().unwrap_or(0).try_into().unwrap_or(-1)
-                                }
-                                "build-id" => {
-                                    package_info.build_id = v.to_string().parse().unwrap_or(0)
-                                }
-                                "build-id-namespace" => {
-                                    package_info.build_id_namespace = v.to_string()
-                                }
-                                "type" => package_info.typ = v.to_string(),
-                                "package-name-full" => {
-                                    package_info.package_name_full = v.to_string()
-                                }
-                                _ => {}
+        s.lines().for_each(|l| {
+            if l.trim_start() != l {
+                // There is some whitespace at the front
+                package.files.push(l.trim().to_string());
+            } else {
+                let kv: Vec<&str> = l.split(':').map(|lp| lp.trim()).collect();
+                if let Some(k) = kv.first() {
+                    if let Some(v) = kv.get(1) {
+                        match k.to_string().as_str() {
+                            "name" => package.name = v.to_string(),
+                            "description" => package.description = v.to_string(),
+                            "version" => package.version = v.to_string(),
+                            "extra-version" => package.extra_version = v.to_string(),
+                            "host" => package.host = v.to_string(),
+                            "confidentiality" => package.confidentiality = v.to_string(),
+                            "package-name" => package.package_name = v.to_string(),
+                            "package-number" => {
+                                package.package_number =
+                                    v.to_string().parse().unwrap_or(0).try_into().unwrap_or(-1)
                             }
+                            "build-id" => package.build_id = v.to_string().parse().unwrap_or(0),
+                            "build-id-namespace" => package.build_id_namespace = v.to_string(),
+                            "type" => package.typ = v.to_string(),
+                            "package-name-full" => package.package_name_full = v.to_string(),
+                            _ => {}
                         }
                     }
                 }
-            });
-            package_info
-        })
-        .collect();
+            }
+        });
 
-    Ok(infos
-        .iter()
-        .group_by(|p| p.package_number)
-        .into_iter()
-        .map(|(k, g)| {
-            let g: Vec<_> = g.collect();
-            (
-                k,
-                g.iter()
-                    .map(|p| (p.version.clone(), (*p).clone()))
-                    .collect(),
-            )
-        })
-        .collect())
+        Ok(package)
+    }
 }
 
 const SIMICS_HOME: &str = dotenv!("SIMICS_HOME");
@@ -253,34 +383,81 @@ fn simics_home() -> Result<PathBuf> {
 }
 
 /// Find the latest version of the Simics Base package with a particular constraint.
-fn simics_base_version<P: AsRef<Path>, S: AsRef<str>>(
+pub fn package_version<P: AsRef<Path>>(
     simics_home: P,
-    base_version_constraint: S,
-) -> Result<PackageInfo> {
-    let constraint: VersionConstraint = base_version_constraint.as_ref().parse()?;
-    println!("Constraint: {:?}", constraint);
-    let infos = package_infos(simics_home)?[&1000].clone();
-    println!("Infos: {:?}", infos);
+    package_number: PackageNumber,
+    version_constraint: VersionConstraint,
+) -> Result<Package> {
+    let infos = packages(simics_home)?[&package_number].clone();
     let version = infos
         .keys()
         .filter_map(|k| Versioning::new(k))
-        .filter(|v| constraint.matches(v))
+        .filter(|v| version_constraint.matches(v))
         .max()
-        .context("No matching version")?;
+        .ok_or_else(|| anyhow!("No matching version"))?;
 
     Ok(infos
         .get(&version.to_string())
-        .context(format!("No such version {}", version))?
+        .ok_or_else(|| anyhow!("No such version {}", version))?
         .clone())
+}
+
+/// Locate a file recursively using a regex pattern in the simics base directory. If there are
+/// multiple occurrences of a filename, it is undefined which will be returned.
+pub fn find_file_in_dir<P: AsRef<Path>, S: AsRef<str>>(
+    simics_base_dir: P,
+    file_name_pattern: S,
+) -> Result<PathBuf> {
+    let file_name_regex = Regex::new(file_name_pattern.as_ref())?;
+    let found_file = WalkDir::new(&simics_base_dir)
+        .into_iter()
+        .filter_map(|de| de.ok())
+        // is_ok_and is unstable ;_;
+        .filter(|de| {
+            if let Ok(m) = de.metadata() {
+                m.is_file()
+            } else {
+                false
+            }
+        })
+        .find(|de| {
+            if let Some(name) = de.path().file_name() {
+                file_name_regex.is_match(&name.to_string_lossy())
+            } else {
+                false
+            }
+        })
+        .ok_or_else(|| {
+            anyhow!(
+                "Could not find {} in {}",
+                file_name_pattern.as_ref(),
+                simics_base_dir.as_ref().display()
+            )
+        })?
+        .path()
+        .to_path_buf();
+
+    ensure!(
+        found_file.is_file(),
+        "No file {} found in {}",
+        file_name_pattern.as_ref(),
+        simics_base_dir.as_ref().display()
+    );
+
+    Ok(found_file)
 }
 
 /// Emit cargo directives to link to SIMICS given a particular version constraint
 pub fn link_simics_linux<S: AsRef<str>>(version_constraint: S) -> Result<()> {
     let simics_home_dir = simics_home()?;
 
-    let simics_base_info = simics_base_version(&simics_home_dir, &version_constraint)?;
+    let simics_base_info = package_version(
+        &simics_home_dir,
+        PublicPackageNumber::Base.into(),
+        version_constraint.as_ref().parse()?,
+    )?;
     let simics_base_version = simics_base_info.version.clone();
-    let simics_base_dir = simics_base_info.get_package_path(&simics_home_dir)?;
+    let simics_base_dir = simics_base_info.path;
     println!(
         "Found simics base for version '{}' in {}",
         version_constraint.as_ref(),
@@ -349,7 +526,9 @@ pub fn link_simics_linux<S: AsRef<str>>(version_constraint: S) -> Result<()> {
     for lib_name in notfound_libs {
         if let Ok(found_lib) = find_file_in_dir(&simics_base_dir, &lib_name) {
             // If we are running a build script right now, we will copy the library
-            let found_lib_parent = found_lib.parent().context("No parent path found")?;
+            let found_lib_parent = found_lib
+                .parent()
+                .ok_or_else(|| anyhow!("No parent path found"))?;
             lib_search_dirs.insert(found_lib_parent.to_path_buf().canonicalize()?);
             println!("cargo:rustc-link-lib=dylib:+verbatim={}", &lib_name);
         } else {
@@ -385,47 +564,4 @@ pub fn link_simics_linux<S: AsRef<str>>(version_constraint: S) -> Result<()> {
         search_dir_strings.join(";")
     );
     Ok(())
-}
-
-/// Locate a file recursively using a regex pattern in the simics base directory. If there are
-/// multiple occurrences of a filename, it is undefined which will be returned.
-fn find_file_in_dir<P: AsRef<Path>, S: AsRef<str>>(
-    simics_base_dir: P,
-    file_name_pattern: S,
-) -> Result<PathBuf> {
-    let file_name_regex = Regex::new(file_name_pattern.as_ref())?;
-    let found_file = WalkDir::new(&simics_base_dir)
-        .into_iter()
-        .filter_map(|de| de.ok())
-        // is_ok_and is unstable ;_;
-        .filter(|de| {
-            if let Ok(m) = de.metadata() {
-                m.is_file()
-            } else {
-                false
-            }
-        })
-        .find(|de| {
-            if let Some(name) = de.path().file_name() {
-                file_name_regex.is_match(&name.to_string_lossy())
-            } else {
-                false
-            }
-        })
-        .context(format!(
-            "Could not find {} in {}",
-            file_name_pattern.as_ref(),
-            simics_base_dir.as_ref().display()
-        ))?
-        .path()
-        .to_path_buf();
-
-    ensure!(
-        found_file.is_file(),
-        "No file {} found in {}",
-        file_name_pattern.as_ref(),
-        simics_base_dir.as_ref().display()
-    );
-
-    Ok(found_file)
 }

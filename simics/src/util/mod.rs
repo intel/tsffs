@@ -2,13 +2,13 @@
 
 use anyhow::{bail, ensure, Context, Error, Result};
 use cargo_metadata::{MetadataCommand, Package};
-use log::{debug, info};
 use regex::Regex;
 use std::{
     fs::{copy, create_dir_all},
     path::{Component, Path, PathBuf},
     str::FromStr,
 };
+use tracing::{debug, info};
 use walkdir::WalkDir;
 
 /// Copy the contents of one directory to another, recursively, overwriting files if they exist but

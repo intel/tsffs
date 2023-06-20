@@ -7,14 +7,15 @@
 //! - conf_object_t
 //! - object_iter_t
 
-use crate::{last_error, Interface};
+use crate::{last_error, AttrValue, Interface};
 use anyhow::{bail, Result};
 use raw_cstr::raw_cstr;
 use simics_api_sys::{
     class_data_t, class_info_t, class_kind_t_Sim_Class_Kind_Extension,
     class_kind_t_Sim_Class_Kind_Pseudo, class_kind_t_Sim_Class_Kind_Session,
     class_kind_t_Sim_Class_Kind_Vanilla, conf_class_t, conf_object_t, SIM_c_get_interface,
-    SIM_create_class, SIM_get_class, SIM_register_class, SIM_register_interface,
+    SIM_create_class, SIM_create_object, SIM_get_class, SIM_get_object, SIM_register_class,
+    SIM_register_interface,
 };
 
 pub type ConfObject = conf_object_t;
@@ -90,13 +91,13 @@ where
 }
 
 /// Get an interface of an object
-pub fn get_interface<T>(obj: *mut ConfObject, iface: Interface) -> *mut T {
-    unsafe {
+pub fn get_interface<T>(obj: *mut ConfObject, iface: Interface) -> Result<*mut T> {
+    Ok(unsafe {
         SIM_c_get_interface(
             obj as *const ConfObject,
-            iface.as_slice().as_ptr() as *const i8,
+            iface.try_as_slice()?.as_ptr() as *const i8,
         ) as *mut T
-    }
+    })
 }
 
 /// Get a class instance by name
@@ -109,5 +110,29 @@ pub fn get_class<S: AsRef<str>>(name: S) -> Result<*mut ConfClass> {
         bail!("Failed to get class {}: {}", name.as_ref(), last_error());
     } else {
         Ok(cls)
+    }
+}
+
+pub fn create_object<S: AsRef<str>>(
+    cls: *mut ConfClass,
+    name: S,
+    attrs: AttrValue,
+) -> Result<*mut ConfObject> {
+    let obj = unsafe { SIM_create_object(cls.into(), raw_cstr(name)?, attrs) };
+
+    if obj.is_null() {
+        bail!("Unable to create object due to badly formatted name, already existing object, or failed initialization: {}", last_error());
+    } else {
+        Ok(obj)
+    }
+}
+
+pub fn get_object<S: AsRef<str>>(name: S) -> Result<*mut ConfObject> {
+    let obj = unsafe { SIM_get_object(raw_cstr(name.as_ref())?) };
+
+    if obj.is_null() {
+        bail!("Unable to get object {}: {}", name.as_ref(), last_error());
+    } else {
+        Ok(obj)
     }
 }

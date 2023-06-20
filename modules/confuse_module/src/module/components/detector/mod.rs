@@ -8,7 +8,6 @@ use crate::{
     CLASS_NAME,
 };
 use anyhow::{bail, Result};
-use log::{debug, info, trace};
 use raffl_macro::{callback_wrappers, params};
 use simics_api::{
     attr_object_or_nil_from_ptr, break_simulation, event::register_event, event_cancel_time,
@@ -20,6 +19,7 @@ use std::{
     collections::{HashMap, HashSet},
     ffi::c_void,
 };
+use tracing::{debug, info, trace};
 
 #[derive(Default)]
 pub struct Detector {
@@ -51,7 +51,7 @@ impl ConfuseState for Detector {
     fn on_initialize(
         &mut self,
         confuse: *mut ConfObject,
-        input_config: &crate::config::InputConfig,
+        input_config: &mut crate::config::InputConfig,
         output_config: crate::config::OutputConfig,
     ) -> Result<OutputConfig> {
         self.faults = input_config.faults.clone();

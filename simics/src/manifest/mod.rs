@@ -1,13 +1,17 @@
-use crate::package::{package_infos, PackageInfo};
 use anyhow::{Context, Result};
 use std::path::Path;
 use version_tools::VersionConstraint;
 use versions::Versioning;
 
+use crate::package::{packages, Package, PackageNumber};
+
 /// Parse all SIMICS manifest(s) in the installation to determine the latest simics version and
 /// return its manifest
-pub fn simics_base_latest<P: AsRef<Path>>(simics_home: P) -> Result<PackageInfo> {
-    let infos = package_infos(simics_home)?[&1000].clone();
+pub fn package_latest<P: AsRef<Path>>(
+    simics_home: P,
+    package_number: PackageNumber,
+) -> Result<Package> {
+    let infos = packages(simics_home)?[&package_number].clone();
 
     let max_base = infos
         .into_iter()
@@ -18,16 +22,16 @@ pub fn simics_base_latest<P: AsRef<Path>>(simics_home: P) -> Result<PackageInfo>
 }
 
 /// Find the latest version of the Simics Base package with a particular constraint.
-pub fn simics_base_version<P: AsRef<Path>, S: AsRef<str>>(
+pub fn package_version<P: AsRef<Path>>(
     simics_home: P,
-    base_version_constraint: S,
-) -> Result<PackageInfo> {
-    let constraint: VersionConstraint = base_version_constraint.as_ref().parse()?;
-    let infos = package_infos(simics_home)?[&1000].clone();
+    package_number: PackageNumber,
+    version_constraint: VersionConstraint,
+) -> Result<Package> {
+    let infos = packages(simics_home)?[&package_number].clone();
     let version = infos
         .keys()
         .filter_map(|k| Versioning::new(k))
-        .filter(|v| constraint.matches(v))
+        .filter(|v| version_constraint.matches(v))
         .max()
         .context("No matching version")?;
 

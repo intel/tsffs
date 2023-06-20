@@ -1,3 +1,7 @@
+use std::slice::from_raw_parts;
+
+use anyhow::Result;
+use raw_cstr::raw_cstr;
 use simics_api_sys::{
     A20_INTERFACE, ABS_POINTER_ACTIVATE_INTERFACE, ABS_POINTER_INTERFACE,
     ADDRESS_PROFILER_INTERFACE, APIC_CPU_INTERFACE, ARM_AVIC_INTERFACE, ARM_COPROCESSOR_INTERFACE,
@@ -332,12 +336,13 @@ pub enum Interface {
     XtensaTieInputQueue,
     XtensaTieLookup,
     XtensaTieOutputQueue,
+    Other(String),
 }
 
 impl Interface {
     /// Get the interface name as a null-terminated character slice
-    pub fn as_slice(&self) -> &'static [u8] {
-        match *self {
+    pub fn try_as_slice(&self) -> Result<&'static [u8]> {
+        Ok(match self {
             Interface::A20 => A20_INTERFACE,
             Interface::AbsPointer => ABS_POINTER_INTERFACE,
             Interface::AbsPointerActivate => ABS_POINTER_ACTIVATE_INTERFACE,
@@ -589,6 +594,9 @@ impl Interface {
             Interface::XtensaTieInputQueue => XTENSA_TIE_INPUT_QUEUE_INTERFACE,
             Interface::XtensaTieLookup => XTENSA_TIE_LOOKUP_INTERFACE,
             Interface::XtensaTieOutputQueue => XTENSA_TIE_OUTPUT_QUEUE_INTERFACE,
-        }
+            Interface::Other(name) => unsafe {
+                from_raw_parts(raw_cstr(&name)? as *const u8, name.len() + 1)
+            },
+        })
     }
 }

@@ -57,8 +57,8 @@ pub struct ArtifactDependency {
     /// if one is not provided.
     pub workspace_root: Option<PathBuf>,
     /// Crate name to search for an artifact dependency for.
-    #[builder(setter(into))]
-    pub crate_name: String,
+    #[builder(setter(into, strip_option), default)]
+    pub crate_name: Option<String>,
     /// Type of artifact to search for
     pub artifact_type: CrateType,
     #[builder(setter(into, strip_option), default)]
@@ -161,14 +161,28 @@ impl ArtifactDependency {
             .manifest_path(workspace_root.join("Cargo.toml"))
             .exec()?;
 
+        self.crate_name = if let Some(crate_name) = self.crate_name.as_ref() {
+            Some(crate_name.clone())
+        } else if let Some(root_package) = metadata.root_package() {
+            Some(root_package.name.clone())
+        } else {
+            bail!("No name provided and no root package in provided workspace at {}, could not determine crate name.", workspace_root.display());
+        };
+
+        let crate_name = self
+            .crate_name
+            .as_ref()
+            .cloned()
+            .ok_or_else(|| anyhow!("self.crate_name must have a value at this point"))?;
+
         let package = metadata
             .packages
             .iter()
-            .find(|p| p.name == self.crate_name)
+            .find(|p| p.name == crate_name)
             .ok_or_else(|| {
                 anyhow!(
                     "No package matching name {} found in workspace at {}",
-                    self.crate_name,
+                    crate_name,
                     workspace_root.display()
                 )
             })?;

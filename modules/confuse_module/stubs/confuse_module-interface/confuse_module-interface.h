@@ -2,10 +2,10 @@
   © 2017 Intel Corporation
 */
 
-/* 	 
+/*
   confuse_module-interface.h - Skeleton code to base new interface modules on
 */
-	 
+
 /* This module is a template for defining new interface types. See the
    "Defining New Interface Types" section of the
    "Simics Model Builder User's Guide" for further documentation.
@@ -31,14 +31,15 @@ extern "C" {
 /* This defines a new interface type. Its corresponding C data type will be
    called "confuse_module_interface_t". */
 SIM_INTERFACE(confuse_module) {
-    void (*start)(conf_object_t *obj);
-    void (*add_processor)(conf_object_t *obj, attr_value_t *processor);
-    void (*add_fault)(conf_object_t *obj, int64 fault);
+    void (*start)(conf_object_t * obj);
+    void (*add_processor)(conf_object_t * obj, attr_value_t * processor);
+    void (*add_fault)(conf_object_t * obj, int64 fault);
+    void (*set_channel)(conf_object_t * obj, void *tx, void *rx);
 #ifndef PYWRAP
-        /* methods that cannot be exported to Python, for example as it refers
-           to unknown data types, must be enclosed by "#ifndef PYWRAP" ...
-           "#endif". See the "Restrictions" subsection of "Defining New
-           Interface Types" mentioned above. */
+    /* methods that cannot be exported to Python, for example as it refers
+       to unknown data types, must be enclosed by "#ifndef PYWRAP" ...
+       "#endif". See the "Restrictions" subsection of "Defining New
+       Interface Types" mentioned above. */
 #endif
 };
 

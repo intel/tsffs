@@ -6,7 +6,6 @@ use confuse_module::{
     config::{InputConfig, TraceMode},
     faults::x86_64::X86_64Fault,
 };
-use log::{info, Level};
 use log4rs::{
     append::rolling_file::{
         policy::compound::{
@@ -21,6 +20,7 @@ use log4rs::{
 use simics::package::PublicPackageNumber;
 use simics::project::SimicsProject;
 use tempfile::Builder as NamedTempFileBuilder;
+use tracing::{info, Level};
 
 use x509_parse::X509_PARSE_EFI_MODULE;
 

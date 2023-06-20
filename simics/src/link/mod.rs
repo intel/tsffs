@@ -1,5 +1,8 @@
-use crate::{manifest::simics_base_version, simics::home::simics_home, util::find_file_in_dir};
-use anyhow::{ensure, Context, Result};
+use crate::{
+    manifest::package_version, package::PublicPackageNumber, simics::home::simics_home,
+    util::find_file_in_dir,
+};
+use anyhow::{anyhow, ensure, Context, Result};
 use regex::Regex;
 use std::{
     collections::HashSet,
@@ -10,9 +13,13 @@ use std::{
 pub fn link_simics_linux<S: AsRef<str>>(version_constraint: S) -> Result<()> {
     let simics_home_dir = simics_home()?;
 
-    let simics_base_info = simics_base_version(&simics_home_dir, &version_constraint)?;
+    let simics_base_info = package_version(
+        &simics_home_dir,
+        PublicPackageNumber::Base.into(),
+        version_constraint.as_ref().parse()?,
+    )?;
     let simics_base_version = simics_base_info.version.clone();
-    let simics_base_dir = simics_base_info.get_package_path(&simics_home_dir)?;
+    let simics_base_dir = simics_base_info.path;
     println!(
         "Found simics base for version '{}' in {}",
         version_constraint.as_ref(),
@@ -82,7 +89,13 @@ pub fn link_simics_linux<S: AsRef<str>>(version_constraint: S) -> Result<()> {
         if let Ok(found_lib) = find_file_in_dir(&simics_base_dir, &lib_name) {
             // If we are running a build script right now, we will copy the library
             let found_lib_parent = found_lib.parent().context("No parent path found")?;
-            lib_search_dirs.insert(found_lib_parent.to_path_buf().canonicalize()?);
+            lib_search_dirs.insert(found_lib_parent.to_path_buf().canonicalize().map_err(|e| {
+                anyhow!(
+                    "Failed to canonicalize found library parent path {}: {}",
+                    found_lib_parent.display(),
+                    e
+                )
+            })?);
             println!("cargo:rustc-link-lib=dylib:+verbatim={}", &lib_name);
         } else {
             eprintln!("Warning! Could not find simics dependency library {}. Chances are, it is a system library and this is OK.", lib_name);

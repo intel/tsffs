@@ -34,12 +34,12 @@ impl CpuInstrumentationSubscribe {
         let iface = get_interface::<CpuInstrumentationSubscribeInterface>(
             cpu,
             Interface::CpuInstrumentationSubscribe,
-        );
+        )?;
 
         if iface.is_null() {
             bail!(
                 "No interface {} found for cpu",
-                String::from_utf8_lossy(Interface::CpuInstrumentationSubscribe.as_slice())
+                String::from_utf8_lossy(Interface::CpuInstrumentationSubscribe.try_as_slice()?)
             )
         } else {
             Ok(Self { iface })
@@ -116,12 +116,12 @@ impl CpuInstructionQuery {
         let cpu: *mut ConfObject = attr_object_or_nil(unsafe { *ptr })?;
 
         let iface =
-            get_interface::<CpuInstructionQueryInterface>(cpu, Interface::CpuInstructionQuery);
+            get_interface::<CpuInstructionQueryInterface>(cpu, Interface::CpuInstructionQuery)?;
 
         if iface.is_null() {
             bail!(
                 "No interface {} found for cpu",
-                String::from_utf8_lossy(Interface::CpuInstructionQuery.as_slice())
+                String::from_utf8_lossy(Interface::CpuInstructionQuery.try_as_slice()?)
             )
         } else {
             Ok(Self { iface })
@@ -157,12 +157,12 @@ impl CpuCachedInstruction {
         let cpu: *mut ConfObject = attr_object_or_nil(unsafe { *ptr })?;
 
         let iface =
-            get_interface::<CpuCachedInstructionInterface>(cpu, Interface::CpuCachedInstruction);
+            get_interface::<CpuCachedInstructionInterface>(cpu, Interface::CpuCachedInstruction)?;
 
         if iface.is_null() {
             bail!(
                 "No interface {} found for cpu",
-                String::from_utf8_lossy(Interface::CpuCachedInstruction.as_slice())
+                String::from_utf8_lossy(Interface::CpuCachedInstruction.try_as_slice()?)
             )
         } else {
             Ok(Self { _iface: iface })
@@ -180,12 +180,12 @@ impl ProcessorInfoV2 {
 
         let cpu: *mut ConfObject = attr_object_or_nil(unsafe { *ptr })?;
 
-        let iface = get_interface::<ProcessorInfoV2Interface>(cpu, Interface::ProcessorInfoV2);
+        let iface = get_interface::<ProcessorInfoV2Interface>(cpu, Interface::ProcessorInfoV2)?;
 
         if iface.is_null() {
             bail!(
                 "No interface {} found for cpu",
-                String::from_utf8_lossy(Interface::ProcessorInfoV2.as_slice())
+                String::from_utf8_lossy(Interface::ProcessorInfoV2.try_as_slice()?)
             )
         } else {
             Ok(Self { iface })
@@ -238,12 +238,12 @@ impl IntRegister {
 
         let cpu: *mut ConfObject = attr_object_or_nil(unsafe { *ptr })?;
 
-        let iface = get_interface::<IntRegisterInterface>(cpu, Interface::IntRegister);
+        let iface = get_interface::<IntRegisterInterface>(cpu, Interface::IntRegister)?;
 
         if iface.is_null() {
             bail!(
                 "No interface {} found for cpu",
-                String::from_utf8_lossy(Interface::IntRegister.as_slice())
+                String::from_utf8_lossy(Interface::IntRegister.try_as_slice()?)
             )
         } else {
             Ok(Self { iface })
@@ -279,12 +279,12 @@ impl Cycle {
 
         let cpu: *mut ConfObject = attr_object_or_nil(unsafe { *ptr })?;
 
-        let iface = get_interface::<CycleInterface>(cpu, Interface::Cycle);
+        let iface = get_interface::<CycleInterface>(cpu, Interface::Cycle)?;
 
         if iface.is_null() {
             bail!(
                 "No interface {} found for cpu",
-                String::from_utf8_lossy(Interface::Cycle.as_slice())
+                String::from_utf8_lossy(Interface::Cycle.try_as_slice()?)
             )
         } else {
             Ok(Self { _iface: iface })

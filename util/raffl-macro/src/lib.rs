@@ -58,7 +58,7 @@ enum CallbackWrapperArgType {
     /// Whether result types should be unwrapped by the wrapper function (to allow the callback
     /// function to return `Result<T, E>` instead of `T`).
     UnwrapResult,
-    /// Trace callback entrypoints with log::trace!
+    /// Trace callback entrypoints with tracing::trace!
     Trace,
 }
 
@@ -200,7 +200,21 @@ pub fn callback_wrappers(args: TokenStream, input: TokenStream) -> TokenStream {
     };
     let implementation = parse_macro_input!(input as ItemImpl);
 
-    let struct_name = implementation.self_ty.clone();
+    let struct_name = if let Type::Path(ty) = &*implementation.self_ty {
+        if let Some(p) = ty.path.segments.first() {
+            p.ident.clone()
+        } else {
+            abort! {
+                ty,
+                "Path contains no entries"
+            }
+        }
+    } else {
+        abort! {
+            implementation,
+            "Could not obtain struct type from implementation"
+        }
+    };
 
     let struct_name_string = quote! { #struct_name }.to_string().to_ascii_lowercase();
 
@@ -377,7 +391,7 @@ pub fn callback_wrappers(args: TokenStream, input: TokenStream) -> TokenStream {
 
             let trace_mb = if impl_args.has_trace() {
                 quote! {
-                    log::trace!("Callback {}::{} executed", #struct_name_string, #fname_string);
+                    tracing::trace!("Callback {}::{} executed", #struct_name_string, #fname_string);
                 }
             } else {
                 quote! {}
@@ -415,7 +429,7 @@ pub fn callback_wrappers(args: TokenStream, input: TokenStream) -> TokenStream {
 
     // let _s = r.to_string();
 
-    // eprintln!("{}", s);
+    // eprintln!("{}", _s);
 
     r
 }

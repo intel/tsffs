@@ -6,7 +6,6 @@ use confuse_module::{
     faults::{x86_64::X86_64Fault, Fault},
 };
 use hello_world::HELLO_WORLD_EFI_MODULE;
-use log::{info, Level};
 use log4rs::{
     append::rolling_file::{
         policy::compound::{
@@ -29,6 +28,7 @@ use simics::{
 };
 use std::path::PathBuf;
 use tempfile::Builder as NamedTempFileBuilder;
+use tracing::{info, Level};
 
 #[derive(Parser)]
 #[command(author, version, about)]

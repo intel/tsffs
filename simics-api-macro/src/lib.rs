@@ -14,7 +14,7 @@ use syn::{
     parse::{Parse, ParseStream, Parser, Result},
     parse_macro_input,
     punctuated::Punctuated,
-    Expr, Field, Fields, Ident, ItemStruct, LitStr, Token,
+    Expr, Field, Fields, Generics, Ident, ItemStruct, LitStr, Token,
 };
 
 #[derive(Clone)]
@@ -282,9 +282,10 @@ pub fn module(args: TokenStream, input: TokenStream) -> TokenStream {
 
     let mut item_struct = parse_macro_input!(input as ItemStruct);
     let name = &item_struct.ident;
+    let parms = &item_struct.generics;
 
     // This needs to be generated first before we add the `ConfObject` field
-    let raw_impl = raw_impl(name.to_string(), &item_struct.fields);
+    let raw_impl = raw_impl(name.to_string(), &item_struct.fields, parms);
 
     if let Fields::Named(ref mut fields) = item_struct.fields {
         fields.named.insert(
@@ -303,7 +304,7 @@ pub fn module(args: TokenStream, input: TokenStream) -> TokenStream {
     };
 
     let ffi_impl = ffi_impl(name.to_string());
-    let register_impl = create_impl(name.to_string(), &args);
+    let register_impl = create_impl(name.to_string(), &args, parms);
     let from_impl = from_impl(name.to_string());
 
     let r: TokenStream = quote! {
@@ -378,7 +379,7 @@ fn ffi_impl<S: AsRef<str>>(name: S) -> TokenStream2 {
     }
 }
 
-fn create_impl<S: AsRef<str>>(name: S, args: &Args) -> TokenStream2 {
+fn create_impl<S: AsRef<str>>(name: S, args: &Args, parms: &Generics) -> TokenStream2 {
     let name_string = name.as_ref().to_string().to_ascii_lowercase();
     let name = format_ident!("{}", name.as_ref());
 
@@ -408,7 +409,7 @@ fn create_impl<S: AsRef<str>>(name: S, args: &Args) -> TokenStream2 {
     };
 
     quote! {
-        impl #name {
+        impl #parms #name #parms {
             const CLASS: simics_api::ClassInfo = simics_api::ClassInfo {
                 alloc: Some(#alloc_fn_name),
                 init: Some(#init_fn_name),
@@ -423,7 +424,7 @@ fn create_impl<S: AsRef<str>>(name: S, args: &Args) -> TokenStream2 {
 
         }
 
-        impl simics_api::Create for #name {
+        impl #parms simics_api::Create for #name #parms {
             fn create() -> anyhow::Result<*mut simics_api::ConfClass> {
                 simics_api::create_class(#class_name, #name::CLASS)
             }
@@ -431,7 +432,7 @@ fn create_impl<S: AsRef<str>>(name: S, args: &Args) -> TokenStream2 {
     }
 }
 
-fn raw_impl<S: AsRef<str>>(name: S, fields: &Fields) -> TokenStream2 {
+fn raw_impl<S: AsRef<str>>(name: S, fields: &Fields, parms: &Generics) -> TokenStream2 {
     let name = format_ident!("{}", name.as_ref());
 
     let mut field_parameters = Vec::new();
@@ -456,7 +457,8 @@ fn raw_impl<S: AsRef<str>>(name: S, fields: &Fields) -> TokenStream2 {
     }
 
     quote! {
-        impl #name {
+        impl #parms #name #parms {
+            #[allow(clippy::too_many_arguments)]
             fn new(
                 obj: *mut simics_api::ConfObject,
                 #(#field_parameters),*
@@ -476,7 +478,7 @@ fn from_impl<S: AsRef<str>>(name: S) -> TokenStream2 {
     let name = format_ident!("{}", name.as_ref());
 
     quote! {
-        impl From<*mut simics_api::ConfObject> for &mut #name {
+        impl From<*mut simics_api::ConfObject> for &mut #name <'_> {
             fn from(value: *mut simics_api::ConfObject) -> Self {
                 let ptr: *mut #name = value as *mut #name;
                 unsafe { &mut *ptr }

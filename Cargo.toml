@@ -31,14 +31,13 @@ confuse_module = { path = "./modules/confuse_module" }
 simics-api-sys = { path = "./simics-api-sys" }
 simics-api = { path = "./simics-api" }
 simics-api-macro = { path = "./simics-api-macro" }
-ipc-shm = { path = "./util/ipc-shm" }
 raw-cstr = { path = "./util/raw-cstr" }
 version-tools = { path = "./util/version-tools" }
 raffl-macro = { path = "./util/raffl-macro" }
 ipc-channel = { git = "https://github.com/novafacing/ipc-channel.git", version = "0.16.0", features = [
     "memfd",
 ] }
-libafl = { git = "https://github.com/AFLplusplus/LibAFL", rev = "c8c5d89f336208112ff91889865e6bedb62aa23d" }
+libafl = { git = "https://github.com/AFLplusplus/LibAFL", branch = "libfuzzer" }
 
 [profile.dev]
 rpath = true

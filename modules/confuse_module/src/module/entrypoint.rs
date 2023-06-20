@@ -5,7 +5,7 @@
 
 use super::controller::Controller;
 use const_format::concatcp;
-use log::info;
+use tracing::info;
 
 pub const CLASS_NAME: &str = "confuse_module";
 pub const BOOTSTRAP_SOCKNAME: &str = concatcp!(CLASS_NAME, "_SOCK");

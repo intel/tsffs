@@ -2,80 +2,81 @@ use std::{collections::HashMap, ffi::c_void, num::Wrapping};
 
 use crate::{
     config::{InputConfig, OutputConfig, TraceMode},
-    maps::MapType,
     module::Confuse,
     processor::Processor,
     traits::{ConfuseInterface, ConfuseState},
 };
 use anyhow::Result;
 
-use ipc_shm::{IpcShm, IpcShmWriter};
-use log::info;
+use libafl::prelude::{AsMutSlice, AsSlice, OwnedMutSlice};
 use raffl_macro::{callback_wrappers, params};
 use rand::{thread_rng, Rng};
+use tracing::info;
 
 use simics_api::{
     attr_object_or_nil_from_ptr, get_processor_number, AttrValue, CachedInstructionHandle,
     ConfObject, InstructionHandle,
 };
 
-pub struct Tracer {
-    coverage: IpcShm,
-    coverage_writer: IpcShmWriter,
+pub struct Tracer<'a> {
+    coverage: OwnedMutSlice<'a, u8>,
     coverage_prev_loc: u64,
     processors: HashMap<i32, Processor>,
     mode: TraceMode,
 }
 
-impl<'a> From<*mut std::ffi::c_void> for &'a mut Tracer {
+impl<'a, 'b> From<*mut std::ffi::c_void> for &'a mut Tracer<'b> {
     /// Convert from a *mut Confuse pointer to a mutable reference to tracer
-    fn from(value: *mut std::ffi::c_void) -> &'a mut Tracer {
+    fn from(value: *mut std::ffi::c_void) -> &'a mut Tracer<'b> {
         let confuse_ptr: *mut Confuse = value as *mut Confuse;
         let confuse = unsafe { &mut *confuse_ptr };
         &mut confuse.tracer
     }
 }
 
-impl Tracer {
+impl<'a> Tracer<'a> {
     pub const COVERAGE_MAP_SIZE: usize = 0x10000;
 
     /// Try to instantiate a new AFL Coverage Tracer
     pub fn try_new() -> Result<Self> {
-        let mut coverage = IpcShm::try_new("afl_coverage_map", Tracer::COVERAGE_MAP_SIZE)?;
-        let coverage_writer = coverage.writer()?;
-        let coverage_prev_loc = thread_rng().gen_range(0..coverage.len()) as u64;
-
         Ok(Self {
-            coverage,
-            coverage_writer,
-            coverage_prev_loc,
+            // Initialize with a dummy coverage map
+            coverage: OwnedMutSlice::from(Vec::new()),
+            coverage_prev_loc: 0,
             processors: HashMap::new(),
             mode: TraceMode::Once,
         })
     }
 
     fn log_pc(&mut self, pc: u64) -> Result<()> {
-        let afl_idx = (pc ^ self.coverage_prev_loc) % self.coverage.len() as u64;
-        let mut cur_byte: Wrapping<u8> =
-            Wrapping(self.coverage_writer.read_byte(afl_idx as usize)?);
+        let afl_idx = (pc ^ self.coverage_prev_loc) % self.coverage.as_slice().len() as u64;
+        let mut cur_byte: Wrapping<u8> = Wrapping(self.coverage.as_slice()[afl_idx as usize]);
         cur_byte += 1;
-        self.coverage_writer
-            .write_byte(cur_byte.0, afl_idx as usize)?;
-        self.coverage_prev_loc = (pc >> 1) % self.coverage_writer.len() as u64;
+        self.coverage.as_mut_slice()[afl_idx as usize] = cur_byte.0;
+        self.coverage_prev_loc = (pc >> 1) % self.coverage.as_slice().len() as u64;
 
         Ok(())
     }
 }
 
-impl ConfuseState for Tracer {
+impl<'a> ConfuseState for Tracer<'a> {
     fn on_initialize(
         &mut self,
         _confuse: *mut ConfObject,
-        input_config: &InputConfig,
+        input_config: &mut InputConfig,
         output_config: OutputConfig,
     ) -> Result<OutputConfig> {
         self.mode = input_config.trace_mode.clone();
-        Ok(output_config.with_map(MapType::Coverage(self.coverage.try_clone()?)))
+        // TODO: Maybe actually fix this lifetime stuff but it is actually unsafe to share this
+        // coverage map so maybe there is no unsafe solution here
+        self.coverage = unsafe {
+            OwnedMutSlice::from_raw_parts_mut(
+                input_config.coverage_map.0,
+                input_config.coverage_map.1,
+            )
+        };
+        self.coverage_prev_loc = thread_rng().gen_range(0..self.coverage.as_slice().len()) as u64;
+        Ok(output_config)
     }
 
     fn pre_first_run(&mut self, confuse: *mut ConfObject) -> Result<()> {
@@ -108,7 +109,7 @@ impl ConfuseState for Tracer {
     // }
 }
 
-impl ConfuseInterface for Tracer {
+impl<'a> ConfuseInterface for Tracer<'a> {
     fn on_add_processor(&mut self, processor_attr: *mut AttrValue) -> Result<()> {
         let processor_obj: *mut ConfObject = attr_object_or_nil_from_ptr(processor_attr)?;
         let processor_number = get_processor_number(processor_obj);
@@ -126,7 +127,7 @@ impl ConfuseInterface for Tracer {
 }
 
 #[callback_wrappers(pub, unwrap_result)]
-impl Tracer {
+impl<'a> Tracer<'a> {
     #[params(..., !slf: *mut std::ffi::c_void)]
     pub fn on_instruction_before(
         &mut self,

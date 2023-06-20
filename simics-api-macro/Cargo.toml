@@ -15,6 +15,7 @@ proc-macro2 = "1.0.56"
 proc-macro-error = "1.0.4"
 
 [dev-dependencies]
+
 anyhow = "1.0.70"
 raw-cstr.workspace = true
 simics-api = { workspace = true }

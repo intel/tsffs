@@ -9,11 +9,11 @@ use simics_api_sys::{
     sim_exception_SimExc_InterfaceNotFound, sim_exception_SimExc_License,
     sim_exception_SimExc_Lookup, sim_exception_SimExc_Memory, sim_exception_SimExc_No_Exception,
     sim_exception_SimExc_PythonTranslation, sim_exception_SimExc_Type,
-    sim_exception_Sim_Exceptions, SIM_clear_exception, SIM_last_error,
+    sim_exception_Sim_Exceptions, SIM_clear_exception, SIM_get_pending_exception, SIM_last_error,
 };
 use std::ffi::CStr;
 
-#[derive(FromPrimitive)]
+#[derive(FromPrimitive, Debug)]
 #[repr(u32)]
 pub enum SimException {
     NoException = sim_exception_SimExc_No_Exception,
@@ -54,4 +54,8 @@ pub fn last_error() -> String {
 
 pub fn clear_exception() -> Result<SimException> {
     unsafe { SIM_clear_exception() }.try_into()
+}
+
+pub fn get_pending_exception() -> Result<SimException> {
+    unsafe { SIM_get_pending_exception() }.try_into()
 }
