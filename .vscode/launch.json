@@ -9,6 +9,42 @@
             },
             "args": [],
             "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug simics-fuzz",
+            "cargo": {
+                "args": ["build", "--bin", "simics-fuzz", "--features=6.0.166"]
+            },
+            "args": [
+                "-c",
+                "/tmp/newcorpus/",
+                "-s",
+                "/tmp/newsolution/",
+                "-l",
+                "DEBUG",
+                "-C",
+                "1",
+                "-g",
+                "--package",
+                "2096:6.0.66",
+                "--file",
+                "targets/hello-world/src/bin/resource/HelloWorld.efi:%simics%/targets/hello-world/HelloWorld.efi",
+                "--file",
+                "targets/hello-world/src/bin/resource/app.py:%simics%/scripts/app.py",
+                "--file",
+                "targets/hello-world/src/bin/resource/app.yml:%simics%/scripts/app.yml",
+                "--file",
+                "targets/hello-world/src/bin/resource/minimal_boot_disk.craff:%simics%/targets/hello-world/minimal_boot_disk.craff",
+                "--file",
+                "targets/hello-world/src/bin/resource/run_uefi_app.nsh:%simics%/targets/hello-world/run_uefi_app.nsh",
+                "--file",
+                "targets/hello-world/src/bin/resource/run-uefi-app.simics:%simics%/targets/hello-world/run-uefi-app.simics",
+                "--command",
+                "COMMAND:%simics%/scripts/app.yml"
+            ],
+            "cwd": "${workspaceFolder}"
         }
     ]
 }

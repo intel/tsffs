@@ -1,55 +1,55 @@
-use self::{feedbacks::ShrinkMapFeedback, monitors::MultiOrTui, observers::SizeValueObserver};
 use crate::{
     args::command::Command,
-    modules::confuse::{ConfuseModuleInterface, CONFUSE_MODULE, CONFUSE_MODULE_CRATE_NAME},
+    modules::confuse::{ConfuseModuleInterface, CONFUSE_MODULE_CRATE_NAME},
 };
-use anyhow::{anyhow, bail, Error, Result};
+use anyhow::{anyhow, Error, Result};
 use confuse_module::{
     client::Client,
+    config::{InputConfig, InputConfigBuilder, TraceMode},
+    faults::{x86_64::X86_64Fault, Fault},
     messages::{client::ClientMessage, module::ModuleMessage},
+    module::Confuse,
+    stops::StopReason,
     traits::ConfuseClient,
 };
 use derive_builder::Builder;
 use libafl::{
     bolts::core_affinity::Cores,
-    feedback_and, feedback_and_fast, feedback_not, feedback_or, feedback_or_fast,
+    feedback_and_fast, feedback_not, feedback_or_fast,
     prelude::{
         current_nanos, havoc_mutations,
         ondisk::OnDiskMetadataFormat,
-        tokens_mutations,
         tui::{ui::TuiUI, TuiMonitor},
-        tuple_list, AflMapFeedback, AsMutSlice, BytesInput, CachedOnDiskCorpus, Corpus,
-        CrashFeedback, EventConfig, ExitKind, HitcountsMapObserver, InProcessExecutor, Launcher,
-        MaxMapFeedback, Merge, MinMapFeedback, Monitor, MultiMonitor, OnDiskCorpus, OwnedMutSlice,
-        OwnedSlice, RandBytesGenerator, ShMemProvider, StdMapObserver, StdRand,
-        StdScheduledMutator, StdShMemProvider, TimeFeedback, TimeObserver, TimeoutExecutor,
+        tuple_list, AflMapFeedback, AsMutSlice, AsSlice, BytesInput, CachedOnDiskCorpus, Corpus,
+        CrashFeedback, EventConfig, ExitKind, HasTargetBytes, HitcountsMapObserver,
+        InProcessExecutor, Launcher, MultiMonitor, OnDiskCorpus, OwnedMutSlice, RandBytesGenerator,
+        ShMemProvider, StdMapObserver, StdRand, StdScheduledMutator, StdShMemProvider,
+        TimeFeedback, TimeObserver, TimeoutExecutor,
     },
     schedulers::{
         powersched::PowerSchedule, IndexesLenTimeMinimizerScheduler, PowerQueueScheduler,
     },
-    stages::{CalibrationStage, GeneralizationStage, IfStage, StdPowerMutationalStage},
+    stages::{CalibrationStage, StdPowerMutationalStage},
     state::{HasCorpus, StdState},
     ErrorBacktrace, Fuzzer, StdFuzzer,
 };
-use observers::MappedEdgeMapObserver;
 use simics::{
     api::{
-        alloc_attr_list, attr_list, create_object, get_all_modules, get_class, get_interface,
-        get_object, load_module, main_loop, DeprecationLevel, GuiMode, InitArg, InitArgs,
-        Interface,
+        alloc_attr_list, create_object, get_class, get_interface, get_object, load_module,
+        make_attr_data_adopt, DeprecationLevel, GuiMode, InitArg, InitArgs, Interface,
     },
     project::Project,
     simics::Simics,
 };
 use std::{
-    f32::consts::E,
+    mem::size_of,
     net::TcpListener,
     path::PathBuf,
     sync::mpsc::{channel, Receiver, Sender},
     thread::{spawn, JoinHandle},
     time::Duration,
 };
-use tracing::{info, Level};
+use tracing::{debug, error, info};
 
 mod feedbacks;
 mod monitors;
@@ -66,9 +66,12 @@ pub struct SimicsFuzzer {
     #[builder(setter(custom), default)]
     solutions: PathBuf,
     tui: bool,
-    shrink: bool,
-    dedup: bool,
-    grimoire: bool,
+    #[builder(default)]
+    _shrink: bool,
+    #[builder(default)]
+    _dedup: bool,
+    #[builder(default)]
+    _grimoire: bool,
     timeout: u64,
     cores: Cores,
     command: Vec<Command>,
@@ -98,14 +101,20 @@ impl SimicsFuzzer {
     pub const DEFAULT_CORPUS_DIRECTORY: &str = "corpus";
     pub const DEFAULT_SOLUTIONS_DIRECTORY: &str = "solutions";
 
-    pub fn simics<'a>(
+    pub fn simics(
         &self,
         tx: Sender<ModuleMessage>,
         rx: Receiver<ClientMessage>,
-        coverage_map: OwnedMutSlice<'a, u8>,
     ) -> JoinHandle<Result<()>> {
         let path = self.project.path.path.clone();
+
+        info!(
+            "Starting SIMICS project at {}",
+            self.project.path.path.display()
+        );
+
         let command = self.command.clone();
+
         spawn(move || -> Result<()> {
             // TODO: Take these args from CLI, we should let users override anything including GUI
             // mode if they really want to
@@ -114,12 +123,13 @@ impl SimicsFuzzer {
                 .arg(InitArg::deprecation_level(DeprecationLevel::NoWarnings)?)
                 .arg(InitArg::gui_mode(GuiMode::None)?)
                 // TODO: Maybe disable this if we can output logs through tracing?
-                .arg(InitArg::log_enable()?)
                 .arg(InitArg::no_windows()?)
                 .arg(InitArg::project(path.to_string_lossy().to_string())?)
                 // TODO: maybe disable these for verbosity reasons
                 .arg(InitArg::script_trace()?)
-                .arg(InitArg::verbose()?);
+                .arg(InitArg::verbose()?)
+                .arg(InitArg::log_enable()?)
+                .arg(InitArg::log_file("/tmp/simics.log")?);
 
             Simics::try_init(simics_args)?;
 
@@ -127,19 +137,36 @@ impl SimicsFuzzer {
             // asserting that it returns not-None
             load_module(CONFUSE_MODULE_CRATE_NAME)?;
 
+            info!("Loaded SIMICS module");
+
             let confuse = create_object(
                 get_class(CONFUSE_MODULE_CRATE_NAME)?,
                 CONFUSE_MODULE_CRATE_NAME,
                 alloc_attr_list(0),
             )?;
 
-            // Set up the sender and receiver
+            info!("Got confuse at {:#x}", confuse as usize);
+
             let confuse_interface = get_interface::<ConfuseModuleInterface>(
                 confuse,
                 Interface::Other(CONFUSE_MODULE_CRATE_NAME.to_string()),
             )?;
 
-            ((unsafe { *confuse_interface }).set_channel)(confuse, Box::new(tx), Box::new(rx));
+            info!("Got SIMICS object: {:#x}", confuse as usize);
+            info!("Got confuse interface at {:#x}", confuse_interface as usize);
+
+            let tx = Box::new(make_attr_data_adopt(tx)?);
+            let rx = Box::new(make_attr_data_adopt(rx)?);
+            let tx = Box::into_raw(tx);
+            let rx = Box::into_raw(rx);
+
+            info!("Tx: {:#x} Rx: {:#x}", tx as usize, rx as usize);
+
+            info!("Setting up channels");
+
+            (unsafe { *confuse_interface }.add_channels)(confuse, tx, rx);
+
+            info!("Set channel for object");
 
             command.iter().try_for_each(|c| match c {
                 Command::Command { command } => Simics::command(command),
@@ -150,25 +177,45 @@ impl SimicsFuzzer {
             // If the command we just ran includes `@SIM_main_loop`, the below code will be unreachable, but that is OK. The callbacks will eventually call `@SIM_quit` for us
             // and this will never be called. If the command doesn't include, `@SIM_main_loop`, then we need to enter it now.
 
-            ((unsafe { *confuse_interface }).start)(confuse);
-
             Simics::run();
         })
     }
 
-    pub fn launch(&self) -> Result<()> {
+    pub fn launch(&mut self) -> Result<()> {
         let shmem_provider = StdShMemProvider::new()?;
 
         let broker_port = TcpListener::bind("127.0.0.1:0")?.local_addr()?.port();
 
-        let mut run_client = |mut state: Option<_>, mut mgr, cpu_id| -> Result<(), libafl::Error> {
-            let coverage_map = OwnedMutSlice::from(vec![0; SimicsFuzzer::MAP_SIZE]);
+        let mut run_client = |state: Option<_>, mut mgr, cpu_id| -> Result<(), libafl::Error> {
+            debug!("Running on CPU {:?}", cpu_id);
+
+            let mut coverage_map = OwnedMutSlice::from(vec![0; SimicsFuzzer::MAP_SIZE]);
+
+            let config = InputConfigBuilder::default()
+                .coverage_map((
+                    coverage_map.as_mut_slice().as_mut_ptr(),
+                    coverage_map.as_slice().len(),
+                ))
+                .fault(Fault::X86_64(X86_64Fault::Page))
+                .fault(Fault::X86_64(X86_64Fault::InvalidOpcode))
+                .trace_mode(TraceMode::default())
+                .timeout(3.0)
+                .build()
+                .map_err(|e| libafl::Error::Unknown(e.to_string(), ErrorBacktrace::new()))?;
 
             let (tx, orx) = channel::<ClientMessage>();
             let (otx, rx) = channel::<ModuleMessage>();
 
-            let simics = self.simics(otx, orx, OwnedMutSlice::from(coverage_map.as_mut_slice()));
-            let client = Client::new(tx, rx);
+            let simics = self.simics(otx, orx);
+            let mut client = Client::new(tx, rx);
+
+            let _output_config = client
+                .initialize(config)
+                .map_err(|e| libafl::Error::Unknown(e.to_string(), ErrorBacktrace::new()))?;
+
+            client
+                .reset()
+                .map_err(|e| libafl::Error::Unknown(e.to_string(), ErrorBacktrace::new()))?;
 
             let counters_observer =
                 HitcountsMapObserver::new(StdMapObserver::from_mut_slice("coverage", coverage_map));
@@ -209,14 +256,56 @@ impl SimicsFuzzer {
 
             let std_mutator = StdScheduledMutator::new(havoc_mutations());
             let std_power = StdPowerMutationalStage::new(std_mutator);
-            let scheduler = IndexesLenTimeMinimizerScheduler::new(PowerQueueScheduler::new(
-                &mut state,
-                &counters_observer,
-                PowerSchedule::FAST,
-            ));
+            let scheduler =
+                PowerQueueScheduler::new(&mut state, &counters_observer, PowerSchedule::FAST);
             let mut fuzzer = StdFuzzer::new(scheduler, feedback, objective);
 
-            let mut harness = |input: &BytesInput| ExitKind::Ok;
+            let mut harness = |input: &BytesInput| {
+                let target = input.target_bytes();
+                let buf = target.as_slice();
+                let run_input = buf.to_vec();
+                let mut exit_kind = ExitKind::Ok;
+
+                info!("Running with input '{:?}'", run_input);
+
+                info!("Sending run signal");
+
+                match client.run(run_input) {
+                    Ok(reason) => match reason {
+                        StopReason::Magic((_magic, _p)) => {
+                            exit_kind = ExitKind::Ok;
+                        }
+                        StopReason::SimulationExit(_) => {
+                            exit_kind = ExitKind::Ok;
+                        }
+                        StopReason::Crash((fault, _p)) => {
+                            info!("Target crashed with fault {:?}", fault);
+                            exit_kind = ExitKind::Crash;
+                        }
+                        StopReason::TimeOut => {
+                            info!("Target timed out");
+                            exit_kind = ExitKind::Timeout;
+                        }
+                        StopReason::Error((e, _p)) => {
+                            error!("An error occurred during execution: {:?}", e);
+                            exit_kind = ExitKind::Ok;
+                        }
+                    },
+                    Err(e) => {
+                        error!("Error running SIMICS: {}", e);
+                    }
+                }
+
+                debug!("Sending reset signal");
+
+                if let Err(e) = client.reset() {
+                    error!("Error resetting SIMICS: {}", e);
+                }
+
+                debug!("Harness done");
+
+                exit_kind
+            };
 
             let mut executor = TimeoutExecutor::new(
                 InProcessExecutor::new(
@@ -226,7 +315,7 @@ impl SimicsFuzzer {
                     &mut state,
                     &mut mgr,
                 )?,
-                Duration::from_secs(self.timeout),
+                Duration::from_secs(60),
             );
 
             if state.must_load_initial_inputs() {
@@ -239,7 +328,7 @@ impl SimicsFuzzer {
                     )?;
                 }
                 if state.corpus().count() < 1 {
-                    let mut generator = RandBytesGenerator::from(RandBytesGenerator::new(64));
+                    let mut generator = RandBytesGenerator::new(64);
                     state.generate_initial_inputs(
                         &mut fuzzer,
                         &mut executor,
@@ -254,6 +343,15 @@ impl SimicsFuzzer {
             let mut stages = tuple_list!(calibration, std_power);
 
             fuzzer.fuzz_loop(&mut stages, &mut executor, &mut state, &mut mgr)?;
+
+            client
+                .exit()
+                .map_err(|e| libafl::Error::Unknown(e.to_string(), ErrorBacktrace::new()))?;
+
+            simics
+                .join()
+                .map_err(|e| libafl::Error::Unknown(format!("{:?}", e), ErrorBacktrace::new()))?
+                .map_err(|e| libafl::Error::Unknown(format!("{:?}", e), ErrorBacktrace::new()))?;
 
             Ok(())
         };
@@ -298,6 +396,8 @@ impl SimicsFuzzer {
                 res @ Err(_) => return res.map_err(|e| anyhow!("Failed to run launcher: {}", e)),
             }
         };
+
+        self.project.cleanup();
 
         Ok(())
     }

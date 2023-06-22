@@ -16,7 +16,7 @@ use simics_api_sys::{
     attr_kind_t_Sim_Val_String, attr_value__bindgen_ty_1, attr_value_t, SIM_alloc_attr_list,
     SIM_attr_free, SIM_free_attribute, SIM_get_attribute,
 };
-use std::{ffi::CStr, ptr::null_mut};
+use std::{ffi::CStr, mem::size_of, ptr::null_mut};
 
 pub type AttrValue = attr_value_t;
 
@@ -137,16 +137,19 @@ pub fn make_attr_object(obj: *mut ConfObject) -> Result<AttrValue> {
 
 /// Create a new data [`AttrValue`], which is effectively a fat pointer to the data, with a given
 /// size
-pub fn make_attr_data_adopt<T>(size: usize, data: T) -> Result<AttrValue> {
+pub fn make_attr_data_adopt<T>(data: T) -> Result<AttrValue> {
     let data = Box::new(data);
     let data_ptr = Box::into_raw(data);
+    let data_size = u32::try_from(size_of::<*mut T>())?;
+
     ensure!(
-        !data_ptr.is_null() && size == 0,
+        !(data_ptr.is_null() && data_size == 0),
         "NULL data requires zero size"
     );
+
     Ok(attr_value_t {
         private_kind: AttrKind::Data.try_into()?,
-        private_size: u32::try_from(size)?,
+        private_size: u32::try_from(data_size)?,
         private_u: attr_value__bindgen_ty_1 {
             data: data_ptr as *mut u8,
         },
@@ -278,15 +281,10 @@ pub fn attr_data_size(attr: AttrValue) -> Result<u32> {
     Ok(attr.private_size)
 }
 
-pub fn attr_data(attr: AttrValue) -> Result<Vec<u8>> {
+pub fn attr_data<T>(attr: AttrValue) -> Result<T> {
     ensure!(attr_is_data(attr)?, "Attribute must be data!");
-    Ok(unsafe {
-        Vec::from_raw_parts(
-            attr.private_u.data,
-            attr_data_size(attr)? as usize,
-            attr_data_size(attr)? as usize,
-        )
-    })
+    let data: Box<T> = unsafe { Box::from_raw(attr.private_u.data as *mut T) };
+    Ok(*data)
 }
 
 /// Check whether an [`AttrValue`] is a list

@@ -3,7 +3,7 @@ use std::path::Path;
 use crate::{clear_exception, last_error, AttrValue, SimException};
 use anyhow::{anyhow, Result};
 use raw_cstr::raw_cstr;
-use simics_api_sys::{SIM_source_python, VT_call_python_module_function};
+use simics_api_sys::{SIM_run_python, SIM_source_python, VT_call_python_module_function};
 
 pub fn call_python_module_function<S: AsRef<str>>(
     module: S,
@@ -20,7 +20,16 @@ pub fn call_python_module_function<S: AsRef<str>>(
 }
 
 pub fn source_python<P: AsRef<Path>>(file: P) -> Result<()> {
-    unsafe { SIM_source_python(raw_cstr(file.as_ref().to_string_lossy())?) }
+    unsafe { SIM_source_python(raw_cstr(file.as_ref().to_string_lossy())?) };
+
+    match clear_exception()? {
+        SimException::NoException => Ok(()),
+        _ => Err(anyhow!("Error running python script: {}", last_error())),
+    }
+}
+
+pub fn run_python<S: AsRef<str>>(line: S) -> Result<()> {
+    unsafe { SIM_run_python(raw_cstr(line)?) };
 
     match clear_exception()? {
         SimException::NoException => Ok(()),

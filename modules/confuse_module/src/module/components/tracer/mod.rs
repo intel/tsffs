@@ -18,23 +18,23 @@ use simics_api::{
     ConfObject, InstructionHandle,
 };
 
-pub struct Tracer<'a> {
-    coverage: OwnedMutSlice<'a, u8>,
+pub struct Tracer {
+    coverage: OwnedMutSlice<'static, u8>,
     coverage_prev_loc: u64,
     processors: HashMap<i32, Processor>,
     mode: TraceMode,
 }
 
-impl<'a, 'b> From<*mut std::ffi::c_void> for &'a mut Tracer<'b> {
+impl From<*mut std::ffi::c_void> for &mut Tracer {
     /// Convert from a *mut Confuse pointer to a mutable reference to tracer
-    fn from(value: *mut std::ffi::c_void) -> &'a mut Tracer<'b> {
+    fn from(value: *mut std::ffi::c_void) -> &'static mut Tracer {
         let confuse_ptr: *mut Confuse = value as *mut Confuse;
         let confuse = unsafe { &mut *confuse_ptr };
         &mut confuse.tracer
     }
 }
 
-impl<'a> Tracer<'a> {
+impl Tracer {
     pub const COVERAGE_MAP_SIZE: usize = 0x10000;
 
     /// Try to instantiate a new AFL Coverage Tracer
@@ -59,7 +59,7 @@ impl<'a> Tracer<'a> {
     }
 }
 
-impl<'a> ConfuseState for Tracer<'a> {
+impl ConfuseState for Tracer {
     fn on_initialize(
         &mut self,
         _confuse: *mut ConfObject,
@@ -109,7 +109,7 @@ impl<'a> ConfuseState for Tracer<'a> {
     // }
 }
 
-impl<'a> ConfuseInterface for Tracer<'a> {
+impl ConfuseInterface for Tracer {
     fn on_add_processor(&mut self, processor_attr: *mut AttrValue) -> Result<()> {
         let processor_obj: *mut ConfObject = attr_object_or_nil_from_ptr(processor_attr)?;
         let processor_number = get_processor_number(processor_obj);
@@ -127,7 +127,7 @@ impl<'a> ConfuseInterface for Tracer<'a> {
 }
 
 #[callback_wrappers(pub, unwrap_result)]
-impl<'a> Tracer<'a> {
+impl Tracer {
     #[params(..., !slf: *mut std::ffi::c_void)]
     pub fn on_instruction_before(
         &mut self,

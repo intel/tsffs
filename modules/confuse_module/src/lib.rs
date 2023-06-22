@@ -19,6 +19,8 @@
 //! - Manage the state of a target under test by taking and restoring a snapshot of its state for
 //!   deterministic snapshot fuzzing
 #![deny(clippy::all)]
+// NOTE: We have to do this a lot, and it sucks to have all these functions be unsafe
+#![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 use const_format::concatcp;
 
@@ -27,7 +29,7 @@ pub mod config;
 pub mod faults;
 pub mod magic;
 pub mod messages;
-mod module;
+pub mod module;
 mod processor;
 pub mod state;
 pub mod stops;

@@ -16,6 +16,12 @@ pub enum TraceMode {
     HitCount,
 }
 
+impl Default for TraceMode {
+    fn default() -> Self {
+        Self::HitCount
+    }
+}
+
 impl ToString for TraceMode {
     fn to_string(&self) -> String {
         match self {
@@ -42,6 +48,7 @@ impl FromStr for TraceMode {
 /// Contains parameters for the module to configure things like timeout duration, which faults
 /// indicate a crash, etc. This is sent by the client in `ClientMessage::Initialize`
 pub struct InputConfig {
+    #[builder(setter(each(name = "fault")), default)]
     pub faults: HashSet<Fault>,
     pub timeout: f64,
     pub trace_mode: TraceMode,

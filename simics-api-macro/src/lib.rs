@@ -338,6 +338,7 @@ fn ffi_impl<S: AsRef<str>>(name: S) -> TokenStream2 {
     quote! {
         #[no_mangle]
         pub extern "C" fn #alloc_fn_name(cls: *mut simics_api::ConfClass) -> *mut simics_api::ConfObject {
+            eprintln!("{}::alloc", #name_string);
             let cls: *mut simics_api::ConfClass = cls.into();
             let obj: *mut simics_api::ConfObject  = #name::alloc::<#name>(cls)
                 .unwrap_or_else(|e| panic!("{}::alloc failed: {}", #name_string, e))
@@ -347,6 +348,7 @@ fn ffi_impl<S: AsRef<str>>(name: S) -> TokenStream2 {
 
         #[no_mangle]
         pub extern "C" fn #init_fn_name(obj: *mut simics_api::ConfObject) -> *mut std::ffi::c_void {
+            eprintln!("{}::init", #name_string);
             let ptr: *mut ConfObject = #name::init(obj.into())
                 .unwrap_or_else(|e| panic!("{}::init failed: {}", #name_string, e))
                 .into();
@@ -355,24 +357,28 @@ fn ffi_impl<S: AsRef<str>>(name: S) -> TokenStream2 {
 
         #[no_mangle]
         pub extern "C" fn #finalize_fn_name(obj: *mut simics_api::ConfObject) {
+            eprintln!("{}::finalize", #name_string);
             #name::finalize(obj.into())
                 .unwrap_or_else(|e| panic!("{}::finalize failed: {}", #name_string, e));
         }
 
         #[no_mangle]
         pub extern "C" fn #objects_finalized_fn_name(obj: *mut simics_api::ConfObject) {
+            eprintln!("{}::objects_finalized", #name_string);
             #name::objects_finalized(obj.into())
                 .unwrap_or_else(|e| panic!("{}::objects_finalized failed: {}", #name_string, e));
         }
 
         #[no_mangle]
         pub extern "C" fn #deinit_fn_name(obj: *mut simics_api::ConfObject) {
+            eprintln!("{}::deinit", #name_string);
             #name::deinit(obj.into())
                 .unwrap_or_else(|e| panic!("{}::deinit failed: {}", #name_string, e));
         }
 
         #[no_mangle]
         pub extern "C" fn #dealloc_fn_name(obj: *mut simics_api::ConfObject) {
+            eprintln!("{}::dealloc", #name_string);
             #name::dealloc(obj.into())
                 .unwrap_or_else(|e| panic!("{}::dealloc failed: {}", #name_string, e));
         }
@@ -475,11 +481,13 @@ fn raw_impl<S: AsRef<str>>(name: S, fields: &Fields, parms: &Generics) -> TokenS
 }
 
 fn from_impl<S: AsRef<str>>(name: S) -> TokenStream2 {
+    let name_string = name.as_ref().to_string();
     let name = format_ident!("{}", name.as_ref());
 
     quote! {
-        impl From<*mut simics_api::ConfObject> for &mut #name <'_> {
+        impl From<*mut simics_api::ConfObject> for &'static mut #name {
             fn from(value: *mut simics_api::ConfObject) -> Self {
+                tracing::debug!("Converting to {} from {:#x}", #name_string, value as usize);
                 let ptr: *mut #name = value as *mut #name;
                 unsafe { &mut *ptr }
             }

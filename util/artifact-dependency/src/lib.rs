@@ -66,6 +66,11 @@ pub struct ArtifactDependency {
     pub profile: Option<Profile>,
     /// Build the artifact if it is missing
     pub build_missing: bool,
+    #[builder(default = "true")]
+    /// (Re-)build the artifact even if it is not missing. This is the default because otherwise
+    /// it's very common to have a "what is going on why aren't my print statements showing up"
+    /// moment
+    pub build_always: bool,
     #[builder(setter(each(name = "feature", into), into), default)]
     pub features: Vec<String>,
 }
@@ -219,56 +224,49 @@ impl ArtifactDependency {
             ),
         };
 
-        let artifact_path = if !artifact_path.exists() {
-            if self.build_missing {
-                let cargo = var("CARGO")?;
-                let mut cargo_command = Command::new(cargo);
-                cargo_command
-                    .arg("build")
-                    .arg("--manifest-path")
-                    .arg(workspace_root.join("Cargo.toml"))
-                    .arg("--package")
-                    .arg(&package_name);
+        let artifact_path = if (self.build_missing && !artifact_path.exists()) || self.build_always
+        {
+            let cargo = var("CARGO")?;
+            let mut cargo_command = Command::new(cargo);
+            cargo_command
+                .arg("build")
+                .arg("--manifest-path")
+                .arg(workspace_root.join("Cargo.toml"))
+                .arg("--package")
+                .arg(&package_name);
 
-                match &profile {
-                    Profile::Release => {
-                        cargo_command.arg("--release");
-                    }
-                    Profile::Other(o) => {
-                        cargo_command.args(vec!["--profile".to_string(), o.clone()]);
-                    }
-                    _ => {}
+            match &profile {
+                Profile::Release => {
+                    cargo_command.arg("--release");
                 }
-
-                cargo_command.arg(format!("--features={}", self.features.join(",")));
-
-                let output = cargo_command
-                    .stderr(Stdio::piped())
-                    .stdout(Stdio::piped())
-                    .output()?;
-
-                if !output.status.success() {
-                    bail!(
-                        "Failed to build artifact crate:\nstdout: {}\nstderr: {}",
-                        String::from_utf8_lossy(&output.stdout),
-                        String::from_utf8_lossy(&output.stderr)
-                    );
+                Profile::Other(o) => {
+                    cargo_command.args(vec!["--profile".to_string(), o.clone()]);
                 }
+                _ => {}
+            }
 
-                let artifact_path: PathBuf = artifact_path.into();
-                ensure!(
-                    artifact_path.exists(),
-                    "Artifact build succeeded, but artifact not found in {}",
-                    artifact_path.display()
-                );
-                artifact_path
-            } else {
-                let artifact_path: PathBuf = artifact_path.into();
+            cargo_command.arg(format!("--features={}", self.features.join(",")));
+
+            let output = cargo_command
+                .stderr(Stdio::piped())
+                .stdout(Stdio::piped())
+                .output()?;
+
+            if !output.status.success() {
                 bail!(
-                    "Artifact not found at {} and not set to build missing artifacts.",
-                    artifact_path.display()
+                    "Failed to build artifact crate:\nstdout: {}\nstderr: {}",
+                    String::from_utf8_lossy(&output.stdout),
+                    String::from_utf8_lossy(&output.stderr)
                 );
             }
+
+            let artifact_path: PathBuf = artifact_path.into();
+            ensure!(
+                artifact_path.exists(),
+                "Artifact build succeeded, but artifact not found in {}",
+                artifact_path.display()
+            );
+            artifact_path
         } else {
             artifact_path.into()
         };

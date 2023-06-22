@@ -7,7 +7,7 @@ use command::Command;
 use confuse_module::config::TraceMode;
 use project::{DirectoryArg, FileArg, ModuleArg, PackageArg, PathSymlinkArg};
 use std::{path::PathBuf, str::FromStr};
-use tracing::Level;
+use tracing_subscriber::filter::LevelFilter;
 
 #[derive(Debug, Parser)]
 pub struct Args {
@@ -37,9 +37,9 @@ pub struct Args {
     /// Path to in-progress test corpus. A `corpus` directory will be created if one
     /// does not exist. The given path may be inside the project, if an existing project is used.
     pub corpus: Option<PathBuf>,
-    #[arg(short, long, default_value_t = Level::ERROR)]
+    #[arg(short, long, default_value_t = LevelFilter::ERROR)]
     /// Logging level
-    pub log_level: Level,
+    pub log_level: LevelFilter,
     #[arg(short = 'L', long)]
     /// Log file path to use. A new tmp file with the pattern confuse-log.XXXXX.log will be created
     /// in the project directory if no filename is specified
@@ -47,6 +47,14 @@ pub struct Args {
     #[arg(short = 'T', long, default_value_t = TraceMode::HitCount)]
     /// Mode to trace executions with
     pub trace_mode: TraceMode,
+    #[arg(long, default_value_t = 3)]
+    /// Timeout (in simulated time) of a run that has timed out and will be kept as a timeout test
+    /// case
+    pub timeout: u64,
+    #[arg(long, default_value_t = 60)]
+    /// Timeout (in real time) of a fuzzer run that is running too long and the fuzzer needs to
+    /// be restarted (completely re-initializing the fuzzer and simics state)
+    pub executor_timeout: u64,
     #[arg(short = 'C', long, default_value_t = 1)]
     /// Number of fuzzer cores to run
     pub cores: usize,

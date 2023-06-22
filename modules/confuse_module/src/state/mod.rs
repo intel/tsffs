@@ -32,7 +32,6 @@ use crate::messages::{client::ClientMessage, module::ModuleMessage};
 state_machine! {
     derive(Debug, Clone)
     pub ConfuseModule(Uninitialized)
-
     Uninitialized => {
         Initialize => HalfInitialized,
         Exit => Done,

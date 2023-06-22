@@ -21,7 +21,7 @@ simics.workspace = true
 strum = { version = "0.24.1", features = ["strum_macros", "derive"] }
 strum_macros = "0.24.3"
 tracing = "0.1.37"
-tracing-subscriber = { version = "0.3.17", features = ["ansi", "json", "fmt", "std"] }
+tracing-subscriber = { version = "0.3.17", features = ["ansi", "json", "fmt", "std", "env-filter"] }
 version-tools.workspace = true
 versions = "5.0.0"
 

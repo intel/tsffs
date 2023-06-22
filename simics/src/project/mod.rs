@@ -656,8 +656,8 @@ impl Debug for Project {
     }
 }
 
-impl Drop for Project {
-    fn drop(&mut self) {
+impl Project {
+    pub fn cleanup(&mut self) {
         if self.path.temporary {
             remove_dir_all(&self.path.path)
                 .map_err(|e| {

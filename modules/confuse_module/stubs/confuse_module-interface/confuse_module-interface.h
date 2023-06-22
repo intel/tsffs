@@ -34,7 +34,7 @@ SIM_INTERFACE(confuse_module) {
     void (*start)(conf_object_t * obj);
     void (*add_processor)(conf_object_t * obj, attr_value_t * processor);
     void (*add_fault)(conf_object_t * obj, int64 fault);
-    void (*set_channel)(conf_object_t * obj, void *tx, void *rx);
+    void (*add_channels)(conf_object_t * obj, attr_value_t * tx, attr_value_t * rx);
 #ifndef PYWRAP
     /* methods that cannot be exported to Python, for example as it refers
        to unknown data types, must be enclosed by "#ifndef PYWRAP" ...

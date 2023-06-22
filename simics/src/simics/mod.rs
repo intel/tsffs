@@ -1,10 +1,13 @@
-use anyhow::Result;
+use anyhow::{bail, Result};
 use simics_api::{
-    call_python_module_function, free_attribute, init_command_line, init_environment,
-    init_simulator, main_loop, make_attr_string_adopt, run_command, source_python,
-    sys::SIM_make_attr_list, AttrValue, InitArgs,
+    call_python_module_function, clear_exception, free_attribute, init_command_line,
+    init_environment, init_simulator, last_error, main_loop, make_attr_nil, make_attr_string_adopt,
+    run_command, run_python, source_python,
+    sys::{SIM_alloc_attr_list, SIM_attr_list_set_item, SIM_make_attr_list},
+    AttrValue, InitArgs, SimException,
 };
 use std::{env::current_exe, path::Path};
+use tracing::info;
 
 pub mod home;
 
@@ -29,28 +32,35 @@ impl Simics {
     }
 
     pub fn command<S: AsRef<str>>(command: S) -> Result<()> {
+        info!("Running SIMICS command {}", command.as_ref());
         free_attribute(run_command(command)?);
 
         Ok(())
     }
 
     pub fn python<P: AsRef<Path>>(file: P) -> Result<()> {
+        info!("Running SIMICS Python file {}", file.as_ref().display());
         source_python(file)
     }
 
     pub fn config<P: AsRef<Path>>(file: P) -> Result<()> {
-        let mut args = unsafe {
-            SIM_make_attr_list(1, make_attr_string_adopt(file.as_ref().to_string_lossy()))
-        };
+        info!("Running SIMICS config {}", file.as_ref().display());
 
-        free_attribute(call_python_module_function(
-            "sim_commands",
-            "cmdline_read_configuration",
-            &mut args as *mut AttrValue,
-        )?);
+        // TODO: Figure out the C apis for doing this
+        run_python(format!(
+            "cli.global_cmds.run_script(script='{}')",
+            file.as_ref().to_string_lossy()
+        ))?;
 
-        free_attribute(args);
-
-        Ok(())
+        match clear_exception()? {
+            SimException::NoException => Ok(()),
+            exception => {
+                bail!(
+                    "Error running simics config: {:?}: {}",
+                    exception,
+                    last_error()
+                );
+            }
+        }
     }
 }

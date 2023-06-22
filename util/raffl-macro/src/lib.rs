@@ -9,6 +9,7 @@ use syn::{
     parse::{Parse, ParseStream},
     parse_macro_input,
     punctuated::Punctuated,
+    token::Unsafe,
     FnArg, Ident, ItemImpl, ReturnType, Token, Type,
 };
 
@@ -236,6 +237,7 @@ pub fn callback_wrappers(args: TokenStream, input: TokenStream) -> TokenStream {
         .iter()
         .map(|f| {
             let attrs = &f.attrs;
+            let is_unsafe = f.sig.unsafety.is_some();
             let args: CallbackWrapperArgParams =
                 if let Some(args) = attrs.iter().find(|a| a.path().is_ident("params")) {
                     match args.parse_args() {
@@ -401,6 +403,14 @@ pub fn callback_wrappers(args: TokenStream, input: TokenStream) -> TokenStream {
                 #receiver_ident.#fname(
                     #( #cb_selfcall_args_identsonly ),*
                 )#unwrap_mb
+            };
+
+            let call = if is_unsafe {
+                quote! {
+                    unsafe { #call }
+                }
+            } else {
+                call
             };
 
             quote! {

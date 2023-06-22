@@ -21,7 +21,7 @@ extern typedef struct {
     void (*start)(conf_object_t *obj);
     void (*add_processor)(conf_object_t *obj, attr_value_t *processor);
     void (*add_fault)(conf_object_t *obj, int64 fault);
-    void (*set_channel)(conf_object_t *obj, void *tx, void *rx);
+    void (*add_channels)(conf_object_t *obj, attr_value_t *tx, attr_value_t *rx);
 } confuse_module_interface_t;
 
 extern const char *const CONFUSE_MODULE_INTERFACE;

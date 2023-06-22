@@ -12,18 +12,26 @@ use simics_fuzz::{
     fuzzer::SimicsFuzzerBuilder,
     modules::confuse::{CONFUSE_MODULE_CRATE_NAME, CONFUSE_WORKSPACE_PATH},
 };
-use std::path::PathBuf;
-use tracing::trace;
-use tracing_subscriber::fmt::{self, format};
+use std::{io::stderr, path::PathBuf};
+use tracing::{instrument::WithSubscriber, trace, Level};
+use tracing_subscriber::{filter::filter_fn, fmt, prelude::*, registry, Layer};
 
 pub fn main() -> Result<()> {
     let args = Args::parse();
 
-    fmt::fmt()
-        .pretty()
-        .with_max_level(args.log_level)
-        .try_init()
-        .map_err(|e| anyhow!("Couldn't initialize tracing subscriber: {}", e))?;
+    registry()
+        .with(
+            fmt::layer()
+                .pretty()
+                .with_writer(stderr)
+                .with_filter(args.log_level)
+                .with_filter(filter_fn(|metadata| {
+                    // LLMP absolutely spams the log when tracing
+                    !(metadata.target() == "libafl::bolts::llmp"
+                        && matches!(metadata.level(), &Level::TRACE))
+                })),
+        )
+        .init();
 
     trace!("Setting up project with args: {:?}", args);
 
@@ -59,30 +67,28 @@ pub fn main() -> Result<()> {
 
             builder
         }
+    } else if let Ok(project) = Project::try_from(PathBuf::from(".")) {
+        project.into()
     } else {
-        if let Ok(project) = Project::try_from(PathBuf::from(".")) {
-            project.into()
-        } else {
-            let mut builder = ProjectBuilder::default();
+        let mut builder = ProjectBuilder::default();
 
-            args.package.into_iter().for_each(|p| {
-                builder.package(p.package);
-            });
-            args.module.into_iter().for_each(|m| {
-                builder.module(m.module);
-            });
-            args.directory.into_iter().for_each(|d| {
-                builder.directory((d.src, d.dst));
-            });
-            args.file.into_iter().for_each(|f| {
-                builder.file((f.src, f.dst));
-            });
-            args.path_symlink.into_iter().for_each(|s| {
-                builder.path_symlink((s.src, s.dst));
-            });
+        args.package.into_iter().for_each(|p| {
+            builder.package(p.package);
+        });
+        args.module.into_iter().for_each(|m| {
+            builder.module(m.module);
+        });
+        args.directory.into_iter().for_each(|d| {
+            builder.directory((d.src, d.dst));
+        });
+        args.file.into_iter().for_each(|f| {
+            builder.file((f.src, f.dst));
+        });
+        args.path_symlink.into_iter().for_each(|s| {
+            builder.path_symlink((s.src, s.dst));
+        });
 
-            builder
-        }
+        builder
     };
 
     let project = builder
@@ -109,9 +115,10 @@ pub fn main() -> Result<()> {
         .corpus(args.corpus)
         .solutions(args.solutions)
         .tui(args.tui)
-        .grimoire(args.grimoire)
+        ._grimoire(args.grimoire)
         .cores(Cores::from((0..args.cores).collect::<Vec<_>>()))
         .command(args.command)
+        .timeout(args.timeout)
         .build()?
         .launch()?;
 
