@@ -635,7 +635,7 @@ impl From<Project> for ProjectBuilder {
             directories: Some(value.directories.clone()),
             files: Some(value.files.clone()),
             file_contents: Some(value.file_contents.clone()),
-            path_symlinks: Some(value.path_symlinks.clone()),
+            path_symlinks: Some(value.path_symlinks),
         }
     }
 }

@@ -595,7 +595,7 @@ impl Interface {
             Interface::XtensaTieLookup => XTENSA_TIE_LOOKUP_INTERFACE,
             Interface::XtensaTieOutputQueue => XTENSA_TIE_OUTPUT_QUEUE_INTERFACE,
             Interface::Other(name) => unsafe {
-                from_raw_parts(raw_cstr(&name)? as *const u8, name.len() + 1)
+                from_raw_parts(raw_cstr(name)? as *const u8, name.len() + 1)
             },
         })
     }

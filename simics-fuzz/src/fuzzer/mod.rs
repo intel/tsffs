@@ -5,10 +5,9 @@ use crate::{
 use anyhow::{anyhow, Error, Result};
 use confuse_module::{
     client::Client,
-    config::{InputConfig, InputConfigBuilder, TraceMode},
+    config::{InputConfigBuilder, TraceMode},
     faults::{x86_64::X86_64Fault, Fault},
     messages::{client::ClientMessage, module::ModuleMessage},
-    module::Confuse,
     stops::StopReason,
     traits::ConfuseClient,
 };
@@ -26,23 +25,20 @@ use libafl::{
         ShMemProvider, StdMapObserver, StdRand, StdScheduledMutator, StdShMemProvider,
         TimeFeedback, TimeObserver, TimeoutExecutor,
     },
-    schedulers::{
-        powersched::PowerSchedule, IndexesLenTimeMinimizerScheduler, PowerQueueScheduler,
-    },
+    schedulers::{powersched::PowerSchedule, PowerQueueScheduler},
     stages::{CalibrationStage, StdPowerMutationalStage},
     state::{HasCorpus, StdState},
     ErrorBacktrace, Fuzzer, StdFuzzer,
 };
 use simics::{
     api::{
-        alloc_attr_list, create_object, get_class, get_interface, get_object, load_module,
+        alloc_attr_list, create_object, get_class, get_interface, load_module,
         make_attr_data_adopt, DeprecationLevel, GuiMode, InitArg, InitArgs, Interface,
     },
     project::Project,
     simics::Simics,
 };
 use std::{
-    mem::size_of,
     net::TcpListener,
     path::PathBuf,
     sync::mpsc::{channel, Receiver, Sender},
@@ -50,10 +46,6 @@ use std::{
     time::Duration,
 };
 use tracing::{debug, error, info, metadata::LevelFilter};
-
-mod feedbacks;
-mod monitors;
-mod observers;
 
 #[derive(Builder)]
 #[builder(build_fn(validate = "Self::validate", error = "Error"))]

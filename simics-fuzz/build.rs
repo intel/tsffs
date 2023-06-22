@@ -38,7 +38,14 @@ fn main() -> Result<()> {
                 confuse_module_dep.path.display()
             )
         })?),
-    )?;
+    )
+    .map_err(|e| {
+        anyhow!(
+            "Failed to copy confuse module object from {} to OUT_DIR: {}",
+            confuse_module_dep.path.display(),
+            e
+        )
+    })?;
 
     Ok(())
 }

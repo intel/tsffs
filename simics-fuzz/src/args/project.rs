@@ -1,6 +1,6 @@
 use anyhow::{anyhow, bail, Error, Result};
 use simics::{
-    module::{Module, ModuleBuilder},
+    module::Module,
     package::{Package, PackageBuilder, PackageNumber},
     project::SimicsPath,
 };
@@ -45,7 +45,7 @@ pub struct ModuleArg {
 impl FromStr for ModuleArg {
     type Err = Error;
 
-    fn from_str(s: &str) -> Result<Self> {
+    fn from_str(_s: &str) -> Result<Self> {
         todo!("Modules are not implemented, but the CONFUSE module is automatically loaded");
     }
 }

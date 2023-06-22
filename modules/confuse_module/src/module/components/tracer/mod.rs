@@ -66,7 +66,7 @@ impl ConfuseState for Tracer {
         input_config: &mut InputConfig,
         output_config: OutputConfig,
     ) -> Result<OutputConfig> {
-        self.mode = input_config.trace_mode.clone();
+        self.mode = input_config.trace_mode;
         // TODO: Maybe actually fix this lifetime stuff but it is actually unsafe to share this
         // coverage map so maybe there is no unsafe solution here
         self.coverage = unsafe {

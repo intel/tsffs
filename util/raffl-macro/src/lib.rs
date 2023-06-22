@@ -9,7 +9,6 @@ use syn::{
     parse::{Parse, ParseStream},
     parse_macro_input,
     punctuated::Punctuated,
-    token::Unsafe,
     FnArg, Ident, ItemImpl, ReturnType, Token, Type,
 };
 

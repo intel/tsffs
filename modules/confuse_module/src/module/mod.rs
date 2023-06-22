@@ -11,7 +11,7 @@ use crate::{
 };
 use anyhow::{anyhow, bail, Context, Result};
 use raffl_macro::{callback_wrappers, params};
-use tracing::{error, info, metadata::LevelFilter, trace, Level};
+use tracing::{error, info, trace};
 
 use simics_api::{
     attr_data, attr_object_or_nil_from_ptr, break_simulation, clear_exception,
@@ -26,7 +26,7 @@ use std::{
     ffi::c_void,
     sync::mpsc::{channel, Receiver, Sender},
 };
-use tracing_subscriber::fmt::{self, format};
+use tracing_subscriber::fmt;
 
 pub mod components;
 
@@ -68,12 +68,6 @@ impl Module for Confuse {
             0,
             -1,
         ))
-    }
-
-    fn objects_finalized(module_instance: *mut ConfObject) -> Result<()> {
-        eprintln!("Initializing SIMICS logger");
-
-        Ok(())
     }
 }
 

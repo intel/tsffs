@@ -1,5 +1,5 @@
 use anyhow::{anyhow, bail, ensure, Error, Result};
-use cargo_metadata::{MetadataCommand, Package};
+use cargo_metadata::{camino::Utf8PathBuf, MetadataCommand, Package};
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -113,6 +113,8 @@ const ARTIFACT_NAMEPARTS: (&str, &str, &str, &str, &str) = ("", ".dll", "lib", "
 const PROFILE: Profile = Profile::Dev;
 #[cfg(not(debug_assertions))]
 const PROFILE: Profile = Profile::Release;
+
+const ARTIFACT_TARGET_NAME: &str = "artifact";
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Artifact {
@@ -236,6 +238,13 @@ impl ArtifactDependency {
                 .arg("--package")
                 .arg(&package_name);
 
+            // TODO: This will solve one build script trying to build the artifact at
+            // once, but doesn't resolve parallel scripts trying to both build it
+            // simultaneously, we need to actually detect the lock.
+            let build_target_dir = metadata.target_directory.join(ARTIFACT_TARGET_NAME);
+
+            cargo_command.arg("--target-dir").arg(&build_target_dir);
+
             match &profile {
                 Profile::Release => {
                     cargo_command.arg("--release");
@@ -261,16 +270,30 @@ impl ArtifactDependency {
                 );
             }
 
-            let artifact_path: PathBuf = artifact_path.into();
+            let artifact_path: PathBuf = build_target_dir
+                .join({
+                    let components = artifact_path
+                        .components()
+                        .rev()
+                        .take(2)
+                        .map(|c| c.to_string())
+                        .collect::<Vec<_>>();
+                    components.iter().rev().collect::<Utf8PathBuf>()
+                })
+                .into();
+
             ensure!(
                 artifact_path.exists(),
                 "Artifact build succeeded, but artifact not found in {}",
                 artifact_path.display()
             );
+
             artifact_path
         } else {
             artifact_path.into()
         };
+
+        eprintln!("Built artifact at {}", artifact_path.display());
 
         Ok(Artifact::new(artifact_path, package.clone()))
     }

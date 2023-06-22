@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use artifact_dependency::{ArtifactDependencyBuilder, CrateType};
 use clap::Parser;
 use libafl::bolts::core_affinity::Cores;
@@ -13,7 +13,7 @@ use simics_fuzz::{
     modules::confuse::{CONFUSE_MODULE_CRATE_NAME, CONFUSE_WORKSPACE_PATH},
 };
 use std::{io::stderr, path::PathBuf};
-use tracing::{instrument::WithSubscriber, trace, Level};
+use tracing::{trace, Level};
 use tracing_subscriber::{filter::filter_fn, fmt, prelude::*, registry, Layer};
 
 pub fn main() -> Result<()> {
@@ -44,7 +44,7 @@ pub fn main() -> Result<()> {
 
             builder.path(
                 ProjectPathBuilder::default()
-                    .path(project_path.clone())
+                    .path(project_path)
                     .temporary(args.no_keep_temp_projects)
                     .build()?,
             );

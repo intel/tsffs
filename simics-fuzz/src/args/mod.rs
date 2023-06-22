@@ -1,12 +1,11 @@
 pub mod command;
 pub mod project;
 
-use anyhow::{anyhow, Error, Result};
 use clap::Parser;
 use command::Command;
 use confuse_module::config::TraceMode;
 use project::{DirectoryArg, FileArg, ModuleArg, PackageArg, PathSymlinkArg};
-use std::{path::PathBuf, str::FromStr};
+use std::path::PathBuf;
 use tracing_subscriber::filter::LevelFilter;
 
 #[derive(Debug, Parser)]
