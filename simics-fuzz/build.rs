@@ -19,9 +19,14 @@ fn main() -> Result<()> {
         .artifact_type(CrateType::CDynamicLibrary)
         .profile(Profile::Release)
         .build_missing(true)
+        // NOTE: build_always causes a conflict on the lockfile
+        // TODO: Add ability to specify a different target directory to avoid lock contention
+        .build_always(false)
         .feature(SIMICS_VERSION)
-        .build()?
-        .build()?;
+        .build()
+        .map_err(|e| anyhow!("Error building artifact dependency: {}", e))?
+        .build()
+        .map_err(|e| anyhow!("Error building artifact for dependency: {}", e))?;
 
     let out_dir = PathBuf::from(var("OUT_DIR")?);
 

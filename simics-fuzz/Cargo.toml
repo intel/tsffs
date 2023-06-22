@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 ahash = "0.8.3"
-anyhow = "1.0.71"
+anyhow.workspace = true
 artifact-dependency.workspace = true
 clap = { version = "4.3.0", features = ["derive"] }
 confuse_module.workspace = true
@@ -16,17 +16,23 @@ libafl.workspace = true
 num = "0.4.0"
 num-derive = "0.3.3"
 num-traits = "0.2.15"
-serde = { version = "1.0.164", features = ["derive"] }
+serde = { workspace = true, features = ["derive"] }
 simics.workspace = true
 strum = { version = "0.24.1", features = ["strum_macros", "derive"] }
 strum_macros = "0.24.3"
 tracing = "0.1.37"
-tracing-subscriber = { version = "0.3.17", features = ["ansi", "json", "fmt", "std", "env-filter"] }
+tracing-subscriber = { version = "0.3.17", features = [
+    "ansi",
+    "json",
+    "fmt",
+    "std",
+    "env-filter",
+] }
 version-tools.workspace = true
 versions = "5.0.0"
 
 [build-dependencies]
-anyhow = "1.0.71"
+anyhow.workspace = true
 artifact-dependency.workspace = true
 simics-api.workspace = true
 simics-link.workspace = true

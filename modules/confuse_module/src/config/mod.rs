@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, str::FromStr};
 use tracing::metadata::LevelFilter;
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, Copy)]
 /// Tracing mode for the branch tracer
 pub enum TraceMode {
     /// Trace each instruction once, this does not necessarily enable hit counting,

@@ -1,6 +1,6 @@
 //! ```cargo
 //! [dependencies]
-//! anyhow = "1.0.70"
+//! anyhow = "1.0.71"
 //! bindgen = "0.65.1"
 //! bytes = "1.4.0"
 //! flate2 = "1.0.25"

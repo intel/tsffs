@@ -17,11 +17,7 @@ use log4rs::{
     encode::pattern::PatternEncoder,
     init_config, Config,
 };
-use simics::{
-    api::sys::SIMICS_VERSION,
-    module::ModuleBuilder,
-    project::{ProjectPathBuilder, SimicsProject},
-};
+use simics::{api::sys::SIMICS_VERSION, module::ModuleBuilder, project::ProjectPathBuilder};
 use simics::{
     package::{PackageBuilder, PublicPackageNumber},
     project::{Project, ProjectBuilder},

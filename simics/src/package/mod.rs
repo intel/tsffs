@@ -11,7 +11,7 @@ use std::{
     path::{Path, PathBuf},
     str::FromStr,
 };
-use tracing::error;
+use tracing::{error, warn};
 use version_tools::VersionConstraint;
 use versions::Versioning;
 
@@ -131,8 +131,8 @@ pub fn packages<P: AsRef<Path>>(
             let package_path = home_dir_entry.path();
             parse_packageinfo(&package_path)
                 .map_err(|e| {
-                    error!(
-                        "Error parsing package info from package at {}: {}",
+                    warn!(
+                        "Could not parse package info from package at {}: {}",
                         package_path.display(),
                         e
                     )

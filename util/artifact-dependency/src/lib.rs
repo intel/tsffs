@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail, ensure, Result};
+use anyhow::{anyhow, bail, ensure, Error, Result};
 use cargo_metadata::{MetadataCommand, Package};
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
@@ -29,6 +29,7 @@ pub enum Profile {
 }
 
 #[derive(Builder, Clone, Debug)]
+#[builder(build_fn(error = "Error"))]
 /// Builder to find and optionally build an artifact dependency from a particular workspace
 ///
 /// # Example

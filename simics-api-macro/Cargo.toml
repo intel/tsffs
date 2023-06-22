@@ -17,7 +17,7 @@ tracing = "0.1.37"
 
 [dev-dependencies]
 
-anyhow = "1.0.70"
+anyhow.workspace = true
 raw-cstr.workspace = true
 simics-api = { workspace = true }
 trybuild = { version = "1.0.80", features = ["diff"] }

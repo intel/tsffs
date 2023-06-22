@@ -77,6 +77,7 @@ pub struct SimicsFuzzer {
     cores: Cores,
     command: Vec<Command>,
     log_level: LevelFilter,
+    trace_mode: TraceMode,
 }
 
 impl SimicsFuzzerBuilder {
@@ -182,6 +183,10 @@ impl SimicsFuzzer {
     }
 
     pub fn launch(&mut self) -> Result<()> {
+        if self.tui {
+            self.log_level = LevelFilter::ERROR;
+        }
+
         let shmem_provider = StdShMemProvider::new()?;
 
         let broker_port = TcpListener::bind("127.0.0.1:0")?.local_addr()?.port();
@@ -198,7 +203,7 @@ impl SimicsFuzzer {
                 ))
                 .fault(Fault::X86_64(X86_64Fault::Page))
                 .fault(Fault::X86_64(X86_64Fault::InvalidOpcode))
-                .trace_mode(TraceMode::default())
+                .trace_mode(self.trace_mode)
                 .timeout(self.timeout)
                 .log_level(self.log_level)
                 .build()
@@ -360,6 +365,7 @@ impl SimicsFuzzer {
 
         // TODO: Deduplicate this nastiness
         if self.tui {
+            // Set log level to error if in TUI mode
             let monitor = TuiMonitor::new(TuiUI::new(Self::NAME.to_owned(), true));
             match Launcher::builder()
                 .shmem_provider(shmem_provider)

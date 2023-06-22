@@ -121,6 +121,7 @@ pub fn main() -> Result<()> {
         .timeout(args.timeout)
         .executor_timeout(args.executor_timeout)
         .log_level(args.log_level)
+        .trace_mode(args.trace_mode)
         .build()?
         .launch()?;
 

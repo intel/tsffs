@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 simics-api-sys = { workspace = true }
 raw-cstr = { workspace = true }
-anyhow = "1.0.70"
+anyhow.workspace = true
 num-derive = "0.3.3"
 num-traits = "0.2.15"
 num = "0.4.0"

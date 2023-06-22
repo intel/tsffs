@@ -33,13 +33,31 @@ There are two provided sample targets, `hello-world` and `x509-parse`. You can r
 by running one of the following commands after following the setup instructions.
 
 ```sh
-$ cargo run --bin hello-world-fuzz -- --input ./targets/hello-world/corpus --log-level TRACE --cycles 30
+$ cargo run --release --bin simics-fuzz --features=6.0.166 -- \
+  -c ./newcorpus/ -s ./newsolution/ -l ERROR -t -C 1 -g \
+  --package 2096:6.0.66 \
+  --file targets/hello-world/src/bin/resource/HelloWorld.efi:%simics%/targets/hello-world/HelloWorld.efi \
+  --file targets/hello-world/src/bin/resource/app.py:%simics%/scripts/app.py \
+  --file targets/hello-world/src/bin/resource/app.yml:%simics%/scripts/app.yml \
+  --file targets/hello-world/src/bin/resource/minimal_boot_disk.craff:%simics%/targets/hello-world/minimal_boot_disk.craff \
+  --file targets/hello-world/src/bin/resource/run_uefi_app.nsh:%simics%/targets/hello-world/run_uefi_app.nsh \
+  --file targets/hello-world/src/bin/resource/run-uefi-app.simics:%simics%/targets/hello-world/run-uefi-app.simics \
+  --command CONFIG:%simics%/scripts/app.yml
 ```
 
 or
 
 ```sh
-$ cargo run --bin x509-parse-fuzz -- --input ./targets/x509-parse/corpus --log-level TRACE --cycles 30
+$ cargo run --release --bin simics-fuzz --features=6.0.166 -- \
+  -c ./newcorpus/ -s ./newsolution/ -l ERROR -t -C 1 -g \
+  --package 2096:6.0.66 \
+  --file targets/x509-parse/src/bin/resource/X509Parse.efi:%simics%/targets/x509-parse/X509Parse.efi \
+  --file targets/x509-parse/src/bin/resource/app.py:%simics%/scripts/app.py \
+  --file targets/x509-parse/src/bin/resource/app.yml:%simics%/scripts/app.yml \
+  --file targets/x509-parse/src/bin/resource/minimal_boot_disk.craff:%simics%/targets/x509-parse/minimal_boot_disk.craff \
+  --file targets/x509-parse/src/bin/resource/run_uefi_app.nsh:%simics%/targets/x509-parse/run_uefi_app.nsh \
+  --file targets/x509-parse/src/bin/resource/run-uefi-app.simics:%simics%/targets/x509-parse/run-uefi-app.simics \
+  --command CONFIG:%simics%/scripts/app.yml
 ```
 
 These samples will run for 30 fuzzing stages (about 1-5k executions) before stopping.
