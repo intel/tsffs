@@ -49,7 +49,7 @@ use std::{
     thread::{spawn, JoinHandle},
     time::Duration,
 };
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, metadata::LevelFilter};
 
 mod feedbacks;
 mod monitors;
@@ -72,9 +72,11 @@ pub struct SimicsFuzzer {
     _dedup: bool,
     #[builder(default)]
     _grimoire: bool,
-    timeout: u64,
+    timeout: f64,
+    executor_timeout: u64,
     cores: Cores,
     command: Vec<Command>,
+    log_level: LevelFilter,
 }
 
 impl SimicsFuzzerBuilder {
@@ -126,8 +128,6 @@ impl SimicsFuzzer {
                 .arg(InitArg::no_windows()?)
                 .arg(InitArg::project(path.to_string_lossy().to_string())?)
                 // TODO: maybe disable these for verbosity reasons
-                .arg(InitArg::script_trace()?)
-                .arg(InitArg::verbose()?)
                 .arg(InitArg::log_enable()?)
                 .arg(InitArg::log_file("/tmp/simics.log")?);
 
@@ -199,7 +199,8 @@ impl SimicsFuzzer {
                 .fault(Fault::X86_64(X86_64Fault::Page))
                 .fault(Fault::X86_64(X86_64Fault::InvalidOpcode))
                 .trace_mode(TraceMode::default())
-                .timeout(3.0)
+                .timeout(self.timeout)
+                .log_level(self.log_level)
                 .build()
                 .map_err(|e| libafl::Error::Unknown(e.to_string(), ErrorBacktrace::new()))?;
 
@@ -315,7 +316,8 @@ impl SimicsFuzzer {
                     &mut state,
                     &mut mgr,
                 )?,
-                Duration::from_secs(60),
+                // The executor's timeout can be quite long
+                Duration::from_secs(self.executor_timeout),
             );
 
             if state.must_load_initial_inputs() {
@@ -366,6 +368,7 @@ impl SimicsFuzzer {
                 .run_client(&mut run_client)
                 .cores(&self.cores)
                 .broker_port(broker_port)
+                .stdout_file(Some("/tmp/test.txt"))
                 .build()
                 .launch()
             {

@@ -47,13 +47,13 @@ pub struct Args {
     #[arg(short = 'T', long, default_value_t = TraceMode::HitCount)]
     /// Mode to trace executions with
     pub trace_mode: TraceMode,
-    #[arg(long, default_value_t = 3)]
-    /// Timeout (in simulated time) of a run that has timed out and will be kept as a timeout test
-    /// case
-    pub timeout: u64,
+    #[arg(long, default_value_t = 3.0)]
+    /// Timeout in seconds (in simulated time) of a run that has timed out and will be
+    /// kept as a timeout test case
+    pub timeout: f64,
     #[arg(long, default_value_t = 60)]
-    /// Timeout (in real time) of a fuzzer run that is running too long and the fuzzer needs to
-    /// be restarted (completely re-initializing the fuzzer and simics state)
+    /// Timeout (in real time) of a fuzzer run that is running too long and the fuzzer
+    /// needs to be restarted (completely re-initializing the fuzzer and simics state)
     pub executor_timeout: u64,
     #[arg(short = 'C', long, default_value_t = 1)]
     /// Number of fuzzer cores to run

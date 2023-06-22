@@ -5,6 +5,7 @@ use anyhow::{bail, Error, Result};
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, str::FromStr};
+use tracing::metadata::LevelFilter;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 /// Tracing mode for the branch tracer
@@ -51,6 +52,7 @@ pub struct InputConfig {
     #[builder(setter(each(name = "fault")), default)]
     pub faults: HashSet<Fault>,
     pub timeout: f64,
+    pub log_level: LevelFilter,
     pub trace_mode: TraceMode,
     pub coverage_map: (*mut u8, usize),
 }

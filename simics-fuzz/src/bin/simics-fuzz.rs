@@ -119,6 +119,8 @@ pub fn main() -> Result<()> {
         .cores(Cores::from((0..args.cores).collect::<Vec<_>>()))
         .command(args.command)
         .timeout(args.timeout)
+        .executor_timeout(args.executor_timeout)
+        .log_level(args.log_level)
         .build()?
         .launch()?;
 

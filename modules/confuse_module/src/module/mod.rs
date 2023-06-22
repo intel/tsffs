@@ -73,14 +73,6 @@ impl Module for Confuse {
     fn objects_finalized(module_instance: *mut ConfObject) -> Result<()> {
         eprintln!("Initializing SIMICS logger");
 
-        fmt::fmt()
-            .pretty()
-            .with_max_level(LevelFilter::TRACE)
-            .try_init()
-            .map_err(|e| anyhow!("Couldn't initialize tracing subscriber: {}", e))?;
-
-        info!("SIMICS logger initialized");
-
         Ok(())
     }
 }
@@ -112,6 +104,14 @@ impl Confuse {
             ClientMessage::Initialize(config) => config,
             _ => bail!("Expected initialize command"),
         };
+
+        fmt::fmt()
+            .pretty()
+            .with_max_level(input_config.log_level)
+            .try_init()
+            .map_err(|e| anyhow!("Couldn't initialize tracing subscriber: {}", e))?;
+
+        info!("SIMICS logger initialized");
 
         output_config = self
             .detector
