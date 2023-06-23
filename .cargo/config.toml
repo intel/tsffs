@@ -1,0 +1,7 @@
+# [build]
+# rustflags = [
+#     "-C",
+#     "link-args=-Wl,--disable-new-dtags",
+#     "-C",
+#     "link-args=-Wl,-rpath,$ORIGIN/../../../../../../../../../../../../../../../../home/rhart/install/simics-internal/simics-6.0.165/linux64/bin/",
+# ]

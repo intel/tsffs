@@ -1,0 +1,28 @@
+[package]
+name = "simics-link"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow.workspace = true
+artifact-dependency.workspace = true
+cargo_metadata = "0.15.4"
+clap = { version = "4.3.0", features = ["derive"] }
+derive_builder = "0.12.0"
+dotenvy_macro = "0.15.7"
+itertools = "0.10.5"
+num = "0.4.0"
+num-derive = "0.3.3"
+num-traits = "0.2.15"
+rand = "0.8.5"
+regex = "1.8.3"
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+strum = { version = "0.24.1", features = ["strum_macros", "derive"] }
+tempdir = "0.3.7"
+tracing = "0.1.37"
+version-tools.workspace = true
+versions = "5.0.0"
+walkdir = "2.3.3"

@@ -7,8 +7,8 @@ use crate::{
     stops::StopReason,
 };
 use anyhow::Result;
-use ipc_channel::ipc::{IpcReceiver, IpcSender};
 use simics_api::{AttrValue, ConfObject};
+use std::sync::mpsc::{Receiver, Sender};
 
 pub trait ConfuseState {
     /// Callback when the module's state is [`ConfuseModuleState::HalfInitialized`]. The
@@ -20,7 +20,7 @@ pub trait ConfuseState {
     fn on_initialize(
         &mut self,
         _confuse: *mut ConfObject,
-        _input_config: &InputConfig,
+        _input_config: &mut InputConfig,
         output_config: OutputConfig,
     ) -> Result<OutputConfig> {
         Ok(output_config)
@@ -88,10 +88,10 @@ pub trait ConfuseClient {
     fn state_mut(&mut self) -> &mut State;
 
     /// Get a mutable reference to the internal client message sender channel, tx
-    fn tx_mut(&mut self) -> &mut IpcSender<ClientMessage>;
+    fn tx_mut(&mut self) -> &mut Sender<ClientMessage>;
 
     /// Get a mutable reference to the internal module message receiver channel, rx
-    fn rx_mut(&mut self) -> &mut IpcReceiver<ModuleMessage>;
+    fn rx_mut(&mut self) -> &mut Receiver<ModuleMessage>;
 
     /// Initialize the client with a configuration. The client will return an output
     /// configuration which contains various information the SIMICS module needs to

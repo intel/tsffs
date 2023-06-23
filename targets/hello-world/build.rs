@@ -1,6 +1,8 @@
 use anyhow::{ensure, Result};
 use dockerfile_rs::{Copy, DockerFile, From, TagOrDigest, RUN, WORKDIR};
 use rand::{distributions::Alphanumeric, Rng};
+use simics_api::sys::SIMICS_VERSION;
+use simics_link::link_simics_linux;
 use std::{
     env::var,
     fs::{read_dir, OpenOptions},
@@ -10,9 +12,9 @@ use std::{
 };
 
 const EDK2_REPO_URL: &str = "https://github.com/tianocore/edk2.git";
-const EDK2_REPO_HASH: &str = "02fcfdce1e5ce86f1951191883e7e30de5aa08be";
-const EDK2_FEDORA35_REPO_URL: &str = "ghcr.io/tianocore/containers/fedora-35-build";
-const EDK2_FEDORA35_BUILD_TAG: &str = "5b8a008";
+const EDK2_REPO_HASH: &str = "d189de3b0a2f44f4c9b87ed120be16569ea19b51";
+const EDK2_FEDORA37_REPO_URL: &str = "ghcr.io/tianocore/containers/fedora-37-build";
+const EDK2_FEDORA37_BUILD_TAG: &str = "a0dd931";
 
 /// Return the OUT_DIR build directory as a PathBuf
 fn out_dir() -> Result<PathBuf> {
@@ -42,9 +44,13 @@ fn build_efi_module() -> Result<()> {
         "Module source directory does not exist."
     );
 
+    // let dockerfile_contents = DockerFile::from(From {
+    //     image: EDK2_FEDORA35_REPO_URL.to_string(),
+    //     tag_or_digest: Some(TagOrDigest::Tag(EDK2_FEDORA35_BUILD_TAG.to_string())),
+    //     name: None,
     let dockerfile_contents = DockerFile::from(From {
-        image: EDK2_FEDORA35_REPO_URL.to_string(),
-        tag_or_digest: Some(TagOrDigest::Tag(EDK2_FEDORA35_BUILD_TAG.to_string())),
+        image: EDK2_FEDORA37_REPO_URL.to_string(),
+        tag_or_digest: Some(TagOrDigest::Tag(EDK2_FEDORA37_BUILD_TAG.to_string())),
         name: None,
     })
     .work_dir(WORKDIR!("/"))
@@ -174,5 +180,10 @@ fn build_efi_module() -> Result<()> {
 fn main() -> Result<()> {
     println!("cargo:rerun-if-changed=build.rs");
     build_efi_module()?;
+    #[cfg(target_family = "unix")]
+    link_simics_linux(SIMICS_VERSION)?;
+
+    #[cfg(not(target_family = "unix"))]
+    compile_error!("Non-unix-like platforms are not yet supported");
     Ok(())
 }

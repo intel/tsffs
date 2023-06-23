@@ -1,12 +1,13 @@
 //! Configuration data for the module, passed to it when it starts up
 
-use crate::{faults::Fault, maps::MapType};
-use anyhow::{bail, Context, Error, Result};
-use ipc_shm::IpcShm;
+use crate::faults::Fault;
+use anyhow::{bail, Error, Result};
+use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, str::FromStr};
+use tracing::metadata::LevelFilter;
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, Copy)]
 /// Tracing mode for the branch tracer
 pub enum TraceMode {
     /// Trace each instruction once, this does not necessarily enable hit counting,
@@ -14,6 +15,12 @@ pub enum TraceMode {
     Once,
     /// Trace each instruction every time it is executed
     HitCount,
+}
+
+impl Default for TraceMode {
+    fn default() -> Self {
+        Self::HitCount
+    }
 }
 
 impl ToString for TraceMode {
@@ -38,24 +45,20 @@ impl FromStr for TraceMode {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Builder, Debug, Clone)]
 /// Contains parameters for the module to configure things like timeout duration, which faults
 /// indicate a crash, etc. This is sent by the client in `ClientMessage::Initialize`
 pub struct InputConfig {
+    #[builder(setter(each(name = "fault")), default)]
     pub faults: HashSet<Fault>,
     pub timeout: f64,
+    pub log_level: LevelFilter,
     pub trace_mode: TraceMode,
+    pub coverage_map: (*mut u8, usize),
 }
 
-impl Default for InputConfig {
-    fn default() -> Self {
-        Self {
-            faults: HashSet::new(),
-            timeout: f64::MAX,
-            trace_mode: TraceMode::HitCount,
-        }
-    }
-}
+unsafe impl Send for InputConfig {}
+unsafe impl Sync for InputConfig {}
 
 impl InputConfig {
     /// Add a fault to the set of faults considered crashes for a given fuzzing campaign
@@ -100,32 +103,6 @@ impl InputConfig {
 /// Contains the resulting configuration of the module after initialization with the provided
 /// `InputConfig`. This is used to pass memory maps back to the client for things like
 /// coverage and cmplog data, but can be extended.
-pub struct OutputConfig {
-    maps: Vec<MapType>,
-}
+pub struct OutputConfig {}
 
-impl OutputConfig {
-    pub fn with_map(mut self, map: MapType) -> Self {
-        self.maps.push(map);
-        self
-    }
-
-    pub fn with_maps<I: IntoIterator<Item = MapType>>(mut self, maps: I) -> Self {
-        maps.into_iter().for_each(|m| {
-            self.maps.push(m);
-        });
-        self
-    }
-
-    /// Retrieve the coverage map from an output config
-    pub fn coverage(&mut self) -> Result<IpcShm> {
-        match self.maps.remove(
-            self.maps
-                .iter()
-                .position(|m| matches!(m, MapType::Coverage(_)))
-                .context("No coverage map found")?,
-        ) {
-            MapType::Coverage(coverage) => Ok(coverage),
-        }
-    }
-}
+impl OutputConfig {}

@@ -24,15 +24,14 @@
 //! At any point, an `Exit` signal can be sent to cause the module to immediately exit cleanly.
 
 use anyhow::{bail, Result};
-use log::{error, info};
 use rust_fsm::*;
+use tracing::{error, info};
 
 use crate::messages::{client::ClientMessage, module::ModuleMessage};
 
 state_machine! {
     derive(Debug, Clone)
     pub ConfuseModule(Uninitialized)
-
     Uninitialized => {
         Initialize => HalfInitialized,
         Exit => Done,

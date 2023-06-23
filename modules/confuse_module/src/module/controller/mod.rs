@@ -33,7 +33,6 @@ use confuse_simics_api::{
 use const_format::concatcp;
 use ipc_channel::ipc::{channel, IpcReceiver, IpcSender};
 use lazy_static::lazy_static;
-use log::{info, trace, Level, LevelFilter};
 use log4rs::{
     append::console::{ConsoleAppender, Target},
     config::{Appender, Config, Root},
@@ -47,6 +46,7 @@ use std::{
     str::FromStr,
     sync::{Arc, Mutex, MutexGuard},
 };
+use tracing::{info, trace, Level, LevelFilter};
 
 pub mod instance;
 pub mod magic;
@@ -542,8 +542,8 @@ impl Default for confuse_module_interface_t {
 mod callbacks {
     use super::{magic::Magic, Controller};
     use confuse_simics_api::{attr_value_t, conf_object_t};
-    use log::trace;
     use std::ffi::{c_char, c_void};
+    use tracing::trace;
 
     #[no_mangle]
     /// Invoked by SIMICs through the interface binding. This function signals the module to run

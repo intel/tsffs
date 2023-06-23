@@ -1,40 +1,46 @@
 [workspace]
 members = [
     # Provide simics 
-    "confuse-simics-project",
     # Provide real simics APIs
     "simics-api-sys",
     "simics-api",
     "simics-api-macro",
-    # Just provides common simics manifest tools for parsing/managing simics
-    "confuse-simics-manifest",
-    # Fuzzer
-    "confuse-fuzz",
+    "simics",
+    "simics-cli",
+    "simics-tests",
+    "simics-link",
+    "simics-fuzz",
     # Modules
     "modules/confuse_module",
     # Targets
     "targets/hello-world",
     "targets/x509-parse",
     # Utilities
-    "util/ipc-shm",
     "util/raw-cstr",
     "util/version-tools",
     "util/raffl-macro",
+    "util/artifact-dependency",
 ]
 
 [workspace.dependencies]
-confuse-simics-project = { path = "./confuse-simics-project" }
-confuse-simics-manifest = { path = "./confuse-simics-manifest" }
-confuse-fuzz = { path = "./confuse-fuzz" }
+artifact-dependency = { path = "./util/artifact-dependency" }
+simics-link = { path = "./simics-link" }
+simics = { path = "./simics" }
 confuse_module = { path = "./modules/confuse_module" }
 simics-api-sys = { path = "./simics-api-sys" }
 simics-api = { path = "./simics-api" }
 simics-api-macro = { path = "./simics-api-macro" }
-ipc-shm = { path = "./util/ipc-shm" }
 raw-cstr = { path = "./util/raw-cstr" }
 version-tools = { path = "./util/version-tools" }
 raffl-macro = { path = "./util/raffl-macro" }
-ipc-channel = { git = "https://github.com/novafacing/ipc-channel.git", version = "0.16.0", features = [
-    "memfd",
-] }
-libafl = { git = "https://github.com/AFLplusplus/LibAFL", rev = "c8c5d89f336208112ff91889865e6bedb62aa23d" }
+libafl = { git = "https://github.com/AFLplusplus/LibAFL", branch = "libfuzzer" }
+anyhow = "1.0.71"
+# Match these versions to cargo_metadata -- it breaks on current versions
+serde = "1.0.136"
+serde_json = "1.0.79"
+
+[profile.dev]
+rpath = true
+
+[profile.release]
+rpath = true

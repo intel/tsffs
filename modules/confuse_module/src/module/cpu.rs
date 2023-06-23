@@ -10,10 +10,10 @@ use confuse_simics_api::{
     CPU_INSTRUMENTATION_SUBSCRIBE_INTERFACE, CYCLE_INTERFACE, INT_REGISTER_INTERFACE,
     PROCESSOR_INFO_V2_INTERFACE,
 };
-use log::info;
 use raw_cstr::raw_cstr;
 use std::ffi::CString;
 use std::{ffi::c_void, ptr::null_mut, slice::from_raw_parts};
+use tracing::info;
 use yaxpeax_x86::amd64::{InstDecoder, Instruction, Opcode};
 
 /// Check if an instruction is a control flow instruction

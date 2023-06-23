@@ -1,43 +1,41 @@
 use self::components::{detector::Detector, tracer::Tracer};
 use crate::{
-    client::test::TestClient,
     config::OutputConfig,
     magic::Magic,
     messages::{client::ClientMessage, module::ModuleMessage},
     processor::Processor,
     state::State,
     stops::StopReason,
-    traits::{ConfuseClient, ConfuseInterface, ConfuseState},
-    BOOTSTRAP_SOCKNAME, CLASS_NAME, TESTMODE_VARNAME,
+    traits::{ConfuseInterface, ConfuseState},
+    CLASS_NAME,
 };
-use anyhow::{bail, Context, Result};
-use const_format::concatcp;
-use ipc_channel::ipc::{channel, IpcReceiver, IpcSender};
-use log::{debug, error, info, trace, Level, LevelFilter};
+use anyhow::{anyhow, bail, Context, Result};
 use raffl_macro::{callback_wrappers, params};
+use tracing::{error, info, trace};
 
 use simics_api::{
-    attr_object_or_nil_from_ptr, break_simulation, continue_simulation_alone, discard_future,
-    get_processor_number, hap_add_callback, quit, register_interface, restore_micro_checkpoint,
-    save_micro_checkpoint, AttrValue, ConfObject, Hap, HapCallback, MicroCheckpointFlags,
-    SimicsLogger,
+    attr_data, attr_object_or_nil_from_ptr, break_simulation, clear_exception,
+    continue_simulation_alone, discard_future, get_processor_number, hap_add_callback, last_error,
+    quit, register_interface, restore_micro_checkpoint, save_micro_checkpoint, AttrValue,
+    ConfObject, Hap, HapCallback, MicroCheckpointFlags, SimException,
 };
 use simics_api::{Create, Module};
 use simics_api_macro::module;
-use std::{collections::HashMap, env::var, ffi::c_void, str::FromStr};
+use std::{
+    collections::HashMap,
+    ffi::c_void,
+    sync::mpsc::{channel, Receiver, Sender},
+};
+use tracing_subscriber::fmt;
 
 pub mod components;
-
-pub const LOGLEVEL_VARNAME: &str = concatcp!(CLASS_NAME, "_LOGLEVEL");
-pub const DEFAULT_LOGLEVEL: Level = Level::Trace;
 
 #[module(class_name = CLASS_NAME)]
 pub struct Confuse {
     /// In test mode, CONFUSE runs without a real client,
-    test_mode_client: Option<Box<dyn ConfuseClient>>,
     state: State,
-    tx: IpcSender<ModuleMessage>,
-    rx: IpcReceiver<ClientMessage>,
+    tx: Sender<ModuleMessage>,
+    rx: Receiver<ClientMessage>,
     tracer: Tracer,
     detector: Detector,
     processors: HashMap<i32, Processor>,
@@ -50,51 +48,14 @@ pub struct Confuse {
 
 impl Module for Confuse {
     fn init(module_instance: *mut ConfObject) -> Result<*mut ConfObject> {
-        let log_level = LevelFilter::from_str(&var(LOGLEVEL_VARNAME).unwrap_or_default())
-            .unwrap_or(DEFAULT_LOGLEVEL.to_level_filter());
-
-        let test_mode = if let Ok(name) = var(TESTMODE_VARNAME) {
-            matches!(name.to_ascii_lowercase().as_str(), "1" | "true" | "on")
-        } else {
-            false
-        };
-
-        SimicsLogger::new()
-            // Dev is a misnomer here -- that's what SIMICS calls it but really it should just be
-            // `object` because that's all we are doing here is creating a logger for our module object
-            .with_dev(module_instance)
-            .with_level(log_level)
-            .init()?;
-
-        info!("Simics logger initialized");
-
         let state = State::new();
-        let (otx, rx) = channel::<ClientMessage>()?;
-        let (tx, orx) = channel::<ModuleMessage>()?;
-        let test_client = if test_mode {
-            Some(TestClient::new_boxed(otx, orx))
-        } else {
-            info!("Initializing CONFUSE");
-
-            let sockname = var(BOOTSTRAP_SOCKNAME)?;
-            debug!("Connecting to bootstrap socket {}", sockname);
-
-            let bootstrap = IpcSender::connect(sockname)?;
-
-            debug!("Connected to bootstrap socket");
-
-            bootstrap.send((otx, orx))?;
-
-            debug!("Sent primary socket over bootstrap socket");
-
-            None
-        };
         let detector = Detector::try_new()?;
         let tracer = Tracer::try_new()?;
+        let (tx, _) = channel();
+        let (_, rx) = channel();
 
         Ok(Confuse::new(
             module_instance,
-            test_client,
             state,
             tx,
             rx,
@@ -108,26 +69,16 @@ impl Module for Confuse {
             -1,
         ))
     }
-
-    fn objects_finalized(module_instance: *mut ConfObject) -> Result<()> {
-        let confuse: &mut Confuse = module_instance.into();
-        confuse.initialize()?;
-
-        Ok(())
-    }
 }
 
 impl Confuse {
     pub fn initialize(&mut self) -> Result<()> {
-        let input_config = match self.recv_msg()? {
-            ClientMessage::Initialize(config) => config,
-            _ => bail!("Expected initialize command"),
-        };
-
         // Add callbacks on stops and magic instructions
 
         // TODO: bruh
         let self_ptr = self as *mut Self as *mut ConfObject;
+
+        info!("Adding HAPs");
 
         hap_add_callback(
             Hap::CoreSimulationStopped,
@@ -143,12 +94,27 @@ impl Confuse {
 
         let mut output_config = OutputConfig::default();
 
+        let mut input_config = match self.recv_msg()? {
+            ClientMessage::Initialize(config) => config,
+            _ => bail!("Expected initialize command"),
+        };
+
+        fmt::fmt()
+            .pretty()
+            .with_max_level(input_config.log_level)
+            .try_init()
+            .map_err(|e| anyhow!("Couldn't initialize tracing subscriber: {}", e))?;
+
+        info!("SIMICS logger initialized");
+
         output_config = self
             .detector
-            .on_initialize(self_ptr, &input_config, output_config)?;
+            .on_initialize(self_ptr, &mut input_config, output_config)?;
         output_config = self
             .tracer
-            .on_initialize(self_ptr, &input_config, output_config)?;
+            .on_initialize(self_ptr, &mut input_config, output_config)?;
+
+        info!("Sending initialized message");
 
         self.send_msg(ModuleMessage::Initialized(output_config))?;
 
@@ -230,9 +196,9 @@ impl Confuse {
     }
 }
 
-impl<'a> From<*mut std::ffi::c_void> for &'a mut Confuse {
+impl From<*mut std::ffi::c_void> for &mut Confuse {
     /// Convert from a *mut Confuse pointer to a mutable reference to Confuse
-    fn from(value: *mut std::ffi::c_void) -> &'a mut Confuse {
+    fn from(value: *mut std::ffi::c_void) -> &'static mut Confuse {
         let confuse_ptr: *mut Confuse = value as *mut Confuse;
         unsafe { &mut *confuse_ptr }
     }
@@ -399,6 +365,9 @@ impl Confuse {
 
     #[params(!slf: *mut simics_api::ConfObject)]
     pub fn on_start(&mut self) -> Result<()> {
+        info!("Received start signal");
+        self.initialize()?;
+
         info!("Got start signal from client");
         // Trigger anything that needs to happen before we start up (run for the first time)
         self.detector.on_start()?;
@@ -412,14 +381,50 @@ impl Confuse {
 
         Ok(())
     }
+
+    #[params(!slf: *mut simics_api::ConfObject, ...)]
+    ///
+    /// # Safety
+    ///
+    /// This function dereferences the raw pointers passed into it through the interface. These
+    /// pointers must be valid.
+    pub fn on_add_channels(&mut self, tx: *mut AttrValue, rx: *mut AttrValue) -> Result<()> {
+        info!(
+            "Setting up channels Tx: {:#x} Rx: {:#x}",
+            tx as usize, rx as usize
+        );
+
+        self.tx = attr_data(unsafe { *tx }).map_err(|e| {
+            error!("Couldn't make attr data from pointer for tx");
+            e
+        })?;
+        self.rx = attr_data(unsafe { *rx }).map_err(|e| {
+            error!("Couldn't make attr data from pointer for tx");
+            e
+        })?;
+        info!("Set up channels");
+
+        match clear_exception()? {
+            SimException::NoException => Ok(()),
+            exception => {
+                bail!(
+                    "Error running simics config: {:?}: {}",
+                    exception,
+                    last_error()
+                );
+            }
+        }
+    }
 }
 
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 /// This is the rust definition for the confuse_module_interface_t declaration in the stubs, which
 /// are used to generate the interface module. This struct definition must match that one exactly
 pub struct ConfuseModuleInterface {
     pub start: extern "C" fn(obj: *mut ConfObject),
     pub add_processor: extern "C" fn(obj: *mut ConfObject, processor: *mut AttrValue),
     pub add_fault: extern "C" fn(obj: *mut ConfObject, fault: i64),
+    pub add_channels: extern "C" fn(obj: *mut ConfObject, tx: *mut AttrValue, rx: *mut AttrValue),
 }
 
 impl Default for ConfuseModuleInterface {
@@ -428,6 +433,7 @@ impl Default for ConfuseModuleInterface {
             start: confuse_callbacks::on_start,
             add_processor: confuse_callbacks::on_add_processor,
             add_fault: confuse_callbacks::on_add_fault,
+            add_channels: confuse_callbacks::on_add_channels,
         }
     }
 }
@@ -437,12 +443,17 @@ impl Default for ConfuseModuleInterface {
 /// module
 pub extern "C" fn confuse_init_local() {
     eprintln!("Initializing CONFUSE");
-    // log_info(0, null_mut(), 0, "Initializing CONFUSE").expect("Couldn't initialize confuse");
-    // println!("Logged initializing confuse");
-    let cls = Confuse::create().unwrap_or_else(|_| panic!("Failed to create class {}", CLASS_NAME));
+    let cls = Confuse::create()
+        .unwrap_or_else(|e| panic!("Failed to create class {}: {}", CLASS_NAME, e));
 
     eprintln!("Created CONFUSE class at {:#x}", cls as usize);
 
-    register_interface::<_, ConfuseModuleInterface>(cls, CLASS_NAME)
-        .unwrap_or_else(|_| panic!("Failed to register interface for class {}", CLASS_NAME));
+    register_interface::<_, ConfuseModuleInterface>(cls, CLASS_NAME).unwrap_or_else(|e| {
+        panic!(
+            "Failed to register interface for class {}: {}",
+            CLASS_NAME, e
+        )
+    });
+
+    eprintln!("Registered CONFUSE interface");
 }

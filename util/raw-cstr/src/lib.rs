@@ -10,6 +10,14 @@ thread_local! {
 /// C APIs that take a string as an argument, particularly when the string can't be known at compile
 /// time, although this function is also efficient in space (but not time) when a constant string
 /// is known. For compile-time constants, you can use `c_str!`.
+///
+/// # Notes
+///
+/// - Do *not* use [`String::from_raw_parts`] to convert the pointer back to a [`String`]. This
+///   may cause a double free because the [`String`] will take ownership of the pointer. Use
+///   [`CStr::from_ptr`] instead, and convert to a string with
+///   `.to_str().expect("...").to_owned()` instead.
+///
 pub fn raw_cstr<S: AsRef<str>>(str: S) -> Result<*mut i8> {
     // This is the old, inefficient way to implement this. Instead, we use a thread local cache
     // of raw strings, because we only use this function to talk to SIMICS
