@@ -336,8 +336,9 @@ impl TryFrom<PathBuf> for Project {
         let base = Package::try_from(PathBuf::from(properties.paths.simics_root))?;
         let packages = read_to_string(value.join(".package-list"))?
             .lines()
+            .filter(|s| !s.trim().is_empty())
             .filter_map(|l| {
-                PathBuf::from(l)
+                PathBuf::from(l.trim())
                     .canonicalize()
                     .map_err(|e| {
                         anyhow!("Error canonicalizing package list entry path {}: {}", l, e)
