@@ -8,6 +8,7 @@ use std::{
     path::PathBuf,
     process::{Command, Stdio},
 };
+use tracing::{debug, error};
 
 #[derive(Clone, Debug, Copy)]
 pub enum CrateType {
@@ -74,6 +75,8 @@ pub struct ArtifactDependency {
     pub build_always: bool,
     #[builder(setter(each(name = "feature", into), into), default)]
     pub features: Vec<String>,
+    #[builder(setter(into))]
+    pub target_name: String,
 }
 
 // NOTE: Artifact naming is not very easy to discern, we have to dig hard into rustc.
@@ -156,18 +159,37 @@ impl Artifact {
 
 impl ArtifactDependency {
     pub fn build(&mut self) -> Result<Artifact> {
-        let workspace_root = self.workspace_root.clone().unwrap_or(
+        debug!("Building dependency from builder: {:?}", self);
+        let workspace_root = if let Some(workspace_root) = self.workspace_root.clone() {
+            workspace_root
+        } else {
             MetadataCommand::new()
                 .no_deps()
-                .exec()?
+                .exec()
+                .map_err(|e| {
+                    error!(
+                        "Failed to run metadata command to find workspace root: {}",
+                        e
+                    );
+                    e
+                })?
                 .workspace_root
-                .into(),
-        );
+                .into()
+        };
 
         let metadata = MetadataCommand::new()
+            .current_dir(&workspace_root)
             .no_deps()
             .manifest_path(workspace_root.join("Cargo.toml"))
-            .exec()?;
+            .exec()
+            .map_err(|e| {
+                error!(
+                    "Failed to run metadata command in workspace root {}: {}",
+                    workspace_root.display(),
+                    e
+                );
+                e
+            })?;
 
         self.crate_name = if let Some(crate_name) = self.crate_name.as_ref() {
             Some(crate_name.clone())
@@ -241,7 +263,7 @@ impl ArtifactDependency {
             // TODO: This will solve one build script trying to build the artifact at
             // once, but doesn't resolve parallel scripts trying to both build it
             // simultaneously, we need to actually detect the lock.
-            let build_target_dir = metadata.target_directory.join(ARTIFACT_TARGET_NAME);
+            let build_target_dir = metadata.target_directory.join(&self.target_name);
 
             cargo_command.arg("--target-dir").arg(&build_target_dir);
 

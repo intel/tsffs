@@ -7,7 +7,6 @@ edition = "2021"
 
 [dependencies]
 anyhow.workspace = true
-artifact-dependency.workspace = true
 cargo_metadata = "0.15.4"
 clap = { version = "4.3.0", features = ["derive"] }
 derive_builder = "0.12.0"

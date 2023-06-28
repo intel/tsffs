@@ -11,5 +11,5 @@ fn test() {
         .build()
         .expect("Couldn't find dependency");
 
-    assert!(dep.path.exists(), "Dep did not exist");
+    assert!(dep.path().is_some_and(|p| p.exists()), "Dep did not exist");
 }

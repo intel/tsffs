@@ -33,7 +33,6 @@ versions = "5.0.0"
 
 [build-dependencies]
 anyhow.workspace = true
-artifact-dependency.workspace = true
 simics-api.workspace = true
 simics-link.workspace = true
 

@@ -101,6 +101,7 @@ pub fn main() -> Result<()> {
                         .build_missing(true)
                         .artifact_type(CrateType::CDynamicLibrary)
                         .feature(SIMICS_VERSION)
+                        .target_name("simics-fuzz")
                         .build()?
                         .build()?,
                 )

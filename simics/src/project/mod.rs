@@ -385,8 +385,10 @@ impl Project {
         }
 
         let (project_setup, extra_args) = if self.base.path.join(".project-properties").is_dir() {
+            // The project already exists, we don't need to instruct on how to create the project
             (self.path.path.join("bin").join("project-setup"), vec![])
         } else {
+            // Creating a new project, we will ignore existing files and add all build systems
             (
                 self.base.path.join("bin").join("project-setup"),
                 vec!["--ignore-existing-files", "--with-gmake", "--with-cmake"],
@@ -395,15 +397,16 @@ impl Project {
 
         ensure!(
             project_setup.exists(),
-            "Could not find `project-setup` binary in '{}'",
-            self.base.path.display()
+            "Could not find `project-setup` binary at '{}'",
+            project_setup.display()
         );
 
         info!("Setting up project at {}", self.path.path.display());
 
         let output = Command::new(&project_setup)
             .args(&extra_args)
-            .arg(&self.path.path)
+            // self.path.path always exists already at this point, so we will project-setup .
+            .arg(".")
             .current_dir(&self.path.path)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -561,29 +564,41 @@ impl Project {
                     .map(|_| ())
             })?;
 
-        let project_setup = self.path.path.join("bin").join("project-setup");
+        debug!("Wrote .package-list file");
 
         ensure!(
-            project_setup.exists(),
-            "Could not find `project-setup` binary in '{}'",
-            self.base.path.display()
+            self.path.path.exists(),
+            "Project path '{}' did not exist when setting up packages",
+            self.path.path.display()
         );
 
-        let output = Command::new(&project_setup)
-            .arg(&self.path.path)
+        let output = Command::new("bin/project-setup")
+            // self.path.path always exists at this point, so we run project-setup .
+            .arg(".")
             .current_dir(&self.path.path)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .output()?;
+            .output()
+            .map_err(|e| {
+                error!("Failed to run command 'bin/project-setup': {}", e);
+                e
+            })?;
 
-        output.status.success().then_some(()).ok_or_else(|| {
-            anyhow!(
-                "Failed to run {}:\nstdout: {}\nstderr: {}",
-                project_setup.display(),
-                String::from_utf8_lossy(&output.stdout),
-                String::from_utf8_lossy(&output.stderr)
-            )
-        })
+        output
+            .status
+            .success()
+            .then_some(())
+            .ok_or_else(|| {
+                error!("Failed setting up project");
+                anyhow!(
+                    "Failed to run 'bin/project-setup':\nstdout: {}\nstderr: {}",
+                    String::from_utf8_lossy(&output.stdout),
+                    String::from_utf8_lossy(&output.stderr)
+                )
+            })
+            .map(|_| {
+                info!("Set up project with packages");
+            })
     }
 
     fn setup_modules(&self) -> Result<()> {
