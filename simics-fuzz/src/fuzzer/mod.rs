@@ -119,10 +119,10 @@ impl SimicsFuzzer {
                 .arg(InitArg::gui_mode(GuiMode::None)?)
                 // TODO: Maybe disable this if we can output logs through tracing?
                 .arg(InitArg::no_windows()?)
-                .arg(InitArg::project(path.to_string_lossy().to_string())?)
-                // TODO: maybe disable these for verbosity reasons
-                .arg(InitArg::log_enable()?)
-                .arg(InitArg::log_file("/tmp/simics.log")?);
+                .arg(InitArg::project(path.to_string_lossy().to_string())?);
+            // TODO: maybe disable these for verbosity reasons
+            // .arg(InitArg::log_enable()?)
+            // .arg(InitArg::log_file("/tmp/simics.log")?);
 
             Simics::try_init(simics_args)?;
 

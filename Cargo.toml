@@ -21,6 +21,25 @@ members = [
     "util/raffl-macro",
     "util/artifact-dependency",
 ]
+default-members = [
+    # Provide simics 
+    # Provide real simics APIs
+    "simics-api-sys",
+    "simics-api",
+    "simics-api-macro",
+    "simics",
+    "simics-cli",
+    "simics-tests",
+    "simics-link",
+    "simics-fuzz",
+    # Modules
+    "modules/confuse_module",
+    # Utilities
+    "util/raw-cstr",
+    "util/version-tools",
+    "util/raffl-macro",
+    "util/artifact-dependency",
+]
 
 [workspace.dependencies]
 artifact-dependency = { path = "./util/artifact-dependency" }
