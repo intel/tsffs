@@ -2,8 +2,8 @@
 use anyhow::{bail, Result};
 
 use simics_api::{
-    attr_string, get_attribute, write_byte, AttrValue, CachedInstructionHandle,
-    ConfObject, CpuCachedInstruction, CpuInstructionQuery, CpuInstrumentationSubscribe, Cycle,
+    attr_string, get_attribute, write_byte, AttrValue, CachedInstructionHandle, ConfObject,
+    CpuCachedInstruction, CpuInstructionQuery, CpuInstrumentationSubscribe, Cycle,
     InstructionHandle, IntRegister, ProcessorInfoV2,
 };
 use std::{collections::HashMap, ffi::c_void};
@@ -198,6 +198,25 @@ impl Processor {
         };
 
         int_register.read(self.cpu, reg_number)
+    }
+
+    pub fn set_reg_value<S: AsRef<str>>(&mut self, reg: S, val: u64) -> Result<()> {
+        let int_register = if let Some(int_register) = self.int_register.as_ref() {
+            int_register
+        } else {
+            bail!("No IntRegister interface registered in processor. Try building with `try_with_int_register`");
+        };
+
+        let reg_number = if let Some(reg_number) = self.reg_numbers.get(reg.as_ref()) {
+            *reg_number
+        } else {
+            let reg_name = reg.as_ref().to_string();
+            let reg_number = int_register.get_number(self.cpu, reg)?;
+            self.reg_numbers.insert(reg_name, reg_number);
+            reg_number
+        };
+
+        int_register.write(self.cpu, reg_number, val)
     }
 
     pub fn write_bytes(&self, logical_address_start: u64, bytes: &[u8]) -> Result<()> {

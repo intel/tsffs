@@ -267,6 +267,20 @@ impl IntRegister {
             bail!("No function read in interface");
         }
     }
+
+    pub fn write(
+        &self,
+        cpu: *mut ConfObject,
+        register_number: i32,
+        register_value: u64,
+    ) -> Result<()> {
+        if let Some(write) = unsafe { *self.iface }.write {
+            unsafe { write(cpu.into(), register_number, register_value) };
+            Ok(())
+        } else {
+            bail!("No function writein interface");
+        }
+    }
 }
 
 pub struct Cycle {

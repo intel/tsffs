@@ -24,8 +24,8 @@ impl ToString for GuiMode {
         match self {
             GuiMode::None => "no-gui",
             GuiMode::Mixed => "mixed",
-            GuiMode::Only => "only",
-            GuiMode::Default => "no-gui",
+            GuiMode::Only => "gui",
+            GuiMode::Default => "default",
         }
         .to_string()
     }

@@ -2,7 +2,7 @@ use crate::{
     args::command::Command,
     modules::confuse::{ConfuseModuleInterface, CONFUSE_MODULE_CRATE_NAME},
 };
-use anyhow::{anyhow, Error, Result};
+use anyhow::{anyhow, bail, Error, Result};
 use confuse_module::{
     client::Client,
     config::{InputConfigBuilder, TraceMode},
@@ -70,6 +70,8 @@ pub struct SimicsFuzzer {
     command: Vec<Command>,
     log_level: LevelFilter,
     trace_mode: TraceMode,
+    #[builder(default)]
+    simics_gui: bool,
 }
 
 impl SimicsFuzzerBuilder {
@@ -85,6 +87,11 @@ impl SimicsFuzzerBuilder {
     }
 
     fn validate(&self) -> Result<()> {
+        if self.simics_gui.as_ref().is_some_and(|g| *g)
+            && self.cores.as_ref().is_some_and(|c| c.ids.len() > 1)
+        {
+            bail!("Cannot enable GUI with more than one fuzzer core!");
+        }
         Ok(())
     }
 }
@@ -109,20 +116,27 @@ impl SimicsFuzzer {
         );
 
         let command = self.command.clone();
+        let simics_gui = self.simics_gui;
 
         spawn(move || -> Result<()> {
             // TODO: Take these args from CLI, we should let users override anything including GUI
             // mode if they really want to
-            let simics_args = InitArgs::default()
-                .arg(InitArg::batch_mode()?)
-                .arg(InitArg::deprecation_level(DeprecationLevel::NoWarnings)?)
-                .arg(InitArg::gui_mode(GuiMode::None)?)
-                // TODO: Maybe disable this if we can output logs through tracing?
-                .arg(InitArg::no_windows()?)
-                .arg(InitArg::project(path.to_string_lossy().to_string())?);
-            // TODO: maybe disable these for verbosity reasons
-            // .arg(InitArg::log_enable()?)
-            // .arg(InitArg::log_file("/tmp/simics.log")?);
+            let mut simics_args =
+                InitArgs::default().arg(InitArg::deprecation_level(DeprecationLevel::NoWarnings)?);
+
+            if simics_gui {
+                debug!("Enabling SIMICS GUI");
+                simics_args = simics_args.arg(InitArg::gui_mode(GuiMode::Default)?)
+            } else {
+                // By default, don't enable the GUI
+                simics_args = simics_args
+                    .arg(InitArg::batch_mode()?)
+                    .arg(InitArg::gui_mode(GuiMode::None)?)
+                    // TODO: Maybe disable this if we can output logs through tracing?
+                    .arg(InitArg::no_windows()?);
+            }
+
+            simics_args = simics_args.arg(InitArg::project(path.to_string_lossy().to_string())?);
 
             Simics::try_init(simics_args)?;
 
@@ -166,6 +180,8 @@ impl SimicsFuzzer {
                 Command::Python { file } => Simics::python(file.canonicalize(&path)?),
                 Command::Config { config } => Simics::config(config.canonicalize(&path)?),
             })?;
+
+            info!("Finished running provided commands");
 
             // If the command we just ran includes `@SIM_main_loop`, the below code will be unreachable, but that is OK. The callbacks will eventually call `@SIM_quit` for us
             // and this will never be called. If the command doesn't include, `@SIM_main_loop`, then we need to enter it now.

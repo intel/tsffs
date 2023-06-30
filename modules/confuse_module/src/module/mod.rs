@@ -184,6 +184,8 @@ impl Confuse {
                 .with_context(|| format!("No processor number {}", processor_number))?;
             // Write the testcase to the guest's memory
             processor.write_bytes(self.buffer_address, &input)?;
+            // Write the testcase size back to rdi
+            processor.set_reg_value("rdi", input.len() as u64)?;
         }
 
         // Run the simulation until the magic start instruction, where we will receive a stop
@@ -365,19 +367,21 @@ impl Confuse {
 
     #[params(!slf: *mut simics_api::ConfObject)]
     pub fn on_start(&mut self) -> Result<()> {
-        info!("Received start signal");
+        info!("Received start signal, initializing CONFUSE state.");
         self.initialize()?;
 
-        info!("Got start signal from client");
         // Trigger anything that needs to happen before we start up (run for the first time)
         self.detector.on_start()?;
         self.tracer.on_start()?;
 
         // Run -- we will get a callback on the Magic::Start instruction
-        trace!("Running until first `Magic::Start`");
-        continue_simulation_alone();
+        // trace!("Running until first `Magic::Start`");
 
-        trace!("Registered continue to run at next opportunity");
+        // continue_simulation_alone();
+        // The user needs to
+
+        // trace!("Registered continue to run at next opportunity");
+        info!("CONFUSE ready. Continue or run to the harness and fuzzing will begin.");
 
         Ok(())
     }

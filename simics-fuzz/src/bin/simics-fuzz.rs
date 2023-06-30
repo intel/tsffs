@@ -123,6 +123,7 @@ pub fn main() -> Result<()> {
         .executor_timeout(args.executor_timeout)
         .log_level(args.log_level)
         .trace_mode(args.trace_mode)
+        .simics_gui(args.enable_simics_gui)
         .build()?
         .launch()?;
 

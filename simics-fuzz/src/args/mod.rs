@@ -46,6 +46,10 @@ pub struct Args {
     #[arg(short = 'T', long, default_value_t = TraceMode::HitCount)]
     /// Mode to trace executions with
     pub trace_mode: TraceMode,
+    #[arg(long, default_value_t = false)]
+    /// Whether to enable the SIMICS GUI (this may make the fuzzer run much slower, but is good
+    /// for debugging purposes)
+    pub enable_simics_gui: bool,
     #[arg(long, default_value_t = 3.0)]
     /// Timeout in seconds (in simulated time) of a run that has timed out and will be
     /// kept as a timeout test case
