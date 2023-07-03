@@ -565,3 +565,15 @@ pub fn link_simics_linux<S: AsRef<str>>(version_constraint: S) -> Result<()> {
     );
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Result;
+
+    use crate::link_simics_linux;
+
+    #[test]
+    fn test_link_simics_linux() -> Result<()> {
+        link_simics_linux("6.0.166")
+    }
+}

@@ -10,7 +10,7 @@ use crate::{
     CLASS_NAME,
 };
 use anyhow::{anyhow, bail, Context, Result};
-use raffl_macro::{callback_wrappers, params};
+use ffi_macro::{callback_wrappers, params};
 use tracing::{error, info, trace};
 
 use simics_api::{
@@ -447,11 +447,8 @@ impl Default for ConfuseModuleInterface {
 /// Called by SIMICS C stub to initialize the module, this is the entrypoint of the entire
 /// module
 pub extern "C" fn confuse_init_local() {
-    eprintln!("Initializing CONFUSE");
     let cls = Confuse::create()
         .unwrap_or_else(|e| panic!("Failed to create class {}: {}", CLASS_NAME, e));
-
-    eprintln!("Created CONFUSE class at {:#x}", cls as usize);
 
     register_interface::<_, ConfuseModuleInterface>(cls, CLASS_NAME).unwrap_or_else(|e| {
         panic!(
@@ -459,6 +456,4 @@ pub extern "C" fn confuse_init_local() {
             CLASS_NAME, e
         )
     });
-
-    eprintln!("Registered CONFUSE interface");
 }

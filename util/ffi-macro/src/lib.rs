@@ -1,5 +1,5 @@
-//! Rust Asynchronous FFI Library
-//!
+//! Provides the `callback_wrappers` attribute for automatically generating CFFI functions for
+//! callbacks into struct methods
 
 use proc_macro::TokenStream;
 use proc_macro_error::{abort, proc_macro_error};
@@ -20,6 +20,7 @@ enum CallbackWrapperArgParam {
 }
 
 impl Parse for CallbackWrapperArgParam {
+    /// Parse a single callback wrapper parameter
     fn parse(input: ParseStream) -> syn::Result<Self> {
         if input.peek(Token![!]) {
             input.parse::<Token![!]>()?;
@@ -35,6 +36,7 @@ impl Parse for CallbackWrapperArgParam {
     }
 }
 
+/// Parameters to a callback wrapper attribute
 struct CallbackWrapperArgParams {
     params: Vec<CallbackWrapperArgParam>,
 }
@@ -163,7 +165,7 @@ pub fn params(_args: TokenStream, input: TokenStream) -> TokenStream {
 /// `&self` or `&mut self`).
 ///
 /// ```ignore
-/// #[callback_wrappers(<visibility>)]
+/// #[callback_wrappers(<visibility>?, <unwrap_result>?)]
 ///
 /// impl <type> {
 ///    #[params(<arg0>, <arg1> ..., !<self>)]
@@ -173,21 +175,39 @@ pub fn params(_args: TokenStream, input: TokenStream) -> TokenStream {
 /// ```
 ///
 ///
-/// # Example
+/// # Examples
 ///
 /// This will generate an extern "C" function `test_callbacks::test` that calls the Rust method
 /// `Test::test`, with the first argument being a pointer to the instance of `Test`.
 ///
-/// ```text
-/// use raffl_macro::{callback_wrappers, params};
+/// ```rust,ignore
+/// use ffi_macro::{callback_wrappers, params};
 ///
-/// struct TestStruct {}
+/// pub struct TestStruct {}
 ///
 /// #[callback_wrappers(pub)]
 /// impl TestStruct {
 ///    #[params(!slf: *mut std::ffi::c_void, ...)]
 ///   pub fn test(&self, a: i32, b: i32) -> i32 {
 ///        a + b
+///   }
+/// }
+/// ```
+///
+/// We can also use the `unwrap_result` argument to tell our generated FFI functions to unwrap
+/// result types from our method.
+///
+/// ```rust,ignore
+/// use ffi_macro::{callback_wrappers, params};
+/// use anyhow::Result;
+///
+/// pub struct TestStruct {}
+///
+/// #[callback_wrappers(pub, unwrap_result)]
+/// impl TestStruct {
+///    #[params(!slf: *mut std::ffi::c_void, ...)]
+///   pub fn test2(&self, a: i32, b: i32) -> Result<i32> {
+///        Ok(a + b)
 ///   }
 /// }
 /// ```

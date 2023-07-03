@@ -8,7 +8,7 @@ use crate::{
     CLASS_NAME,
 };
 use anyhow::{bail, Result};
-use raffl_macro::{callback_wrappers, params};
+use ffi_macro::{callback_wrappers, params};
 use simics_api::{
     attr_object_or_nil_from_ptr, break_simulation, event::register_event, event_cancel_time,
     event_find_next_time, event_post_time, get_class, get_processor_number, hap_add_callback,

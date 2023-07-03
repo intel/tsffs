@@ -18,7 +18,7 @@ members = [
     # Utilities
     "util/raw-cstr",
     "util/version-tools",
-    "util/raffl-macro",
+    "util/ffi-macro",
     "util/artifact-dependency",
 ]
 default-members = [
@@ -37,7 +37,7 @@ default-members = [
     # Utilities
     "util/raw-cstr",
     "util/version-tools",
-    "util/raffl-macro",
+    "util/ffi-macro",
     "util/artifact-dependency",
 ]
 
@@ -51,7 +51,7 @@ simics-api = { path = "./simics-api" }
 simics-api-macro = { path = "./simics-api-macro" }
 raw-cstr = { path = "./util/raw-cstr" }
 version-tools = { path = "./util/version-tools" }
-raffl-macro = { path = "./util/raffl-macro" }
+ffi-macro = { path = "./util/ffi-macro" }
 libafl = { git = "https://github.com/AFLplusplus/LibAFL", branch = "libfuzzer" }
 anyhow = "1.0.71"
 # Match these versions to cargo_metadata -- it breaks on current versions

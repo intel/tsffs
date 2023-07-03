@@ -1,6 +1,6 @@
 [package]
-name = "raffl-macro"
-description = "Rust Asynchronous FFI Library - A library for writing asynchronous callback-friendly FFI"
+name = "ffi-macro"
+description = "FFI Callbacks Macro"
 version = "0.1.1"
 edition = "2021"
 license = "MIT"

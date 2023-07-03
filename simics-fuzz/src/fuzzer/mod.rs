@@ -1,8 +1,9 @@
 use crate::{
-    args::command::Command,
-    modules::confuse::{ConfuseModuleInterface, CONFUSE_MODULE_CRATE_NAME},
+    args::{command::Command, Args},
+    modules::confuse::{ConfuseModuleInterface, CONFUSE_MODULE_CRATE_NAME, CONFUSE_WORKSPACE_PATH},
 };
 use anyhow::{anyhow, bail, Error, Result};
+use artifact_dependency::{ArtifactDependencyBuilder, CrateType};
 use confuse_module::{
     client::Client,
     config::{InputConfigBuilder, TraceMode},
@@ -33,12 +34,15 @@ use libafl::{
 use simics::{
     api::{
         alloc_attr_list, create_object, get_class, get_interface, load_module,
-        make_attr_data_adopt, DeprecationLevel, GuiMode, InitArg, InitArgs, Interface,
+        make_attr_data_adopt, sys::SIMICS_VERSION, DeprecationLevel, GuiMode, InitArg, InitArgs,
+        Interface,
     },
-    project::Project,
+    module::ModuleBuilder,
+    project::{Project, ProjectBuilder, ProjectPathBuilder},
     simics::Simics,
 };
 use std::{
+    io::{stderr, stdout},
     net::TcpListener,
     path::PathBuf,
     sync::mpsc::{channel, Receiver, Sender},
@@ -46,6 +50,8 @@ use std::{
     time::Duration,
 };
 use tracing::{debug, error, info, metadata::LevelFilter};
+use tracing::{trace, Level};
+use tracing_subscriber::{filter::filter_fn, fmt, prelude::*, registry, Layer};
 
 #[derive(Builder)]
 #[builder(build_fn(validate = "Self::validate", error = "Error"))]
@@ -72,6 +78,8 @@ pub struct SimicsFuzzer {
     trace_mode: TraceMode,
     #[builder(default)]
     simics_gui: bool,
+    #[builder(setter(into), default)]
+    iterations: Option<usize>,
 }
 
 impl SimicsFuzzerBuilder {
@@ -102,6 +110,125 @@ impl SimicsFuzzer {
     pub const CACHE_LEN: usize = 4096;
     pub const DEFAULT_CORPUS_DIRECTORY: &str = "corpus";
     pub const DEFAULT_SOLUTIONS_DIRECTORY: &str = "solutions";
+
+    pub fn cli_main(args: Args) -> Result<()> {
+        registry()
+            .with(
+                fmt::layer()
+                    .pretty()
+                    .with_writer(stderr)
+                    .with_writer(stdout)
+                    .with_filter(args.log_level)
+                    .with_filter(filter_fn(|metadata| {
+                        // LLMP absolutely spams the log when tracing
+                        !(metadata.target() == "libafl::bolts::llmp"
+                            && matches!(metadata.level(), &Level::TRACE))
+                    })),
+            )
+            .try_init()
+            .map_err(|e| {
+                error!("Could not install tracing subscriber: {}", e);
+                e
+            })
+            .ok();
+
+        trace!("Setting up project with args: {:?}", args);
+
+        let mut builder: ProjectBuilder = if let Some(project_path) = args.project {
+            if let Ok(project) = Project::try_from(project_path.clone()) {
+                project.into()
+            } else {
+                // TODO: Merge with else branch, they are practically the same code.
+                let mut builder = ProjectBuilder::default();
+
+                builder.path(
+                    ProjectPathBuilder::default()
+                        .path(project_path)
+                        .temporary(args.no_keep_temp_projects)
+                        .build()?,
+                );
+
+                args.package.into_iter().for_each(|p| {
+                    builder.package(p.package);
+                });
+                args.module.into_iter().for_each(|m| {
+                    builder.module(m.module);
+                });
+                args.directory.into_iter().for_each(|d| {
+                    builder.directory((d.src, d.dst));
+                });
+                args.file.into_iter().for_each(|f| {
+                    builder.file((f.src, f.dst));
+                });
+                args.path_symlink.into_iter().for_each(|s| {
+                    builder.path_symlink((s.src, s.dst));
+                });
+
+                builder
+            }
+        } else if let Ok(project) = Project::try_from(PathBuf::from(".")) {
+            project.into()
+        } else {
+            let mut builder = ProjectBuilder::default();
+
+            args.package.into_iter().for_each(|p| {
+                builder.package(p.package);
+            });
+            args.module.into_iter().for_each(|m| {
+                builder.module(m.module);
+            });
+            args.directory.into_iter().for_each(|d| {
+                builder.directory((d.src, d.dst));
+            });
+            args.file.into_iter().for_each(|f| {
+                builder.file((f.src, f.dst));
+            });
+            args.path_symlink.into_iter().for_each(|s| {
+                builder.path_symlink((s.src, s.dst));
+            });
+
+            builder
+        };
+
+        let project = builder
+            .module(
+                ModuleBuilder::default()
+                    .artifact(
+                        ArtifactDependencyBuilder::default()
+                            .crate_name(CONFUSE_MODULE_CRATE_NAME)
+                            .workspace_root(PathBuf::from(CONFUSE_WORKSPACE_PATH))
+                            .build_missing(true)
+                            .artifact_type(CrateType::CDynamicLibrary)
+                            .feature(SIMICS_VERSION)
+                            .target_name("simics-fuzz")
+                            .build()?
+                            .build()?,
+                    )
+                    .build()?,
+            )
+            .build()?
+            .setup()?;
+
+        SimicsFuzzerBuilder::default()
+            .project(project)
+            .input(args.input)
+            .corpus(args.corpus)
+            .solutions(args.solutions)
+            .tui(args.tui)
+            ._grimoire(args.grimoire)
+            .cores(Cores::from((0..args.cores).collect::<Vec<_>>()))
+            .command(args.command)
+            .timeout(args.timeout)
+            .executor_timeout(args.executor_timeout)
+            .log_level(args.log_level)
+            .trace_mode(args.trace_mode)
+            .simics_gui(args.enable_simics_gui)
+            .iterations(args.iterations)
+            .build()?
+            .launch()?;
+
+        Ok(())
+    }
 
     pub fn simics(
         &self,
@@ -357,7 +484,13 @@ impl SimicsFuzzer {
 
             let mut stages = tuple_list!(calibration, std_power);
 
-            fuzzer.fuzz_loop(&mut stages, &mut executor, &mut state, &mut mgr)?;
+            if let Some(iterations) = self.iterations {
+                for _ in 0..iterations {
+                    fuzzer.fuzz_one(&mut stages, &mut executor, &mut state, &mut mgr)?;
+                }
+            } else {
+                fuzzer.fuzz_loop(&mut stages, &mut executor, &mut state, &mut mgr)?;
+            }
 
             client
                 .exit()

@@ -1,4 +1,4 @@
-use raffl_macro::callback_wrappers;
+use ffi_macro::callback_wrappers;
 
 struct Test {}
 

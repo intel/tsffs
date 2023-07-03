@@ -443,15 +443,18 @@ impl Project {
             dst.canonicalize(&self.path.path).and_then(|dst| {
                 dst.parent()
                     .ok_or_else(|| {
+                        error!("No parent directory of destination path {}", dst.display());
                         anyhow!("No parent directory of destination path {}", dst.display())
                     })
                     .and_then(|p| {
                         create_dir_all(p).map_err(|e| {
+                            error!("Couldn't create directory {}: {}", p.display(), e);
                             anyhow!("Couldn't create directory {}: {}", p.display(), e)
                         })
                     })
                     .and_then(|_| {
                         copy(src, &dst).map_err(|e| {
+                            error!("Couldn't copy {} to {:?}: {}", src.display(), dst, e);
                             anyhow!("Couldn't copy {} to {:?}: {}", src.display(), dst, e)
                         })
                     })

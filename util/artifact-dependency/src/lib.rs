@@ -1,3 +1,8 @@
+//! Feature-light crate to build and use dependencies whose results are Artifacts:
+//! - Static Libraries
+//! - C Dynamic Libraries
+//! - Binaries
+
 use anyhow::{anyhow, bail, ensure, Error, Result};
 use cargo_metadata::{camino::Utf8PathBuf, MetadataCommand, Package};
 use derive_builder::Builder;
@@ -11,6 +16,7 @@ use std::{
 use tracing::{debug, error};
 
 #[derive(Clone, Debug, Copy)]
+/// Crate type to include as the built [`Artifact`]
 pub enum CrateType {
     Executable,
     CDynamicLibrary,
@@ -23,6 +29,8 @@ pub enum CrateType {
 }
 
 #[derive(Clone, Debug)]
+/// Profile to build. [`ArtifactDependency`] defaults to building the current profile in use,
+/// but a different profile can be selected.
 pub enum Profile {
     Release,
     Dev,
@@ -33,7 +41,7 @@ pub enum Profile {
 #[builder(build_fn(error = "Error"))]
 /// Builder to find and optionally build an artifact dependency from a particular workspace
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust,ignore
 /// use artifact_dependency::{ArtifactDependencyBuilder, CrateType};
@@ -120,8 +128,12 @@ const PROFILE: Profile = Profile::Release;
 const ARTIFACT_TARGET_NAME: &str = "artifact";
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+/// A built artifact
 pub struct Artifact {
+    /// The path to the artifact output, as specified by the `artifact_type` field if the
+    /// dependency has multiple outputs.
     pub path: PathBuf,
+    /// Package metadata for the artifact
     pub package: Package,
 }
 
@@ -152,12 +164,14 @@ impl Hash for Artifact {
 }
 
 impl Artifact {
+    /// Instantiate a new artifact at a path with a given metadata object
     fn new(path: PathBuf, package: Package) -> Self {
         Self { path, package }
     }
 }
 
 impl ArtifactDependency {
+    /// Build the dependency by invoking `cargo build`
     pub fn build(&mut self) -> Result<Artifact> {
         debug!("Building dependency from builder: {:?}", self);
         let workspace_root = if let Some(workspace_root) = self.workspace_root.clone() {
@@ -314,8 +328,6 @@ impl ArtifactDependency {
         } else {
             artifact_path.into()
         };
-
-        eprintln!("Built artifact at {}", artifact_path.display());
 
         Ok(Artifact::new(artifact_path, package.clone()))
     }

@@ -1,22 +1,54 @@
+//! Extensions to [`Versioning`] to make sorting, comparing, and constraining versions easier
+//!
+//! # Examples
+//!
+//! ```
+//! use anyhow::anyhow;
+//! use version_tools::VersionConstraint;
+//! use versions::Versioning;
+//! use std::str::FromStr;
+//!
+//! let constraint = VersionConstraint::from_str(">=1.0.0")?;
+//! assert!(constraint.matches(&Versioning::new("1.0.0").ok_or_else(|| anyhow!("Invalid version"))?));
+//! assert!(constraint.matches(&Versioning::new("1.1.0").ok_or_else(|| anyhow!("Invalid version"))?));
+//! assert!(!constraint.matches(&Versioning::new("0.9.0").ok_or_else(|| anyhow!("Invalid version"))?));
+//! # Ok::<(), anyhow::Error>(())
+//! ```
+//!
+
 use anyhow::{bail, Context, Error, Result};
 use std::str::FromStr;
-
 use versions::{Chunk, Versioning};
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
+/// Operation component of a version constraint. For example, in `==1.0.0`, the `==` is the
+/// operation that constrains the version to *exactly* 1.0.0. You can find more detailed
+/// documentation in [`semver::Op`](https://docs.rs/semver/latest/semver/enum.Op.html)
 pub enum Op {
+    /// `==` operation, exactly equal to this version
     Exact,
+    /// `>` operation, must be semantically greater than this version
     Greater,
+    /// `>=` operation, must be semantically greater than or equal to this version
     GreaterEq,
+    /// `<` operation, must be semantically less than this version
     Less,
+    /// `<=` operation, must be semantically less than or equal to this version
     LessEq,
+    /// *Not implemented yet*, must be at least this version, but not more than one minor version
+    /// greater (the patch version may increase)
     Tilde,
+    /// *Not implemented yet*, any part to the right of the first non-zero part of the version
+    /// may increase
     Caret,
+    /// Any version matches
     Wildcard,
 }
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
+/// A version constraint with an operation and a version, unless the operation is a wildcard
+/// in which case the version is omitted.
 pub struct VersionConstraint {
     op: Op,
     version: Option<Versioning>,
@@ -25,6 +57,9 @@ pub struct VersionConstraint {
 impl FromStr for VersionConstraint {
     type Err = Error;
 
+    /// Convert from a string like `==1.0.0` or `*` to a [`VersionConstraint`]
+    ///
+    /// # Examples
     fn from_str(s: &str) -> Result<Self> {
         let comparator: String = s
             .chars()
@@ -58,6 +93,8 @@ impl FromStr for VersionConstraint {
     }
 }
 
+/// Checks whether two versioning triples are "tilde-compatible", that is v2's patch version
+/// may be greater than v1's, but its major and minor versions may not be.
 /// For tilde matches, the v2 patch can be greater than the v1 patch
 pub fn version_triples_match_tilde(v1: &Versioning, v2: &Versioning) -> bool {
     match v1 {
@@ -113,6 +150,33 @@ impl VersionConstraint {
         panic!("Caret constraint not implemented.");
     }
 
+    /// Check if a version matches a version constraint.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use anyhow::anyhow;
+    /// use version_tools::VersionConstraint;
+    /// use versions::Versioning;
+    /// use std::str::FromStr;
+    ///
+    /// let constraint_gt = VersionConstraint::from_str(">=1.0.0")?;
+    /// assert!(constraint_gt.matches(&Versioning::new("1.0.0").ok_or_else(|| anyhow!("Invalid version"))?));
+    /// assert!(constraint_gt.matches(&Versioning::new("1.1.0").ok_or_else(|| anyhow!("Invalid version"))?));
+    /// assert!(!constraint_gt.matches(&Versioning::new("0.9.0").ok_or_else(|| anyhow!("Invalid version"))?));
+    ///
+    /// let constraint_wild = VersionConstraint::from_str("*")?;
+    /// assert!(constraint_wild.matches(&Versioning::new("1.0.0").ok_or_else(|| anyhow!("Invalid version"))?));
+    /// assert!(constraint_wild.matches(&Versioning::new("1.1.0").ok_or_else(|| anyhow!("Invalid version"))?));
+    /// assert!(constraint_wild.matches(&Versioning::new("0.9.0").ok_or_else(|| anyhow!("Invalid version"))?));
+    ///
+    /// let constraint_eq = VersionConstraint::from_str("==1.0.0")?;
+    /// assert!(constraint_eq.matches(&Versioning::new("1.0.0").ok_or_else(|| anyhow!("Invalid version"))?));
+    /// assert!(!constraint_eq.matches(&Versioning::new("1.1.0").ok_or_else(|| anyhow!("Invalid version"))?));
+    /// assert!(!constraint_eq.matches(&Versioning::new("0.9.0").ok_or_else(|| anyhow!("Invalid version"))?));
+    ///
+    /// # Ok::<(), anyhow::Error>(())
+    /// ```
     pub fn matches(&self, v: &Versioning) -> bool {
         if let Some(sv) = &self.version {
             match self.op {
@@ -137,5 +201,194 @@ impl Default for VersionConstraint {
             op: Op::Wildcard,
             version: None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::VersionConstraint;
+    use anyhow::{anyhow, Result};
+    use std::str::FromStr;
+    use versions::Versioning;
+
+    #[test]
+    fn test_eq() -> Result<()> {
+        assert!(VersionConstraint::from_str("==1.0.0")?
+            .matches(&Versioning::new("1.0.0").ok_or_else(|| anyhow!("Invalid version"))?));
+        assert!(VersionConstraint::from_str("==1.1.0")?
+            .matches(&Versioning::new("1.1.0").ok_or_else(|| anyhow!("Invalid version"))?));
+        assert!(VersionConstraint::from_str("==0.9.0")?
+            .matches(&Versioning::new("0.9.0").ok_or_else(|| anyhow!("Invalid version"))?));
+        assert!(VersionConstraint::from_str("==6.0.pre134")?
+            .matches(&Versioning::new("6.0.pre134").ok_or_else(|| anyhow!("Invalid version"))?));
+        assert!(VersionConstraint::from_str("==6.0.166")?
+            .matches(&Versioning::new("6.0.166").ok_or_else(|| anyhow!("Invalid version"))?));
+
+        // The == can be left off as a shorthand
+        assert!(VersionConstraint::from_str("1.0.0")?
+            .matches(&Versioning::new("1.0.0").ok_or_else(|| anyhow!("Invalid version"))?));
+        assert!(VersionConstraint::from_str("1.1.0")?
+            .matches(&Versioning::new("1.1.0").ok_or_else(|| anyhow!("Invalid version"))?));
+        assert!(VersionConstraint::from_str("0.9.0")?
+            .matches(&Versioning::new("0.9.0").ok_or_else(|| anyhow!("Invalid version"))?));
+        assert!(VersionConstraint::from_str("6.0.pre134")?
+            .matches(&Versioning::new("6.0.pre134").ok_or_else(|| anyhow!("Invalid version"))?));
+        assert!(VersionConstraint::from_str("6.0.166")?
+            .matches(&Versioning::new("6.0.166").ok_or_else(|| anyhow!("Invalid version"))?));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_wild() -> Result<()> {
+        let constraint_wild = VersionConstraint::from_str("*")?;
+        assert!(constraint_wild
+            .matches(&Versioning::new("1.0.0").ok_or_else(|| anyhow!("Invalid version"))?));
+        assert!(constraint_wild
+            .matches(&Versioning::new("1.1.0").ok_or_else(|| anyhow!("Invalid version"))?));
+        assert!(constraint_wild
+            .matches(&Versioning::new("0.9.0").ok_or_else(|| anyhow!("Invalid version"))?));
+        assert!(constraint_wild
+            .matches(&Versioning::new("6.0.pre134").ok_or_else(|| anyhow!("Invalid version"))?));
+        assert!(constraint_wild
+            .matches(&Versioning::new("6.0.166").ok_or_else(|| anyhow!("Invalid version"))?));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_gt() -> Result<()> {
+        let constraint_gt = VersionConstraint::from_str(">1.1.1")?;
+
+        let constraint_equal =
+            Versioning::new("1.1.1").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_gall = Versioning::new("2.2.2").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_gmajor =
+            Versioning::new("2.0.0").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_gminor =
+            Versioning::new("1.2.0").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_gpatch =
+            Versioning::new("1.1.2").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_lall = Versioning::new("0.9.9").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_lmajor =
+            Versioning::new("0.1.1").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_lminor =
+            Versioning::new("1.0.0").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_lpatch =
+            Versioning::new("1.1.0").ok_or_else(|| anyhow!("Invalid version"))?;
+
+        assert!(!constraint_gt.matches(&constraint_equal));
+        assert!(constraint_gt.matches(&constraint_gall));
+        assert!(constraint_gt.matches(&constraint_gmajor));
+        assert!(constraint_gt.matches(&constraint_gminor));
+        assert!(constraint_gt.matches(&constraint_gpatch));
+        assert!(!constraint_gt.matches(&constraint_lall));
+        assert!(!constraint_gt.matches(&constraint_lmajor));
+        assert!(!constraint_gt.matches(&constraint_lminor));
+        assert!(!constraint_gt.matches(&constraint_lpatch));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_lt() -> Result<()> {
+        let constraint_lt = VersionConstraint::from_str("<1.1.1")?;
+
+        let constraint_equal =
+            Versioning::new("1.1.1").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_gall = Versioning::new("2.2.2").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_gmajor =
+            Versioning::new("2.0.0").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_gminor =
+            Versioning::new("1.2.0").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_gpatch =
+            Versioning::new("1.1.2").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_lall = Versioning::new("0.9.9").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_lmajor =
+            Versioning::new("0.1.1").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_lminor =
+            Versioning::new("1.0.0").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_lpatch =
+            Versioning::new("1.1.0").ok_or_else(|| anyhow!("Invalid version"))?;
+
+        assert!(!constraint_lt.matches(&constraint_equal));
+        assert!(!constraint_lt.matches(&constraint_gall));
+        assert!(!constraint_lt.matches(&constraint_gmajor));
+        assert!(!constraint_lt.matches(&constraint_gminor));
+        assert!(!constraint_lt.matches(&constraint_gpatch));
+        assert!(constraint_lt.matches(&constraint_lall));
+        assert!(constraint_lt.matches(&constraint_lmajor));
+        assert!(constraint_lt.matches(&constraint_lminor));
+        assert!(constraint_lt.matches(&constraint_lpatch));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_gte() -> Result<()> {
+        let constraint_gte = VersionConstraint::from_str(">=1.1.1")?;
+
+        let constraint_equal =
+            Versioning::new("1.1.1").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_gall = Versioning::new("2.2.2").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_gmajor =
+            Versioning::new("2.0.0").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_gminor =
+            Versioning::new("1.2.0").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_gpatch =
+            Versioning::new("1.1.2").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_lall = Versioning::new("0.9.9").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_lmajor =
+            Versioning::new("0.1.1").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_lminor =
+            Versioning::new("1.0.0").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_lpatch =
+            Versioning::new("1.1.0").ok_or_else(|| anyhow!("Invalid version"))?;
+
+        assert!(constraint_gte.matches(&constraint_equal));
+        assert!(constraint_gte.matches(&constraint_gall));
+        assert!(constraint_gte.matches(&constraint_gmajor));
+        assert!(constraint_gte.matches(&constraint_gminor));
+        assert!(constraint_gte.matches(&constraint_gpatch));
+        assert!(!constraint_gte.matches(&constraint_lall));
+        assert!(!constraint_gte.matches(&constraint_lmajor));
+        assert!(!constraint_gte.matches(&constraint_lminor));
+        assert!(!constraint_gte.matches(&constraint_lpatch));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_lte() -> Result<()> {
+        let constraint_lte = VersionConstraint::from_str("<=1.1.1")?;
+
+        let constraint_equal =
+            Versioning::new("1.1.1").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_gall = Versioning::new("2.2.2").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_gmajor =
+            Versioning::new("2.0.0").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_gminor =
+            Versioning::new("1.2.0").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_gpatch =
+            Versioning::new("1.1.2").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_lall = Versioning::new("0.9.9").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_lmajor =
+            Versioning::new("0.1.1").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_lminor =
+            Versioning::new("1.0.0").ok_or_else(|| anyhow!("Invalid version"))?;
+        let constraint_lpatch =
+            Versioning::new("1.1.0").ok_or_else(|| anyhow!("Invalid version"))?;
+
+        assert!(constraint_lte.matches(&constraint_equal));
+        assert!(!constraint_lte.matches(&constraint_gall));
+        assert!(!constraint_lte.matches(&constraint_gmajor));
+        assert!(!constraint_lte.matches(&constraint_gminor));
+        assert!(!constraint_lte.matches(&constraint_gpatch));
+        assert!(constraint_lte.matches(&constraint_lall));
+        assert!(constraint_lte.matches(&constraint_lmajor));
+        assert!(constraint_lte.matches(&constraint_lminor));
+        assert!(constraint_lte.matches(&constraint_lpatch));
+
+        Ok(())
     }
 }

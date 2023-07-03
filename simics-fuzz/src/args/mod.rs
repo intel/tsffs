@@ -103,4 +103,10 @@ pub struct Args {
     /// using a file `scripts/app.yml` in your SIMICS project that specifies a
     /// `script:`, you should use `--command CONFIG:%simics%/scripts/app.yml`
     pub command: Vec<Command>,
+    #[arg(long)]
+    /// Number of iterations to fuzz for. This is is the number of executions that will be
+    /// performed. If not specified, the fuzzer will run infinitely. This argument should not
+    /// be used for CI fuzzing, instead run the fuzzer with the `timeout` shell command to run
+    /// for a specific amount of time.
+    pub iterations: Option<usize>,
 }

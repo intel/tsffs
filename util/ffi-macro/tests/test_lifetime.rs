@@ -1,16 +1,18 @@
 use anyhow::Result;
-use raffl_macro::{callback_wrappers, params};
+use ffi_macro::{callback_wrappers, params};
 
-struct TestStruct {}
+struct TestStruct<'a> {
+    _x: &'a [u8],
+}
 
-impl TestStruct {
+impl<'a> TestStruct<'a> {
     pub fn new() -> Self {
-        Self {}
+        Self { _x: &[1] }
     }
 }
 
 #[callback_wrappers(pub, unwrap_result)]
-impl TestStruct {
+impl<'a> TestStruct<'a> {
     #[params(!slf: *mut std::ffi::c_void, ...)]
     pub fn do_return(&self, a: i32, b: i32) -> i32 {
         a + b
@@ -27,8 +29,8 @@ impl TestStruct {
     }
 }
 
-impl<'a> From<*mut std::ffi::c_void> for &'a mut TestStruct {
-    fn from(ptr: *mut std::ffi::c_void) -> &'a mut TestStruct {
+impl<'a, 'b> From<*mut std::ffi::c_void> for &'a mut TestStruct<'b> {
+    fn from(ptr: *mut std::ffi::c_void) -> &'a mut TestStruct<'b> {
         unsafe { *(ptr as *mut Self) }
     }
 }

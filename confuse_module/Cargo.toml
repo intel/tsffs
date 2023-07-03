@@ -21,7 +21,7 @@ crate-type = ["cdylib", "rlib"]
 anyhow.workspace = true
 simics = { workspace = true }
 const_format = "0.2.30"
-raffl-macro.workspace = true
+ffi-macro.workspace = true
 num = "0.4.0"
 num-derive = "0.3.3"
 num-traits = "0.2.15"
