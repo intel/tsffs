@@ -5,8 +5,7 @@
 
 // pub const CONFUSE_MODULE: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/libconfuse_module.so"));
 pub const CONFUSE_MODULE_CRATE_NAME: &str = "confuse_module";
-pub const CONFUSE_MODULE_PATH: &str =
-    concat!(env!("CARGO_MANIFEST_DIR"), "/../modules/confuse_module/");
+pub const CONFUSE_MODULE_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../confuse_module/");
 pub const CONFUSE_WORKSPACE_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/..");
 
 pub use confuse_module::ConfuseModuleInterface;

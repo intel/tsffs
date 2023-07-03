@@ -31,7 +31,7 @@ extern "C" {
 /* This defines a new interface type. Its corresponding C data type will be
    called "confuse_module_interface_t". */
 SIM_INTERFACE(confuse_module) {
-    void (*start)(conf_object_t * obj);
+    void (*start)(conf_object_t * obj, bool run);
     void (*add_processor)(conf_object_t * obj, attr_value_t * processor);
     void (*add_fault)(conf_object_t * obj, int64 fault);
     void (*add_channels)(conf_object_t * obj, attr_value_t * tx, attr_value_t * rx);

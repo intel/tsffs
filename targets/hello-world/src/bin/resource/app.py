@@ -40,7 +40,7 @@ conf.confuse_module.iface.confuse_module.add_processor(
     SIM_get_object(simenv.system).mb.cpu0.core[0][0]
 )
 SIM_log_info(1, conf.sim, 0, "Added processor")
-conf.confuse_module.iface.confuse_module.start()
+conf.confuse_module.iface.confuse_module.start(True)
 SIM_log_info(1, conf.sim, 0, "Started CONFUSE module")
 
 SIM_log_info(1, conf.sim, 0, "Started simulation")

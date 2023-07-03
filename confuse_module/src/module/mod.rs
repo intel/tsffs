@@ -365,8 +365,8 @@ impl Confuse {
         Ok(())
     }
 
-    #[params(!slf: *mut simics_api::ConfObject)]
-    pub fn on_start(&mut self) -> Result<()> {
+    #[params(!slf: *mut simics_api::ConfObject, ...)]
+    pub fn on_start(&mut self, run: bool) -> Result<()> {
         info!("Received start signal, initializing CONFUSE state.");
         self.initialize()?;
 
@@ -377,11 +377,12 @@ impl Confuse {
         // Run -- we will get a callback on the Magic::Start instruction
         // trace!("Running until first `Magic::Start`");
 
-        // continue_simulation_alone();
-        // The user needs to
-
-        // trace!("Registered continue to run at next opportunity");
-        info!("CONFUSE ready. Continue or run to the harness and fuzzing will begin.");
+        if run {
+            info!("Starting simulation");
+            continue_simulation_alone();
+        } else {
+            info!("CONFUSE ready, but simulation will not start automatically. Continue or run to the harness and fuzzing will begin.");
+        }
 
         Ok(())
     }
@@ -425,7 +426,7 @@ impl Confuse {
 /// This is the rust definition for the confuse_module_interface_t declaration in the stubs, which
 /// are used to generate the interface module. This struct definition must match that one exactly
 pub struct ConfuseModuleInterface {
-    pub start: extern "C" fn(obj: *mut ConfObject),
+    pub start: extern "C" fn(obj: *mut ConfObject, run: bool),
     pub add_processor: extern "C" fn(obj: *mut ConfObject, processor: *mut AttrValue),
     pub add_fault: extern "C" fn(obj: *mut ConfObject, fault: i64),
     pub add_channels: extern "C" fn(obj: *mut ConfObject, tx: *mut AttrValue, rx: *mut AttrValue),

@@ -11,7 +11,7 @@ members = [
     "simics-link",
     "simics-fuzz",
     # Modules
-    "modules/confuse_module",
+    "confuse_module",
     # Targets
     "targets/hello-world",
     "targets/x509-parse",
@@ -33,7 +33,7 @@ default-members = [
     "simics-link",
     "simics-fuzz",
     # Modules
-    "modules/confuse_module",
+    "confuse_module",
     # Utilities
     "util/raw-cstr",
     "util/version-tools",
@@ -45,7 +45,7 @@ default-members = [
 artifact-dependency = { path = "./util/artifact-dependency" }
 simics-link = { path = "./simics-link" }
 simics = { path = "./simics" }
-confuse_module = { path = "./modules/confuse_module" }
+confuse_module = { path = "./confuse_module" }
 simics-api-sys = { path = "./simics-api-sys" }
 simics-api = { path = "./simics-api" }
 simics-api-macro = { path = "./simics-api-macro" }
