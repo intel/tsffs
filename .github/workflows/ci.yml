@@ -24,7 +24,7 @@ jobs:
       - name: Install SIMICS
         run: |
           mkdir -p "${HOME}/simics"
-          cd "{HOME}/simics"
+          cd "${HOME}/simics"
           curl -o simics-6-packages-2023-19-linux64.ispm https://registrationcenter-download.intel.com/akdlm/IRC_NAS/0554dff0-ac52-4d41-ae95-0befba095555/simics-6-packages-2023-19-linux64.ispm
           curl -o intel-simics-package-manager-1.7.2-linux64.tar.gz https://registrationcenter-download.intel.com/akdlm/IRC_NAS/0554dff0-ac52-4d41-ae95-0befba095555/intel-simics-package-manager-1.7.2-linux64.tar.gz
           tar -xvf intel-simics-package-manager-1.7.2-linux64.tar.gz
@@ -39,7 +39,7 @@ jobs:
           default: true
       - name: Set up .env
         run: |
-          echo "SIMICS_HOME=${{ env.SIMICS_HOME }}" > .env
+          echo "SIMICS_HOME=${HOME}/simics" > .env
       - name: Build Project
         uses: ./.github/actions/cargo
         with:
