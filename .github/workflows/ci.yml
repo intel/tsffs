@@ -11,7 +11,8 @@ env:
 
 jobs:
   build:
-    runs-on: gasp
+    container: amr-fm-registry.caas.intel.com/cache/library/ubuntu@sha256:83f0c2a8d6f266d687d55b5cb1cb2201148eb7ac449e4202d9646b9083f1cee0
+    runs-on: [self-hosted, gasp]
     steps:
       - uses: actions-rs/toolchain@v1
         with:
