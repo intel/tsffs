@@ -21,21 +21,15 @@ jobs:
             git \
             curl \
             build-essential
-      - name: Set up environment variables
-        run: |
-          echo "SIMICS_HOME=$HOME/simics" >> "${GITHUB_ENV}"
-          echo "REPO=$HOME/${{ github.event.repository.name }}
       - name: Install SIMICS
         run: |
-          mkdir -p "${{ env.SIMICS_HOME }}"
-          cd "${{ env.SIMICS_HOME }}"
+          mkdir -p "${HOME}/simics"
+          cd "{HOME}/simics"
           curl -o simics-6-packages-2023-19-linux64.ispm https://registrationcenter-download.intel.com/akdlm/IRC_NAS/0554dff0-ac52-4d41-ae95-0befba095555/simics-6-packages-2023-19-linux64.ispm
           curl -o intel-simics-package-manager-1.7.2-linux64.tar.gz https://registrationcenter-download.intel.com/akdlm/IRC_NAS/0554dff0-ac52-4d41-ae95-0befba095555/intel-simics-package-manager-1.7.2-linux64.tar.gz
           tar -xvf intel-simics-package-manager-1.7.2-linux64.tar.gz
-          ./intel-simics-package-manager-1.7.2/ispm packages --install-dir "${{ env.SIMICS_HOME }}" --install-bundle "${{ env.SIMICS_HOME }}/simics-6-packages-2023-19-linux64.ispm" --non-interactive
+          ./intel-simics-package-manager-1.7.2/ispm packages --install-dir "${HOME}/simics" --install-bundle "${HOME}/simics/simics-6-packages-2023-19-linux64.ispm" --non-interactive
       - uses: actions/checkout@v3
-        with:
-          path: "${{ env.REPO }}"
       - name: Install Rust Toolchain
         uses: ./.github/actions/toolchain
         with:
@@ -45,7 +39,7 @@ jobs:
           default: true
       - name: Set up .env
         run: |
-          echo "SIMICS_HOME=${{ env.SIMICS_HOME }}" > "${{ env.REPO }}/.env"
+          echo "SIMICS_HOME=${{ env.SIMICS_HOME }}" > .env
       - name: Build Project
         uses: ./.github/actions/cargo
         with:
