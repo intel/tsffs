@@ -16,8 +16,8 @@ jobs:
     steps:
       - name: Install Dependencies
         run: |
-          sudo apt-get -y update && \
-          sudo apt-get -y install \
+          apt-get -y update && \
+          apt-get -y install \
             git \
             curl \
             build-essential
@@ -50,4 +50,4 @@ jobs:
         uses: ./.github/actions/cargo
         with:
           command: build
-          args: --features=6.0.157
+          args: --features=6.0.166
