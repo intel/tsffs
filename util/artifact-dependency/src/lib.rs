@@ -125,8 +125,6 @@ const PROFILE: Profile = Profile::Dev;
 #[cfg(not(debug_assertions))]
 const PROFILE: Profile = Profile::Release;
 
-const ARTIFACT_TARGET_NAME: &str = "artifact";
-
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 /// A built artifact
 pub struct Artifact {

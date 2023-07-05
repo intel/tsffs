@@ -1,0 +1,35 @@
+name: Confuse Rust continuous integration
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: gasp
+    steps:
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+      - uses: actions/checkout@v3
+      - name: Install Dependencies
+        run: |
+          sudo apt-get -y update && \
+          sudo apt-get -y install \
+            git \
+            curl \
+            build-essential
+      - name: Install SIMICS
+        run: |
+          curl -o simics-6-packages-2023-19-linux64.ispm https://registrationcenter-download.intel.com/akdlm/IRC_NAS/0554dff0-ac52-4d41-ae95-0befba095555/simics-6-packages-2023-19-linux64.ispm
+          curl -o intel-simics-package-manager-1.7.2-linux64.tar.gz https://registrationcenter-download.intel.com/akdlm/IRC_NAS/0554dff0-ac52-4d41-ae95-0befba095555/intel-simics-package-manager-1.7.2-linux64.tar.gz
+
+
+        

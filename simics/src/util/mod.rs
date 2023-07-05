@@ -1,14 +1,13 @@
 //! Utility functionality to assist managing SIMICS projects
 
 use anyhow::{bail, ensure, Context, Error, Result};
-use cargo_metadata::{MetadataCommand, Package};
 use regex::Regex;
 use std::{
     fs::{copy, create_dir_all},
-    path::{Component, Path, PathBuf},
+    path::{Path, PathBuf},
     str::FromStr,
 };
-use tracing::{debug, info};
+use tracing::debug;
 use walkdir::WalkDir;
 
 /// Copy the contents of one directory to another, recursively, overwriting files if they exist but
