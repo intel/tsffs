@@ -21,14 +21,27 @@ jobs:
             git \
             curl \
             build-essential
-      - name: Install SIMICS
+      # - name: Install SIMICS (Public)
+      #   run: |
+      #     mkdir -p "${HOME}/simics"
+      #     cd "${HOME}/simics"
+      #     curl -o simics-6-packages-2023-19-linux64.ispm https://registrationcenter-download.intel.com/akdlm/IRC_NAS/0554dff0-ac52-4d41-ae95-0befba095555/simics-6-packages-2023-19-linux64.ispm
+      #     curl -o intel-simics-package-manager-1.7.2-linux64.tar.gz https://registrationcenter-download.intel.com/akdlm/IRC_NAS/0554dff0-ac52-4d41-ae95-0befba095555/intel-simics-package-manager-1.7.2-linux64.tar.gz
+      #     tar -xvf intel-simics-package-manager-1.7.2-linux64.tar.gz
+      #     ./intel-simics-package-manager-1.7.2/ispm packages --install-dir "${HOME}/simics" --install-bundle "${HOME}/simics/simics-6-packages-2023-19-linux64.ispm" --non-interactive
+
+      # TODO: Change to public for OSS
+      - name: Install SIMICS (Internal)
         run: |
           mkdir -p "${HOME}/simics"
           cd "${HOME}/simics"
-          curl -o simics-6-packages-2023-19-linux64.ispm https://registrationcenter-download.intel.com/akdlm/IRC_NAS/0554dff0-ac52-4d41-ae95-0befba095555/simics-6-packages-2023-19-linux64.ispm
-          curl -o intel-simics-package-manager-1.7.2-linux64.tar.gz https://registrationcenter-download.intel.com/akdlm/IRC_NAS/0554dff0-ac52-4d41-ae95-0befba095555/intel-simics-package-manager-1.7.2-linux64.tar.gz
+          curl -o intel-simics-package-manager-1.7.2-linux64.tar.gz https://af02p-or.devtools.intel.com/artifactory/simics-local/pub/simics-installer/external/1.7.3/intel-simics-package-manager-1.7.3-linux64.tar.gz
           tar -xvf intel-simics-package-manager-1.7.2-linux64.tar.gz
-          ./intel-simics-package-manager-1.7.2/ispm packages --install-dir "${HOME}/simics" --install-bundle "${HOME}/simics/simics-6-packages-2023-19-linux64.ispm" --non-interactive
+          ./intel-simics-package-manager-1.7.2/ispm \
+            --non-interactive --verbose \
+            --package-repo https://af02p-or.devtools.intel.com/ui/native/simics-local/pub/simics-6/linux64/ \
+            --install-dir "${HOME}/simics" \
+            install 1000-6.0.166 2096-6.0.68 8126-6.0.17
       - uses: actions/checkout@v3
       - name: Install Rust Toolchain
         uses: ./.github/actions/toolchain
