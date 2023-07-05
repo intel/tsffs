@@ -35,9 +35,9 @@ jobs:
         run: |
           mkdir -p "${HOME}/simics"
           cd "${HOME}/simics"
-          curl -o intel-simics-package-manager-1.7.2-linux64.tar.gz https://af02p-or.devtools.intel.com/artifactory/simics-local/pub/simics-installer/external/1.7.3/intel-simics-package-manager-1.7.3-linux64.tar.gz
-          tar -xvf intel-simics-package-manager-1.7.2-linux64.tar.gz
-          ./intel-simics-package-manager-1.7.2/ispm \
+          curl -o intel-simics-package-manager-1.7.3-linux64.tar.gz https://af02p-or.devtools.intel.com/artifactory/simics-local/pub/simics-installer/external/1.7.3/intel-simics-package-manager-1.7.3-linux64.tar.gz
+          tar -xvf intel-simics-package-manager-1.7.3-linux64.tar.gz
+          ./intel-simics-package-manager-1.7.3/ispm \
             --non-interactive --verbose \
             --package-repo https://af02p-or.devtools.intel.com/ui/native/simics-local/pub/simics-6/linux64/ \
             --install-dir "${HOME}/simics" \
