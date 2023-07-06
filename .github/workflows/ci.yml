@@ -59,7 +59,7 @@ jobs:
           "${HOME}/.cargo/bin/cargo" clippy --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
       - name: MIRI UB Checks
         run: |
-          RUST_BACKTRACE=full MIRIFLAGS="-Zmiri-disable-isolation" "${HOME}/.cargo/bin/cargo miri test
+          RUST_BACKTRACE=full MIRIFLAGS="-Zmiri-disable-isolation" "${HOME}/.cargo/bin/cargo" miri test
       - name: Test Project 
         run: |
           "${HOME}/.cargo/bin/cargo" test --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
@@ -68,4 +68,4 @@ jobs:
           cargo doc --features=${{ env.SIMICS_BASE_VERSION }}
       - name: Test Docs
         run: |
-          cargo test --doc --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
+          "${HOME}/.cargo/bin/cargo" test --doc --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
