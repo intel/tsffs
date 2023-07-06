@@ -1,4 +1,5 @@
 [workspace]
+resolver = "2"
 members = [
     # Provide simics 
     # Provide real simics APIs

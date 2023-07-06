@@ -62,7 +62,7 @@ jobs:
           "${HOME}/.cargo/bin/cargo" test --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
       - name: Build Docs
         run: |
-          "${HOME}/.cargo/bin/cargo" doc --features=${{ env.SIMICS_BASE_VERSION }}
+          "${HOME}/.cargo/bin/cargo" doc --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
       - name: Test Docs
         run: |
           "${HOME}/.cargo/bin/cargo" test --doc --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
