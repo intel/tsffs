@@ -37,9 +37,14 @@ jobs:
           cd "${HOME}/simics"
           curl -o intel-simics-package-manager-1.7.3-linux64.tar.gz https://af02p-or.devtools.intel.com/artifactory/simics-local/pub/simics-installer/external/1.7.3/intel-simics-package-manager-1.7.3-linux64.tar.gz
           tar -xvf intel-simics-package-manager-1.7.3-linux64.tar.gz
+          echo "1000 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}" >> SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
+          echo "2096 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}" >> SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
+          echo "8112 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}" >> SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
+          ./intel-simics-package-manager-1.7.3/ispm settings --config-file ispm.conf decryption-key-files --add SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
           ./intel-simics-package-manager-1.7.3/ispm \
+            --config-file ispm.conf \
             --non-interactive --verbose \
-            --package-repo https://af02p-or.devtools.intel.com/ui/native/simics-local/pub/simics-6/linux64/ \
+            --package-repo https://af02p-or.devtools.intel.com/ui/native/simics-repos/pub/simics-6/linux64/ \
             --install-dir "${HOME}/simics" \
             install 1000-6.0.166 2096-6.0.68 8126-6.0.17
       - uses: actions/checkout@v3
