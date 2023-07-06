@@ -17,6 +17,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Get Info (DEBUG)
         run: |
+          pwd
           ls -lahR
       - name: Install Rust Toolchain (Requires Checkout)
         uses: ./../.github/actions/toolchain
