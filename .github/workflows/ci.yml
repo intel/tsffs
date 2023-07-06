@@ -16,6 +16,11 @@ jobs:
     runs-on: [self-hosted, gasp]
     steps:
       - uses: actions/checkout@v3
+      - name: Check
+        run: |
+          ls -lah /__w/applications.security.fuzzing.confuse/applications.security.fuzzing.confuse/.github/actions/toolchain
+          ls -lah /__w/applications.security.fuzzing.confuse/
+          ls -lah /__w/applications.security.fuzzing.confuse/applications.security.fuzzing.confuse/
       - name: Install Rust Toolchain (Requires Checkout)
         uses: ./../../../../__w/applications.security.fuzzing.confuse/applications.security.fuzzing.confuse/.github/actions/toolchain
         with:
