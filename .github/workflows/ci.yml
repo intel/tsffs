@@ -1,4 +1,4 @@
-name: Confuse Rust continuous integration
+name: CI
 
 on:
   push:
@@ -17,7 +17,7 @@ env:
   SIMICS_PACKAGE_VERSION_8112: 6.0.17
 
 jobs:
-  build:
+  build_and_test:
     container: amr-fm-registry.caas.intel.com/cache/library/ubuntu@sha256:83f0c2a8d6f266d687d55b5cb1cb2201148eb7ac449e4202d9646b9083f1cee0
     runs-on: [self-hosted, gasp]
     steps:
@@ -59,13 +59,13 @@ jobs:
           "${HOME}/.cargo/bin/cargo" clippy --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
       - name: MIRI UB Checks
         run: |
-          RUST_BACKTRACE=full MIRIFLAGS="-Zmiri-disable-isolation" "${HOME}/.cargo/bin/cargo" miri test
+          RUST_BACKTRACE=full MIRIFLAGS="-Zmiri-disable-isolation" "${HOME}/.cargo/bin/cargo" miri test --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
       - name: Test Project 
         run: |
           "${HOME}/.cargo/bin/cargo" test --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
       - name: Build Docs
-        run:
-          cargo doc --features=${{ env.SIMICS_BASE_VERSION }}
+        run: |
+          "${HOME}/.cargo/bin/cargo" doc --features=${{ env.SIMICS_BASE_VERSION }}
       - name: Test Docs
         run: |
           "${HOME}/.cargo/bin/cargo" test --doc --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
