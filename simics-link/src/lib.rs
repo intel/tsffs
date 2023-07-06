@@ -1,6 +1,8 @@
 //! Standalone simics linking functionality. This copies from the `simics` crate and should be updated
 //! if the linking strategy there changes.
 
+#![deny(clippy::unwrap_used)]
+
 extern crate num_traits;
 #[macro_use]
 extern crate num_derive;

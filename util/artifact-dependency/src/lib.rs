@@ -3,6 +3,8 @@
 //! - C Dynamic Libraries
 //! - Binaries
 
+#![deny(clippy::unwrap_used)]
+
 use anyhow::{anyhow, bail, ensure, Error, Result};
 use cargo_metadata::{camino::Utf8PathBuf, MetadataCommand, Package};
 use derive_builder::Builder;

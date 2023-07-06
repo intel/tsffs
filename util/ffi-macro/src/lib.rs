@@ -1,6 +1,8 @@
 //! Provides the `callback_wrappers` attribute for automatically generating CFFI functions for
 //! callbacks into struct methods
 
+#![deny(clippy::unwrap_used)]
+
 use proc_macro::TokenStream;
 use proc_macro_error::{abort, proc_macro_error};
 use quote::{format_ident, quote};
@@ -298,7 +300,7 @@ pub fn callback_wrappers(args: TokenStream, input: TokenStream) -> TokenStream {
                 quote! { #rty  }
             };
 
-            let receiver = &f.sig.receiver().unwrap();
+            let receiver = &f.sig.receiver().expect("No method receiver (self parameter) found on function");
 
             // Get the args without the receiver, this will be dropped in for 'Ellipsis'
             let fargs = &f
@@ -400,15 +402,16 @@ pub fn callback_wrappers(args: TokenStream, input: TokenStream) -> TokenStream {
                 })
                 .collect::<Vec<_>>();
 
+            let fname_string = f.sig.ident.to_string();
+
             let unwrap_mb = if is_result && impl_args.has_unwrap_result() {
-                quote! { .unwrap(); }
+                quote! { .expect(&format!("Error: unable to unwrap result from FFI callback {}::{}", #struct_name_string, #fname_string)); }
             } else if is_result {
                 abort! { f.sig.output, "Result output, but `unwrap_result` was not specified" }
             } else {
                 quote! {}
             };
 
-            let fname_string = f.sig.ident.to_string();
 
             let trace_mb = if impl_args.has_trace() {
                 quote! {

@@ -68,4 +68,4 @@ jobs:
           "${HOME}/.cargo/bin/cargo" test --doc --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
       - name: MIRI UB Checks
         run: |
-          RUST_BACKTRACE=full MIRIFLAGS="-Zmiri-disable-isolation" "${HOME}/.cargo/bin/cargo" miri test --no-fail-fast --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
+          MIRIFLAGS="-Zmiri-backtrace=full -Zmiri-disable-isolation -Zmiri-panic-on-unsupported" "${HOME}/.cargo/bin/cargo" miri test

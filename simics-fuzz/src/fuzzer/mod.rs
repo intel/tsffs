@@ -42,10 +42,14 @@ use simics::{
     simics::Simics,
 };
 use std::{
-    io::{stderr, stdout},
+    fs::OpenOptions,
+    io::stderr,
     net::TcpListener,
     path::PathBuf,
-    sync::mpsc::{channel, Receiver, Sender},
+    sync::{
+        mpsc::{channel, Receiver, Sender},
+        Mutex,
+    },
     thread::{spawn, JoinHandle},
     time::Duration,
 };
@@ -112,25 +116,50 @@ impl SimicsFuzzer {
     pub const DEFAULT_SOLUTIONS_DIRECTORY: &str = "solutions";
 
     pub fn cli_main(args: Args) -> Result<()> {
-        registry()
-            .with(
+        let reg = registry().with({
+            fmt::layer()
+                .pretty()
+                .with_writer(stderr)
+                .with_filter(args.log_level)
+                .with_filter(filter_fn(|metadata| {
+                    // LLMP absolutely spams the log when tracing
+                    !(metadata.target() == "libafl::bolts::llmp"
+                        && matches!(metadata.level(), &Level::TRACE))
+                }))
+        });
+        if let Some(log_file) = &args.log_file {
+            let file = Box::new(
+                OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .write(true)
+                    .open(log_file)?,
+            );
+            reg.with({
                 fmt::layer()
-                    .pretty()
-                    .with_writer(stderr)
-                    .with_writer(stdout)
+                    .compact()
+                    .with_writer(Mutex::new(file))
                     .with_filter(args.log_level)
                     .with_filter(filter_fn(|metadata| {
                         // LLMP absolutely spams the log when tracing
                         !(metadata.target() == "libafl::bolts::llmp"
                             && matches!(metadata.level(), &Level::TRACE))
-                    })),
-            )
+                    }))
+            })
             .try_init()
             .map_err(|e| {
                 error!("Could not install tracing subscriber: {}", e);
                 e
             })
             .ok();
+        } else {
+            reg.try_init()
+                .map_err(|e| {
+                    error!("Could not install tracing subscriber: {}", e);
+                    e
+                })
+                .ok();
+        }
 
         trace!("Setting up project with args: {:?}", args);
 

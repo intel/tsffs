@@ -1,3 +1,5 @@
+#![deny(clippy::unwrap_used)]
+
 use anyhow::{anyhow, Error, Result};
 use clap::{Parser, ValueEnum};
 use simics::api::{DeprecationLevel, GuiMode, InitArg, InitArgs};

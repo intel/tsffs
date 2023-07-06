@@ -1,3 +1,5 @@
+#![deny(clippy::unwrap_used)]
+
 use anyhow::Result;
 use simics::{
     api::{GuiMode, InitArg, InitArgs},

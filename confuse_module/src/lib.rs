@@ -21,6 +21,7 @@
 #![deny(clippy::all)]
 // NOTE: We have to do this a lot, and it sucks to have all these functions be unsafe
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
+#![deny(clippy::unwrap_used)]
 
 use const_format::concatcp;
 

@@ -1,3 +1,5 @@
+#![deny(clippy::unwrap_used)]
+
 use anyhow::Result;
 use std::{cell::RefCell, collections::HashMap, ffi::CString};
 
@@ -11,7 +13,7 @@ thread_local! {
 /// time, although this function is also efficient in space (but not time) when a constant string
 /// is known. For compile-time constants, you can use `c_str!`.
 ///
-/// # Notes
+/// # Safety
 ///
 /// - Do *not* use [`String::from_raw_parts`] to convert the pointer back to a [`String`]. This
 ///   may cause a double free because the [`String`] will take ownership of the pointer. Use

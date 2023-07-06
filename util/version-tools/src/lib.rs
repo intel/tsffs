@@ -14,7 +14,8 @@
 //! assert!(!constraint.matches(&Versioning::new("0.9.0").ok_or_else(|| anyhow!("Invalid version"))?));
 //! # Ok::<(), anyhow::Error>(())
 //! ```
-//!
+
+#![deny(clippy::unwrap_used)]
 
 use anyhow::{bail, Context, Error, Result};
 use std::str::FromStr;

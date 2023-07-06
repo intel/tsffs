@@ -2,6 +2,8 @@
 //!
 //! Provides the `#[module()]` and `#[derive(Module)]` macros
 
+#![deny(clippy::unwrap_used)]
+
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use proc_macro_error::{abort, proc_macro_error};
