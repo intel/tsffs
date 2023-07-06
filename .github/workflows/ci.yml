@@ -49,7 +49,7 @@ jobs:
             install 1000-6.0.166 2096-6.0.68 8112-6.0.17
       - uses: actions/checkout@v3
       - name: Install Rust Toolchain
-        uses: ./.github/actions/toolchain
+        uses: ../.github/actions/toolchain
         with:
           toolchain: nightly
           override: true
@@ -59,7 +59,7 @@ jobs:
         run: |
           echo "SIMICS_HOME=${HOME}/simics" > .env
       - name: Build Project
-        uses: ./.github/actions/cargo
+        uses: ../.github/actions/cargo
         with:
           command: build
           args: --features=6.0.166
