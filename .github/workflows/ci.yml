@@ -15,19 +15,6 @@ jobs:
     container: amr-fm-registry.caas.intel.com/cache/library/ubuntu@sha256:83f0c2a8d6f266d687d55b5cb1cb2201148eb7ac449e4202d9646b9083f1cee0
     runs-on: [self-hosted, gasp]
     steps:
-      - uses: actions/checkout@v3
-      - name: Check
-        run: |
-          ls -lah /__w/applications.security.fuzzing.confuse/applications.security.fuzzing.confuse/.github/actions/toolchain
-          ls -lah /__w/applications.security.fuzzing.confuse/
-          ls -lah /__w/applications.security.fuzzing.confuse/applications.security.fuzzing.confuse/
-      - name: Install Rust Toolchain (Requires Checkout)
-        uses: ./../../../../__w/applications.security.fuzzing.confuse/applications.security.fuzzing.confuse/.github/actions/toolchain
-        with:
-          toolchain: nightly
-          override: true
-          components: rustfmt, clippy, cargo
-          default: true
       - name: Install Dependencies
         run: |
           apt-get -y update && \
@@ -61,11 +48,13 @@ jobs:
             --package-repo https://af02p-or.devtools.intel.com/ui/native/simics-repos/pub/simics-6/linux64/ \
             --install-dir "${HOME}/simics" \
             install 1000-6.0.166 2096-6.0.68 8112-6.0.17
+      - uses: actions/checkout@v3
+      - name: Install Rust Toolchain (Requires Checkout)
+        run: |
+          curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly --component rustfmt --component clippy --no-modify-path
       - name: Set up .env (Requires Checkout)
         run: |
           echo "SIMICS_HOME=${HOME}/simics" > .env
       - name: Build Project (Requires Checkout)
-        uses: ./../../../../__w/applications.security.fuzzing.confuse/applications.security.fuzzing.confuse/.github/actions/cargo
-        with:
-          command: build
-          args: --features=6.0.166
+        run: |
+
