@@ -45,14 +45,26 @@ pub fn link_simics_linux<S: AsRef<str>>(version_constraint: S) -> Result<()> {
     let mut output = Command::new("ld.so")
         .arg(&simics_common_lib)
         .stdout(Stdio::piped())
-        .output()?;
+        .output()
+        .map_err(|e| {
+            eprintln!("Error running 'ld.so': {}", e);
+        })
+        .ok();
 
-    if !output.status.success() {
-        output = Command::new("ldd")
-            .arg(simics_common_lib)
-            .stdout(Stdio::piped())
-            .output()?;
+    if output.is_none() || output.as_ref().is_some_and(|o| !o.status.success()) {
+        output = Some(
+            Command::new("ldd")
+                .arg(simics_common_lib)
+                .stdout(Stdio::piped())
+                .output()
+                .map_err(|e| {
+                    eprintln!("Error running 'ldd': {}", e);
+                    e
+                })?,
+        );
     }
+
+    let output = output.ok_or_else(|| anyhow!("No output from 'ld.so' or 'ldd'"))?;
 
     ensure!(
         output.status.success(),
