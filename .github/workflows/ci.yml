@@ -46,7 +46,7 @@ jobs:
             --non-interactive --verbose \
             --package-repo https://af02p-or.devtools.intel.com/ui/native/simics-repos/pub/simics-6/linux64/ \
             --install-dir "${HOME}/simics" \
-            install 1000-6.0.166 2096-6.0.68 8126-6.0.17
+            install 1000-6.0.166 2096-6.0.68 8112-6.0.17
       - uses: actions/checkout@v3
       - name: Install Rust Toolchain
         uses: ./.github/actions/toolchain
