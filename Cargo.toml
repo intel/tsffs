@@ -46,6 +46,7 @@ default-members = [
 artifact-dependency = { path = "./util/artifact-dependency" }
 simics-link = { path = "./simics-link" }
 simics = { path = "./simics" }
+simics-fuzz = { path = "./simics-fuzz" }
 confuse_module = { path = "./confuse_module" }
 simics-api-sys = { path = "./simics-api-sys" }
 simics-api = { path = "./simics-api" }

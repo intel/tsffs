@@ -64,7 +64,7 @@ use crate::{
 };
 use anyhow::{bail, Result};
 use std::sync::mpsc::{Receiver, Sender};
-use tracing::info;
+use tracing::{debug, info};
 
 /// The client for the CONFUSE module. Allows controlling the module over IPC using the child
 /// process spawned by a running project.
@@ -116,10 +116,10 @@ impl ConfuseClient for Client {
     /// Changes the internal state from `Stopped` or `Initialized` to `HalfReady`, then
     /// from `HalfReady` to `Ready`.
     fn reset(&mut self) -> Result<()> {
-        info!("Sending reset message");
+        debug!("Sending reset message");
         self.send_msg(ClientMessage::Reset)?;
 
-        info!("Waiting for ready message");
+        debug!("Waiting for ready message");
         if let ModuleMessage::Ready = self.recv_msg()? {
             Ok(())
         } else {
@@ -133,10 +133,10 @@ impl ConfuseClient for Client {
     /// module detects it, so it may take a long time or if there is an unexpected bug it may
     /// hang.
     fn run(&mut self, input: Vec<u8>) -> Result<StopReason> {
-        info!("Sending run message");
+        debug!("Sending run message");
         self.send_msg(ClientMessage::Run(input))?;
 
-        info!("Waiting for stopped message");
+        debug!("Waiting for stopped message");
         if let ModuleMessage::Stopped(reason) = self.recv_msg()? {
             Ok(reason)
         } else {

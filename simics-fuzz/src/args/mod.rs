@@ -40,8 +40,7 @@ pub struct Args {
     /// Logging level
     pub log_level: LevelFilter,
     #[arg(short = 'L', long)]
-    /// Log file path to use. A new tmp file with the pattern confuse-log.XXXXX.log will be created
-    /// in the project directory if no filename is specified
+    /// Log file path to use. Logger will only log to stdout if not specified
     pub log_file: Option<PathBuf>,
     #[arg(short = 'T', long, default_value_t = TraceMode::HitCount)]
     /// Mode to trace executions with
@@ -64,6 +63,12 @@ pub struct Args {
     #[arg(short, long)]
     /// Whether to use a TUI for fuzzer output
     pub tui: bool,
+    #[arg(long, default_value = PathBuf::from("/dev/null").into_os_string())]
+    /// An optional path to send stdout to when running with the TUI. This option is mostly only
+    /// useful if you need to debug the output from SIMICS itself (which is printed, not
+    /// traced with the log macros). If you only need to capture logs to a file, you should use
+    /// the `--log-file` argument instead.
+    pub tui_stdout_file: PathBuf,
     #[arg(short, long, default_value_t = true)]
     /// Whether grimoire should be used
     pub grimoire: bool,
@@ -108,5 +113,5 @@ pub struct Args {
     /// performed. If not specified, the fuzzer will run infinitely. This argument should not
     /// be used for CI fuzzing, instead run the fuzzer with the `timeout` shell command to run
     /// for a specific amount of time.
-    pub iterations: Option<usize>,
+    pub iterations: Option<u64>,
 }

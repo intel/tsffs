@@ -26,7 +26,7 @@ use std::{
 };
 use strum::{AsRefStr, Display};
 use tempdir::TempDir;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 use version_tools::VersionConstraint;
 
 #[derive(Debug, Clone)]
@@ -680,8 +680,8 @@ impl Project {
         if self.path.temporary {
             remove_dir_all(&self.path.path)
                 .map_err(|e| {
-                    error!(
-                        "Failed to remove temporary project from {}: {}",
+                    warn!(
+                        "Failed to remove temporary project from {} (this is probably ok): {}",
                         self.path.path.display(),
                         e
                     );

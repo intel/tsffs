@@ -11,7 +11,7 @@ use crate::{
 };
 use anyhow::{anyhow, bail, Context, Result};
 use ffi_macro::{callback_wrappers, params};
-use tracing::{error, info, trace};
+use tracing::{debug, error, info, trace};
 
 use simics_api::{
     attr_data, attr_object_or_nil_from_ptr, break_simulation, clear_exception,
@@ -140,7 +140,7 @@ impl Confuse {
         trace!("Received client message {:?}", msg);
 
         if matches!(msg, ClientMessage::Exit) {
-            error!("Received Exit message, exiting and quitting");
+            info!("Received Exit message, exiting and quitting");
             let self_ptr = self as *mut Self as *mut ConfObject;
             self.detector.on_exit(self_ptr)?;
             self.tracer.on_exit(self_ptr)?;
@@ -217,7 +217,7 @@ impl Confuse {
         // Error string is always NULL
         _error_string: *mut std::ffi::c_char,
     ) -> Result<()> {
-        info!(
+        debug!(
             "Confuse got stopped simulation with reason {:?}",
             self.stop_reason
         );

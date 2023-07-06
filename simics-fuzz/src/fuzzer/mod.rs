@@ -21,10 +21,10 @@ use libafl::{
         ondisk::OnDiskMetadataFormat,
         tui::{ui::TuiUI, TuiMonitor},
         tuple_list, AflMapFeedback, AsMutSlice, AsSlice, BytesInput, CachedOnDiskCorpus, Corpus,
-        CrashFeedback, EventConfig, ExitKind, HasTargetBytes, HitcountsMapObserver,
-        InProcessExecutor, Launcher, MultiMonitor, OnDiskCorpus, OwnedMutSlice, RandBytesGenerator,
-        ShMemProvider, StdMapObserver, StdRand, StdScheduledMutator, StdShMemProvider,
-        TimeFeedback, TimeObserver, TimeoutExecutor,
+        CrashFeedback, EventConfig, EventRestarter, ExitKind, HasTargetBytes, HitcountsMapObserver,
+        InProcessExecutor, Launcher, LlmpRestartingEventManager, MultiMonitor, OnDiskCorpus,
+        OwnedMutSlice, RandBytesGenerator, ShMemProvider, StdMapObserver, StdRand,
+        StdScheduledMutator, StdShMemProvider, TimeFeedback, TimeObserver, TimeoutExecutor,
     },
     schedulers::{powersched::PowerSchedule, PowerQueueScheduler},
     stages::{CalibrationStage, StdPowerMutationalStage},
@@ -43,7 +43,7 @@ use simics::{
 };
 use std::{
     fs::OpenOptions,
-    io::stderr,
+    io::stdout,
     net::TcpListener,
     path::PathBuf,
     sync::{
@@ -56,6 +56,8 @@ use std::{
 use tracing::{debug, error, info, metadata::LevelFilter};
 use tracing::{trace, Level};
 use tracing_subscriber::{filter::filter_fn, fmt, prelude::*, registry, Layer};
+
+const INITIAL_INPUTS: usize = 16;
 
 #[derive(Builder)]
 #[builder(build_fn(validate = "Self::validate", error = "Error"))]
@@ -83,7 +85,9 @@ pub struct SimicsFuzzer {
     #[builder(default)]
     simics_gui: bool,
     #[builder(setter(into), default)]
-    iterations: Option<usize>,
+    iterations: Option<u64>,
+    #[builder(setter(into))]
+    tui_stdout_file: PathBuf,
 }
 
 impl SimicsFuzzerBuilder {
@@ -119,7 +123,7 @@ impl SimicsFuzzer {
         let reg = registry().with({
             fmt::layer()
                 .pretty()
-                .with_writer(stderr)
+                .with_writer(stdout)
                 .with_filter(args.log_level)
                 .with_filter(filter_fn(|metadata| {
                     // LLMP absolutely spams the log when tracing
@@ -253,6 +257,7 @@ impl SimicsFuzzer {
             .trace_mode(args.trace_mode)
             .simics_gui(args.enable_simics_gui)
             .iterations(args.iterations)
+            .tui_stdout_file(args.tui_stdout_file)
             .build()?
             .launch()?;
 
@@ -355,7 +360,10 @@ impl SimicsFuzzer {
 
         let broker_port = TcpListener::bind("127.0.0.1:0")?.local_addr()?.port();
 
-        let mut run_client = |state: Option<_>, mut mgr, cpu_id| -> Result<(), libafl::Error> {
+        let mut run_client = |state: Option<_>,
+                              mut mgr: LlmpRestartingEventManager<_, _>,
+                              cpu_id|
+         -> Result<(), libafl::Error> {
             debug!("Running on CPU {:?}", cpu_id);
 
             let mut coverage_map = OwnedMutSlice::from(vec![0; SimicsFuzzer::MAP_SIZE]);
@@ -436,9 +444,9 @@ impl SimicsFuzzer {
                 let run_input = buf.to_vec();
                 let mut exit_kind = ExitKind::Ok;
 
-                info!("Running with input '{:?}'", run_input);
+                debug!("Running with input '{:?}'", run_input);
 
-                info!("Sending run signal");
+                debug!("Sending run signal");
 
                 match client.run(run_input) {
                     Ok(reason) => match reason {
@@ -499,13 +507,17 @@ impl SimicsFuzzer {
                     )?;
                 }
                 if state.corpus().count() < 1 {
+                    info!(
+                        "No corpus provided. Generating {} initial inputs",
+                        INITIAL_INPUTS
+                    );
                     let mut generator = RandBytesGenerator::new(64);
                     state.generate_initial_inputs(
                         &mut fuzzer,
                         &mut executor,
                         &mut generator,
                         &mut mgr,
-                        1 << 10,
+                        INITIAL_INPUTS,
                     )?;
                 }
                 info!("Imported {} inputs from disk", state.corpus().count());
@@ -514,10 +526,18 @@ impl SimicsFuzzer {
             let mut stages = tuple_list!(calibration, std_power);
 
             if let Some(iterations) = self.iterations {
-                for _ in 0..iterations {
-                    fuzzer.fuzz_one(&mut stages, &mut executor, &mut state, &mut mgr)?;
-                }
+                info!("Fuzzing for {} iterations", iterations);
+                fuzzer.fuzz_loop_for(
+                    &mut stages,
+                    &mut executor,
+                    &mut state,
+                    &mut mgr,
+                    iterations,
+                )?;
+                mgr.send_exiting()?;
+                info!("Done fuzzing");
             } else {
+                info!("Fuzzing until stopped");
                 fuzzer.fuzz_loop(&mut stages, &mut executor, &mut state, &mut mgr)?;
             }
 
@@ -529,6 +549,8 @@ impl SimicsFuzzer {
                 .join()
                 .map_err(|e| libafl::Error::Unknown(format!("{:?}", e), ErrorBacktrace::new()))?
                 .map_err(|e| libafl::Error::Unknown(format!("{:?}", e), ErrorBacktrace::new()))?;
+
+            info!("Fuzzer done, bye!");
 
             Ok(())
         };
@@ -544,15 +566,20 @@ impl SimicsFuzzer {
                 .run_client(&mut run_client)
                 .cores(&self.cores)
                 .broker_port(broker_port)
-                .stdout_file(Some("/tmp/test.txt"))
+                // NOTE: We send stdout to /dev/null when using the TUI. If users are using the TUI
+                // and want logs, they need to pass `-L /whatever.txt`. We don't want to send
+                // stdout there.
+                .stdout_file(Some(&self.tui_stdout_file.as_os_str().to_string_lossy()))
                 .build()
                 .launch()
             {
-                Ok(()) => (),
+                Ok(()) => {}
                 Err(libafl::Error::ShuttingDown) => {
                     info!("Fuzzer stopped by user. shutting down.");
                 }
-                res @ Err(_) => return res.map_err(|e| anyhow!("Failed to run launcher: {}", e)),
+                res @ Err(_) => {
+                    return res.map_err(|e| anyhow!("Failed to run launcher: {}", e));
+                }
             }
         } else {
             let monitor = MultiMonitor::new(|s| {

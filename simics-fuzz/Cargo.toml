@@ -9,7 +9,7 @@ edition = "2021"
 ahash = "0.8.3"
 anyhow.workspace = true
 artifact-dependency.workspace = true
-clap = { version = "4.3.0", features = ["derive"] }
+clap = { version = "4.3.0", features = ["derive", "string"] }
 confuse_module.workspace = true
 derive_builder = "0.12.0"
 libafl.workspace = true

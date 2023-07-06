@@ -11,7 +11,8 @@ simics = { workspace = true }
 [build-dependencies]
 anyhow.workspace = true
 simics-api.workspace = true
-simics-link.workspace = true
+simics = { workspace = true }
+artifact-dependency = { workspace = true }
 
 [dev-dependencies]
 simics = { workspace = true, features = ["link"] }
@@ -19,7 +20,7 @@ anyhow.workspace = true
 tempdir = "0.3.7"
 tracing = "0.1.37"
 tracing-test = "0.2.4"
-simics-fuzz = { version = "0.1.0", path = "../simics-fuzz" }
+simics-fuzz = { workspace = true }
 
 
 [features]

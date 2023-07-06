@@ -45,7 +45,7 @@ jobs:
             --install-dir "${HOME}/simics" \
             install 1000-${{ env.SIMICS_PACKAGE_VERSION_1000 }} 2096-${{ env.SIMICS_PACKAGE_VERSION_2096 }} 8112-${{ env.SIMICS_PACKAGE_VERSION_8112 }}
       - uses: actions/checkout@v3
-      - name: Install Rust Toolchain (Requires Checkout)
+      - name: Install Rust Toolchain
         run: |
           curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly --component rustfmt --component clippy --component miri --no-modify-path
       - name: Set up .env
@@ -68,4 +68,4 @@ jobs:
           "${HOME}/.cargo/bin/cargo" test --doc --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
       - name: MIRI UB Checks
         run: |
-          MIRIFLAGS="-Zmiri-backtrace=full -Zmiri-disable-isolation -Zmiri-panic-on-unsupported" "${HOME}/.cargo/bin/cargo" miri test
+          MIRIFLAGS="-Zmiri-backtrace=full -Zmiri-disable-isolation -Zmiri-panic-on-unsupported" "${HOME}/.cargo/bin/cargo" miri test --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
