@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install Rust Toolchain (Requires Checkout)
-        uses: .github/actions/toolchain
+        uses: ./../.github/actions/toolchain
         with:
           toolchain: nightly
           override: true
@@ -59,7 +59,7 @@ jobs:
         run: |
           echo "SIMICS_HOME=${HOME}/simics" > .env
       - name: Build Project (Requires Checkout)
-        uses: .github/actions/cargo
+        uses: ./../.github/actions/cargo
         with:
           command: build
           args: --features=6.0.166
