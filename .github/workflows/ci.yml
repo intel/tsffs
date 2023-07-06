@@ -51,3 +51,6 @@ jobs:
       - name: Check Project 
         run: |
           "${HOME}/.cargo/bin/cargo" clippy --features=6.0.166
+      - name: Test Project 
+        run: |
+          "${HOME}/.cargo/bin/cargo" test --features=6.0.166
