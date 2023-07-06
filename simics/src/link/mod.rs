@@ -71,7 +71,7 @@ pub fn link_simics_linux<S: AsRef<str>>(version_constraint: S) -> Result<()> {
         "Command failed to obtain dependency listing"
     );
 
-    let ld_line_pattern = Regex::new(r#"\s*([^\s]+)\s*=>\s*(.*)"#)?;
+    let ld_line_pattern = Regex::new(r"\s*([^\s]+)\s*=>\s*(.*)")?;
     let mut notfound_libs: Vec<_> = String::from_utf8_lossy(&output.stdout)
         .lines()
         .filter_map(|l| {
