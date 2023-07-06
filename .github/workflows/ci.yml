@@ -8,6 +8,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  REPO: "/__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}/"
 
 jobs:
   build:
@@ -16,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install Rust Toolchain (Requires Checkout)
-        uses: ./.github/actions/toolchain
+        uses: "${REPO}/.github/actions/toolchain"
         with:
           toolchain: nightly
           override: true
