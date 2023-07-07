@@ -31,7 +31,7 @@ impl<'a> TestStruct<'a> {
 
 impl<'a, 'b> From<*mut std::ffi::c_void> for &'a mut TestStruct<'b> {
     fn from(ptr: *mut std::ffi::c_void) -> &'a mut TestStruct<'b> {
-        unsafe { *(ptr as *mut Self) }
+        unsafe { &mut *(ptr as *mut TestStruct) }
     }
 }
 

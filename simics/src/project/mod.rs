@@ -17,10 +17,13 @@ use simics_api::sys::SIMICS_VERSION;
 use std::{
     collections::{HashMap, HashSet},
     fmt::Debug,
-    fs::{copy, create_dir_all, read_to_string, remove_dir_all, OpenOptions},
+    fs::{
+        copy, create_dir_all, read_to_string, remove_dir_all, set_permissions, OpenOptions,
+        Permissions,
+    },
     io::{ErrorKind, Write},
-    os::unix::fs::symlink,
-    path::{Path, PathBuf},
+    os::unix::{fs::symlink, prelude::PermissionsExt},
+    path::{Component, Path, PathBuf},
     process::{Command, Stdio},
     str::FromStr,
 };
@@ -28,6 +31,44 @@ use strum::{AsRefStr, Display};
 use tempdir::TempDir;
 use tracing::{debug, error, info, warn};
 use version_tools::VersionConstraint;
+
+/// CAUTION: This does not resolve symlinks (unlike
+/// [`std::fs::canonicalize`]). This may cause incorrect or surprising
+/// behavior at times. This should be used carefully. Unfortunately,
+/// [`std::fs::canonicalize`] can be hard to use correctly, since it can often
+/// fail, or on Windows returns annoying device paths. This is a problem Cargo
+/// needs to improve on.
+///
+/// # Notes
+///
+/// - Taken from the `cargo` project which is Apache/MIT dual licensed
+///   https://github.com/rust-lang/cargo/blob/fede83ccf973457de319ba6fa0e36ead454d2e20/src/cargo/util/paths.rs#L61
+pub fn normalize_path<P: AsRef<Path>>(path: P) -> PathBuf {
+    let mut components = path.as_ref().components().peekable();
+    let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
+        components.next();
+        PathBuf::from(c.as_os_str())
+    } else {
+        PathBuf::new()
+    };
+
+    for component in components {
+        match component {
+            Component::Prefix(..) => unreachable!(),
+            Component::RootDir => {
+                ret.push(component.as_os_str());
+            }
+            Component::CurDir => {}
+            Component::ParentDir => {
+                ret.pop();
+            }
+            Component::Normal(c) => {
+                ret.push(c);
+            }
+        }
+    }
+    ret
+}
 
 #[derive(Debug, Clone)]
 pub struct SimicsPath {
@@ -68,19 +109,67 @@ impl SimicsPath {
         );
         let canonicalized = match self.from {
             Some(SimicsPathMarker::Script) => bail!("Script relative paths are not supported"),
-            Some(SimicsPathMarker::Simics) => base
-                .as_ref()
-                .to_path_buf()
-                .canonicalize()
-                .map_err(|e| {
-                    anyhow!(
-                        "Failed to canonicalize base path {}: {}",
-                        base.as_ref().to_path_buf().display(),
-                        e
-                    )
-                })?
-                .join(&self.to),
-            None => self.to.clone(),
+            Some(SimicsPathMarker::Simics) => {
+                let p = normalize_path(
+                    base.as_ref()
+                        .to_path_buf()
+                        .canonicalize()
+                        .map_err(|e| {
+                            anyhow!(
+                                "Could not canonicalize base path for simics path {}: {}",
+                                base.as_ref().display(),
+                                e
+                            )
+                        })?
+                        .join(&self.to),
+                );
+                p.starts_with(base.as_ref())
+                    .then_some(p.clone())
+                    .ok_or_else(|| {
+                        anyhow!(
+                            "Canonicalized non-simics path {} is not relative to the base path {}",
+                            p.display(),
+                            base.as_ref().display()
+                        )
+                    })?
+            }
+            None => {
+                let p = normalize_path(&self.to);
+                if p.is_absolute() {
+                    p.starts_with(base.as_ref())
+                        .then_some(p.clone())
+                        .ok_or_else(|| {
+                            anyhow!(
+                            "Canonicalized non-simics path {} is not relative to the base path {}",
+                            p.display(),
+                            base.as_ref().display()
+                        )
+                        })?
+                } else {
+                    let p = normalize_path(
+                        base.as_ref()
+                            .to_path_buf()
+                            .canonicalize()
+                            .map_err(|e| {
+                                anyhow!(
+                                    "Could not canonicalize base path for simics path {}: {}",
+                                    base.as_ref().display(),
+                                    e
+                                )
+                            })?
+                            .join(&self.to),
+                    );
+                    p.starts_with(base.as_ref())
+                        .then_some(p.clone())
+                        .ok_or_else(|| {
+                            anyhow!(
+                            "Canonicalized non-simics path {} is not relative to the base path {}",
+                            p.display(),
+                            base.as_ref().display()
+                        )
+                        })?
+                }
+            }
         };
         debug!(
             "Canonicalized simics path {:?} to {}",
@@ -105,11 +194,7 @@ impl FromStr for SimicsPath {
         Ok(match p.components().next() {
             Some(c) if c.as_os_str() == SimicsPathMarker::Script.as_ref() => Self::script(s),
             Some(c) if c.as_os_str() == SimicsPathMarker::Simics.as_ref() => Self::simics(s),
-            _ => Self::path(
-                PathBuf::from(s)
-                    .canonicalize()
-                    .map_err(|e| anyhow!("Failed to canonicalize simics path {}: {}", s, e))?,
-            ),
+            _ => Self::path(PathBuf::from(s)),
         })
     }
 }
@@ -382,6 +467,7 @@ impl Project {
                 self.path.path.display()
             );
             create_dir_all(&self.path.path)?;
+            set_permissions(&self.path.path, Permissions::from_mode(0o750))?;
         }
 
         let (project_setup, extra_args) = if self.base.path.join(".project-properties").is_dir() {

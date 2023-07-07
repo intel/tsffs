@@ -5,13 +5,10 @@ edition = "2021"
 
 [dependencies]
 anyhow.workspace = true
-log = "0.4.17"
 indoc = "2.0.1"
 simics = { workspace = true, features = ["6.0.166"] }
 libafl = { workspace = true }
-tempfile = "3.4.0"
 chrono = "0.4.24"
-log4rs = { version = "1.2.0", features = ["all_components"] }
 clap = { version = "4.1.13", features = ["derive"] }
 confuse_module = { workspace = true, features = ["6.0.166"] }
 simics-link.workspace = true

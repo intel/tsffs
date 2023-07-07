@@ -418,7 +418,7 @@ impl SimicsFuzzer {
             let corpus = CachedOnDiskCorpus::with_meta_format(
                 &self.corpus,
                 SimicsFuzzer::CACHE_LEN,
-                Some(OnDiskMetadataFormat::JsonPretty),
+                Some(OnDiskMetadataFormat::Json),
             )?;
 
             let mut state = state.unwrap_or_else(|| {

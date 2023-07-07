@@ -29,7 +29,7 @@ impl TestStruct {
 
 impl<'a> From<*mut std::ffi::c_void> for &'a mut TestStruct {
     fn from(ptr: *mut std::ffi::c_void) -> &'a mut TestStruct {
-        unsafe { *(ptr as *mut Self) }
+        unsafe { &mut *(ptr as *mut TestStruct) }
     }
 }
 
@@ -37,10 +37,11 @@ impl<'a> From<*mut std::ffi::c_void> for &'a mut TestStruct {
 fn test_cb() {
     let t = Box::new(TestStruct::new());
     // Pretend this object was created in C by a malloc or some such thing
-    let t_ptr = Box::into_raw(t) as *mut std::ffi::c_void;
-    println!("{}", teststruct_callbacks::do_return(t_ptr, 1, 2));
-    teststruct_callbacks::do_result(t_ptr, 1, 2);
-    teststruct_callbacks::do_noargs(t_ptr);
+    let t_ptr = Box::into_raw(t);
+    let t_ptr_void = t_ptr as *mut std::ffi::c_void;
+    println!("{}", teststruct_callbacks::do_return(t_ptr_void, 1, 2));
+    teststruct_callbacks::do_result(t_ptr_void, 1, 2);
+    teststruct_callbacks::do_noargs(t_ptr_void);
     // Free it on drop since it wasn't actually created in C by a malloc or some such thing
     let _: Box<TestStruct> = unsafe { Box::from_raw(t_ptr as *mut TestStruct) };
     println!("Done");
