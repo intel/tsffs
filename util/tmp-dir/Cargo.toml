@@ -1,0 +1,14 @@
+[package]
+name = "tmp-dir"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow.workspace = true
+derive_builder = "0.12.0"
+rand = "0.8.5"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2.147"
