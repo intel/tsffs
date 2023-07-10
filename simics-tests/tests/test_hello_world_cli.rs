@@ -1,7 +1,11 @@
-use std::fs::{read_dir, write};
+use std::{
+    env::var,
+    fs::{read_dir, write},
+};
 
 use anyhow::Result;
 use clap::Parser;
+use simics::{manifest::package_latest, simics::home::simics_home};
 use simics_fuzz::{args::Args, fuzzer::SimicsFuzzer};
 
 const CARGO_MANIFEST_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../");
@@ -27,6 +31,9 @@ fn test_hello_world_cli() -> Result<()> {
         .remove_on_drop(false)
         .build()?;
 
+    let package_version_2096 =
+        var("SIMICS_PACKAGE_VERSION_2096").unwrap_or(package_latest(simics_home()?, 2096)?.version);
+
     eprintln!("Created tmp corpus: {}", tmp_corpus_dir.path().display());
 
     // For this test, we set up an input corpus
@@ -48,7 +55,7 @@ fn test_hello_world_cli() -> Result<()> {
         &format!("{}", ITERATIONS),
         "--no-keep-temp-projects",
         "--package",
-        "2096:6.0.66",
+        &format!("2096:{}", package_version_2096),
         "--file",
         &format!("{}/targets/hello-world/src/bin/resource/HelloWorld.efi:%simics%/targets/hello-world/HelloWorld.efi", CARGO_MANIFEST_DIR),
         "--file",
