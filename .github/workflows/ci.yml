@@ -70,6 +70,3 @@ jobs:
       - name: MIRI UB Checks
         run: |
           MIRIFLAGS="-Zmiri-backtrace=full -Zmiri-disable-isolation -Zmiri-panic-on-unsupported" "${HOME}/.cargo/bin/cargo" miri test --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
-
-  sdle_evidence:
-    steps:
