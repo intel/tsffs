@@ -27,7 +27,8 @@ jobs:
           apt-get -y install \
             git \
             curl \
-            build-essential
+            build-essential \
+            cmake
       - name: Install SIMICS (Internal)
         run: |
           mkdir -p "${HOME}/simics"
@@ -69,3 +70,6 @@ jobs:
       - name: MIRI UB Checks
         run: |
           MIRIFLAGS="-Zmiri-backtrace=full -Zmiri-disable-isolation -Zmiri-panic-on-unsupported" "${HOME}/.cargo/bin/cargo" miri test --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
+
+  sdle_evidence:
+    steps:
