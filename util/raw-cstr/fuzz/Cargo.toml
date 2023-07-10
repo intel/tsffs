@@ -1,0 +1,28 @@
+[package]
+name = "raw-cstr-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+arbitrary = { version = "1.3", features = ["derive"] }
+
+[dependencies.raw-cstr]
+path = ".."
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[profile.release]
+debug = 1
+
+[[bin]]
+name = "fuzz_raw_cstr"
+path = "fuzz_targets/fuzz_raw_cstr.rs"
+test = false
+doc = false

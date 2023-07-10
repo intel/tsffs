@@ -97,7 +97,7 @@ impl FromStr for VersionConstraint {
 /// Checks whether two versioning triples are "tilde-compatible", that is v2's patch version
 /// may be greater than v1's, but its major and minor versions may not be.
 /// For tilde matches, the v2 patch can be greater than the v1 patch
-pub fn version_triples_match_tilde(v1: &Versioning, v2: &Versioning) -> bool {
+fn version_triples_match_tilde(v1: &Versioning, v2: &Versioning) -> bool {
     match v1 {
         Versioning::Ideal(v1) => {
             if let Versioning::Ideal(v2) = v2 {
@@ -143,8 +143,12 @@ pub fn version_triples_match_tilde(v1: &Versioning, v2: &Versioning) -> bool {
 }
 
 impl VersionConstraint {
-    fn matches_tilde(&self, _v: &Versioning) -> bool {
-        panic!("Tilde constraint not implemented.");
+    fn matches_tilde(&self, v: &Versioning) -> bool {
+        if let Some(version) = self.version.as_ref() {
+            version_triples_match_tilde(version, v)
+        } else {
+            false
+        }
     }
 
     fn matches_caret(&self, _v: &Versioning) -> bool {

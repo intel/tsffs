@@ -70,3 +70,52 @@ jobs:
       - name: MIRI UB Checks
         run: |
           MIRIFLAGS="-Zmiri-backtrace=full -Zmiri-disable-isolation -Zmiri-panic-on-unsupported" "${HOME}/.cargo/bin/cargo" miri test --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
+
+  fuzz_tests:
+    container: amr-fm-registry.caas.intel.com/cache/library/ubuntu@sha256:83f0c2a8d6f266d687d55b5cb1cb2201148eb7ac449e4202d9646b9083f1cee0
+    runs-on: [self-hosted, gasp]
+    steps:
+      - name: Install Dependencies
+        run: |
+          apt-get -y update && \
+          apt-get -y install \
+            git \
+            curl \
+            build-essential \
+            cmake
+      - name: Install SIMICS (Internal)
+        run: |
+          mkdir -p "${HOME}/simics"
+          cd "${HOME}/simics"
+          curl -o intel-simics-package-manager-1.7.3-linux64.tar.gz https://af02p-or.devtools.intel.com/artifactory/simics-local/pub/simics-installer/external/1.7.3/intel-simics-package-manager-1.7.3-linux64.tar.gz
+          tar -xvf intel-simics-package-manager-1.7.3-linux64.tar.gz
+          echo "1000 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}" >> SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
+          echo "2096 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}" >> SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
+          echo "8112 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}" >> SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
+          ./intel-simics-package-manager-1.7.3/ispm settings --config-file ispm.conf decryption-key-files --add SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
+          ./intel-simics-package-manager-1.7.3/ispm \
+            --config-file ispm.conf \
+            --non-interactive --verbose \
+            --package-repo https://af02p-or.devtools.intel.com/ui/native/simics-repos/pub/simics-6/linux64/ \
+            --install-dir "${HOME}/simics" \
+            install 1000-${{ env.SIMICS_PACKAGE_VERSION_1000 }} 2096-${{ env.SIMICS_PACKAGE_VERSION_2096 }} 8112-${{ env.SIMICS_PACKAGE_VERSION_8112 }}
+      - uses: actions/checkout@v3
+      - name: Install Rust Toolchain
+        run: |
+          curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly --component rustfmt --component clippy --component miri --no-modify-path
+      - name: Install Cargo-Fuzz
+        run: |
+          "${HOME}/.cargo/bin/cargo" install cargo-fuzz
+      - name: Set up .env
+        run: |
+          echo "SIMICS_HOME=${HOME}/simics" > .env
+      - name: Fuzz version-tools (10m)
+        run: |
+          cd util/version-tools
+          "${HOME}/.cargo/bin/cargo" fuzz build
+          timeout 600 "${HOME}/.cargo/bin/cargo" fuzz run fuzz_version_constraint_parse
+      - name: Fuzz Raw-CStr (10m)
+        run: |
+          cd util/raw-cstr
+          "${HOME}/.cargo/bin/cargo" fuzz build
+          timeout 600 "${HOME}/.cargo/bin/cargo" fuzz run fuzz_raw_cstr

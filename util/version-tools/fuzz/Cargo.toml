@@ -1,0 +1,27 @@
+[package]
+name = "version-tools-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.version-tools]
+path = ".."
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[profile.release]
+debug = 1
+
+[[bin]]
+name = "fuzz_version_constraint_parse"
+path = "fuzz_targets/fuzz_version_constraint_parse.rs"
+test = false
+doc = false
