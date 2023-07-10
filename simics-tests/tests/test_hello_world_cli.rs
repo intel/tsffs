@@ -12,6 +12,7 @@ const CARGO_MANIFEST_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../");
 const ITERATIONS: usize = 3;
 
 #[test]
+#[cfg_attr(miri, ignore)]
 fn test_hello_world_cli() -> Result<()> {
     use tmp_dir::TmpDirBuilder;
 

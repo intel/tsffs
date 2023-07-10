@@ -1,6 +1,7 @@
 use artifact_dependency::{ArtifactDependencyBuilder, CrateType};
 
 #[test]
+#[cfg_attr(miri, ignore)]
 fn test() {
     let dep = ArtifactDependencyBuilder::default()
         .build_missing(true)

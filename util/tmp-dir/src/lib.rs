@@ -189,6 +189,7 @@ mod tests {
     use anyhow::Result;
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_delete_on_drop_samefunc() -> Result<()> {
         let t = TmpDirBuilder::default()
             .prefix("testp")
@@ -203,6 +204,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_permissions() -> Result<()> {
         const PERMISSIONS: u32 = 0o40755;
         let t = TmpDirBuilder::default()
@@ -242,6 +244,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_delete_on_drop_other_func() -> Result<()> {
         let tp = make_and_drop()?;
         assert!(!tp.exists(), "Tempdir does not exist");
@@ -249,6 +252,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_not_delete_on_drop_other_func() -> Result<()> {
         let tp = make_and_dont_drop()?;
         assert!(tp.exists(), "Tempdir does not exist");
@@ -267,6 +271,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_not_delete_on_return_other_func() -> Result<()> {
         let t = make_and_return()?;
         assert!(t.path().exists(), "Tempdir does not exist");
@@ -274,6 +279,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_delete_on_clone() -> Result<()> {
         let t = make_and_return()?;
         let tt = t.clone();

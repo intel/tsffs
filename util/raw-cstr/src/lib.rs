@@ -3,8 +3,19 @@
 use anyhow::Result;
 use std::{cell::RefCell, collections::HashMap, ffi::CString};
 
+struct RawCStrs(RefCell<HashMap<String, *mut i8>>);
+
+impl Drop for RawCStrs {
+    fn drop(&mut self) {
+        self.0.borrow_mut().iter_mut().for_each(|(_, c)| unsafe {
+            drop(CString::from_raw(*c));
+        });
+        self.0.borrow_mut().clear();
+    }
+}
+
 thread_local! {
-    static RAW_CSTRS: RefCell<HashMap<String, *mut i8>> = RefCell::new(HashMap::new());
+    static RAW_CSTRS: RawCStrs = RawCStrs(RefCell::new(HashMap::new()));
 }
 
 /// Create a constant raw C string as a `*mut i8` from a Rust string reference. C Strings are cached,
@@ -26,7 +37,7 @@ pub fn raw_cstr<S: AsRef<str>>(str: S) -> Result<*mut i8> {
     // let raw = CString::new(str.as_ref())?.into_raw();
     // Ok(raw)
     RAW_CSTRS.with(|rc| {
-        let mut raw_cstrs_map = rc.borrow_mut();
+        let mut raw_cstrs_map = rc.0.borrow_mut();
         let saved = raw_cstrs_map.get(str.as_ref());
 
         if let Some(saved) = saved {

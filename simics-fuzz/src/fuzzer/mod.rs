@@ -46,7 +46,6 @@ use std::{
     io::stdout,
     net::TcpListener,
     path::PathBuf,
-    process::id,
     sync::{
         mpsc::{channel, Receiver, Sender},
         Mutex,

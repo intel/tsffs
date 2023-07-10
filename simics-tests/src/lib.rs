@@ -24,6 +24,7 @@ mod test {
     use anyhow::Result;
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     pub fn init() -> Result<()> {
         test_init()
     }

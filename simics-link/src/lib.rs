@@ -587,6 +587,7 @@ mod tests {
     use crate::link_simics_linux;
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_link_simics_linux() -> Result<()> {
         link_simics_linux("6.0.166")
     }
