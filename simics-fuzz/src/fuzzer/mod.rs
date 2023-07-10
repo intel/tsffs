@@ -38,7 +38,7 @@ use simics::{
         Interface,
     },
     module::ModuleBuilder,
-    project::{Project, ProjectBuilder, ProjectPathBuilder},
+    project::{Project, ProjectBuilder},
     simics::Simics,
 };
 use std::{
@@ -46,6 +46,7 @@ use std::{
     io::stdout,
     net::TcpListener,
     path::PathBuf,
+    process::id,
     sync::{
         mpsc::{channel, Receiver, Sender},
         Mutex,
@@ -60,7 +61,10 @@ use tracing_subscriber::{filter::filter_fn, fmt, prelude::*, registry, Layer};
 const INITIAL_INPUTS: usize = 16;
 
 #[derive(Builder)]
-#[builder(build_fn(validate = "Self::validate", error = "Error"))]
+#[builder(
+    pattern = "owned",
+    build_fn(validate = "Self::validate", error = "Error")
+)]
 pub struct SimicsFuzzer {
     project: Project,
     #[builder(setter(into), default)]
@@ -69,6 +73,7 @@ pub struct SimicsFuzzer {
     corpus: PathBuf,
     #[builder(setter(custom), default)]
     solutions: PathBuf,
+    #[builder(setter(into), default)]
     tui: bool,
     #[builder(default)]
     _shrink: bool,
@@ -91,12 +96,12 @@ pub struct SimicsFuzzer {
 }
 
 impl SimicsFuzzerBuilder {
-    pub fn corpus(&mut self, value: Option<PathBuf>) -> &mut Self {
+    pub fn corpus(mut self, value: Option<PathBuf>) -> Self {
         self.corpus = Some(value.unwrap_or(PathBuf::from(SimicsFuzzer::DEFAULT_CORPUS_DIRECTORY)));
         self
     }
 
-    pub fn solutions(&mut self, value: Option<PathBuf>) -> &mut Self {
+    pub fn solutions(mut self, value: Option<PathBuf>) -> Self {
         self.solutions =
             Some(value.unwrap_or(PathBuf::from(SimicsFuzzer::DEFAULT_SOLUTIONS_DIRECTORY)));
         self
@@ -123,6 +128,8 @@ impl SimicsFuzzer {
         let reg = registry().with({
             fmt::layer()
                 .pretty()
+                .with_thread_ids(true)
+                .with_thread_names(true)
                 .with_writer(stdout)
                 .with_filter(args.log_level)
                 .with_filter(filter_fn(|metadata| {
@@ -167,35 +174,30 @@ impl SimicsFuzzer {
 
         trace!("Setting up project with args: {:?}", args);
 
-        let mut builder: ProjectBuilder = if let Some(project_path) = args.project {
+        let builder: ProjectBuilder = if let Some(project_path) = args.project {
             if let Ok(project) = Project::try_from(project_path.clone()) {
                 project.into()
             } else {
                 // TODO: Merge with else branch, they are practically the same code.
                 let mut builder = ProjectBuilder::default();
 
-                builder.path(
-                    ProjectPathBuilder::default()
-                        .path(project_path)
-                        .temporary(args.no_keep_temp_projects)
-                        .build()?,
-                );
+                builder = builder.path(project_path);
 
-                args.package.into_iter().for_each(|p| {
-                    builder.package(p.package);
-                });
-                args.module.into_iter().for_each(|m| {
-                    builder.module(m.module);
-                });
-                args.directory.into_iter().for_each(|d| {
-                    builder.directory((d.src, d.dst));
-                });
-                args.file.into_iter().for_each(|f| {
-                    builder.file((f.src, f.dst));
-                });
-                args.path_symlink.into_iter().for_each(|s| {
-                    builder.path_symlink((s.src, s.dst));
-                });
+                for p in args.package {
+                    builder = builder.package(p.package);
+                }
+                for m in args.module {
+                    builder = builder.module(m.module);
+                }
+                for d in args.directory {
+                    builder = builder.directory((d.src, d.dst));
+                }
+                for f in args.file {
+                    builder = builder.file((f.src, f.dst));
+                }
+                for s in args.path_symlink {
+                    builder = builder.path_symlink((s.src, s.dst));
+                }
 
                 builder
             }
@@ -204,21 +206,21 @@ impl SimicsFuzzer {
         } else {
             let mut builder = ProjectBuilder::default();
 
-            args.package.into_iter().for_each(|p| {
-                builder.package(p.package);
-            });
-            args.module.into_iter().for_each(|m| {
-                builder.module(m.module);
-            });
-            args.directory.into_iter().for_each(|d| {
-                builder.directory((d.src, d.dst));
-            });
-            args.file.into_iter().for_each(|f| {
-                builder.file((f.src, f.dst));
-            });
-            args.path_symlink.into_iter().for_each(|s| {
-                builder.path_symlink((s.src, s.dst));
-            });
+            for p in args.package {
+                builder = builder.package(p.package);
+            }
+            for m in args.module {
+                builder = builder.module(m.module);
+            }
+            for d in args.directory {
+                builder = builder.directory((d.src, d.dst));
+            }
+            for f in args.file {
+                builder = builder.file((f.src, f.dst));
+            }
+            for s in args.path_symlink {
+                builder = builder.path_symlink((s.src, s.dst));
+            }
 
             builder
         };
@@ -601,9 +603,9 @@ impl SimicsFuzzer {
                 }
                 res @ Err(_) => return res.map_err(|e| anyhow!("Failed to run launcher: {}", e)),
             }
-        };
+        }
 
-        self.project.cleanup();
+        self.project.path.remove_on_drop(true);
 
         Ok(())
     }

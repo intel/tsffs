@@ -1,13 +1,17 @@
+#!/usr/bin/env -S cargo +nightly -Zscript
+
 //! ```cargo
 //! [dependencies]
-//! anyhow = "1.0.71"
-//! bindgen = "0.65.1"
-//! bytes = "1.4.0"
-//! flate2 = "1.0.25"
-//! tar = "0.4.38"
-//! toml_edit = "0.19.8"
-//! versions = "5.0.0"
-//! walkdir = "2.3.3"
+//! clap = "*"
+//! anyhow = "*"
+//! bindgen = "*"
+//! bytes = "*"
+//! flate2 = "*"
+//! reqwest = "*"
+//! tar = "*"
+//! toml_edit = "*"
+//! versions = "*"
+//! walkdir = "*"
 //! ```
 
 // Bindings build script for SIMICS sys API
@@ -16,12 +20,13 @@
 // bindings file for each one. It will output the bindings to the `src/bindings` directory of
 // this crate, where they will be included by feature flag with the `src/bindings/mod.rs` file.
 
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, ensure, Context, Result};
 use bindgen::{
     callbacks::{MacroParsingBehavior, ParseCallbacks},
     Builder, CargoCallbacks, FieldVisibilityKind,
 };
 use flate2::bufread::GzDecoder;
+use reqwest::blocking::get;
 use std::{
     collections::{HashMap, HashSet},
     ffi::OsStr,
@@ -37,45 +42,30 @@ use versions::Versioning;
 use walkdir::WalkDir;
 
 /// Base path to where the SIMICS packages can be downloaded from
-const SIMICS_PACKAGE_REPO_URL: &str =
-    "https://af02p-or.devtools.intel.com/ui/native/simics-local/pub/simics-6/linux64/";
-
 const SIMICS_BASE_PACKAGE_NUMBER: usize = 1000;
 
-/// Known versions for SIMICS-Base package. This should be updated correspondingly with a feature
-/// flag addition in the library for this crate
-const SIMICS_BASE_VERSIONS: &[&str] = &[
-    // NOTE: We don't support any version earlier than 6.0.28 because that is the first version
-    // that shipped with an src/include directory to build the API from
-    "6.0.28", "6.0.31", "6.0.33", "6.0.34", "6.0.35", "6.0.36", "6.0.38", "6.0.39", "6.0.40",
-    "6.0.41", "6.0.42", "6.0.43", "6.0.44", "6.0.45", "6.0.46", "6.0.47", "6.0.48", "6.0.49",
-    "6.0.50", "6.0.51", "6.0.52", "6.0.53", "6.0.54", "6.0.55", "6.0.56", "6.0.57", "6.0.58",
-    "6.0.59", "6.0.60", "6.0.61", "6.0.62", "6.0.63", "6.0.64", "6.0.65", "6.0.66", "6.0.67",
-    "6.0.68", "6.0.69", "6.0.70", "6.0.71", "6.0.72", "6.0.73", "6.0.74", "6.0.75", "6.0.76",
-    "6.0.77", "6.0.78", "6.0.79", "6.0.80", "6.0.81", "6.0.82", "6.0.83", "6.0.84", "6.0.85",
-    "6.0.86", "6.0.87", "6.0.88", "6.0.89", "6.0.90", "6.0.91", "6.0.92", "6.0.93", "6.0.94",
-    "6.0.95", "6.0.96", "6.0.97", "6.0.98", "6.0.99", "6.0.100", "6.0.101", "6.0.102", "6.0.103",
-    "6.0.104", "6.0.105", "6.0.106", "6.0.107", "6.0.108", "6.0.109", "6.0.110", "6.0.111",
-    "6.0.112", "6.0.113", "6.0.114", "6.0.115", "6.0.116", "6.0.117", "6.0.118", "6.0.119",
-    "6.0.120", "6.0.121", "6.0.122", "6.0.123", "6.0.124", "6.0.125", "6.0.126", "6.0.127",
-    "6.0.128", "6.0.129", "6.0.130", "6.0.131", "6.0.132", "6.0.133", "6.0.134", "6.0.135",
-    "6.0.136", "6.0.137", "6.0.138", "6.0.139", "6.0.140", "6.0.141", "6.0.142", "6.0.143",
-    "6.0.144", "6.0.145", "6.0.146", "6.0.147", "6.0.148", "6.0.149", "6.0.150", "6.0.151",
-    "6.0.152", "6.0.153", "6.0.154", "6.0.155", "6.0.156", "6.0.157", "6.0.158", "6.0.159",
-    "6.0.160", "6.0.161", "6.0.162", "6.0.163", "6.0.164", "6.0.165", "6.0.166",
-];
+/// Base package filename pattern
+const SIMICS_BASE_PACKAGE_FILENAME_PATTERN: &str = r#"simics-pkg-1000-([0-9\.]+)-linux64.tar"#;
 
+#[derive(Parser)]
 struct Args {
+    #[arg(short, long)]
     /// List of base versions, defaults to everything if none are provided
     base_versions: Vec<String>,
+    #[arg(short, long)]
     /// Directory to use to download and unpack packages
     packages_dir: PathBuf,
+    #[arg(short, long)]
     /// Directory to use to output bindings
     bindings_dir: PathBuf,
+    #[arg(short, long)]
     /// Cargo.toml file to update with required features
     toml_file: PathBuf,
+    #[arg(short, long)]
     /// ISPM tar.gz file
-    ispm_file: PathBuf,
+    ispm_tarball_url: String,
+    #[arg(short, long)]
+    simics_package_repo_url: String,
 }
 
 // https://github.com/rust-lang/rust-bindgen/issues/687#issuecomment-1312298570
@@ -101,6 +91,34 @@ const IGNORE_MACROS: [&str; 20] = [
     "FP_ZERO",
     "IPPORT_RESERVED",
 ];
+
+fn download_file<S: AsRef<str>, P: AsRef<Path>>(url: S, path: P) -> Result<()> {
+    let response = get(url.as_ref())?;
+
+    let mut dest = if path.as_ref().is_dir() {
+        File::create(
+            path.as_ref().join(
+                response
+                    .url()
+                    .path_segments()
+                    .and_then(|s| s.last())
+                    .and_then(|n| n.is_empty().then_some(n.clone()))
+                    .unwrap_or_else(|| anyhow!("No filename for response"))?,
+            ),
+        )?
+    } else {
+        ensure!(
+            path.as_ref()
+                .parent()
+                .ok_or_else(|| anyhow!("No parent of path"))?
+                .is_dir(),
+            "Parent of path must be directory"
+        );
+        File::create(path.as_ref())?
+    };
+    copy(&mut response.bytes()?, &mut dest)?;
+    Ok(())
+}
 
 #[derive(Debug)]
 struct IgnoreMacros(HashSet<String>);
@@ -715,16 +733,7 @@ fn update_cargo_toml(args: &Args) -> Result<()> {
 }
 
 fn main() -> Result<()> {
-    let args = Args {
-        base_versions: SIMICS_BASE_VERSIONS
-            .iter()
-            .map(|v| v.to_string())
-            .collect::<Vec<_>>(),
-        packages_dir: PathBuf::from("./packages"),
-        bindings_dir: PathBuf::from("./src/bindings"),
-        toml_file: PathBuf::from("./Cargo.toml"),
-        ispm_file: PathBuf::from("./scripts/resource/ispm-internal-cli-1.7.0-linux64.tar.gz"),
-    };
+    let args = Args::parse();
 
     // Download and install all the requested base versions into the packages directory
     install_packages(&args)?;

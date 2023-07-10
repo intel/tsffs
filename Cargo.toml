@@ -21,6 +21,7 @@ members = [
     "util/version-tools",
     "util/ffi-macro",
     "util/artifact-dependency",
+    "util/tmp-dir",
 ]
 default-members = [
     # Provide simics 
@@ -40,6 +41,7 @@ default-members = [
     "util/version-tools",
     "util/ffi-macro",
     "util/artifact-dependency",
+    "util/tmp-dir",
 ]
 
 [workspace.dependencies]
@@ -51,6 +53,7 @@ confuse_module = { path = "./confuse_module" }
 simics-api-sys = { path = "./simics-api-sys" }
 simics-api = { path = "./simics-api" }
 simics-api-macro = { path = "./simics-api-macro" }
+tmp-dir = { path = "./util/tmp-dir" }
 raw-cstr = { path = "./util/raw-cstr" }
 version-tools = { path = "./util/version-tools" }
 ffi-macro = { path = "./util/ffi-macro" }

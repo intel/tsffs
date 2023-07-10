@@ -17,10 +17,7 @@ use simics_api::sys::SIMICS_VERSION;
 use std::{
     collections::{HashMap, HashSet},
     fmt::Debug,
-    fs::{
-        copy, create_dir_all, read_to_string, remove_dir_all, set_permissions, OpenOptions,
-        Permissions,
-    },
+    fs::{copy, create_dir_all, read_to_string, set_permissions, OpenOptions, Permissions},
     io::{ErrorKind, Write},
     os::unix::{fs::symlink, prelude::PermissionsExt},
     path::{Component, Path, PathBuf},
@@ -28,8 +25,8 @@ use std::{
     str::FromStr,
 };
 use strum::{AsRefStr, Display};
-use tempdir::TempDir;
-use tracing::{debug, error, info, warn};
+use tmp_dir::{TmpDir, TmpDirBuilder};
+use tracing::{debug, error, info};
 use version_tools::VersionConstraint;
 
 /// CAUTION: This does not resolve symlinks (unlike
@@ -217,34 +214,32 @@ enum SimicsPathMarker {
     Script,
 }
 
-#[derive(Builder, Debug, Clone)]
-#[builder(build_fn(error = "Error"))]
+#[derive(Debug)]
 pub struct ProjectPath {
-    #[builder(setter(into), default = "self.default_path()?")]
     pub path: PathBuf,
-    #[builder(default = "true")]
-    temporary: bool,
-}
-
-impl ProjectPathBuilder {
-    fn default_path(&self) -> Result<PathBuf> {
-        let path = TempDir::new(ProjectPath::PREFIX)?.into_path();
-        Ok(path)
-    }
+    temporary: Option<TmpDir>,
 }
 
 impl ProjectPath {
     const PREFIX: &str = "project";
 
-    fn default_path() -> Result<PathBuf> {
-        Ok(TempDir::new(Self::PREFIX)?.into_path())
+    fn default() -> Result<Self> {
+        // By default, remove_on_drop is false, because if it is set to true before the launcher
+        // is spawned, we will remove it twice (not good)
+        let tmp = TmpDirBuilder::default()
+            .prefix(Self::PREFIX)
+            .remove_on_drop(false)
+            .build()?;
+        Ok(Self {
+            path: tmp.path().to_path_buf(),
+            temporary: Some(tmp),
+        })
     }
 
-    fn default() -> Result<Self> {
-        Ok(Self {
-            path: Self::default_path()?,
-            temporary: true,
-        })
+    pub fn remove_on_drop(&mut self, remove_on_drop: bool) {
+        if let Some(temporary) = self.temporary.as_mut() {
+            temporary.remove_on_drop(remove_on_drop);
+        }
     }
 }
 
@@ -255,7 +250,7 @@ where
     fn from(value: P) -> Self {
         Self {
             path: value.as_ref().to_path_buf(),
-            temporary: false,
+            temporary: None,
         }
     }
 }
@@ -381,17 +376,26 @@ impl TryFrom<&PathBuf> for Properties {
     }
 }
 
-#[derive(Builder, Clone)]
-#[builder(build_fn(error = "Error"))]
+#[derive(Builder)]
+#[builder(pattern = "owned", build_fn(error = "Error"))]
 pub struct Project {
-    #[builder(setter(into), default = "self.default_path()?")]
+    #[builder(setter(into), default = "ProjectPath::default()?")]
     /// The path to the project base directory.
     pub path: ProjectPath,
-    #[builder(setter(into), default = "self.default_base()?")]
+    #[builder(
+        setter(into),
+        default = r#"
+            PackageBuilder::default()
+                .package_number(PublicPackageNumber::Base)
+                .version(SIMICS_VERSION.parse::<VersionConstraint>()?)
+                .home(self.home.as_ref().cloned().unwrap_or(simics_home()?))
+                .build()?
+        "#
+    )]
     /// The base version constraint to use when building the project. You should never
     /// have to specify this.
     base: Package,
-    #[builder(setter(into), default = "self.default_home()?")]
+    #[builder(setter(into), default = "simics_home()?")]
     /// The SIMICS Home directory. You should never need to manually specify this.
     home: PathBuf,
     #[builder(setter(each(name = "package", into), into), default)]
@@ -706,40 +710,17 @@ impl Project {
     }
 }
 
-impl ProjectBuilder {
-    /// Create a new project in a temporary directory. The directory will actually be
-    /// created, because to securely create a tmpdir we need to hold it until we use it
-    /// once we choose a name.
-    fn default_path(&self) -> Result<ProjectPath> {
-        ProjectPath::default()
-    }
-
-    /// The default version constraint is `==SIMICS_VERSION`
-    fn default_base(&self) -> Result<Package> {
-        let constraint: VersionConstraint = SIMICS_VERSION.parse()?;
-        PackageBuilder::default()
-            .package_number(PublicPackageNumber::Base)
-            .version(constraint)
-            .home(self.home.as_ref().cloned().unwrap_or(self.default_home()?))
-            .build()
-    }
-
-    fn default_home(&self) -> Result<PathBuf> {
-        simics_home()
-    }
-}
-
 impl From<Project> for ProjectBuilder {
     fn from(value: Project) -> Self {
         Self {
-            path: Some(value.path.clone()),
-            base: Some(value.base.clone()),
-            home: Some(value.home.clone()),
-            packages: Some(value.packages.clone()),
-            modules: Some(value.modules.clone()),
-            directories: Some(value.directories.clone()),
-            files: Some(value.files.clone()),
-            file_contents: Some(value.file_contents.clone()),
+            path: Some(value.path),
+            base: Some(value.base),
+            home: Some(value.home),
+            packages: Some(value.packages),
+            modules: Some(value.modules),
+            directories: Some(value.directories),
+            files: Some(value.files),
+            file_contents: Some(value.file_contents),
             path_symlinks: Some(value.path_symlinks),
         }
     }
@@ -758,22 +739,5 @@ impl Debug for Project {
             .field("file_contents", &self.file_contents.values())
             .field("path_symlinks", &self.path_symlinks)
             .finish()
-    }
-}
-
-impl Project {
-    pub fn cleanup(&mut self) {
-        if self.path.temporary {
-            remove_dir_all(&self.path.path)
-                .map_err(|e| {
-                    warn!(
-                        "Failed to remove temporary project from {} (this is probably ok): {}",
-                        self.path.path.display(),
-                        e
-                    );
-                    e
-                })
-                .ok();
-        }
     }
 }
