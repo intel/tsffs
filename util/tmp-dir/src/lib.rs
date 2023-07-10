@@ -59,6 +59,26 @@ impl TmpDir {
         &self.path
     }
 
+    pub fn prefix(&self) -> &str {
+        &self.prefix
+    }
+
+    pub fn suffix(&self) -> &str {
+        &self.suffix
+    }
+
+    pub fn tries(&self) -> usize {
+        self.tries
+    }
+
+    pub fn random_len(&self) -> usize {
+        self.random_len
+    }
+
+    pub fn permissions(&self) -> u32 {
+        self.permissions
+    }
+
     pub fn remove_on_drop(&mut self, remove_on_drop: bool) {
         self.remove_on_drop = remove_on_drop;
     }
