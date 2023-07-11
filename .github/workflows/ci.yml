@@ -114,7 +114,7 @@ jobs:
           cd util/version-tools
           "${HOME}/.cargo/bin/cargo" fuzz build
           timeout 600 "${HOME}/.cargo/bin/cargo" fuzz run \
-            fuzz_version_constraint_parse \
+            fuzz_version_constraint_parse -- \
             -artifact_prefix=./artifacts \
             -create_missing_dirs=1
           if [ -d ./artifacts ]; then
@@ -128,7 +128,7 @@ jobs:
           cd util/raw-cstr
           "${HOME}/.cargo/bin/cargo" fuzz build
           timeout 600 "${HOME}/.cargo/bin/cargo" fuzz run \
-            fuzz_raw_cstr \
+            fuzz_raw_cstr -- \
             -artifact_prefix=./artifacts \
             -create_missing_dirs=1
           if [ -d ./artifacts ]; then
