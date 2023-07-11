@@ -19,7 +19,7 @@ env:
 
 jobs:
     build_and_test:
-        container: ${CI_REGISTRY_NAME}:/cache/library/ubuntu
+        container: ${CI_REGISTRY_NAME}/cache/library/ubuntu
         runs-on: [self-hosted, gasp]
         steps:
             - name: Install Git
