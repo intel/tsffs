@@ -10,7 +10,6 @@
 extern crate num_traits;
 use self::x86_64::X86_64Fault;
 
-
 use serde::{Deserialize, Serialize};
 
 pub mod x86_64;
