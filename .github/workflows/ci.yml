@@ -8,7 +8,8 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  REPO: "/__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}/"
+  CI_REGISTRY_NAME: amr-registry.caas.intel.com
+
   # Simics base
   SIMICS_PACKAGE_VERSION_1000: 6.0.166
   # QSP X86
@@ -197,5 +198,34 @@ jobs:
           export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
           /action/lib/linter.sh
           
+  trivy:
+    container: gcr.io/kaniko-project/executor:v1.8.1-debug
+    runs-on: [self-hosted, gasp]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build Hello World Container
+        run: |
+          /kaniko/executor \
+            --context examples/hello-world \
+            --dockerfile Dockerfile \
+            --no-push \
+            --tarPath /hello-world.tar \
+            --destination=image
+      - name: Build X509Parse Container
+        run: |
+          /kaniko/executor \
+            --context examples/x509-parse \
+            --dockerfile Dockerfile \
+            --no-push \
+            --tarPath /x509-parse.tar \
+            --destination=image
+      - name: Scan Hello World Container 
+        uses: aquasecurity/trivy-action@master
+        with:
+          input: /hello-world.tar
+      - name: Scan X509Parse Container 
+        uses: aquasecurity/trivy-action@master
+        with:
+          input: /x509-parse.tar
 
 

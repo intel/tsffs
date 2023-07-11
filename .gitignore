@@ -2,3 +2,4 @@
 /Cargo.lock
 .env
 .mypy_cache
+simics-api-sys/packages
