@@ -27,30 +27,53 @@ jobs:
                   apt-get -y update && \
                   apt-get -y install git
             - uses: actions/checkout@v3
-            - name: Check GITHUB_EVENT_PATH Consistency
-              id: check-gh-event-path
+            - name: Install Dependencies
+              shell: bash
               run: |
-                  echo "GITHUB_WORKSPACE=${GITHUB_WORKSPACE}" >> "${GITHUB_OUTPUT}"
-            - name: Install CI Dependencies (Custom CI)
-              if: steps.check-gh-event-path.outputs.GITHUB_WORKSPACE != github.workspace
-              uses: /__w/applications.security.fuzzing.confuse/applications.security.fuzzing.confuse/.github/actions/install-ci-deps
-              with:
-                  SIMICS_PUBLIC_PACKAGE_KEY_1000: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}
-                  SIMICS_PUBLIC_PACKAGE_KEY_2096: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}
-                  SIMICS_PUBLIC_PACKAGE_KEY_8112: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}
-                  SIMICS_PUBLIC_PACKAGE_VERSION_1000: ${{ env.SIMICS_PACKAGE_VERSION_1000 }}
-                  SIMICS_PUBLIC_PACKAGE_VERSION_2096: ${{ env.SIMICS_PACKAGE_VERSION_2096 }}
-                  SIMICS_PUBLIC_PACKAGE_VERSION_8112: ${{ env.SIMICS_PACKAGE_VERSION_8112 }}
-            - name: Install CI Dependencies (GH CI)
-              if: steps.check-gh-event-path.outputs.GITHUB_WORKSPACE == github.workspace
-              uses: ./.github/actions/install-ci-deps
-              with:
-                  SIMICS_PUBLIC_PACKAGE_KEY_1000: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}
-                  SIMICS_PUBLIC_PACKAGE_KEY_2096: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}
-                  SIMICS_PUBLIC_PACKAGE_KEY_8112: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}
-                  SIMICS_PUBLIC_PACKAGE_VERSION_1000: ${{ env.SIMICS_PACKAGE_VERSION_1000 }}
-                  SIMICS_PUBLIC_PACKAGE_VERSION_2096: ${{ env.SIMICS_PACKAGE_VERSION_2096 }}
-                  SIMICS_PUBLIC_PACKAGE_VERSION_8112: ${{ env.SIMICS_PACKAGE_VERSION_8112 }}
+                  apt-get -y update && \
+                  apt-get -y install \
+                    git \
+                    curl \
+                    build-essential \
+                    cmake
+            - name: Install Rust Toolchain
+              shell: bash
+              run: |
+                  curl https://sh.rustup.rs -sSf \
+                  | sh -s -- -y --default-toolchain nightly --component rustfmt \
+                    --component clippy --component miri --no-modify-path
+            - name: Install SIMICS (Internal)
+              shell: bash
+              run: |
+                  mkdir -p "${HOME}/simics"
+                  cd "${HOME}/simics"
+                  curl -o intel-simics-package-manager-1.7.3-linux64.tar.gz \
+                    https://af02p-or.devtools.intel.com/artifactory/simics-local/pub/simics-installer/external/1.7.3/intel-simics-package-manager-1.7.3-linux64.tar.gz
+                  tar -xvf intel-simics-package-manager-1.7.3-linux64.tar.gz
+                  {
+                    echo "1000 ${{ inputs.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}";
+                    echo "2096 ${{ inputs.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}";
+                    echo "8112 ${{ inputs.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}";
+                  } > /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
+                  cat /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
+                  ./intel-simics-package-manager-1.7.3/ispm settings \
+                    --config-file /ispm.conf decryption-key-files \
+                    --add /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
+                  cat /ispm.conf
+                  ./intel-simics-package-manager-1.7.3/ispm \
+                    --config-file /ispm.conf \
+                    --non-interactive \
+                    --verbose \
+                    --package-repo https://af02p-or.devtools.intel.com/ui/native/simics-repos/pub/simics-6/linux64/ \
+                    --install-dir "${HOME}/simics" \
+                    install \
+                    1000-${{ inputs.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }} \
+                    2096-${{ inputs.SIMICS_PUBLIC_PACKAGE_VERSION_2096 }} \
+                    8112-${{ inputs.SIMICS_PUBLIC_PACKAGE_VERSION_8112 }}
+            - name: Set up .env
+              shell: bash
+              run: |
+                  echo "SIMICS_HOME=${HOME}/simics" > .env
             - name: Build Project
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
@@ -82,30 +105,53 @@ jobs:
                   apt-get -y update && \
                   apt-get -y install git
             - uses: actions/checkout@v3
-            - name: Check GITHUB_EVENT_PATH Consistency
-              id: check-gh-event-path
+            - name: Install Dependencies
+              shell: bash
               run: |
-                  echo "GITHUB_WORKSPACE=${GITHUB_WORKSPACE}" >> "${GITHUB_OUTPUT}"
-            - name: Install CI Dependencies (Custom CI)
-              if: steps.check-gh-event-path.outputs.GITHUB_WORKSPACE != github.workspace
-              uses: /__w/applications.security.fuzzing.confuse/applications.security.fuzzing.confuse/.github/actions/install-ci-deps
-              with:
-                  SIMICS_PUBLIC_PACKAGE_KEY_1000: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}
-                  SIMICS_PUBLIC_PACKAGE_KEY_2096: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}
-                  SIMICS_PUBLIC_PACKAGE_KEY_8112: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}
-                  SIMICS_PUBLIC_PACKAGE_VERSION_1000: ${{ env.SIMICS_PACKAGE_VERSION_1000 }}
-                  SIMICS_PUBLIC_PACKAGE_VERSION_2096: ${{ env.SIMICS_PACKAGE_VERSION_2096 }}
-                  SIMICS_PUBLIC_PACKAGE_VERSION_8112: ${{ env.SIMICS_PACKAGE_VERSION_8112 }}
-            - name: Install CI Dependencies (GH CI)
-              if: steps.check-gh-event-path.outputs.GITHUB_WORKSPACE == github.workspace
-              uses: ./.github/actions/install-ci-deps
-              with:
-                  SIMICS_PUBLIC_PACKAGE_KEY_1000: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}
-                  SIMICS_PUBLIC_PACKAGE_KEY_2096: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}
-                  SIMICS_PUBLIC_PACKAGE_KEY_8112: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}
-                  SIMICS_PUBLIC_PACKAGE_VERSION_1000: ${{ env.SIMICS_PACKAGE_VERSION_1000 }}
-                  SIMICS_PUBLIC_PACKAGE_VERSION_2096: ${{ env.SIMICS_PACKAGE_VERSION_2096 }}
-                  SIMICS_PUBLIC_PACKAGE_VERSION_8112: ${{ env.SIMICS_PACKAGE_VERSION_8112 }}
+                  apt-get -y update && \
+                  apt-get -y install \
+                    git \
+                    curl \
+                    build-essential \
+                    cmake
+            - name: Install Rust Toolchain
+              shell: bash
+              run: |
+                  curl https://sh.rustup.rs -sSf \
+                  | sh -s -- -y --default-toolchain nightly --component rustfmt \
+                    --component clippy --component miri --no-modify-path
+            - name: Install SIMICS (Internal)
+              shell: bash
+              run: |
+                  mkdir -p "${HOME}/simics"
+                  cd "${HOME}/simics"
+                  curl -o intel-simics-package-manager-1.7.3-linux64.tar.gz \
+                    https://af02p-or.devtools.intel.com/artifactory/simics-local/pub/simics-installer/external/1.7.3/intel-simics-package-manager-1.7.3-linux64.tar.gz
+                  tar -xvf intel-simics-package-manager-1.7.3-linux64.tar.gz
+                  {
+                    echo "1000 ${{ inputs.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}";
+                    echo "2096 ${{ inputs.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}";
+                    echo "8112 ${{ inputs.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}";
+                  } > /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
+                  cat /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
+                  ./intel-simics-package-manager-1.7.3/ispm settings \
+                    --config-file /ispm.conf decryption-key-files \
+                    --add /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
+                  cat /ispm.conf
+                  ./intel-simics-package-manager-1.7.3/ispm \
+                    --config-file /ispm.conf \
+                    --non-interactive \
+                    --verbose \
+                    --package-repo https://af02p-or.devtools.intel.com/ui/native/simics-repos/pub/simics-6/linux64/ \
+                    --install-dir "${HOME}/simics" \
+                    install \
+                    1000-${{ inputs.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }} \
+                    2096-${{ inputs.SIMICS_PUBLIC_PACKAGE_VERSION_2096 }} \
+                    8112-${{ inputs.SIMICS_PUBLIC_PACKAGE_VERSION_8112 }}
+            - name: Set up .env
+              shell: bash
+              run: |
+                  echo "SIMICS_HOME=${HOME}/simics" > .env
             - name: Check Project
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
@@ -125,30 +171,53 @@ jobs:
                   apt-get -y update && \
                   apt-get -y install git
             - uses: actions/checkout@v3
-            - name: Check GITHUB_EVENT_PATH Consistency
-              id: check-gh-event-path
+            - name: Install Dependencies
+              shell: bash
               run: |
-                  echo "GITHUB_WORKSPACE=${GITHUB_WORKSPACE}" >> "${GITHUB_OUTPUT}"
-            - name: Install CI Dependencies (Custom CI)
-              if: steps.check-gh-event-path.outputs.GITHUB_WORKSPACE != github.workspace
-              uses: /__w/applications.security.fuzzing.confuse/applications.security.fuzzing.confuse/.github/actions/install-ci-deps
-              with:
-                  SIMICS_PUBLIC_PACKAGE_KEY_1000: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}
-                  SIMICS_PUBLIC_PACKAGE_KEY_2096: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}
-                  SIMICS_PUBLIC_PACKAGE_KEY_8112: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}
-                  SIMICS_PUBLIC_PACKAGE_VERSION_1000: ${{ env.SIMICS_PACKAGE_VERSION_1000 }}
-                  SIMICS_PUBLIC_PACKAGE_VERSION_2096: ${{ env.SIMICS_PACKAGE_VERSION_2096 }}
-                  SIMICS_PUBLIC_PACKAGE_VERSION_8112: ${{ env.SIMICS_PACKAGE_VERSION_8112 }}
-            - name: Install CI Dependencies (GH CI)
-              if: steps.check-gh-event-path.outputs.GITHUB_WORKSPACE == github.workspace
-              uses: ./.github/actions/install-ci-deps
-              with:
-                  SIMICS_PUBLIC_PACKAGE_KEY_1000: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}
-                  SIMICS_PUBLIC_PACKAGE_KEY_2096: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}
-                  SIMICS_PUBLIC_PACKAGE_KEY_8112: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}
-                  SIMICS_PUBLIC_PACKAGE_VERSION_1000: ${{ env.SIMICS_PACKAGE_VERSION_1000 }}
-                  SIMICS_PUBLIC_PACKAGE_VERSION_2096: ${{ env.SIMICS_PACKAGE_VERSION_2096 }}
-                  SIMICS_PUBLIC_PACKAGE_VERSION_8112: ${{ env.SIMICS_PACKAGE_VERSION_8112 }}
+                  apt-get -y update && \
+                  apt-get -y install \
+                    git \
+                    curl \
+                    build-essential \
+                    cmake
+            - name: Install Rust Toolchain
+              shell: bash
+              run: |
+                  curl https://sh.rustup.rs -sSf \
+                  | sh -s -- -y --default-toolchain nightly --component rustfmt \
+                    --component clippy --component miri --no-modify-path
+            - name: Install SIMICS (Internal)
+              shell: bash
+              run: |
+                  mkdir -p "${HOME}/simics"
+                  cd "${HOME}/simics"
+                  curl -o intel-simics-package-manager-1.7.3-linux64.tar.gz \
+                    https://af02p-or.devtools.intel.com/artifactory/simics-local/pub/simics-installer/external/1.7.3/intel-simics-package-manager-1.7.3-linux64.tar.gz
+                  tar -xvf intel-simics-package-manager-1.7.3-linux64.tar.gz
+                  {
+                    echo "1000 ${{ inputs.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}";
+                    echo "2096 ${{ inputs.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}";
+                    echo "8112 ${{ inputs.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}";
+                  } > /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
+                  cat /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
+                  ./intel-simics-package-manager-1.7.3/ispm settings \
+                    --config-file /ispm.conf decryption-key-files \
+                    --add /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
+                  cat /ispm.conf
+                  ./intel-simics-package-manager-1.7.3/ispm \
+                    --config-file /ispm.conf \
+                    --non-interactive \
+                    --verbose \
+                    --package-repo https://af02p-or.devtools.intel.com/ui/native/simics-repos/pub/simics-6/linux64/ \
+                    --install-dir "${HOME}/simics" \
+                    install \
+                    1000-${{ inputs.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }} \
+                    2096-${{ inputs.SIMICS_PUBLIC_PACKAGE_VERSION_2096 }} \
+                    8112-${{ inputs.SIMICS_PUBLIC_PACKAGE_VERSION_8112 }}
+            - name: Set up .env
+              shell: bash
+              run: |
+                  echo "SIMICS_HOME=${HOME}/simics" > .env
             - name: Install Cargo-Fuzz
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
