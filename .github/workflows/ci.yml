@@ -23,6 +23,9 @@ jobs:
         runs-on: [self-hosted, gasp]
         steps:
             - uses: actions/checkout@v3
+            - run: |
+                  echo ${{ github.workspace }}
+                  echo $GITHUB_WORKSPACE
             - uses: ./.github/actions/install-ci-deps
               with:
                   SIMICS_PUBLIC_PACKAGE_KEY_1000: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}
