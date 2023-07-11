@@ -67,6 +67,45 @@ jobs:
       - name: Test Docs
         run: |
           "${HOME}/.cargo/bin/cargo" test --doc --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
+
+  static_analysis:
+    container: amr-fm-registry.caas.intel.com/cache/library/ubuntu@sha256:83f0c2a8d6f266d687d55b5cb1cb2201148eb7ac449e4202d9646b9083f1cee0
+    runs-on: [self-hosted, gasp]
+    steps:
+      - name: Install Dependencies
+        run: |
+          apt-get -y update && \
+          apt-get -y install \
+            git \
+            curl \
+            build-essential \
+            cmake
+      - name: Install SIMICS (Internal)
+        run: |
+          mkdir -p "${HOME}/simics"
+          cd "${HOME}/simics"
+          curl -o intel-simics-package-manager-1.7.3-linux64.tar.gz https://af02p-or.devtools.intel.com/artifactory/simics-local/pub/simics-installer/external/1.7.3/intel-simics-package-manager-1.7.3-linux64.tar.gz
+          tar -xvf intel-simics-package-manager-1.7.3-linux64.tar.gz
+          echo "1000 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}" >> SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
+          echo "2096 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}" >> SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
+          echo "8112 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}" >> SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
+          ./intel-simics-package-manager-1.7.3/ispm settings --config-file ispm.conf decryption-key-files --add SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
+          ./intel-simics-package-manager-1.7.3/ispm \
+            --config-file ispm.conf \
+            --non-interactive --verbose \
+            --package-repo https://af02p-or.devtools.intel.com/ui/native/simics-repos/pub/simics-6/linux64/ \
+            --install-dir "${HOME}/simics" \
+            install 1000-${{ env.SIMICS_PACKAGE_VERSION_1000 }} 2096-${{ env.SIMICS_PACKAGE_VERSION_2096 }} 8112-${{ env.SIMICS_PACKAGE_VERSION_8112 }}
+      - uses: actions/checkout@v3
+      - name: Install Rust Toolchain
+        run: |
+          curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly --component rustfmt --component clippy --component miri --no-modify-path
+      - name: Set up .env
+        run: |
+          echo "SIMICS_HOME=${HOME}/simics" > .env
+      - name: Check Project 
+        run: |
+          "${HOME}/.cargo/bin/cargo" clippy --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
       - name: MIRI UB Checks
         run: |
           MIRIFLAGS="-Zmiri-backtrace=full -Zmiri-disable-isolation -Zmiri-panic-on-unsupported" "${HOME}/.cargo/bin/cargo" miri test --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
@@ -112,11 +151,14 @@ jobs:
       - name: Fuzz version-tools (10m)
         run: |
           cd util/version-tools
+
           "${HOME}/.cargo/bin/cargo" fuzz build
-          timeout 600 "${HOME}/.cargo/bin/cargo" fuzz run \
-            fuzz_version_constraint_parse -- \
-            -artifact_prefix=./artifacts \
-            -create_missing_dirs=1
+
+          timeout --preserve-status 600 "${HOME}/.cargo/bin/cargo" fuzz run \
+            fuzz_version_constraint_parse
+
+          echo "Done fuzzing!"
+
           if [ -d ./fuzz/artifacts ]; then
             if find ./fuzz/artifacts -mindepth 1 -maxdepth 1 | read; then
               exit 1
@@ -126,12 +168,30 @@ jobs:
       - name: Fuzz Raw-CStr (10m)
         run: |
           cd util/raw-cstr
+
           "${HOME}/.cargo/bin/cargo" fuzz build
-          timeout 600 "${HOME}/.cargo/bin/cargo" fuzz run \
+
+          timeout --preserve-status 600 "${HOME}/.cargo/bin/cargo" fuzz run \
             fuzz_raw_cstr
+
+          echo "Done fuzzing!"
+
           if [ -d ./fuzz/artifacts ]; then
             if find ./fuzz/artifacts -mindepth 1 -maxdepth 1 | read; then
               exit 1
             fi
           fi
           exit 0
+
+  super_lint:
+    container: amr-fm-registry.caas.intel.com/cache/github/super-linter@sha256:249a4426fdf5b7b6fdd3658229b68ec9e02f2f417ea911f3ffdcd97edea1015a
+    runs-on: [self-hosted, gasp]
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Lint
+        env:
+          GITHUB_TOKEN: ${{ steps.}}
+
+

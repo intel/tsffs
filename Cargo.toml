@@ -13,9 +13,6 @@ members = [
     "simics-fuzz",
     # Modules
     "confuse_module",
-    # Targets
-    "targets/hello-world",
-    "targets/x509-parse",
     # Utilities
     "util/raw-cstr",
     "util/version-tools",
