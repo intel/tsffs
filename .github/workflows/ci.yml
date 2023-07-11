@@ -8,7 +8,6 @@ on:
 
 env:
     CARGO_TERM_COLOR: always
-    CI_REGISTRY_NAME: amr-registry.caas.intel.com
 
     # Simics base
     SIMICS_PACKAGE_VERSION_1000: 6.0.166
@@ -19,7 +18,7 @@ env:
 
 jobs:
     build_and_test:
-        container: ${CI_REGISTRY_NAME}/cache/library/ubuntu
+        container: cache-registry.caas.intel.com/cache/library/ubuntu
         runs-on: [self-hosted, gasp]
         steps:
             - name: Install Git
@@ -58,7 +57,7 @@ jobs:
                   "${HOME}/.cargo/bin/cargo" test --doc --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
 
     static_analysis:
-        container: ${CI_REGISTRY_NAME}/cache/library/ubuntu
+        container: cache-registry.caas.intel.com/cache/library/ubuntu
         runs-on: [self-hosted, gasp]
         steps:
             - name: Install Git
@@ -85,7 +84,7 @@ jobs:
                   MIRIFLAGS="-Zmiri-backtrace=full -Zmiri-disable-isolation -Zmiri-panic-on-unsupported" "${HOME}/.cargo/bin/cargo" miri test --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
 
     fuzz_tests:
-        container: ${CI_REGISTRY_NAME}/cache/library/ubuntu
+        container: cache-registry.caas.intel.com/cache/library/ubuntu
         runs-on: [self-hosted, gasp]
         steps:
             - name: Install Git
@@ -144,7 +143,7 @@ jobs:
                   exit 0
 
     super_lint:
-        container: ${CI_REGISTRY_NAME}/cache/github/super-linter
+        container: cache-registry.caas.intel.com/cache/github/super-linter
         runs-on: [self-hosted, gasp]
         steps:
             - uses: actions/checkout@v3
@@ -162,7 +161,7 @@ jobs:
                   /action/lib/linter.sh
 
     build_images:
-        container: ${CI_REGISTRY_NAME}/cache-gcr/kaniko-project/executor
+        container: cache-registry.caas.intel.com/cache/kaniko-project/executor
         runs-on: [self-hosted, gasp]
         steps:
             - uses: actions/checkout@v3
@@ -197,7 +196,7 @@ jobs:
 
     trivy:
         needs: build_images
-        container: amr-registry.caas.intel.com/cache/aquasec/trivy
+        container: cache-registry.caas.intel.com/cache/aquasec/trivy
         runs-on: [self-hosted, gasp]
         steps:
             - uses: actions/download-artifact@v3
