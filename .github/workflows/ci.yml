@@ -184,7 +184,7 @@ jobs:
           exit 0
 
   super_lint:
-    container: amr-fm-registry.caas.intel.com/cache/github/super-linter@sha256:249a4426fdf5b7b6fdd3658229b68ec9e02f2f417ea911f3ffdcd97edea1015a
+    container: github/super-linter
     runs-on: [self-hosted, gasp]
     steps:
       - uses: actions/checkout@v3
@@ -192,6 +192,10 @@ jobs:
           fetch-depth: 0
       - name: Lint
         env:
-          GITHUB_TOKEN: ${{ steps.}}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
+          /action/lib/linter.sh
+          
 
 

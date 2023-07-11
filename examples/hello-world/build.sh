@@ -11,7 +11,7 @@ CONTAINER_UID=$(echo "${RANDOM}" | sha256sum | head -c 8)
 CONTAINER_NAME="${IMAGE_NAME}-tmp-${CONTAINER_UID}"
 
 docker build -t "${IMAGE_NAME}" -f Dockerfile "${SCRIPT_DIR}"
-CONTAINER=$(docker create --name "${CONTAINER_NAME}" "${IMAGE_NAME}")
+docker create --name "${CONTAINER_NAME}" "${IMAGE_NAME}"
 docker cp \
     "${CONTAINER_NAME}:/edk2/HelloWorld/Build/HelloWorld/DEBUG_GCC5/X64/HelloWorld.efi" \
     "${SCRIPT_DIR}/rsrc/HelloWorld.efi"
