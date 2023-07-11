@@ -19,7 +19,7 @@ env:
 
 jobs:
     build_and_test:
-        container: amr-fm-registry.caas.intel.com/cache/library/ubuntu@sha256:83f0c2a8d6f266d687d55b5cb1cb2201148eb7ac449e4202d9646b9083f1cee0
+        container: amr-registry.caas.intel.com/cache/library/ubuntu
         runs-on: [self-hosted, gasp]
         steps:
             - uses: actions/checkout@v3
@@ -48,7 +48,7 @@ jobs:
                   "${HOME}/.cargo/bin/cargo" test --doc --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
 
     static_analysis:
-        container: amr-fm-registry.caas.intel.com/cache/library/ubuntu@sha256:83f0c2a8d6f266d687d55b5cb1cb2201148eb7ac449e4202d9646b9083f1cee0
+        container: amr-registry.caas.intel.com/cache/library/ubuntu
         runs-on: [self-hosted, gasp]
         steps:
             - uses: actions/checkout@v3
@@ -68,7 +68,7 @@ jobs:
                   MIRIFLAGS="-Zmiri-backtrace=full -Zmiri-disable-isolation -Zmiri-panic-on-unsupported" "${HOME}/.cargo/bin/cargo" miri test --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
 
     fuzz_tests:
-        container: amr-fm-registry.caas.intel.com/cache/library/ubuntu@sha256:83f0c2a8d6f266d687d55b5cb1cb2201148eb7ac449e4202d9646b9083f1cee0
+        container: amr-registry.caas.intel.com/cache/library/ubuntu
         runs-on: [self-hosted, gasp]
         steps:
             - uses: actions/checkout@v3
@@ -119,7 +119,7 @@ jobs:
                   exit 0
 
     super_lint:
-        container: github/super-linter
+        container: amr-registry.caas.intel.com/cache/github/super-linter
         runs-on: [self-hosted, gasp]
         steps:
             - uses: actions/checkout@v3
@@ -136,8 +136,8 @@ jobs:
                   export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
                   /action/lib/linter.sh
 
-    trivy:
-        container: gcr.io/kaniko-project/executor:v1.8.1-debug
+    build_images:
+        container: amr-registry.caas.intel.com/cache-gcr/kaniko-project/executor
         runs-on: [self-hosted, gasp]
         steps:
             - uses: actions/checkout@v3
@@ -157,6 +157,29 @@ jobs:
                     --no-push \
                     --tarPath /x509-parse.tar \
                     --destination=image
+            - uses: actions/upload-artifact@v3
+              with:
+                  name: hello-world-image
+                  path: |
+                      /hello-world.tar
+            - uses: actions/upload-artifact@v3
+              with:
+                  name: x509-parse-image
+                  path: |
+                      /x509-parse.tar
+
+    trivy:
+        container: amr-registry.caas.intel.com/cache/aquasec/trivy
+        runs-on: [self-hosted, gasp]
+        steps:
+            - uses: actions/download-artifact@v3
+              with:
+                  name: hello-world-image
+                  path: /hello-world.tar
+            - uses: actions/download-artifact@v3
+              with:
+                  name: x509-parse-image
+                  path: /x509-parse.tar
             - name: Scan Hello World Container
               uses: aquasecurity/trivy-action@master
               with:
