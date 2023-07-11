@@ -169,6 +169,7 @@ jobs:
                       /x509-parse.tar
 
     trivy:
+        needs: build_images
         container: amr-registry.caas.intel.com/cache/aquasec/trivy
         runs-on: [self-hosted, gasp]
         steps:
@@ -181,10 +182,8 @@ jobs:
                   name: x509-parse-image
                   path: /x509-parse.tar
             - name: Scan Hello World Container
-              uses: aquasecurity/trivy-action@master
-              with:
-                  input: /hello-world.tar
+              run: |
+                  trivy --input /hello-world.tar
             - name: Scan X509Parse Container
-              uses: aquasecurity/trivy-action@master
-              with:
-                  input: /x509-parse.tar
+              run: |
+                  trivy --input /x509-parse.tar
