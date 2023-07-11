@@ -10,7 +10,8 @@
    "Defining New Interface Types" section of the
    "Simics Model Builder User's Guide" for further documentation.
 
-   The corresponding DML definition can be found in confuse_module_interface.dml */
+   The corresponding DML definition can be found in confuse_module_interface.dml
+ */
 
 #ifndef CONFUSE_MODULE_INTERFACE_H
 #define CONFUSE_MODULE_INTERFACE_H
@@ -34,7 +35,8 @@ SIM_INTERFACE(confuse_module) {
     void (*start)(conf_object_t * obj, bool run);
     void (*add_processor)(conf_object_t * obj, attr_value_t * processor);
     void (*add_fault)(conf_object_t * obj, int64 fault);
-    void (*add_channels)(conf_object_t * obj, attr_value_t * tx, attr_value_t * rx);
+    void (*add_channels)(conf_object_t * obj, attr_value_t * tx,
+                         attr_value_t * rx);
 #ifndef PYWRAP
     /* methods that cannot be exported to Python, for example as it refers
        to unknown data types, must be enclosed by "#ifndef PYWRAP" ...
