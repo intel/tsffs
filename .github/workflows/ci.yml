@@ -10,11 +10,11 @@ env:
     CARGO_TERM_COLOR: always
 
     # Simics base
-    SIMICS_PACKAGE_VERSION_1000: 6.0.166
+    SIMICS_PUBLIC_PACKAGE_VERSION_1000: 6.0.166
     # QSP X86
-    SIMICS_PACKAGE_VERSION_2096: 6.0.68
+    SIMICS_PUBLIC_PACKAGE_VERSION_2096: 6.0.68
     # QSP CPU
-    SIMICS_PACKAGE_VERSION_8112: 6.0.17
+    SIMICS_PUBLIC_PACKAGE_VERSION_8112: 6.0.17
 
 jobs:
     build_and_test:
@@ -77,23 +77,23 @@ jobs:
             - name: Build Project
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  "${HOME}/.cargo/bin/cargo" build --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
+                  "${HOME}/.cargo/bin/cargo" build --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }}
             - name: Check Project
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  "${HOME}/.cargo/bin/cargo" clippy --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
+                  "${HOME}/.cargo/bin/cargo" clippy --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }}
             - name: Test Project
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  "${HOME}/.cargo/bin/cargo" test --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
+                  "${HOME}/.cargo/bin/cargo" test --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }}
             - name: Build Docs
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  "${HOME}/.cargo/bin/cargo" doc --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
+                  "${HOME}/.cargo/bin/cargo" doc --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }}
             - name: Test Docs
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  "${HOME}/.cargo/bin/cargo" test --doc --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
+                  "${HOME}/.cargo/bin/cargo" test --doc --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }}
 
     static_analysis:
         container: cache-registry.caas.intel.com/cache/library/ubuntu
@@ -155,11 +155,11 @@ jobs:
             - name: Check Project
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  "${HOME}/.cargo/bin/cargo" clippy --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
+                  "${HOME}/.cargo/bin/cargo" clippy --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }}
             - name: MIRI UB Checks
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  MIRIFLAGS="-Zmiri-backtrace=full -Zmiri-disable-isolation -Zmiri-panic-on-unsupported" "${HOME}/.cargo/bin/cargo" miri test --features=${{ env.SIMICS_PACKAGE_VERSION_1000 }}
+                  MIRIFLAGS="-Zmiri-backtrace=full -Zmiri-disable-isolation -Zmiri-panic-on-unsupported" "${HOME}/.cargo/bin/cargo" miri test --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }}
 
     fuzz_tests:
         container: cache-registry.caas.intel.com/cache/library/ubuntu
