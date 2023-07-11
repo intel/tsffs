@@ -113,9 +113,27 @@ jobs:
         run: |
           cd util/version-tools
           "${HOME}/.cargo/bin/cargo" fuzz build
-          timeout 600 "${HOME}/.cargo/bin/cargo" fuzz run fuzz_version_constraint_parse
+          timeout 600 "${HOME}/.cargo/bin/cargo" fuzz run \
+            fuzz_version_constraint_parse \
+            -artifact_prefix=./artifacts \
+            -create_missing_dirs=1
+          if [ -d ./artifacts ]; then
+            if find ./artifacts -mindepth 1 -maxdepth 1 | read; then
+              exit 1
+            fi
+          fi
+          exit 0
       - name: Fuzz Raw-CStr (10m)
         run: |
           cd util/raw-cstr
           "${HOME}/.cargo/bin/cargo" fuzz build
-          timeout 600 "${HOME}/.cargo/bin/cargo" fuzz run fuzz_raw_cstr
+          timeout 600 "${HOME}/.cargo/bin/cargo" fuzz run \
+            fuzz_raw_cstr \
+            -artifact_prefix=./artifacts \
+            -create_missing_dirs=1
+          if [ -d ./artifacts ]; then
+            if find ./artifacts -mindepth 1 -maxdepth 1 | read; then
+              exit 1
+            fi
+          fi
+          exit 0
