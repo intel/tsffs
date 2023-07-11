@@ -1,16 +1,23 @@
-##
-## Script to build HelloWorld firmware
-##
-## See: https://www.tianocore.org/edk2-pytool-extensions/integrate/porting/ for more info
+"""
 
-from os.path import dirname, abspath, join
+Script to build HelloWorld firmware
+
+See: https://www.tianocore.org/edk2-pytool-extensions/integrate/porting/
+for more info
+"""
+
+# mypy: ignore-errors
+# flake8: noqa
+# pylint: disable=undefined-variable,import-error,invalid-name,too-few-public-methods
+
+from os.path import abspath, dirname, join
 from typing import Iterable, List
+
 from edk2toolext.environment.uefi_build import UefiBuilder
 from edk2toolext.invocables.edk2_platform_build import BuildSettingsManager
-from edk2toolext.invocables.edk2_setup import SetupSettingsManager
+from edk2toolext.invocables.edk2_setup import (RequiredSubmodule,
+                                               SetupSettingsManager)
 from edk2toolext.invocables.edk2_update import UpdateSettingsManager
-from edk2toolext.invocables.edk2_setup import RequiredSubmodule
-
 from edk2toollib.utility_functions import GetHostInfo
 
 
@@ -85,14 +92,20 @@ class PlatformBuilder(UefiBuilder):
         Set environment variables for the platform
         """
         self.env.SetValue(
-            "ACTIVE_PLATFORM", "HelloWorld/HelloWorld.dsc", "Platform hardcoded"
+            "ACTIVE_PLATFORM",
+            "HelloWorld/HelloWorld.dsc",
+            "Platform hardcoded",
         )
         self.env.SetValue("PRODUCT_NAME", "HelloWorld", "Platform hardcoded")
         self.env.SetValue("TARGET_ARCH", "X64", "Platform hardcoded")
         os = GetHostInfo().os
         if os.lower() == "windows":
-            self.env.SetValue("TOOL_CHAIN_TAG", "VS2017", "Platform Hardcoded", True)
+            self.env.SetValue(
+                "TOOL_CHAIN_TAG", "VS2017", "Platform Hardcoded", True
+            )
         else:
-            self.env.SetValue("TOOL_CHAIN_TAG", "GCC5", "Platform Hardcoded", True)
+            self.env.SetValue(
+                "TOOL_CHAIN_TAG", "GCC5", "Platform Hardcoded", True
+            )
 
         return 0

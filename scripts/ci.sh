@@ -1,10 +1,16 @@
-#!/ bin / bash
+#!/bin/bash
 
 #Run workflows locally using act
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 WORKFLOW_FILE="${SCRIPT_DIR}/../.github/workflows/ci.yml"
-ENV_FILE=$(mktemp -p /tmp.env.XXXXXXXX)
+SECRETS_FILE="${SCRIPT_DIR}/../.secrets"
+
+if [ ! -f "${SECRETS_FILE}" ]; then
+    echo "No file '${SECRETS_FILE}' found. Please create one." \
+        "If you are an Intel employee, you can find decryption keys at https://wiki.ith.intel.com/display/Simics/Simics+6."
+    exit 1
+fi
 
 if !command -v act &>/dev/null; then
     echo "act must be installed! Install at https://github.com/nektos/act"
@@ -13,7 +19,7 @@ fi
 
 populate_env_file() {
     ENV_FILE="${1}"
-    echo "Running with ENV_FILE=${ENV_FILE}"
+    echo "Attempting automatic configuration of proxy with ENV_FILE=${ENV_FILE}"
 
     if [ -z "${HTTP_PROXY}" ] && [ -f ~/.docker/config.json ]; then
         HTTP_PROXY=$(grep httpProxy ~/.docker/config.json | awk -F'\"[:space:]*:[:space:]*' '{split($2,a,"\""); print a[2]}')
@@ -72,6 +78,7 @@ populate_env_file() {
     cat "${ENV_FILE}"
 }
 
+ENV_FILE=$(mktemp)
 populate_env_file "${ENV_FILE}"
-act -W "${WORKFLOW_FILE}" --env-file = "${ENV_FILE}" $@
+act -W "${WORKFLOW_FILE}" --env-file="${ENV_FILE}" --secret-file="${SECRETS_FILE}" $@
 rm "${ENV_FILE}"

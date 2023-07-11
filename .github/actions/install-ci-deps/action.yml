@@ -1,0 +1,71 @@
+name: Install CI Dependencies
+description: Install CI Dependencies
+inputs:
+    SIMICS_PUBLIC_PACKAGE_KEY_1000:
+        required: true
+        description: Key for public package 1000
+    SIMICS_PUBLIC_PACKAGE_KEY_2096:
+        required: true
+        description: Key for public package 2096
+    SIMICS_PUBLIC_PACKAGE_KEY_8112:
+        required: true
+        description: Key for public package 8112
+    SIMICS_PUBLIC_PACKAGE_VERSION_1000:
+        required: true
+        description: Version for public package 1000
+    SIMICS_PUBLIC_PACKAGE_VERSION_2096:
+        required: true
+        description: Version for public package 2096
+    SIMICS_PUBLIC_PACKAGE_VERSION_8112:
+        required: true
+        description: Version for public package 8112
+runs:
+    using: "composite"
+    steps:
+        - name: Install Dependencies
+          shell: bash
+          run: |
+              apt-get -y update && \
+              apt-get -y install \
+                git \
+                curl \
+                build-essential \
+                cmake
+        - name: Install Rust Toolchain
+          shell: bash
+          run: |
+              curl https://sh.rustup.rs -sSf \
+              | sh -s -- -y --default-toolchain nightly --component rustfmt \
+                --component clippy --component miri --no-modify-path
+        - name: Install SIMICS (Internal)
+          shell: bash
+          run: |
+              mkdir -p "${HOME}/simics"
+              cd "${HOME}/simics"
+              curl -o intel-simics-package-manager-1.7.3-linux64.tar.gz \
+                https://af02p-or.devtools.intel.com/artifactory/simics-local/pub/simics-installer/external/1.7.3/intel-simics-package-manager-1.7.3-linux64.tar.gz
+              tar -xvf intel-simics-package-manager-1.7.3-linux64.tar.gz
+              {
+                echo "1000 ${{ inputs.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}";
+                echo "2096 ${{ inputs.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}";
+                echo "8112 ${{ inputs.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}";
+              } > /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
+              cat /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
+              ./intel-simics-package-manager-1.7.3/ispm settings \
+                --config-file /ispm.conf decryption-key-files \
+                --add /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
+              cat /ispm.conf
+              ./intel-simics-package-manager-1.7.3/ispm \
+                --config-file /ispm.conf \
+                --non-interactive \
+                --verbose \
+                --package-repo https://af02p-or.devtools.intel.com/ui/native/simics-repos/pub/simics-6/linux64/ \
+                --install-dir "${HOME}/simics" \
+                install \
+                1000-${{ inputs.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }} \
+                2096-${{ inputs.SIMICS_PUBLIC_PACKAGE_VERSION_2096 }} \
+                8112-${{ inputs.SIMICS_PUBLIC_PACKAGE_VERSION_8112 }}
+        - name: Set up .env
+          shell: bash
+          run: |
+              echo "SIMICS_HOME=${HOME}/simics" > .env
