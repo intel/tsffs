@@ -27,7 +27,23 @@ jobs:
                   apt-get -y update && \
                   apt-get -y install git
             - uses: actions/checkout@v3
-            - uses: ${GITHUB_WORKSPACE}/.github/actions/install-ci-deps
+            - name: Check GITHUB_EVENT_PATH Consistency
+              id: check-gh-event-path
+              run: |
+                  echo "GITHUB_WORKSPACE=${GITHUB_WORKSPACE}" >> "${GITHUB_OUTPUT}"
+            - name: Install CI Dependencies (Custom CI)
+              if: steps.check-gh-event-path.outputs.GITHUB_WORKSPACE != github.workspace
+              uses: /__w/applications.security.fuzzing.confuse/applications.security.fuzzing.confuse/.github/actions/install-ci-deps
+              with:
+                  SIMICS_PUBLIC_PACKAGE_KEY_1000: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}
+                  SIMICS_PUBLIC_PACKAGE_KEY_2096: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}
+                  SIMICS_PUBLIC_PACKAGE_KEY_8112: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}
+                  SIMICS_PUBLIC_PACKAGE_VERSION_1000: ${{ env.SIMICS_PACKAGE_VERSION_1000 }}
+                  SIMICS_PUBLIC_PACKAGE_VERSION_2096: ${{ env.SIMICS_PACKAGE_VERSION_2096 }}
+                  SIMICS_PUBLIC_PACKAGE_VERSION_8112: ${{ env.SIMICS_PACKAGE_VERSION_8112 }}
+            - name: Install CI Dependencies (GH CI)
+              if: steps.check-gh-event-path.outputs.GITHUB_WORKSPACE == github.workspace
+              uses: ./.github/actions/install-ci-deps
               with:
                   SIMICS_PUBLIC_PACKAGE_KEY_1000: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}
                   SIMICS_PUBLIC_PACKAGE_KEY_2096: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}
@@ -66,7 +82,23 @@ jobs:
                   apt-get -y update && \
                   apt-get -y install git
             - uses: actions/checkout@v3
-            - uses: ${GITHUB_WORKSPACE}/.github/actions/install-ci-deps
+            - name: Check GITHUB_EVENT_PATH Consistency
+              id: check-gh-event-path
+              run: |
+                  echo "GITHUB_WORKSPACE=${GITHUB_WORKSPACE}" >> "${GITHUB_OUTPUT}"
+            - name: Install CI Dependencies (Custom CI)
+              if: steps.check-gh-event-path.outputs.GITHUB_WORKSPACE != github.workspace
+              uses: /__w/applications.security.fuzzing.confuse/applications.security.fuzzing.confuse/.github/actions/install-ci-deps
+              with:
+                  SIMICS_PUBLIC_PACKAGE_KEY_1000: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}
+                  SIMICS_PUBLIC_PACKAGE_KEY_2096: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}
+                  SIMICS_PUBLIC_PACKAGE_KEY_8112: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}
+                  SIMICS_PUBLIC_PACKAGE_VERSION_1000: ${{ env.SIMICS_PACKAGE_VERSION_1000 }}
+                  SIMICS_PUBLIC_PACKAGE_VERSION_2096: ${{ env.SIMICS_PACKAGE_VERSION_2096 }}
+                  SIMICS_PUBLIC_PACKAGE_VERSION_8112: ${{ env.SIMICS_PACKAGE_VERSION_8112 }}
+            - name: Install CI Dependencies (GH CI)
+              if: steps.check-gh-event-path.outputs.GITHUB_WORKSPACE == github.workspace
+              uses: ./.github/actions/install-ci-deps
               with:
                   SIMICS_PUBLIC_PACKAGE_KEY_1000: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}
                   SIMICS_PUBLIC_PACKAGE_KEY_2096: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}
@@ -93,7 +125,23 @@ jobs:
                   apt-get -y update && \
                   apt-get -y install git
             - uses: actions/checkout@v3
-            - uses: ${GITHUB_WORKSPACE}/.github/actions/install-ci-deps
+            - name: Check GITHUB_EVENT_PATH Consistency
+              id: check-gh-event-path
+              run: |
+                  echo "GITHUB_WORKSPACE=${GITHUB_WORKSPACE}" >> "${GITHUB_OUTPUT}"
+            - name: Install CI Dependencies (Custom CI)
+              if: steps.check-gh-event-path.outputs.GITHUB_WORKSPACE != github.workspace
+              uses: /__w/applications.security.fuzzing.confuse/applications.security.fuzzing.confuse/.github/actions/install-ci-deps
+              with:
+                  SIMICS_PUBLIC_PACKAGE_KEY_1000: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}
+                  SIMICS_PUBLIC_PACKAGE_KEY_2096: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}
+                  SIMICS_PUBLIC_PACKAGE_KEY_8112: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}
+                  SIMICS_PUBLIC_PACKAGE_VERSION_1000: ${{ env.SIMICS_PACKAGE_VERSION_1000 }}
+                  SIMICS_PUBLIC_PACKAGE_VERSION_2096: ${{ env.SIMICS_PACKAGE_VERSION_2096 }}
+                  SIMICS_PUBLIC_PACKAGE_VERSION_8112: ${{ env.SIMICS_PACKAGE_VERSION_8112 }}
+            - name: Install CI Dependencies (GH CI)
+              if: steps.check-gh-event-path.outputs.GITHUB_WORKSPACE == github.workspace
+              uses: ./.github/actions/install-ci-deps
               with:
                   SIMICS_PUBLIC_PACKAGE_KEY_1000: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}
                   SIMICS_PUBLIC_PACKAGE_KEY_2096: ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}
