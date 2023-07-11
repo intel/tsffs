@@ -117,8 +117,8 @@ jobs:
             fuzz_version_constraint_parse -- \
             -artifact_prefix=./artifacts \
             -create_missing_dirs=1
-          if [ -d ./artifacts ]; then
-            if find ./artifacts -mindepth 1 -maxdepth 1 | read; then
+          if [ -d ./fuzz/artifacts ]; then
+            if find ./fuzz/artifacts -mindepth 1 -maxdepth 1 | read; then
               exit 1
             fi
           fi
@@ -128,11 +128,9 @@ jobs:
           cd util/raw-cstr
           "${HOME}/.cargo/bin/cargo" fuzz build
           timeout 600 "${HOME}/.cargo/bin/cargo" fuzz run \
-            fuzz_raw_cstr -- \
-            -artifact_prefix=./artifacts \
-            -create_missing_dirs=1
-          if [ -d ./artifacts ]; then
-            if find ./artifacts -mindepth 1 -maxdepth 1 | read; then
+            fuzz_raw_cstr
+          if [ -d ./fuzz/artifacts ]; then
+            if find ./fuzz/artifacts -mindepth 1 -maxdepth 1 | read; then
               exit 1
             fi
           fi
