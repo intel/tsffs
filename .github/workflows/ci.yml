@@ -51,9 +51,9 @@ jobs:
                     https://af02p-or.devtools.intel.com/artifactory/simics-local/pub/simics-installer/external/1.7.3/intel-simics-package-manager-1.7.3-linux64.tar.gz
                   tar -xvf intel-simics-package-manager-1.7.3-linux64.tar.gz
                   {
-                    echo "1000 ${{ inputs.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}";
-                    echo "2096 ${{ inputs.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}";
-                    echo "8112 ${{ inputs.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}";
+                    echo "1000 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}";
+                    echo "2096 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}";
+                    echo "8112 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}";
                   } > /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
                   cat /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
                   ./intel-simics-package-manager-1.7.3/ispm settings \
@@ -67,9 +67,9 @@ jobs:
                     --package-repo https://af02p-or.devtools.intel.com/ui/native/simics-repos/pub/simics-6/linux64/ \
                     --install-dir "${HOME}/simics" \
                     install \
-                    1000-${{ inputs.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }} \
-                    2096-${{ inputs.SIMICS_PUBLIC_PACKAGE_VERSION_2096 }} \
-                    8112-${{ inputs.SIMICS_PUBLIC_PACKAGE_VERSION_8112 }}
+                    1000-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }} \
+                    2096-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_2096 }} \
+                    8112-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_8112 }}
             - name: Set up .env
               shell: bash
               run: |
@@ -129,9 +129,9 @@ jobs:
                     https://af02p-or.devtools.intel.com/artifactory/simics-local/pub/simics-installer/external/1.7.3/intel-simics-package-manager-1.7.3-linux64.tar.gz
                   tar -xvf intel-simics-package-manager-1.7.3-linux64.tar.gz
                   {
-                    echo "1000 ${{ inputs.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}";
-                    echo "2096 ${{ inputs.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}";
-                    echo "8112 ${{ inputs.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}";
+                    echo "1000 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}";
+                    echo "2096 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}";
+                    echo "8112 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}";
                   } > /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
                   cat /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
                   ./intel-simics-package-manager-1.7.3/ispm settings \
@@ -145,9 +145,9 @@ jobs:
                     --package-repo https://af02p-or.devtools.intel.com/ui/native/simics-repos/pub/simics-6/linux64/ \
                     --install-dir "${HOME}/simics" \
                     install \
-                    1000-${{ inputs.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }} \
-                    2096-${{ inputs.SIMICS_PUBLIC_PACKAGE_VERSION_2096 }} \
-                    8112-${{ inputs.SIMICS_PUBLIC_PACKAGE_VERSION_8112 }}
+                    1000-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }} \
+                    2096-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_2096 }} \
+                    8112-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_8112 }}
             - name: Set up .env
               shell: bash
               run: |
@@ -195,9 +195,9 @@ jobs:
                     https://af02p-or.devtools.intel.com/artifactory/simics-local/pub/simics-installer/external/1.7.3/intel-simics-package-manager-1.7.3-linux64.tar.gz
                   tar -xvf intel-simics-package-manager-1.7.3-linux64.tar.gz
                   {
-                    echo "1000 ${{ inputs.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}";
-                    echo "2096 ${{ inputs.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}";
-                    echo "8112 ${{ inputs.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}";
+                    echo "1000 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}";
+                    echo "2096 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}";
+                    echo "8112 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}";
                   } > /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
                   cat /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
                   ./intel-simics-package-manager-1.7.3/ispm settings \
@@ -211,9 +211,9 @@ jobs:
                     --package-repo https://af02p-or.devtools.intel.com/ui/native/simics-repos/pub/simics-6/linux64/ \
                     --install-dir "${HOME}/simics" \
                     install \
-                    1000-${{ inputs.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }} \
-                    2096-${{ inputs.SIMICS_PUBLIC_PACKAGE_VERSION_2096 }} \
-                    8112-${{ inputs.SIMICS_PUBLIC_PACKAGE_VERSION_8112 }}
+                    1000-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }} \
+                    2096-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_2096 }} \
+                    8112-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_8112 }}
             - name: Set up .env
               shell: bash
               run: |
