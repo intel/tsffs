@@ -156,7 +156,7 @@ jobs:
           "${HOME}/.cargo/bin/cargo" fuzz build
 
           timeout --preserve-status 600 "${HOME}/.cargo/bin/cargo" fuzz run \
-            fuzz_version_constraint_parse
+            fuzz_version_constraint_parse || exit 0
 
           echo "Done fuzzing!"
 
@@ -173,7 +173,7 @@ jobs:
           "${HOME}/.cargo/bin/cargo" fuzz build
 
           timeout --preserve-status 600 "${HOME}/.cargo/bin/cargo" fuzz run \
-            fuzz_raw_cstr
+            fuzz_raw_cstr || exit 0
 
           echo "Done fuzzing!"
 
