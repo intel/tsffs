@@ -283,28 +283,18 @@ jobs:
                   /action/lib/linter.sh
 
     build_images:
-        container: cache-registry.caas.intel.com/cache-gcr/kaniko-project/executor@latest
+        container: gcr.io/kaniko-project/executor:v1.8.1-debug
         runs-on: [self-hosted, gasp]
         steps:
             - uses: actions/checkout@v3
             - name: Build Hello World Container
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  /kaniko/executor \
-                    --context examples/hello-world \
-                    --dockerfile Dockerfile \
-                    --no-push \
-                    --tarPath /hello-world.tar \
-                    --destination=image
+                  /kaniko/executor --build-arg "http_proxy=${http_proxy}" --build-arg "HTTP_PROXY=${HTTP_PROXY}" --build-arg "https_proxy=${https_proxy}" --build-arg "HTTPS_PROXY=${HTTPS_PROXY}" --build-arg "no_proxy=${no_proxy}" --build-arg "NO_PROXY=${NO_PROXY}" --context examples/hello-world/ --dockerfile Dockerfile --no-push --tarPath /hello-world.tar --destination=images
             - name: Build X509Parse Container
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  /kaniko/executor \
-                    --context examples/x509-parse \
-                    --dockerfile Dockerfile \
-                    --no-push \
-                    --tarPath /x509-parse.tar \
-                    --destination=image
+                  /kaniko/executor --build-arg "http_proxy=${http_proxy}" --build-arg "HTTP_PROXY=${HTTP_PROXY}" --build-arg "https_proxy=${https_proxy}" --build-arg "HTTPS_PROXY=${HTTPS_PROXY}" --build-arg "no_proxy=${no_proxy}" --build-arg "NO_PROXY=${NO_PROXY}" --context examples/x509-parse/ --dockerfile Dockerfile --no-push --tarPath /x509-parse.tar --destination=images
             - uses: actions/upload-artifact@v3
               with:
                   name: hello-world-image

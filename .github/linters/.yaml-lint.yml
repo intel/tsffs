@@ -50,9 +50,11 @@ rules:
     key-duplicates: enable
     line-length:
         level: warning
-        max: 240
+        max: 120
         allow-non-breakable-words: true
         allow-non-breakable-inline-mappings: true
+        ignore: |
+            ci.yml
     new-line-at-end-of-file: disable
     new-lines:
         type: unix

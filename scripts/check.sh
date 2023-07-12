@@ -27,6 +27,10 @@ if ! command -v cargo &>/dev/null; then
     exit 1
 fi
 
+if ! command -v yamllint &>/dev/null; then
+    echo "yamllint must be installed! Install from your package manager."
+    exit 1
+fi
 echo "================="
 echo "Running clippy..."
 echo "================="
@@ -50,3 +54,9 @@ echo "Running pylint..."
 echo "================="
 
 fd '.*\.py$' -x pylint {}
+
+echo "================="
+echo "Running yamllint..."
+echo "================="
+
+fd '.*(\.yml|\.yaml)$' -x yamllint -c "${SCRIPT_DIR}/../.github/linters/.yaml-lint.yml"
