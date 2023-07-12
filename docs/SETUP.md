@@ -1,6 +1,6 @@
 # Setup
 
-Follow these setup steps to prepare this repo to build! If you encounter any issues
+Follow these setup steps to prepare this repository to build! If you encounter any issues
 during this process, check the troubleshooting section first for common resolutions.
 
 - [Setup](#setup)
