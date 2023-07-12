@@ -15,8 +15,10 @@ from typing import Iterable, List
 
 from edk2toolext.environment.uefi_build import UefiBuilder
 from edk2toolext.invocables.edk2_platform_build import BuildSettingsManager
-from edk2toolext.invocables.edk2_setup import (RequiredSubmodule,
-                                               SetupSettingsManager)
+from edk2toolext.invocables.edk2_setup import (
+    RequiredSubmodule,
+    SetupSettingsManager,
+)
 from edk2toolext.invocables.edk2_update import UpdateSettingsManager
 from edk2toollib.utility_functions import GetHostInfo
 

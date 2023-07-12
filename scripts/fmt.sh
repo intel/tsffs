@@ -37,5 +37,5 @@ echo "Formatting Rust"
 
 cargo fmt --all
 
-fd '.*\.py$' -x black --config "${SCRIPT_DIR}/../.github/linters/.python-black" {}
-fd '.*\.py$' -x isort {}
+fd '.*\.py$' -x black --config "${SCRIPT_DIR}/../.github/linters/.python-black" -l 79 {}
+fd '.*\.py$' -x isort --settings-path "${SCRIPT_DIR}/../.github/linters/.isort.cfg" {}

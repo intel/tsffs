@@ -1,3 +1,4 @@
+---
 name: CI
 
 on:
@@ -159,7 +160,8 @@ jobs:
             - name: MIRI UB Checks
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  MIRIFLAGS="-Zmiri-backtrace=full -Zmiri-disable-isolation -Zmiri-panic-on-unsupported" "${HOME}/.cargo/bin/cargo" miri test --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }}
+                  MIRIFLAGS="-Zmiri-backtrace=full -Zmiri-disable-isolation -Zmiri-panic-on-unsupported" "${HOME}/.cargo/bin/cargo" \
+                    miri test --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }}
 
     fuzz_tests:
         container: cache-registry.caas.intel.com/cache/library/ubuntu
@@ -278,7 +280,7 @@ jobs:
                   /action/lib/linter.sh
 
     build_images:
-        container: cache-registry.caas.intel.com/cache-gcr/kaniko-project/executor
+        container: cache-registry.caas.intel.com/cache-gcr/kaniko-project/executor@latest
         runs-on: [self-hosted, gasp]
         steps:
             - uses: actions/checkout@v3
