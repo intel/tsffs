@@ -278,7 +278,7 @@ jobs:
                   /action/lib/linter.sh
 
     build_images:
-        container: cache-registry.caas.intel.com/cache/kaniko-project/executor
+        container: cache-registry.caas.intel.com/cache-gcr/kaniko-project/executor
         runs-on: [self-hosted, gasp]
         steps:
             - uses: actions/checkout@v3
