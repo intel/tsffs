@@ -57,7 +57,7 @@ populate_env_file() {
     if [ -z "${NO_PROXY}" ] && [ -f ~/.docker/config.json ]; then
         NO_PROXY=$(grep noProxy ~/.docker/config.json | awk -F'\"[:space:]*:[:space:]*' '{split($2,a,"\""); print a[2]}')
         echo "Exported docker config NO_PROXY=${NO_PROXY}"
-    elif [ ! -z "${NO_PROXY}" ]; then
+    elif [ -n "${NO_PROXY}" ]; then
         echo "Exported docker config NO_PROXY=${NO_PROXY}"
     fi
     echo "NO_PROXY=${NO_PROXY}" >>"${ENV_FILE}"

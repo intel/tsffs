@@ -8,8 +8,8 @@ App startup script for hello-world example
 
 
 import commands
-from sim_params import params
 import simics
+from sim_params import params
 
 SIM_log_info(1, conf.sim, 0, "Running app.py")
 

@@ -278,6 +278,7 @@ jobs:
                   # We have no CPP in the codebase, clang-format is ok but we don't want to
                   # run cpplint
                   VALIDATE_CPP: false
+                  VALIDATE_JSCPD: false
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
                   /action/lib/linter.sh
@@ -286,7 +287,6 @@ jobs:
         container: gcr.io/kaniko-project/executor:v1.8.1-debug
         runs-on: [self-hosted, gasp]
         steps:
-            - uses: actions/checkout@v3
             - name: Build Hello World Container
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
