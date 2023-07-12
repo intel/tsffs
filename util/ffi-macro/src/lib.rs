@@ -332,7 +332,7 @@ pub fn callback_wrappers(args: TokenStream, input: TokenStream) -> TokenStream {
                 }
             }
 
-            let receive = match receiver_arg.clone() {
+            let (receive, receiver_ident)= match receiver_arg {
                 Some(arg) => {
                     let ident = match arg {
                         FnArg::Typed(pat) => match *pat.pat {
@@ -347,31 +347,16 @@ pub fn callback_wrappers(args: TokenStream, input: TokenStream) -> TokenStream {
                             "expected identifier"
                         },
                     };
-                    quote! {
+                    (quote! {
                         let #ident: &mut #struct_name = #ident.into();
+                    }, ident)
+                }
+                None => {
+                    abort! {
+                        receiver,
+                        "expected receiver"
                     }
                 }
-                None => quote! {},
-            };
-
-            let receiver_ident = match receiver_arg {
-                Some(arg) => match arg {
-                    FnArg::Typed(pat) => match *pat.pat {
-                        syn::Pat::Ident(ref ident) => ident.ident.clone(),
-                        _ => abort! {
-                            pat,
-                            "expected identifier"
-                        },
-                    },
-                    _ => abort! {
-                        arg,
-                        "expected identifier"
-                    },
-                },
-                None => abort! {
-                    receiver,
-                    "expected receiver argument"
-                },
             };
 
             let cb_selfcall_args = if let Some(offset) = cb_receiver_arg_offset {

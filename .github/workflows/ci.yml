@@ -275,6 +275,9 @@ jobs:
                   VALIDATE_RUST_2018: false
                   VALIDATE_RUST_2021: false
                   VALIDATE_RUST_CLIPPY: false
+                  # We have no CPP in the codebase, clang-format is ok but we don't want to
+                  # run cpplint
+                  VALIDATE_CPP: false
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
                   /action/lib/linter.sh
