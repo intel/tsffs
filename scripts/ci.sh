@@ -7,8 +7,13 @@ WORKFLOW_FILE="${SCRIPT_DIR}/../.github/workflows/ci.yml"
 SECRETS_FILE="${SCRIPT_DIR}/../.secrets"
 
 if [ ! -f "${SECRETS_FILE}" ]; then
-    echo "No file '${SECRETS_FILE}' found. Please create one." \
-        "If you are an Intel employee, you can find decryption keys at https://wiki.ith.intel.com/display/Simics/Simics+6."
+    echo "No file '${SECRETS_FILE}' found. Please create one. It must have the following keys:
+            SIMICS_PUBLIC_PACKAGE_KEY_1000
+            SIMICS_PUBLIC_PACKAGE_KEY_2096
+            SIMICS_PUBLIC_PACKAGE_KEY_8112
+            GITHUB_TOKEN" \
+        "If you are an Intel employee, you can find decryption keys at https://wiki.ith.intel.com/display/Simics/Simics+6." \
+        "You can find your GitHub token with 'gh auth token'"
     exit 1
 fi
 

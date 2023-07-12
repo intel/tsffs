@@ -13,7 +13,7 @@ RUN git clone "${EDK2_REPO_URL}" "${EDK2_PATH}" && \
     stuart_setup -c "${EDK2_PATH}/.pytool/CISettings.py" TOOL_CHAIN_TAG=GCC5 && \
     stuart_update -c "${EDK2_PATH}/.pytool/CISettings.py" TOOL_CHAIN_TAG=GCC5
 
-COPY src "${EDK2_PATH}/HelloWorld/"
+COPY examples/hello-world/src "${EDK2_PATH}/HelloWorld/"
 
 RUN stuart_setup -c "${EDK2_PATH}/HelloWorld/PlatformBuild.py" TOOL_CHAIN_TAG=GCC5 && \
     stuart_update -c "${EDK2_PATH}/HelloWorld/PlatformBuild.py" TOOL_CHAIN_TAG=GCC5 && \
@@ -22,6 +22,6 @@ RUN stuart_setup -c "${EDK2_PATH}/HelloWorld/PlatformBuild.py" TOOL_CHAIN_TAG=GC
 WORKDIR "${EDK2_PATH}"
 
 RUN source ${EDK2_PATH}/edksetup.sh && \
-        ( stuart_build -c ${EDK2_PATH}/HelloWorld/PlatformBuild.py TOOL_CHAIN_TAG=GCC5 \
-            EDK_TOOLS_PATH=${EDK2_PATH}/BaseTools/ \
-        || ( cat ${EDK2_PATH}/HelloWorld/Build/BUILDLOG.txt && exit 1 ) )
+    ( stuart_build -c ${EDK2_PATH}/HelloWorld/PlatformBuild.py TOOL_CHAIN_TAG=GCC5 \
+    EDK_TOOLS_PATH=${EDK2_PATH}/BaseTools/ \
+    || ( cat ${EDK2_PATH}/HelloWorld/Build/BUILDLOG.txt && exit 1 ) )

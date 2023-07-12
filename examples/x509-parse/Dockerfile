@@ -12,7 +12,7 @@ RUN git clone "${EDK2_REPO_URL}" "${EDK2_PATH}" && \
     stuart_setup -c "${EDK2_PATH}/.pytool/CISettings.py" TOOL_CHAIN_TAG=GCC5 && \
     stuart_update -c "${EDK2_PATH}/.pytool/CISettings.py" TOOL_CHAIN_TAG=GCC5
 
-COPY src "${EDK2_PATH}/X509Parse/"
+COPY examples/x509-parse/src "${EDK2_PATH}/X509Parse/"
 
 RUN stuart_setup -c "${EDK2_PATH}/X509Parse/PlatformBuild.py" TOOL_CHAIN_TAG=GCC5 && \
     stuart_update -c "${EDK2_PATH}/X509Parse/PlatformBuild.py" TOOL_CHAIN_TAG=GCC5 && \
@@ -21,6 +21,6 @@ RUN stuart_setup -c "${EDK2_PATH}/X509Parse/PlatformBuild.py" TOOL_CHAIN_TAG=GCC
 WORKDIR "${EDK2_PATH}"
 
 RUN source ${EDK2_PATH}/edksetup.sh && \
-        ( stuart_build -c ${EDK2_PATH}/X509Parse/PlatformBuild.py TOOL_CHAIN_TAG=GCC5 \
-            EDK_TOOLS_PATH=${EDK2_PATH}/BaseTools/ \
-        || ( cat ${EDK2_PATH}/X509Parse/Build/BUILDLOG.txt && exit 1 ) )
+    ( stuart_build -c ${EDK2_PATH}/X509Parse/PlatformBuild.py TOOL_CHAIN_TAG=GCC5 \
+    EDK_TOOLS_PATH=${EDK2_PATH}/BaseTools/ \
+    || ( cat ${EDK2_PATH}/X509Parse/Build/BUILDLOG.txt && exit 1 ) )

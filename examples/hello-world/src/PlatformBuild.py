@@ -15,10 +15,7 @@ from typing import Iterable, List
 
 from edk2toolext.environment.uefi_build import UefiBuilder
 from edk2toolext.invocables.edk2_platform_build import BuildSettingsManager
-from edk2toolext.invocables.edk2_setup import (
-    RequiredSubmodule,
-    SetupSettingsManager,
-)
+from edk2toolext.invocables.edk2_setup import RequiredSubmodule, SetupSettingsManager
 from edk2toolext.invocables.edk2_update import UpdateSettingsManager
 from edk2toollib.utility_functions import GetHostInfo
 
@@ -102,12 +99,8 @@ class PlatformBuilder(UefiBuilder):
         self.env.SetValue("TARGET_ARCH", "X64", "Platform hardcoded")
         os = GetHostInfo().os
         if os.lower() == "windows":
-            self.env.SetValue(
-                "TOOL_CHAIN_TAG", "VS2017", "Platform Hardcoded", True
-            )
+            self.env.SetValue("TOOL_CHAIN_TAG", "VS2017", "Platform Hardcoded", True)
         else:
-            self.env.SetValue(
-                "TOOL_CHAIN_TAG", "GCC5", "Platform Hardcoded", True
-            )
+            self.env.SetValue("TOOL_CHAIN_TAG", "GCC5", "Platform Hardcoded", True)
 
         return 0

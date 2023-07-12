@@ -271,6 +271,7 @@ jobs:
             - name: Lint
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  # Rust validation is handled by build_and_test
                   VALIDATE_RUST_2015: false
                   VALIDATE_RUST_2018: false
                   VALIDATE_RUST_2021: false
@@ -279,22 +280,24 @@ jobs:
                   # run cpplint
                   VALIDATE_CPP: false
                   VALIDATE_JSCPD: false
+                  # This is way too pedantic
+                  VALIDATE_NATURAL_LANGUAGE: false
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
                   /action/lib/linter.sh
 
     build_images:
-        container: gcr.io/kaniko-project/executor:v1.8.1-debug
+        container: gcr.io/kaniko-project/executor:v1.12.1-debug
         runs-on: [self-hosted, gasp]
         steps:
             - name: Build Hello World Container
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  /kaniko/executor --build-arg "http_proxy=${http_proxy}" --build-arg "HTTP_PROXY=${HTTP_PROXY}" --build-arg "https_proxy=${https_proxy}" --build-arg "HTTPS_PROXY=${HTTPS_PROXY}" --build-arg "no_proxy=${no_proxy}" --build-arg "NO_PROXY=${NO_PROXY}" --context examples/hello-world/ --dockerfile Dockerfile --no-push --tarPath /hello-world.tar --destination=images
+                  /kaniko/executor --build-arg "http_proxy=${http_proxy}" --build-arg "HTTP_PROXY=${HTTP_PROXY}" --build-arg "https_proxy=${https_proxy}" --build-arg "HTTPS_PROXY=${HTTPS_PROXY}" --build-arg "no_proxy=${no_proxy}" --build-arg "NO_PROXY=${NO_PROXY}" --context git://${{ secrets.GITHUB_TOKEN }}@github.com/intel-innersource/applications.security.fuzzing.confuse.git --dockerfile /examples/hello-world/Dockerfile --no-push --tarPath /hello-world.tar --destination=images
             - name: Build X509Parse Container
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  /kaniko/executor --build-arg "http_proxy=${http_proxy}" --build-arg "HTTP_PROXY=${HTTP_PROXY}" --build-arg "https_proxy=${https_proxy}" --build-arg "HTTPS_PROXY=${HTTPS_PROXY}" --build-arg "no_proxy=${no_proxy}" --build-arg "NO_PROXY=${NO_PROXY}" --context examples/x509-parse/ --dockerfile Dockerfile --no-push --tarPath /x509-parse.tar --destination=images
+                  /kaniko/executor --build-arg "http_proxy=${http_proxy}" --build-arg "HTTP_PROXY=${HTTP_PROXY}" --build-arg "https_proxy=${https_proxy}" --build-arg "HTTPS_PROXY=${HTTPS_PROXY}" --build-arg "no_proxy=${no_proxy}" --build-arg "NO_PROXY=${NO_PROXY}" --context git://${{ secrets.GITHUB_TOKEN }}@github.com/intel-innersource/applications.security.fuzzing.confuse.git --dockerfile /examples/x509-parse/Dockerfile --no-push --tarPath /x509-parse.tar --destination=images
             - uses: actions/upload-artifact@v3
               with:
                   name: hello-world-image
