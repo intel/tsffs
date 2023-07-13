@@ -2,7 +2,7 @@ use crate::{ConfClass, ConfObject};
 use anyhow::Result;
 
 /// Trait for simics module objects to implement to create a threadsafe module implementation
-pub trait Module {
+pub trait SimicsModule {
     /// Allocates an instance of the object using mm_zalloc and returns a pointer to the
     /// allocated object, whose first entry is the `ConfObject` instance associated with it
     fn alloc<T>(_module_class: *mut ConfClass) -> Result<*mut ConfObject> {
@@ -47,7 +47,7 @@ pub trait Module {
     }
 }
 
-pub trait Create {
+pub trait SimicsClassCreate {
     /// Create a class and register it in SIMICS. This does not instantiate the class by creating
     /// any objects, it only creates the (python) class that is used as a blueprint to instantiate
     /// the class

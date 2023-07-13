@@ -4,7 +4,7 @@ CONFUSE is a snapshotting simulator, coverage-guided fuzzer built on Simics! It 
 easily fuzz things that are traditionally challenging to fuzz, like UEFI applications,
 bootloaders, kernel modules, firmware, and the like.
 
-- [Confuse: **CO**ntrolled **FU**zzing with **S**imics -- **E**nhanced](#confuse-controlled-fuzzing-with-simics----enhanced)
+- [Confuse: **CO**ntrolled **FU**zzing with **S**imics -- **E**nhanced](#tsffs-controlled-fuzzing-with-simics----enhanced)
   - [Setup](#setup)
   - [Architecture](#architecture)
   - [Running A Sample Target](#running-a-sample-target)
@@ -20,11 +20,11 @@ to run the samples.
 
 ## Architecture
 
-CONFUSE consists of three parts: the *fuzzer*, the *confuse module*, and the *target*.
+CONFUSE consists of three parts: the *fuzzer*, the *tsffs module*, and the *target*.
 
 The target refers to the software you want to fuzz, including any environment
 configuration you need to do to get it up and running. By and large, the fuzzer and
-confuse module are opaque to users of CONFUSE. There is a limited API for configuration
+tsffs module are opaque to users of CONFUSE. There is a limited API for configuration
 and initialization, but otherwise these components should not need much interaction.
 
 ## Running A Sample Target
@@ -61,9 +61,9 @@ $ cargo run --release --bin simics-fuzz --features=6.0.166 -- \
 ```
 
 These samples will run for 30 fuzzing stages (about 1-5k executions) before stopping.
-Logs will output to `/tmp/confuse-logXXXX.log` where `X` is a random character. You can
+Logs will output to `/tmp/tsffs-logXXXX.log` where `X` is a random character. You can
 view the logs while the fuzzer is running in another
-terminal with `tail -F /tmp/confuse-log*`. The log will rotate every 100MB to avoid
+terminal with `tail -F /tmp/tsffs-log*`. The log will rotate every 100MB to avoid
 depleting storage. The fuzzer should stop the `simics-common` process when it finishes,
 but in some cases this may fail (the project is experimental!). You can check for
 defunct processes with `ps | grep simics-common` and kill them with

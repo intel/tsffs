@@ -1,17 +1,9 @@
 use crate::{
     args::{command::Command, Args},
-    modules::confuse::{ConfuseModuleInterface, CONFUSE_MODULE_CRATE_NAME, CONFUSE_WORKSPACE_PATH},
+    modules::tsffs::{ModuleInterface, TSFFS_MODULE_CRATE_NAME, TSFFS_WORKSPACE_PATH},
 };
 use anyhow::{anyhow, bail, Error, Result};
 use artifact_dependency::{ArtifactDependencyBuilder, CrateType};
-use confuse_module::{
-    client::Client,
-    config::{InputConfigBuilder, TraceMode},
-    faults::{x86_64::X86_64Fault, Fault},
-    messages::{client::ClientMessage, module::ModuleMessage},
-    stops::StopReason,
-    traits::ConfuseClient,
-};
 use derive_builder::Builder;
 use libafl::{
     bolts::core_affinity::Cores,
@@ -56,6 +48,14 @@ use std::{
 use tracing::{debug, error, info, metadata::LevelFilter};
 use tracing::{trace, Level};
 use tracing_subscriber::{filter::filter_fn, fmt, prelude::*, registry, Layer};
+use tsffs_module::{
+    client::Client,
+    config::{InputConfigBuilder, TraceMode},
+    faults::{x86_64::X86_64Fault, Fault},
+    messages::{client::ClientMessage, module::ModuleMessage},
+    stops::StopReason,
+    traits::ThreadClient,
+};
 
 const INITIAL_INPUTS: usize = 16;
 
@@ -117,7 +117,7 @@ impl SimicsFuzzerBuilder {
 }
 
 impl SimicsFuzzer {
-    pub const NAME: &str = "Confuse Fuzzer";
+    pub const NAME: &str = "Fuzzer";
     pub const MAP_SIZE: usize = 128 * 1024;
     pub const CACHE_LEN: usize = 4096;
     pub const DEFAULT_CORPUS_DIRECTORY: &str = "corpus";
@@ -229,8 +229,8 @@ impl SimicsFuzzer {
                 ModuleBuilder::default()
                     .artifact(
                         ArtifactDependencyBuilder::default()
-                            .crate_name(CONFUSE_MODULE_CRATE_NAME)
-                            .workspace_root(PathBuf::from(CONFUSE_WORKSPACE_PATH))
+                            .crate_name(TSFFS_MODULE_CRATE_NAME)
+                            .workspace_root(PathBuf::from(TSFFS_WORKSPACE_PATH))
                             .build_missing(true)
                             .artifact_type(CrateType::CDynamicLibrary)
                             .feature(SIMICS_VERSION)
@@ -304,25 +304,25 @@ impl SimicsFuzzer {
 
             // Doesn't matter if the script has a `@SIM_load_module` in it, as long as it isn't
             // asserting that it returns not-None
-            load_module(CONFUSE_MODULE_CRATE_NAME)?;
+            load_module(TSFFS_MODULE_CRATE_NAME)?;
 
             info!("Loaded SIMICS module");
 
-            let confuse = create_object(
-                get_class(CONFUSE_MODULE_CRATE_NAME)?,
-                CONFUSE_MODULE_CRATE_NAME,
+            let tsffs = create_object(
+                get_class(TSFFS_MODULE_CRATE_NAME)?,
+                TSFFS_MODULE_CRATE_NAME,
                 alloc_attr_list(0),
             )?;
 
-            info!("Got confuse at {:#x}", confuse as usize);
+            info!("Got tsffs at {:#x}", tsffs as usize);
 
-            let confuse_interface = get_interface::<ConfuseModuleInterface>(
-                confuse,
-                Interface::Other(CONFUSE_MODULE_CRATE_NAME.to_string()),
+            let tsffs_interface = get_interface::<ModuleInterface>(
+                tsffs,
+                Interface::Other(TSFFS_MODULE_CRATE_NAME.to_string()),
             )?;
 
-            info!("Got SIMICS object: {:#x}", confuse as usize);
-            info!("Got confuse interface at {:#x}", confuse_interface as usize);
+            info!("Got SIMICS object: {:#x}", tsffs as usize);
+            info!("Got tsffs interface at {:#x}", tsffs_interface as usize);
 
             let tx = Box::new(make_attr_data_adopt(tx)?);
             let rx = Box::new(make_attr_data_adopt(rx)?);
@@ -333,7 +333,7 @@ impl SimicsFuzzer {
 
             info!("Setting up channels");
 
-            (unsafe { *confuse_interface }.add_channels)(confuse, tx, rx);
+            (unsafe { *tsffs_interface }.add_channels)(tsffs, tx, rx);
 
             info!("Set channel for object");
 

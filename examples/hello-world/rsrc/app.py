@@ -35,21 +35,21 @@ if SIM_get_batch_mode():
 SIM_log_info(1, conf.sim, 0, "Done disconnecting")
 
 
-SIM_load_module("confuse_module")
+SIM_load_module("tsffs_module")
 SIM_log_info(1, conf.sim, 0, "Loaded module")
 try:
-    SIM_create_object("confuse_module", "confuse_module", [])
+    SIM_create_object("tsffs_module", "tsffs_module", [])
     SIM_log_info(1, conf.sim, 0, "Created object")
 except simics.SimExc_General as e:
-    # SIM_get_object("confuse_module", "confuse_module")
-    SIM_log_info(1, conf.sim, 0, "CONFUSE module object already exists: " + str(e))
+    # SIM_get_object("tsffs_module", "tsffs_module")
+    SIM_log_info(1, conf.sim, 0, "Module object already exists: " + str(e))
 
-conf.confuse_module.iface.confuse_module.add_processor(
+conf.tsffs_module.iface.tsffs_module.add_processor(
     SIM_get_object(simenv.system).mb.cpu0.core[0][0]
 )
 SIM_log_info(1, conf.sim, 0, "Added processor")
-conf.confuse_module.iface.confuse_module.start(True)
-SIM_log_info(1, conf.sim, 0, "Started CONFUSE module")
+conf.tsffs_module.iface.tsffs_module.start(True)
+SIM_log_info(1, conf.sim, 0, "Started module")
 
 SIM_log_info(1, conf.sim, 0, "Started simulation")
 SIM_main_loop()

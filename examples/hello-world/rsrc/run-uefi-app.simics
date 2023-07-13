@@ -43,7 +43,7 @@ echo "Set startup uefi app"
 # Then there is one press of UP, to select the last element in the list, which is assumed
 # to be the UEFI shell (which again is true for the QSP BIOS). Then the shell is started.
 
-# Confuse note: this is actually needed to boot the uefi image!
+# note: this is actually needed to boot the uefi image!
 
 if $auto_start_uefi_shell {
     script-branch "UEFI Shell Enter Branch" {

@@ -1,22 +1,22 @@
 //! Utilities for managing simics modules, specifically adding them to a project.
 //!
-//! Confuse Simics Modules are Rust cdylib crates that are linked into a SIMICS module to provide
+//! Rust Simics Modules are Rust cdylib crates that are linked into a SIMICS module to provide
 //! a way to essentially write your SIMICS module in Rust, or as a hybrid of Rust and C. They may
 //! also provide a SIMICS interface so the module can be interacted with from  C, DML, and
 //! Python.
 //!
-//! A Confuse Simics Module specifies the directories for its module C source and optional
-//! interface source in its `Cargo.toml`. For example, the canonical `confuse_module`'s source
+//! A Simics Module specifies the directories for its module C source and optional
+//! interface source in its `Cargo.toml`. For example, the canonical `tsffs_module`'s source
 //! directory is laid out like so:
 //!
-//! - `confuse_module`
+//! - `tsffs_module`
 //!     - `stubs`
-//!         - `confuse_module`
-//!             - `confuse_module.c`
+//!         - `tsffs_module`
+//!             - `tsffs_module.c`
 //!             - `Makefile`
-//!         - `confuse_module-interface`
-//!             - `confuse_module-interface.h`
-//!             - `confuse_module-interface.dml`
+//!         - `tsffs_module-interface`
+//!             - `tsffs_module-interface.h`
+//!             - `tsffs_module-interface.dml`
 //!             - `Makefile`
 //!     - `src`
 //!     - `Cargo.toml`
@@ -25,7 +25,7 @@
 //!
 //! ```c
 //! void init_local(void) {
-//!     confuse_init_local();
+//!     tsffs_init_local();
 //! }
 //! ```
 //!
@@ -33,10 +33,10 @@
 //! functionality of the module. The Makefile can be set up however you need, whether you need to
 //! link additional libraries, specify python scripts, etc.
 //!
-//! A Confuse Simics Module needs to specify a few keys in its `Cargo.toml` to inform this project
+//! A Simics Module needs to specify a few keys in its `Cargo.toml` to inform this project
 //! management system how it should be set up and built.
 //!
-//! The table `package.metadata.confuse` can contain the following keys:
+//! The table `package.metadata.tsffs` can contain the following keys:
 //!
 //! - `module`: [Required] A relative path from the crate root to the directory containing the
 //!             `Makefile` for the module's C stub

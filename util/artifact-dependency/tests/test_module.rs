@@ -8,7 +8,7 @@ fn test() {
         .build_always(true)
         .artifact_type(CrateType::CDynamicLibrary)
         .target_name("test_module")
-        .crate_name("confuse_module")
+        .crate_name("tsffs_module")
         .feature("6.0.166")
         .build()
         .expect("Couldn't build dependency")

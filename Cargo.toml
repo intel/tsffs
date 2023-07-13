@@ -12,7 +12,7 @@ members = [
     "simics-link",
     "simics-fuzz",
     # Modules
-    "confuse_module",
+    "tsffs_module",
     # Utilities
     "util/raw-cstr",
     "util/version-tools",
@@ -32,7 +32,7 @@ default-members = [
     "simics-link",
     "simics-fuzz",
     # Modules
-    "confuse_module",
+    "tsffs_module",
     # Utilities
     "util/raw-cstr",
     "util/version-tools",
@@ -46,7 +46,7 @@ artifact-dependency = { path = "./util/artifact-dependency" }
 simics-link = { path = "./simics-link" }
 simics = { path = "./simics" }
 simics-fuzz = { path = "./simics-fuzz" }
-confuse_module = { path = "./confuse_module" }
+tsffs_module = { path = "./tsffs_module" }
 simics-api-sys = { path = "./simics-api-sys" }
 simics-api = { path = "./simics-api" }
 simics-api-macro = { path = "./simics-api-macro" }

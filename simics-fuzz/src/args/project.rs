@@ -46,7 +46,7 @@ impl FromStr for ModuleArg {
     type Err = Error;
 
     fn from_str(_s: &str) -> Result<Self> {
-        todo!("Modules are not implemented, but the CONFUSE module is automatically loaded");
+        todo!("Modules are not implemented, but the TSFFS module is automatically loaded");
     }
 }
 

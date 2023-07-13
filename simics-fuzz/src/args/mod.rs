@@ -3,10 +3,10 @@ pub mod project;
 
 use clap::Parser;
 use command::Command;
-use confuse_module::config::TraceMode;
 use project::{DirectoryArg, FileArg, ModuleArg, PackageArg, PathSymlinkArg};
 use std::path::PathBuf;
 use tracing_subscriber::filter::LevelFilter;
+use tsffs_module::config::TraceMode;
 
 #[derive(Debug, Parser)]
 pub struct Args {

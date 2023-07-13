@@ -1,6 +1,6 @@
 //! Tests that the derive macro can correctly parse an input struct
 
-use simics_api::{ClassKind, ConfObject, Module};
+use simics_api::{ClassKind, ConfObject, SimicsModule};
 use simics_api_macro::module;
 
 #[macro_use]
@@ -11,7 +11,7 @@ extern crate simics_api_macro;
 #[module(class_name = "test_module")]
 pub struct TestModule {}
 
-impl Module for TestModule {
+impl SimicsModule for TestModule {
     fn init(obj: *mut simics_api::ConfObject) -> anyhow::Result<*mut ConfObject> {
         Ok(obj)
     }
@@ -19,7 +19,7 @@ impl Module for TestModule {
 
 // Test that we can derive the Module impl by itself
 
-#[derive(Module)]
+#[derive(SimicsModule)]
 pub struct TestModule2 {}
 
 // Test that we can derive and have an impl

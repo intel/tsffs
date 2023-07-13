@@ -13,7 +13,7 @@
 #include <Library/UefiLib.h>
 #include <Uefi.h>
 
-#include "confuse.h"
+#include "tsffs.h"
 
 /**
   The user Entry Point for Application. The user code starts with this function

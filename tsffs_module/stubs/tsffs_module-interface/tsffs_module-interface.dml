@@ -1,0 +1,27 @@
+/*
+  © 2017 Intel Corporation
+*/
+
+// tsffs_module-interface.dml - Skeleton code to base new DML interface types on
+
+// This is the DML definition of the tsffs_module interface. See
+// the "Defining a New Interface Type" section of the
+// "Simics Model Builder User's Guide" for further documentation.
+// The corresponding C definition can be found in
+// tsffs_module-interface.h.
+
+dml 1.4;
+
+header %{
+#include "tsffs_module-interface.h"
+%}
+
+// Define the new interface type
+extern typedef struct {
+    void (*start)(conf_object_t *obj, bool run);
+    void (*add_processor)(conf_object_t *obj, attr_value_t *processor);
+    void (*add_fault)(conf_object_t *obj, int64 fault);
+    void (*add_channels)(conf_object_t *obj, attr_value_t *tx, attr_value_t *rx);
+} tsffs_module_interface_t;
+
+extern const char *const TSFFS_MODULE_INTERFACE;

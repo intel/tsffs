@@ -199,7 +199,7 @@ impl Args {
     }
 }
 
-#[proc_macro_derive(Module)]
+#[proc_macro_derive(SimicsModule)]
 /// Derive the default implementation of [Module]
 pub fn derive_module(input: TokenStream) -> TokenStream {
     let item_struct = parse_macro_input!(input as ItemStruct);
@@ -207,7 +207,7 @@ pub fn derive_module(input: TokenStream) -> TokenStream {
     let name = &item_struct.ident;
 
     quote! {
-        impl simics_api::Module for #name {}
+        impl simics_api::SimicsModule for #name {}
     }
     .into()
 }
@@ -300,7 +300,7 @@ pub fn module(args: TokenStream, input: TokenStream) -> TokenStream {
 
     // Only derive Module if we get a `derive` argument
     let derive_attribute = if args.has_derive() {
-        quote! { #[derive(Module)] }
+        quote! { #[derive(SimicsModule)] }
     } else {
         quote! {}
     };
@@ -426,7 +426,7 @@ fn create_impl<S: AsRef<str>>(name: S, args: &Args, parms: &Generics) -> TokenSt
 
         }
 
-        impl #parms simics_api::Create for #name #parms {
+        impl #parms simics_api::SimicsClassCreate for #name #parms {
             fn create() -> anyhow::Result<*mut simics_api::ConfClass> {
                 simics_api::create_class(#class_name, #name::CLASS)
             }
