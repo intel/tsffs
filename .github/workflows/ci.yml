@@ -286,13 +286,10 @@ jobs:
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
                   /action/lib/linter.sh
 
-    build_hello_world:
-        container: cache-registry.caas.intel.com/cache/novafacing/kaniko-alpine:v1.12.1-debug
+    scan_hello_world:
+        container: cache-registry.caas.intel.com/cache/novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.18.3-0.0.1
         runs-on: [self-hosted, gasp]
         steps:
-            - name: Install Dependencies
-              run: |
-                  apk add nodejs git
             - uses: actions/checkout@v3
             - name: Build Hello World Image
               run: |
@@ -304,24 +301,21 @@ jobs:
                     --build-arg "no_proxy=${no_proxy}" \
                     --build-arg "NO_PROXY=${NO_PROXY}" \
                     --build-arg "proxy=${HTTP_PROXY}" \
+                    --snapshot-mode=redo \
+                    --use-new-run \
                     --context examples/hello-world \
                     --dockerfile Dockerfile \
                     --no-push \
                     --tar-path /hello-world.tar \
-                    --destination=images
-            - uses: actions/upload-artifact@v3
-              with:
-                  name: hello-world-image
-                  path: |
-                      /hello-world.tar
+                    --destination=image
+            - name: Scan X509Parse Image
+              run: |
+                  /kaniko/trivy image --input /hello-world.tar
 
-    build_x509_parse:
-        container: cache-registry.caas.intel.com/cache/novafacing/kaniko-alpine:v1.12.1-debug
+    scan_x509_parse:
+        container: cache-registry.caas.intel.com/cache/novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.18.3-0.0.1
         runs-on: [self-hosted, gasp]
         steps:
-            - name: Install Dependencies
-              run: |
-                  apk add nodejs git
             - uses: actions/checkout@v3
             - name: Build X509Parse Image
               run: |
@@ -333,35 +327,13 @@ jobs:
                     --build-arg "no_proxy=${no_proxy}" \
                     --build-arg "NO_PROXY=${NO_PROXY}" \
                     --build-arg "proxy=${HTTP_PROXY}" \
+                    --snapshot-mode=redo \
+                    --use-new-run \
                     --context examples/x509-parse \
                     --dockerfile Dockerfile \
                     --no-push \
                     --tar-path /x509-parse.tar \
-                    --destination=images
-            - uses: actions/upload-artifact@v3
-              with:
-                  name: x509-parse-image
-                  path: |
-                      /x509-parse.tar
-
-    trivy:
-        needs: [build_hello_world, build_x509_parse]
-        container: cache-registry.caas.intel.com/cache/aquasec/trivy
-        runs-on: [self-hosted, gasp]
-        steps:
-            - uses: actions/download-artifact@v3
-              with:
-                  name: hello-world-image
-                  path: /hello-world.tar
-            - uses: actions/download-artifact@v3
-              with:
-                  name: x509-parse-image
-                  path: /x509-parse.tar
-            - name: Scan Hello World Container
+                    --destination=image
+            - name: Scan X509Parse Image
               run: |
-                  [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  trivy --input /hello-world.tar
-            - name: Scan X509Parse Container
-              run: |
-                  [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  trivy --input /x509-parse.tar
+                  /kaniko/trivy image --input /x509-parse.tar
