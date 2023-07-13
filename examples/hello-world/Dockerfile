@@ -1,4 +1,4 @@
-FROM ghcr.io/tianocore/containers/fedora-37-build:a0dd931
+FROM ghcr.io/tianocore/containers/ubuntu-22-build:a0dd931
 
 SHELL ["/bin/bash", "-c"]
 
