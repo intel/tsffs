@@ -12,7 +12,7 @@ RUN git clone "${EDK2_REPO_URL}" "${EDK2_PATH}" && \
     stuart_setup -c "${EDK2_PATH}/.pytool/CISettings.py" TOOL_CHAIN_TAG=GCC5 && \
     stuart_update -c "${EDK2_PATH}/.pytool/CISettings.py" TOOL_CHAIN_TAG=GCC5
 
-COPY examples/x509-parse/src "${EDK2_PATH}/X509Parse/"
+COPY src "${EDK2_PATH}/X509Parse/"
 
 RUN stuart_setup -c "${EDK2_PATH}/X509Parse/PlatformBuild.py" TOOL_CHAIN_TAG=GCC5 && \
     stuart_update -c "${EDK2_PATH}/X509Parse/PlatformBuild.py" TOOL_CHAIN_TAG=GCC5 && \

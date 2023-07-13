@@ -286,27 +286,58 @@ jobs:
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
                   /action/lib/linter.sh
 
-    build_images:
-        container: gcr.io/kaniko-project/executor:v1.12.1-debug
+    build_hello_world:
+        container: cache-registry.caas.intel.com/cache/novafacing/kaniko-alpine:v1.12.1-debug
         runs-on: [self-hosted, gasp]
         steps:
-            - name: Build Hello World Container
+            - name: Install Dependencies
               run: |
-                  export GIT_PULL_METHOD=https
-                  export GIT_TOKEN=${{ secrets.GITHUB_TOKEN }}
-                  [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  /kaniko/executor --build-arg "http_proxy=${http_proxy}" --build-arg "HTTP_PROXY=${HTTP_PROXY}" --build-arg "https_proxy=${https_proxy}" --build-arg "HTTPS_PROXY=${HTTPS_PROXY}" --build-arg "no_proxy=${no_proxy}" --build-arg "NO_PROXY=${NO_PROXY}" --context git://github.com/intel-innersource/applications.security.fuzzing.confuse.git --dockerfile /examples/hello-world/Dockerfile --no-push --tar-path /hello-world.tar --destination=images
-            - name: Build X509Parse Container
+                  apk add nodejs git
+            - uses: actions/checkout@v3
+            - name: Build Hello World Image
               run: |
-                  export GIT_PULL_METHOD=https
-                  export GIT_TOKEN=${{ secrets.GITHUB_TOKEN }}
-                  [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  /kaniko/executor --build-arg "http_proxy=${http_proxy}" --build-arg "HTTP_PROXY=${HTTP_PROXY}" --build-arg "https_proxy=${https_proxy}" --build-arg "HTTPS_PROXY=${HTTPS_PROXY}" --build-arg "no_proxy=${no_proxy}" --build-arg "NO_PROXY=${NO_PROXY}" --context git://github.com/intel-innersource/applications.security.fuzzing.confuse.git --dockerfile /examples/x509-parse/Dockerfile --no-push --tar-path /x509-parse.tar --destination=images
+                  /kaniko/executor \
+                    --build-arg "http_proxy=${http_proxy}" \
+                    --build-arg "HTTP_PROXY=${HTTP_PROXY}" \
+                    --build-arg "https_proxy=${https_proxy}" \
+                    --build-arg "HTTPS_PROXY=${HTTPS_PROXY}" \
+                    --build-arg "no_proxy=${no_proxy}" \
+                    --build-arg "NO_PROXY=${NO_PROXY}" \
+                    --build-arg "proxy=${HTTP_PROXY}" \
+                    --context examples/hello-world \
+                    --dockerfile Dockerfile \
+                    --no-push \
+                    --tar-path /hello-world.tar \
+                    --destination=images
             - uses: actions/upload-artifact@v3
               with:
                   name: hello-world-image
                   path: |
                       /hello-world.tar
+
+    build_x509_parse:
+        container: cache-registry.caas.intel.com/cache/novafacing/kaniko-alpine:v1.12.1-debug
+        runs-on: [self-hosted, gasp]
+        steps:
+            - name: Install Dependencies
+              run: |
+                  apk add nodejs git
+            - uses: actions/checkout@v3
+            - name: Build X509Parse Image
+              run: |
+                  /kaniko/executor \
+                    --build-arg "http_proxy=${http_proxy}" \
+                    --build-arg "HTTP_PROXY=${HTTP_PROXY}" \
+                    --build-arg "https_proxy=${https_proxy}" \
+                    --build-arg "HTTPS_PROXY=${HTTPS_PROXY}" \
+                    --build-arg "no_proxy=${no_proxy}" \
+                    --build-arg "NO_PROXY=${NO_PROXY}" \
+                    --build-arg "proxy=${HTTP_PROXY}" \
+                    --context examples/x509-parse \
+                    --dockerfile Dockerfile \
+                    --no-push \
+                    --tar-path /x509-parse.tar \
+                    --destination=images
             - uses: actions/upload-artifact@v3
               with:
                   name: x509-parse-image
@@ -314,7 +345,7 @@ jobs:
                       /x509-parse.tar
 
     trivy:
-        needs: build_images
+        needs: [build_hello_world, build_x509_parse]
         container: cache-registry.caas.intel.com/cache/aquasec/trivy
         runs-on: [self-hosted, gasp]
         steps:

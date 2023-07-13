@@ -13,7 +13,7 @@ RUN git clone "${EDK2_REPO_URL}" "${EDK2_PATH}" && \
     stuart_setup -c "${EDK2_PATH}/.pytool/CISettings.py" TOOL_CHAIN_TAG=GCC5 && \
     stuart_update -c "${EDK2_PATH}/.pytool/CISettings.py" TOOL_CHAIN_TAG=GCC5
 
-COPY examples/hello-world/src "${EDK2_PATH}/HelloWorld/"
+COPY src "${EDK2_PATH}/HelloWorld/"
 
 RUN stuart_setup -c "${EDK2_PATH}/HelloWorld/PlatformBuild.py" TOOL_CHAIN_TAG=GCC5 && \
     stuart_update -c "${EDK2_PATH}/HelloWorld/PlatformBuild.py" TOOL_CHAIN_TAG=GCC5 && \
