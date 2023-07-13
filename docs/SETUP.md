@@ -198,7 +198,7 @@ tar -C ~/install/simics-internal -xzvf ~/Downloads/ispm-internal-latest-linux64.
 ##### Check kinit (Internal)
 
 When using `ispm` internally, you need to have Kerberos set up for authentication.
-Typically this will be done automatically, for example when installing 
+Typically this will be done automatically, for example when installing
 
 ##### Set up SIMICS_HOME (Internal)
 

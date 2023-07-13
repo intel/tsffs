@@ -26,28 +26,28 @@
 EFI_STATUS
 EFIAPI
 UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable) {
-    UINTN max_input_size = 0x1000;
-    UINTN input_size = max_input_size;
-    UINT8 *input = (UINT8 *)AllocatePages(EFI_SIZE_TO_PAGES(max_input_size));
+  UINTN max_input_size = 0x1000;
+  UINTN input_size = max_input_size;
+  UINT8 *input = (UINT8 *)AllocatePages(EFI_SIZE_TO_PAGES(max_input_size));
 
-    if (!input) {
-        return EFI_OUT_OF_RESOURCES;
-    }
+  if (!input) {
+    return EFI_OUT_OF_RESOURCES;
+  }
 
-    HARNESS_START(&input, &input_size);
+  HARNESS_START(&input, &input_size);
 
-    UINT8 *Cert = input;
-    UINTN CertSize = input_size / 2;
-    UINT8 *CACert = (input + CertSize);
-    UINTN CACertSize = CertSize;
+  UINT8 *Cert = input;
+  UINTN CertSize = input_size / 2;
+  UINT8 *CACert = (input + CertSize);
+  UINTN CACertSize = CertSize;
 
-    X509VerifyCert(Cert, CertSize, CACert, CACertSize);
+  X509VerifyCert(Cert, CertSize, CACert, CACertSize);
 
-    HARNESS_STOP();
+  HARNESS_STOP();
 
-    if (input) {
-        FreePages(input, EFI_SIZE_TO_PAGES(max_input_size));
-    }
+  if (input) {
+    FreePages(input, EFI_SIZE_TO_PAGES(max_input_size));
+  }
 
-    return EFI_SUCCESS;
+  return EFI_SUCCESS;
 }

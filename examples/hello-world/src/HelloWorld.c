@@ -26,45 +26,45 @@
 EFI_STATUS
 EFIAPI
 UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable) {
-    UINTN input_max_size = 0x1000;
-    UINTN input_size = input_max_size;
-    UINT8 *input = (UINT8 *)AllocatePages(EFI_SIZE_TO_PAGES(input_max_size));
+  UINTN input_max_size = 0x1000;
+  UINTN input_size = input_max_size;
+  UINT8 *input = (UINT8 *)AllocatePages(EFI_SIZE_TO_PAGES(input_max_size));
 
-    if (!input) {
-        return EFI_OUT_OF_RESOURCES;
-    }
+  if (!input) {
+    return EFI_OUT_OF_RESOURCES;
+  }
 
-    SetMem((VOID *)input, input_max_size, 0);
+  SetMem((VOID *)input, input_max_size, 0);
 
-    HARNESS_START(&input, &input_size);
+  HARNESS_START(&input, &input_size);
 
-    switch (*input) {
-        case 'A': {
-            // Invalid opcode
-            __asm__(".byte 0x06");
-        }
-        case 'B': {
-            // Sleep for 10 seconds, this is a "hang"
+  switch (*input) {
+  case 'A': {
+    // Invalid opcode
+    __asm__(".byte 0x06");
+  }
+  case 'B': {
+    // Sleep for 10 seconds, this is a "hang"
 
-            // NOTE: gBS is the global Boot Services table
-            gBS->Stall(10 * 1000 * 1000);
-        }
-        case 'C': {
-            // This will page fault
-            UINT8 *ptr = (UINT8 *)0xffffffffffffffff;
-            *ptr = 0x00;
-        }
-        default: {
-            // Nothing, this is a "success"
-            Print(L"Working...\n");
-        }
-    }
+    // NOTE: gBS is the global Boot Services table
+    gBS->Stall(10 * 1000 * 1000);
+  }
+  case 'C': {
+    // This will page fault
+    UINT8 *ptr = (UINT8 *)0xffffffffffffffff;
+    *ptr = 0x00;
+  }
+  default: {
+    // Nothing, this is a "success"
+    Print(L"Working...\n");
+  }
+  }
 
-    HARNESS_STOP_EXTENDED(input);
+  HARNESS_STOP_EXTENDED(input);
 
-    if (input) {
-        FreePages(input, EFI_SIZE_TO_PAGES(input_max_size));
-    }
+  if (input) {
+    FreePages(input, EFI_SIZE_TO_PAGES(input_max_size));
+  }
 
-    return EFI_SUCCESS;
+  return EFI_SUCCESS;
 }
