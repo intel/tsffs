@@ -39,25 +39,25 @@ UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable) {
   HARNESS_START(&input, &input_size);
 
   switch (*input) {
-  case 'A': {
-    // Invalid opcode
-    __asm__(".byte 0x06");
-  }
-  case 'B': {
-    // Sleep for 10 seconds, this is a "hang"
+    case 'A': {
+      // Invalid opcode
+      __asm__(".byte 0x06");
+    }
+    case 'B': {
+      // Sleep for 10 seconds, this is a "hang"
 
-    // NOTE: gBS is the global Boot Services table
-    gBS->Stall(10 * 1000 * 1000);
-  }
-  case 'C': {
-    // This will page fault
-    UINT8 *ptr = (UINT8 *)0xffffffffffffffff;
-    *ptr = 0x00;
-  }
-  default: {
-    // Nothing, this is a "success"
-    Print(L"Working...\n");
-  }
+      // NOTE: gBS is the global Boot Services table
+      gBS->Stall(10 * 1000 * 1000);
+    }
+    case 'C': {
+      // This will page fault
+      UINT8 *ptr = (UINT8 *)0xffffffffffffffff;
+      *ptr = 0x00;
+    }
+    default: {
+      // Nothing, this is a "success"
+      Print(L"Working...\n");
+    }
   }
 
   HARNESS_STOP_EXTENDED(input);
