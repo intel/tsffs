@@ -1,6 +1,8 @@
 //! Temporary directory management with more explicit options than the language team crate `tmpdir`
 //! and correct temporary directory permissions (user-only r-x)
 
+#![deny(clippy::unwrap_used)]
+
 use anyhow::{anyhow, bail, ensure, Result};
 use derive_builder::Builder;
 #[cfg(unix)]

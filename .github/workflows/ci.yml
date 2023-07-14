@@ -108,7 +108,7 @@ jobs:
             - name: (T157, T375, T300) (N/C) - Temporary files must be cleaned up after the resource is used, Release resources when no longer needed, Test that temporary files are cleaned up after the resource is used
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  "${HOME}/.cargo/bin/cargo" test --manifest-path util/tmp-dir/Cargo.toml |
+                  "${HOME}/.cargo/bin/cargo" test --manifest-path util/tmp-dir/Cargo.toml \
                     || echo "❗ [T157] tmp-dir tests failed"
                   echo "✅ [T157] tmp-dir tests pass"
                   echo "✅ [T375] Temporary file/directory resources are released, see T157 test results"
@@ -117,7 +117,7 @@ jobs:
             - name: (T297, T162, T572, T595)  (N/C) - Verify that target pathname is validated before retrieving local resources, Validate pathname before retrieving local resources, Check for symlinks before opening files, Test that your application checks for symlinks before opening files
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  "${HOME}/.cargo/bin/cargo" test --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }} --manifest-path simics-tests/Cargo.toml path |
+                  "${HOME}/.cargo/bin/cargo" test --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }} --manifest-path simics-tests/Cargo.toml path \
                     || echo "❗ [T297] Simics path tests failed"
                   echo "✅ [T297] Simics path tests passed (tests check pathname validation)"
                   echo "✅ [T162] Simics path tests passed (tests check pathname validation)"
@@ -398,10 +398,10 @@ jobs:
                   echo "CVE,Package Name,Severity,Manifest File,Status,CVSS,CVSS Vector,Vulnerable Versions,Fixed Versions,Triaged By,Triage Reason,Triage Comment" > dependabot.csv
                   curl -L \
                     -H "Accept: application/vnd.github+json" \
-                    -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                    -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
                     -H "X-Github-Api-Version: 2022-11-28" \
-                    https://api.github.com/repos/${{ github.repository }}/dependabot/alerts 2> /dev/null \
-                    | jq -r '.[] | .security_advisory.cve_id + "," + .dependency.package.name + "," + .security_advisory.severity + "," + .dependency.manifest_path + "," + .state + "," + (.security_advisory.cvss.score | tostring) + "," + .security_advisory.cvss.vector_string + "," + .security_vulnerability.vulnerable_version_range + "," + .fixed_at + "," + .dismissed_by + "," + .dismissed_reason + "," + .dismissed_comment' \
+                    https://api.github.com/repos/intel-innersource/applications.security.fuzzing.confuse/dependabot/alerts \
+                  jq -r '.[] | .security_advisory.cve_id + "," + .dependency.package.name + "," + .security_advisory.severity + "," + .dependency.manifest_path + "," + .state + "," + (.security_advisory.cvss.score | tostring) + "," + .security_advisory.cvss.vector_string + "," + .security_vulnerability.vulnerable_version_range + "," + .fixed_at + "," + .dismissed_by + "," + .dismissed_reason + "," + .dismissed_comment' \
                     | grep -v ".github/actions/" >> dependabot.csv
                   if [[ $(wc -l < dependabot.csv) -ge 2 ]]; then
                     cat dependabot.csv
@@ -429,7 +429,7 @@ jobs:
                   # point
                   find . -type f -name '*.rs' 2> /dev/null \
                     | xargs -i bash -c \
-                      'grep -Eq "sudo|setuid\(0\)" {} && ( echo "❗ [T152] sudo or setuid(0) found in {}" && exit 1 )'
+                      '! grep -Eq "sudo|setuid\(0\)" {} || ( echo "❗ [T152] sudo or setuid(0) found in {}" && exit 1 )' \
                     || exit 1
                   echo "✅ [T152] Elevated permissions not requested or used"
             - name: (T349, T350) (N/C) - Protect audit information and logs against unauthorized access, Verify that audit information is sufficiently protected
@@ -446,7 +446,7 @@ jobs:
                   RESULTS=$(find . -type f -name '*.rs' -not -path './target/*' 2> /dev/null \
                     | xargs -i bash -c \
                       'grep "with_filter" {}' | wc -l)
-                  if [ "${RESULTS}" -eq 0 ]; ( echo "❗ [T437] no 'with_filter' calls found to restrict tracing output" && exit 1 ); fi
+                  if [ "${RESULTS}" -eq 0 ]; then ( echo "❗ [T437] no 'with_filter' calls found to restrict tracing output" && exit 1 ); fi
                   echo "✅ [T437] 'with_filter' calls found to restrict tracing output"
                   echo "✅ [T438] Log reduction implemented with log levels. See T437."
             - name: T633 (N/C) - Mitigate deadlock and recursion in services
@@ -468,7 +468,7 @@ jobs:
               run: |
                   find . -type f -name 'lib.rs' -not -path './target/*' 2> /dev/null \
                     | xargs -i bash -c \
-                      'grep -q "unwrap_used" || ( echo "❗ [T159] No #![deny(clippy::unwrap_used)] directive found in {}" && exit 1 )'
+                      'grep -q "unwrap_used" {} || ( echo "❗ [T159] No #![deny(clippy::unwrap_used)] directive found in {}" && exit 1 )'
                   echo "✅ [T159] #![deny(clippy::unwrap_used)] found in all lib.rs files"
                   echo "✅ [CT185] Full error and exception handling implemented. See T159 output."
                   echo "✅ [T403] Full error and exception handling implemented. See T159 output."
