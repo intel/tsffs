@@ -37,6 +37,7 @@ env:
 
 jobs:
     build_and_test:
+        name: Build and Test
         strategy:
             matrix:
                 simics_version: [
@@ -169,12 +170,6 @@ jobs:
         container: cache-registry.caas.intel.com/cache/library/ubuntu
         runs-on: [self-hosted, gasp]
         steps:
-            - name: Install Git
-              run: |
-                  [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  apt-get -y update && \
-                  apt-get -y install git
-            - uses: actions/checkout@v3
             - name: Install Dependencies
               shell: bash
               run: |
@@ -184,6 +179,7 @@ jobs:
                     curl \
                     build-essential \
                     cmake
+            - uses: actions/checkout@v3
             - name: Install Rust Toolchain
               shell: bash
               run: |
@@ -233,13 +229,13 @@ jobs:
             - name: Test Project
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  timeout 600 "${HOME}/.cargo/bin/cargo" test --features=${{ matrix.simics_version }} || echo "❗ Tests failed for SIMICS version ${{ matrix.simics_version }}"
+                  timeout 1800 "${HOME}/.cargo/bin/cargo" test --features=${{ matrix.simics_version }} || ( echo "❗ Tests failed for SIMICS version ${{ matrix.simics_version }}" && exit 1 )
                   echo "✅ Tests passed for SIMICS version ${{ matrix.simics_version }}"
             - name: (T157, T375, T300) (N/C) - Temporary files must be cleaned up after the resource is used, Release resources when no longer needed, Test that temporary files are cleaned up after the resource is used
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
                   "${HOME}/.cargo/bin/cargo" test --manifest-path util/tmp-dir/Cargo.toml \
-                    || echo "❗ [T157] tmp-dir tests failed"
+                    || ( echo "❗ [T157] tmp-dir tests failed" && exit 1 )
                   echo "✅ [T157] tmp-dir tests pass"
                   echo "✅ [T375] Temporary file/directory resources are released, see T157 test results"
                   echo "✅ [T375] LibAFL Shared memory resources are released via clean shutdown in with ::send_exiting"
@@ -248,7 +244,7 @@ jobs:
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
                   "${HOME}/.cargo/bin/cargo" test --features=${{ matrix.simics_version }} --manifest-path simics-tests/Cargo.toml path \
-                    || echo "❗ [T297] Simics path tests failed"
+                    || ( echo "❗ [T297] Simics path tests failed" && exit 1 )
                   echo "✅ [T297] Simics path tests passed (tests check pathname validation)"
                   echo "✅ [T162] Simics path tests passed (tests check pathname validation)"
                   echo "✅ [T572] File paths are canonicalized/normalized before opening. See T297."
@@ -263,15 +259,10 @@ jobs:
                   "${HOME}/.cargo/bin/cargo" test --doc --features=${{ matrix.simics_version }}
 
     static_analysis:
+        name: Run Static Analysis
         container: cache-registry.caas.intel.com/cache/library/ubuntu
         runs-on: [self-hosted, gasp]
         steps:
-            - name: Install Git
-              run: |
-                  [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  apt-get -y update && \
-                  apt-get -y install git
-            - uses: actions/checkout@v3
             - name: Install Dependencies
               shell: bash
               run: |
@@ -281,6 +272,7 @@ jobs:
                     curl \
                     build-essential \
                     cmake
+            - uses: actions/checkout@v3
             - name: Install Rust Toolchain
               shell: bash
               run: |
@@ -335,15 +327,10 @@ jobs:
                   echo "✅ [CT39 (2/2)] Passed MIRI static analysis checks"
 
     fuzz_tests:
+        name: Run Fuzz Tests
         container: cache-registry.caas.intel.com/cache/library/ubuntu
         runs-on: [self-hosted, gasp]
         steps:
-            - name: Install Git
-              run: |
-                  [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  apt-get -y update && \
-                  apt-get -y install git
-            - uses: actions/checkout@v3
             - name: Install Dependencies
               shell: bash
               run: |
@@ -353,6 +340,7 @@ jobs:
                     curl \
                     build-essential \
                     cmake
+            - uses: actions/checkout@v3
             - name: Install Rust Toolchain
               shell: bash
               run: |
@@ -435,6 +423,7 @@ jobs:
                   exit 0
 
     super_lint:
+        name: Run Super Linter
         container: cache-registry.caas.intel.com/cache/github/super-linter
         runs-on: [self-hosted, gasp]
         steps:
@@ -461,6 +450,7 @@ jobs:
                   echo "✅ [CT222] Hadolint Dockerfile check passed"
 
     scan_hello_world:
+        name: Scan Hello World EFI Builder Container
         container: cache-registry.caas.intel.com/cache/novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.18.3-0.0.1
         runs-on: [self-hosted, gasp]
         steps:
@@ -487,6 +477,7 @@ jobs:
                   /kaniko/trivy image --input /hello-world.tar
 
     scan_x509_parse:
+        name: Scan X509Parse EFI Builder Container
         container: cache-registry.caas.intel.com/cache/novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.18.3-0.0.1
         runs-on: [self-hosted, gasp]
         steps:
@@ -513,6 +504,7 @@ jobs:
                   /kaniko/trivy image --input /x509-parse.tar
 
     additional_sdl_checks:
+        name: Perform Additional SDL Checks
         container: cache-registry.caas.intel.com/cache/library/ubuntu
         runs-on: [self-hosted, gasp]
         steps:
@@ -522,26 +514,6 @@ jobs:
                   apt-get -y update && \
                   apt-get -y install git curl jq wget
             - uses: actions/checkout@v3
-              # NOTE: We ignore vulnerabilities in GH actions' node packages explicitly, they
-              # are not relevant for us because we also use action checks
-            - name: (CT247/CT200) (N/C) - Scan 3rd-Party Components for Vulnerabilities, Verify that project is not using vulnerable 3rd party components
-              run: |
-                  wget https://github.com/jqlang/jq/releases/download/jq-1.6/jq-linux64
-                  chmod +x ./jq-linux64
-                  echo "CVE,Package Name,Severity,Manifest File,Status,CVSS,CVSS Vector,Vulnerable Versions,Fixed Versions,Triaged By,Triage Reason,Triage Comment" > dependabot.csv
-                  curl -L \
-                    -H "Accept: application/vnd.github+json" \
-                    -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-                    -H "X-Github-Api-Version: 2022-11-28" \
-                    https://api.github.com/repos/intel-innersource/applications.security.fuzzing.confuse/dependabot/alerts \
-                  | ./jq-linux64 -r '.[] | [.security_advisory.cve_id,.dependency.package.name,.security_advisory.severity,.dependency.manifest_path,.state,.security_advisory.cvss.score,.security_advisory.cvss.vector_string,.security_vulnerability.vulnerable_version_range,.fixed_at,.dismissed_by,.dismissed_reason,.dismissed_comment] | @csv'  \
-                  | grep -v ".github/actions/" >> dependabot.csv
-                  if [ "$(wc -l < dependabot.csv)" -gt 1 ]; then
-                    cat dependabot.csv
-                    echo "❗ [CT247/CT200] Dependabot vulnerabilities found"
-                    exit 1
-                  fi
-                  echo "✅ [CT247/CT200] No dependabot vulnerabilities found"
             - name: CT256 (N/C) - Include security.md file in open source repos
               run: |
                   [ -f SECURITY.md ] \
@@ -627,3 +599,23 @@ jobs:
               run: |
                   LOG_MESSAGES=$(find . -type f -name '*.rs' -not -path './target/*' -exec grep -E "trace\!|debug\!|info\!|warn\!|error\!" {} \; 2> /dev/null | wc -l)
                   echo "✅ [T232] ${LOG_MESSAGES} found in project"
+              # NOTE: We ignore vulnerabilities in GH actions' node packages explicitly, they
+              # are not relevant for us because we also use action checks
+            - name: (CT247/CT200) (N/C) - Scan 3rd-Party Components for Vulnerabilities, Verify that project is not using vulnerable 3rd party components
+              run: |
+                  wget https://github.com/jqlang/jq/releases/download/jq-1.6/jq-linux64
+                  chmod +x ./jq-linux64
+                  curl -o dependabot.json -x "${HTTP_PROXY}" -L \
+                    -H "Accept: application/vnd.github+json" \
+                    -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                    -H "X-Github-Api-Version: 2022-11-28" \
+                    https://api.github.com/repos/intel-innersource/applications.security.fuzzing.confuse/dependabot/alerts
+                  echo "CVE,Package Name,Severity,Manifest File,Status,CVSS,CVSS Vector,Vulnerable Versions,Fixed Versions,Triaged By,Triage Reason,Triage Comment" > dependabot.csv
+                  ./jq-linux64 -r '.[] | [.security_advisory.cve_id,.dependency.package.name,.security_advisory.severity,.dependency.manifest_path,.state,.security_advisory.cvss.score,.security_advisory.cvss.vector_string,.security_vulnerability.vulnerable_version_range,.fixed_at,.dismissed_by,.dismissed_reason,.dismissed_comment] | @csv' < dependabot.json \
+                    | grep -v ".github/action" >> dependabot.csv
+                  if [ "$(wc -l < dependabot.csv)" -gt 1 ]; then
+                    cat dependabot.csv
+                    echo "❗ [CT247/CT200] Dependabot vulnerabilities found"
+                    exit 1
+                  fi
+                  echo "✅ [CT247/CT200] No dependabot vulnerabilities found"
