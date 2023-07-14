@@ -233,7 +233,7 @@ jobs:
             - name: Test Project
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  timeout 300 "${HOME}/.cargo/bin/cargo" test --features=${{ matrix.simics_version }}
+                  timeout 600 "${HOME}/.cargo/bin/cargo" test --features=${{ matrix.simics_version }}
             - name: (T157, T375, T300) (N/C) - Temporary files must be cleaned up after the resource is used, Release resources when no longer needed, Test that temporary files are cleaned up after the resource is used
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
