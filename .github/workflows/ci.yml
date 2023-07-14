@@ -603,19 +603,16 @@ jobs:
               # are not relevant for us because we also use action checks
             - name: (CT247/CT200) (N/C) - Scan 3rd-Party Components for Vulnerabilities, Verify that project is not using vulnerable 3rd party components
               run: |
-                  wget https://github.com/jqlang/jq/releases/download/jq-1.6/jq-linux64
-                  chmod +x ./jq-linux64
-                  curl -o dependabot.json -x "${HTTP_PROXY}" -L \
-                    -H "Accept: application/vnd.github+json" \
-                    -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-                    -H "X-Github-Api-Version: 2022-11-28" \
-                    https://api.github.com/repos/intel-innersource/applications.security.fuzzing.confuse/dependabot/alerts
-                  echo "CVE,Package Name,Severity,Manifest File,Status,CVSS,CVSS Vector,Vulnerable Versions,Fixed Versions,Triaged By,Triage Reason,Triage Comment" > dependabot.csv
-                  ./jq-linux64 -r '.[] | [.security_advisory.cve_id,.dependency.package.name,.security_advisory.severity,.dependency.manifest_path,.state,.security_advisory.cvss.score,.security_advisory.cvss.vector_string,.security_vulnerability.vulnerable_version_range,.fixed_at,.dismissed_by,.dismissed_reason,.dismissed_comment] | @csv' < dependabot.json \
-                    | grep -v ".github/action" >> dependabot.csv
-                  if [ "$(wc -l < dependabot.csv)" -gt 1 ]; then
-                    cat dependabot.csv
-                    echo "❗ [CT247/CT200] Dependabot vulnerabilities found"
-                    exit 1
+                  LATEST=$(find .github/dependabot -name '*.csv' -print0 \
+                    | xargs -r -0 ls -1 -t \
+                    | head -n 1)
+                  if [ ! $(find "${LATEST}" -mtime -14) ]; then
+                      echo "❗ [CT247/CT200] No dependabot report found from last 2 weeks. Run ./scripts/dependabot.sh."
+                      exit 1
+                  fi
+                  if [ $(tail -n+2 "${LATEST}" | grep -v ".github/actions/toolchain") ]; then
+                      cat "${LATEST}"
+                      echo "❗ [CT247/CT200] Vulnerabilities found outside of github actions. Please remediate them."
+                      exit 1
                   fi
                   echo "✅ [CT247/CT200] No dependabot vulnerabilities found"
