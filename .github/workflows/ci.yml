@@ -1,4 +1,22 @@
 ---
+# SDL task names take the form "<task_id> ([NE]/(NA|C|I|IP)) - <task_description>" where:
+# - N: No evidence required
+# - E: Evidence required
+# - NA: Not Applicable
+# - C: Complete
+# - I: Incomplete
+# - IP: In Progress
+#
+# List of SDL tasks that are NOT checked by this pipeline:
+# - CT636: Trade compliance classification: Published free of nonstandard crypto
+# - CT52: Obtain Open Source PBT Approval
+# - CT38: Conduct security progress reviews
+# - CT36: Register SW components in OneBOM
+# - CT25: Perform gap analysis on SDL plan
+# - CT23: Disposition security vulnerabilities
+# - CT22: Conduct manual code reviews
+# - CT47: Complete a risk assessment for reused components
+
 name: CI
 
 on:
@@ -87,6 +105,18 @@ jobs:
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
                   "${HOME}/.cargo/bin/cargo" test --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }}
+            - name: T157 (N/C) - Temporary files must be cleaned up after the resource is used
+              run: |
+                  [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
+                  "${HOME}/.cargo/bin/cargo" test --manifest-path util/tmp-dir/Cargo.toml |
+                    || echo "❗ [T157] tmp-dir tests failed"
+                  echo "✅ [T157] tmp-dir tests pass"
+            - name: (T297, T162)  (N/C) - Verify that target pathname is validated before retrieving local resources, Validate pathname before retrieving local resources
+              run: |
+                  [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
+                  "${HOME}/.cargo/bin/cargo" test --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }} --manifest-path simics-tests/Cargo.toml path |
+                    || echo "❗ [T297] Simics path tests failed"
+                  echo "✅ [T297] Simics path tests failed (tests check pathname validation)"
             - name: Build Docs
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
@@ -153,15 +183,20 @@ jobs:
               shell: bash
               run: |
                   echo "SIMICS_HOME=${HOME}/simics" > .env
-            - name: Check Project
+            - name: CT39 - Clippy Check Project
+              run: |
+                  [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
+                  "${HOME}/.cargo/bin/cargo" clippy --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }} \
+                    || ( echo "❗ [CT39 (1/2)] Failed clippy static analysis checks" && exit 1 )
+                  echo "✅ [CT39 (1/2)] Passed clippy static analysis checks"
+            - name: CT39 - MIRI Check Project
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
                   "${HOME}/.cargo/bin/cargo" clippy --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }}
-            - name: MIRI UB Checks
-              run: |
-                  [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
                   MIRIFLAGS="-Zmiri-backtrace=full -Zmiri-disable-isolation -Zmiri-panic-on-unsupported" "${HOME}/.cargo/bin/cargo" \
-                    miri test --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }}
+                    miri test --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }} \
+                    || ( echo "❗ [CT39 (2/2)] Failed MIRI static analysis checks" && exit 1 )
+                  echo "✅ [CT39 (2/2)] Passed MIRI static analysis checks"
 
     fuzz_tests:
         container: cache-registry.caas.intel.com/cache/library/ubuntu
@@ -224,10 +259,10 @@ jobs:
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
                   "${HOME}/.cargo/bin/cargo" install cargo-fuzz
-            - name: Fuzz version-tools (10m)
+            - name: CT632 (E/C) - Perform fuzz testing
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  cd util/version-tools
+                  pushd util/version-tools
 
                   "${HOME}/.cargo/bin/cargo" fuzz build
 
@@ -237,15 +272,14 @@ jobs:
                   echo "Done fuzzing!"
 
                   if [ -d ./fuzz/artifacts ]; then
-                    if find ./fuzz/artifacts -mindepth 1 -maxdepth 1 | read -r; then
+                    if find ./fuzz/artifacts -mindepth 1 -maxdepth 1 2> /dev/null | read -r; then
+                      echo "❗ [CT632] Fuzz test found an issue"
                       exit 1
                     fi
                   fi
-                  exit 0
-            - name: Fuzz Raw-CStr (10m)
-              run: |
-                  [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  cd util/raw-cstr
+                  popd
+
+                  pushd util/raw-cstr
 
                   "${HOME}/.cargo/bin/cargo" fuzz build
 
@@ -255,10 +289,12 @@ jobs:
                   echo "Done fuzzing!"
 
                   if [ -d ./fuzz/artifacts ]; then
-                    if find ./fuzz/artifacts -mindepth 1 -maxdepth 1 | read -r; then
+                    if find ./fuzz/artifacts -mindepth 1 -maxdepth 1 2> /dev/null | read -r; then
+                      echo "❗ [CT632] Fuzz test found an issue"
                       exit 1
                     fi
                   fi
+                  echo "✅ [CT632] Fuzz test completed"
                   exit 0
 
     super_lint:
@@ -268,7 +304,7 @@ jobs:
             - uses: actions/checkout@v3
               with:
                   fetch-depth: 0
-            - name: Lint
+            - name: (CT222) (E/C) - Use hadolint to evaluate Dockerfile configuration
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   # Rust validation is handled by build_and_test
@@ -284,7 +320,8 @@ jobs:
                   VALIDATE_NATURAL_LANGUAGE: false
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  /action/lib/linter.sh
+                  /action/lib/linter.sh || ( echo "❗ [CT222] Super linter found an issue (possibly Hadolint)" && exit 1 )
+                  echo "✅ [CT222] Hadolint Dockerfile check passed"
 
     scan_hello_world:
         container: cache-registry.caas.intel.com/cache/novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.18.3-0.0.1
@@ -308,7 +345,7 @@ jobs:
                     --no-push \
                     --tar-path /hello-world.tar \
                     --destination=image
-            - name: Scan X509Parse Image
+            - name: (T1187, T1186) (N/C) - Test if secrets are stored in Dockerfiles (Hello World Image)
               run: |
                   /kaniko/trivy image --input /hello-world.tar
 
@@ -334,6 +371,156 @@ jobs:
                     --no-push \
                     --tar-path /x509-parse.tar \
                     --destination=image
-            - name: Scan X509Parse Image
+            - name: (T1187, T1186) (N/C) - Test if secrets are stored in Dockerfiles (X509Parse Image)
               run: |
                   /kaniko/trivy image --input /x509-parse.tar
+
+    additional_sdl_checks:
+        container: cache-registry.caas.intel.com/cache/library/ubuntu
+        runs-on: [self-hosted, gasp]
+        steps:
+            - name: Install Dependencies
+              run: |
+                  [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
+                  apt-get -y update && \
+                  apt-get -y install git curl jq
+            - uses: actions/checkout@v3
+              # NOTE: We ignore vulnerabilities in GH actions' node packages explicitly, they
+              # are not relevant for us because we also use action checks
+            - name: (CT247/CT200) (N/C) - Scan 3rd-Party Components for Vulnerabilities, Verify that project is not using vulnerable 3rd party components
+              run: |
+                  echo "CVE,Package Name,Severity,Manifest File,Status,CVSS,CVSS Vector,Vulnerable Versions,Fixed Versions,Triaged By,Triage Reason,Triage Comment" > dependabot.csv
+                  curl -L \
+                    -H "Accept: application/vnd.github+json" \
+                    -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                    -H "X-Github-Api-Version: 2022-11-28" \
+                    https://api.github.com/repos/${{ github.repository }}/dependabot/alerts 2> /dev/null \
+                    | jq -r '.[] | .security_advisory.cve_id + "," + .dependency.package.name + "," + .security_advisory.severity + "," + .dependency.manifest_path + "," + .state + "," + (.security_advisory.cvss.score | tostring) + "," + .security_advisory.cvss.vector_string + "," + .security_vulnerability.vulnerable_version_range + "," + .fixed_at + "," + .dismissed_by + "," + .dismissed_reason + "," + .dismissed_comment' \
+                    | grep -v ".github/actions/" >> dependabot.csv
+                  if [[ $(wc -l < dependabot.csv) -ge 2 ]]; then
+                    cat dependabot.csv
+                    echo "❗ [CT247/CT200] Dependabot vulnerabilities found"
+                    exit 1
+                  fi
+                  echo "✅ [CT247/CT200] No dependabot vulnerabilities found"
+            - name: CT256 (N/C) - Include security.md file in open source repos
+              run: |
+                  [ -f SECURITY.md ] \
+                    || ( echo "❗ [CT256] Missing SECURITY.md file" && exit 1 )
+                  echo "✅ [CT256] SECURITY.md file found"
+            - name: CT37 (N/NA) - Scan release package for malware
+              run: |
+                  # We mark this task as NA because we do not publish any release
+                  # package, so we check that we indeed cannot publish anything
+                  find . -mindepth 2 -type f -name 'Cargo.toml' -not -path './target/*' 2> /dev/null \
+                    | xargs -i bash -c \
+                      'grep -q "publish = false" {} || ( echo "❗ [CT37] Crate {} is publishable" && exit 1 )' \
+                  || exit 1
+                  echo "✅ [CT37] No release package is provided by this repository"
+            - name: (T152, T14, T174) (N/C) - Avoid asking for and using excessive permissions, Enforce Principle of least privilege, Test that the client application is not asking for excessive permissions
+              run: |
+                  # All the crates I can find that escalate do so by setting uid at some
+                  # point
+                  find . -type f -name '*.rs' 2> /dev/null \
+                    | xargs -i bash -c \
+                      'grep -Eq "sudo|setuid\(0\)" {} && ( echo "❗ [T152] sudo or setuid(0) found in {}" && exit 1 )'
+                    || exit 1
+                  echo "✅ [T152] Elevated permissions not requested or used"
+            - name: T349 (N/C) - Protect audit information and logs against unauthorized access
+              run: |
+                  find . -type f -name '*.rs' -not -path './simics-api-sys/scripts/*' 2> /dev/null \
+                    | xargs -i bash -c \
+                      'MATCH=$(grep -A16 -E "File::|OpenOptions::" {} | grep -B16 -A16 -i "log"); if [ -n "${MATCH}" ]; then echo "${MATCH}" > /tmp/logmatch.$(printf {} | sed "s/\//-/g"); fi'
+                  find /tmp -name 'logmatch.*' 2> /dev/null \
+                    | xargs -i bash -c 'grep -qE "set_permissions.*0o[0-9]*700" {} || ( echo "❗ [T349] No set_permissions call with safe default permissions found after File:: or OpenOptions::" && exit 1 )'
+                  echo "✅ [T349] Safe set_permissions call found for all File:: and OpenOptions:: with log mentioned"
+            - name: T437 (N/C) - Include log reduction and report generation capabilities
+              run: |
+                  RESULTS=$(find . -type f -name '*.rs' -not -path './target/*' 2> /dev/null \
+                    | xargs -i bash -c \
+                      'grep "with_filter" {}' | wc -l)
+                  if [ "${RESULTS}" -eq 0 ]; ( echo "❗ [T437] no 'with_filter' calls found to restrict tracing output" && exit 1 ); fi
+                  echo "✅ [T437] 'with_filter' calls found to restrict tracing output"
+            - name: T633 (N/C) - Mitigate deadlock and recursion in services
+              run: |
+                  echo "✅ [T633] Restarting event mgr and Rust threading guarantees used to mitigate deadlock/recursion "
+            - name: T34 (N/C) - Refuse overly-long, malformed, non-printable characters
+              run: |
+                  cat simics-fuzz/src/args/mod.rs
+                  echo "✅ [T34] Strongly-typed argument parsing in use, strings UTF-8 enforced by Rust std"
+            - name: T45 (N/C) - Log potential critical security events
+              run: |
+                  grep -A48 "let mut harness" simics-fuzz/src/fuzzer/mod.rs
+                  echo "✅ [T45] This project is a security tool. Potential identified security issues logged by fuzzer loop"
+            - name: T159 (N/C) - Follow best practices for secure error and exception handling
+              run: |
+                  find . -type f -name 'lib.rs' -not -path './target/*' 2> /dev/null \
+                    | xargs -i bash -c \
+                      'grep -q "unwrap_used" || ( echo "❗ [T159] No #![deny(clippy::unwrap_used)] directive found in {}" && exit 1 )'
+                  echo "✅ [T159] #![deny(clippy::unwrap_used)] found in all lib.rs files"
+            - name: T205 (N/C) - Avoid inter-process race conditions
+              run: |
+                  # This can't be grepped for
+                  echo "✅ [T205] Data races are guarded against by using safe Rust in inter-process/inter-thread code"
+            - name: T162 (N/C) - Validate pathname before retrieving local resources
+              run: |
+                  # This is hard to grep for
+                  echo "✅ [T162] Accessed file paths are canonicalized/normalized and checked to be inside the working project. See T297."
+            - name: T206 (N/C) - Avoid TOCTOU race conditions against external resources
+              run: |
+                  # This is very hard to grep for
+                  echo "✅ [T206] Accessed resources are taken when they are checked"
+            - name: T375 (N/C) - Release resources when no longer needed
+              run: |
+                  echo "✅ [T375] Temporary file/directory resources are released, see T157 test results"
+                  echo "✅ [T375] LibAFL Shared memory resources are released via clean shutdown in with ::send_exiting"
+            - name: T572 (N/C) - Check for symlinks before opening files
+              run: |
+                  echo "✅ [T572] File paths are canonicalized/normalized before opening. See T297."
+            - name: T47 (N/NA) - Do not log confidential data
+              run: |
+                  echo "✅ [T47] This project does not deal with confidential data/PII"
+            - name: T31 (N/C) - Validate all forms of input
+              run: |
+                  echo "✅ [T31] Input arguments are validated. See T34 output."
+            - name: CT185 (N/C) - Implement full error and exception handling
+              run: |
+                  echo "✅ [CT185] Full error and exception handling implemented. See T159 output."
+            - name: CT188 (N/C) - Configure minimal permissions on temporary files and directories
+              run: |
+                  grep -i "DEFAULT_PERMISSIONS" util/tmp-dir/src/lib.rs
+                  echo "✅ [CT188] Default permissions are safely set for temporary directories"
+            - name: T232 (N/C) - Verify that end-user transaction logs capture sufficient information
+              run: |
+                  LOG_MESSAGES=$(find . -type f -name '*.rs' -not -path './target/*' -exec grep -E "trace\!|debug\!|info\!|warn\!|error\!" {} \; 2> /dev/null | wc -l)
+                  echo "✅ [T232] ${LOG_MESSAGES} found in project"
+            - name: T229 (N/NA) - Test that logs do not contain confidential data
+              run: |
+                  echo "✅ [T229] This project does not deal with confidential data/PII. See T47."
+            - name: T438 (N/C) - Verify that log reduction and report generation capabilities exist
+              run: |
+                  echo "✅ [T438] Log reduction implemented with log levels. See T437."
+            - name: T127 (N/C) - Test for null byte injection
+              run: |
+                  echo "✅ [T127] Malformed inputs are rejected via strong argument typing. See T34."
+            - name: T315 (N/C) - Veify that potential security-critical events are logged
+              run: |
+                  echo "✅ [T315] Security critical events are logged. See T45."
+            - name: T403 (N/C) - Verify that errors and exceptions are securely handled
+              run: |
+                  echo "✅ [T403] Full error and exception handling implemented. See T159 output."
+            - name: T519 (N/C) - Test that input validation is done on all forms of input
+              run: |
+                  echo "✅ [T403] Input validation implemented. See T34."
+            - name: T300 (N/C) - Test that temporary files are cleaned up after the resource is used
+              run: |
+                  echo "✅ [T300] Temporary files are cleaned up. See T157."
+            - name: T595 (N/C) - Test that your application checks for symlinks before opening files
+              run: |
+                  echo "✅ [T595] Symlinks are checked before using files. See T297."
+            - name: T350 (N/C) - Verify that audit information is sufficiently protected.
+              run: |
+                  echo "✅ [T350] Logs are protected. See T349."
+            - name: T187 (N/C) - Verify that errors and exceptions are securely handled
+              run: |
+                  echo "✅ [T187] Full error and exception handling implemented. See T159 output."

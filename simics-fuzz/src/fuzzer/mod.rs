@@ -34,9 +34,10 @@ use simics::{
     simics::Simics,
 };
 use std::{
-    fs::OpenOptions,
+    fs::{set_permissions, OpenOptions, Permissions},
     io::stdout,
     net::TcpListener,
+    os::unix::prelude::PermissionsExt,
     path::PathBuf,
     sync::{
         mpsc::{channel, Receiver, Sender},
@@ -138,13 +139,15 @@ impl SimicsFuzzer {
                 }))
         });
         if let Some(log_file) = &args.log_file {
-            let file = Box::new(
-                OpenOptions::new()
+            let file = Box::new({
+                let f = OpenOptions::new()
                     .create(true)
                     .append(true)
                     .write(true)
-                    .open(log_file)?,
-            );
+                    .open(log_file)?;
+                set_permissions(log_file, Permissions::from_mode(0o700))?;
+                f
+            });
             reg.with({
                 fmt::layer()
                     .compact()

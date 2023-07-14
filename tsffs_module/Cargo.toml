@@ -2,6 +2,7 @@
 name = "tsffs_module"
 version = "0.1.0"
 edition = "2021"
+publish = false
 
 # This metadata table configures the `SimicsProject` we'll eventually add this module to
 [package.metadata.module]
