@@ -166,8 +166,6 @@ jobs:
                         # Not yet supported
                         # "6.0.167",
                     ]
-        env:
-            SIMICS_PUBLIC_PACKAGE_VERSION_1000: ${{ matrix.simics_version }}
         container: cache-registry.caas.intel.com/cache/library/ubuntu
         runs-on: [self-hosted, gasp]
         steps:
@@ -217,7 +215,7 @@ jobs:
                     --package-repo https://af02p-or.devtools.intel.com/ui/native/simics-repos/pub/simics-6/linux64/ \
                     --install-dir "${HOME}/simics" \
                     install \
-                    1000-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }} \
+                    1000-${{ matrix.simics_version }} \
                     2096-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_2096 }} \
                     8112-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_8112 }}
             - name: Set up .env
@@ -227,15 +225,15 @@ jobs:
             - name: Build Project
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  "${HOME}/.cargo/bin/cargo" build --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }}
+                  "${HOME}/.cargo/bin/cargo" build --features=${{ matrix.simics_version }}
             - name: Check Project
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  "${HOME}/.cargo/bin/cargo" clippy --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }}
+                  "${HOME}/.cargo/bin/cargo" clippy --features=${{ matrix.simics_version}}
             - name: Test Project
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  "${HOME}/.cargo/bin/cargo" test --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }}
+                  "${HOME}/.cargo/bin/cargo" test --features=${{ matrix.simics_version }}
             - name: (T157, T375, T300) (N/C) - Temporary files must be cleaned up after the resource is used, Release resources when no longer needed, Test that temporary files are cleaned up after the resource is used
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
@@ -248,7 +246,7 @@ jobs:
             - name: (T297, T162, T572, T595)  (N/C) - Verify that target pathname is validated before retrieving local resources, Validate pathname before retrieving local resources, Check for symlinks before opening files, Test that your application checks for symlinks before opening files
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  "${HOME}/.cargo/bin/cargo" test --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }} --manifest-path simics-tests/Cargo.toml path \
+                  "${HOME}/.cargo/bin/cargo" test --features=${{ matrix.simics_version }} --manifest-path simics-tests/Cargo.toml path \
                     || echo "❗ [T297] Simics path tests failed"
                   echo "✅ [T297] Simics path tests passed (tests check pathname validation)"
                   echo "✅ [T162] Simics path tests passed (tests check pathname validation)"
@@ -257,11 +255,11 @@ jobs:
             - name: Build Docs
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  "${HOME}/.cargo/bin/cargo" doc --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }}
+                  "${HOME}/.cargo/bin/cargo" doc --features=${{ matrix.simics_version }}
             - name: Test Docs
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  "${HOME}/.cargo/bin/cargo" test --doc --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }}
+                  "${HOME}/.cargo/bin/cargo" test --doc --features=${{ matrix.simics_version }}
 
     static_analysis:
         container: cache-registry.caas.intel.com/cache/library/ubuntu
