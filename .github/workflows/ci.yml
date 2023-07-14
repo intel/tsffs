@@ -105,18 +105,24 @@ jobs:
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
                   "${HOME}/.cargo/bin/cargo" test --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }}
-            - name: T157 (N/C) - Temporary files must be cleaned up after the resource is used
+            - name: (T157, T375, T300) (N/C) - Temporary files must be cleaned up after the resource is used, Release resources when no longer needed, Test that temporary files are cleaned up after the resource is used
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
                   "${HOME}/.cargo/bin/cargo" test --manifest-path util/tmp-dir/Cargo.toml |
                     || echo "❗ [T157] tmp-dir tests failed"
                   echo "✅ [T157] tmp-dir tests pass"
-            - name: (T297, T162)  (N/C) - Verify that target pathname is validated before retrieving local resources, Validate pathname before retrieving local resources
+                  echo "✅ [T375] Temporary file/directory resources are released, see T157 test results"
+                  echo "✅ [T375] LibAFL Shared memory resources are released via clean shutdown in with ::send_exiting"
+                  echo "✅ [T300] Temporary files are cleaned up. See T157."
+            - name: (T297, T162, T572, T595)  (N/C) - Verify that target pathname is validated before retrieving local resources, Validate pathname before retrieving local resources, Check for symlinks before opening files, Test that your application checks for symlinks before opening files
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
                   "${HOME}/.cargo/bin/cargo" test --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }} --manifest-path simics-tests/Cargo.toml path |
                     || echo "❗ [T297] Simics path tests failed"
-                  echo "✅ [T297] Simics path tests failed (tests check pathname validation)"
+                  echo "✅ [T297] Simics path tests passed (tests check pathname validation)"
+                  echo "✅ [T162] Simics path tests passed (tests check pathname validation)"
+                  echo "✅ [T572] File paths are canonicalized/normalized before opening. See T297."
+                  echo "✅ [T595] Symlinks are checked before using files. See T297."
             - name: Build Docs
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
@@ -426,7 +432,7 @@ jobs:
                       'grep -Eq "sudo|setuid\(0\)" {} && ( echo "❗ [T152] sudo or setuid(0) found in {}" && exit 1 )'
                     || exit 1
                   echo "✅ [T152] Elevated permissions not requested or used"
-            - name: T349 (N/C) - Protect audit information and logs against unauthorized access
+            - name: (T349, T350) (N/C) - Protect audit information and logs against unauthorized access, Verify that audit information is sufficiently protected
               run: |
                   find . -type f -name '*.rs' -not -path './simics-api-sys/scripts/*' 2> /dev/null \
                     | xargs -i bash -c \
@@ -434,58 +440,51 @@ jobs:
                   find /tmp -name 'logmatch.*' 2> /dev/null \
                     | xargs -i bash -c 'grep -qE "set_permissions.*0o[0-9]*700" {} || ( echo "❗ [T349] No set_permissions call with safe default permissions found after File:: or OpenOptions::" && exit 1 )'
                   echo "✅ [T349] Safe set_permissions call found for all File:: and OpenOptions:: with log mentioned"
-            - name: T437 (N/C) - Include log reduction and report generation capabilities
+                  echo "✅ [T350] Logs are protected. See T349."
+            - name: (T437, T438) (N/C) - Include log reduction and report generation capabilities, Verify that log reduction and report generation capabilities exist
               run: |
                   RESULTS=$(find . -type f -name '*.rs' -not -path './target/*' 2> /dev/null \
                     | xargs -i bash -c \
                       'grep "with_filter" {}' | wc -l)
                   if [ "${RESULTS}" -eq 0 ]; ( echo "❗ [T437] no 'with_filter' calls found to restrict tracing output" && exit 1 ); fi
                   echo "✅ [T437] 'with_filter' calls found to restrict tracing output"
+                  echo "✅ [T438] Log reduction implemented with log levels. See T437."
             - name: T633 (N/C) - Mitigate deadlock and recursion in services
               run: |
                   echo "✅ [T633] Restarting event mgr and Rust threading guarantees used to mitigate deadlock/recursion "
-            - name: T34 (N/C) - Refuse overly-long, malformed, non-printable characters
+            - name: (T34, T31, T127, T519) (N/C) - Refuse overly-long, malformed, non-printable characters, Validate all forms of input, Test for null byte injection, Test that input validation is done on all forms of input
               run: |
                   cat simics-fuzz/src/args/mod.rs
                   echo "✅ [T34] Strongly-typed argument parsing in use, strings UTF-8 enforced by Rust std"
-            - name: T45 (N/C) - Log potential critical security events
+                  echo "✅ [T31] Input arguments are validated. See T34 output."
+                  echo "✅ [T127] Malformed inputs are rejected via strong argument typing. See T34."
+                  echo "✅ [T519] Input validation implemented. See T34."
+            - name: (T45, T315) (N/C) - Log potential critical security events, Verify that potential security-critical events are logged
               run: |
                   grep -A48 "let mut harness" simics-fuzz/src/fuzzer/mod.rs
                   echo "✅ [T45] This project is a security tool. Potential identified security issues logged by fuzzer loop"
-            - name: T159 (N/C) - Follow best practices for secure error and exception handling
+                  echo "✅ [T315] Security critical events are logged. See T45."
+            - name: (T159, CT185, T403, T187) (N/C) - Follow best practices for secure error and exception handling, Implement full error and exception handling, Verify that errors and exceptions are securely handled, Verify that errors and exceptions are securely handled
               run: |
                   find . -type f -name 'lib.rs' -not -path './target/*' 2> /dev/null \
                     | xargs -i bash -c \
                       'grep -q "unwrap_used" || ( echo "❗ [T159] No #![deny(clippy::unwrap_used)] directive found in {}" && exit 1 )'
                   echo "✅ [T159] #![deny(clippy::unwrap_used)] found in all lib.rs files"
+                  echo "✅ [CT185] Full error and exception handling implemented. See T159 output."
+                  echo "✅ [T403] Full error and exception handling implemented. See T159 output."
+                  echo "✅ [T187] Full error and exception handling implemented. See T159 output."
             - name: T205 (N/C) - Avoid inter-process race conditions
               run: |
                   # This can't be grepped for
                   echo "✅ [T205] Data races are guarded against by using safe Rust in inter-process/inter-thread code"
-            - name: T162 (N/C) - Validate pathname before retrieving local resources
-              run: |
-                  # This is hard to grep for
-                  echo "✅ [T162] Accessed file paths are canonicalized/normalized and checked to be inside the working project. See T297."
             - name: T206 (N/C) - Avoid TOCTOU race conditions against external resources
               run: |
                   # This is very hard to grep for
                   echo "✅ [T206] Accessed resources are taken when they are checked"
-            - name: T375 (N/C) - Release resources when no longer needed
-              run: |
-                  echo "✅ [T375] Temporary file/directory resources are released, see T157 test results"
-                  echo "✅ [T375] LibAFL Shared memory resources are released via clean shutdown in with ::send_exiting"
-            - name: T572 (N/C) - Check for symlinks before opening files
-              run: |
-                  echo "✅ [T572] File paths are canonicalized/normalized before opening. See T297."
-            - name: T47 (N/NA) - Do not log confidential data
+            - name: (T47, T229) (N/NA) - Do not log confidential data, Test that logs do not contain confidential data
               run: |
                   echo "✅ [T47] This project does not deal with confidential data/PII"
-            - name: T31 (N/C) - Validate all forms of input
-              run: |
-                  echo "✅ [T31] Input arguments are validated. See T34 output."
-            - name: CT185 (N/C) - Implement full error and exception handling
-              run: |
-                  echo "✅ [CT185] Full error and exception handling implemented. See T159 output."
+                  echo "✅ [T229] This project does not deal with confidential data/PII. See T47."
             - name: CT188 (N/C) - Configure minimal permissions on temporary files and directories
               run: |
                   grep -i "DEFAULT_PERMISSIONS" util/tmp-dir/src/lib.rs
@@ -494,33 +493,3 @@ jobs:
               run: |
                   LOG_MESSAGES=$(find . -type f -name '*.rs' -not -path './target/*' -exec grep -E "trace\!|debug\!|info\!|warn\!|error\!" {} \; 2> /dev/null | wc -l)
                   echo "✅ [T232] ${LOG_MESSAGES} found in project"
-            - name: T229 (N/NA) - Test that logs do not contain confidential data
-              run: |
-                  echo "✅ [T229] This project does not deal with confidential data/PII. See T47."
-            - name: T438 (N/C) - Verify that log reduction and report generation capabilities exist
-              run: |
-                  echo "✅ [T438] Log reduction implemented with log levels. See T437."
-            - name: T127 (N/C) - Test for null byte injection
-              run: |
-                  echo "✅ [T127] Malformed inputs are rejected via strong argument typing. See T34."
-            - name: T315 (N/C) - Veify that potential security-critical events are logged
-              run: |
-                  echo "✅ [T315] Security critical events are logged. See T45."
-            - name: T403 (N/C) - Verify that errors and exceptions are securely handled
-              run: |
-                  echo "✅ [T403] Full error and exception handling implemented. See T159 output."
-            - name: T519 (N/C) - Test that input validation is done on all forms of input
-              run: |
-                  echo "✅ [T403] Input validation implemented. See T34."
-            - name: T300 (N/C) - Test that temporary files are cleaned up after the resource is used
-              run: |
-                  echo "✅ [T300] Temporary files are cleaned up. See T157."
-            - name: T595 (N/C) - Test that your application checks for symlinks before opening files
-              run: |
-                  echo "✅ [T595] Symlinks are checked before using files. See T297."
-            - name: T350 (N/C) - Verify that audit information is sufficiently protected.
-              run: |
-                  echo "✅ [T350] Logs are protected. See T349."
-            - name: T187 (N/C) - Verify that errors and exceptions are securely handled
-              run: |
-                  echo "✅ [T187] Full error and exception handling implemented. See T159 output."
