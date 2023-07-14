@@ -582,10 +582,13 @@ pub fn link_simics_linux<S: AsRef<str>>(version_constraint: S) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "6.0.166")]
     use anyhow::Result;
 
+    #[cfg(feature = "6.0.166")]
     use crate::link_simics_linux;
 
+    #[cfg(feature = "6.0.166")]
     #[test]
     #[cfg_attr(miri, ignore)]
     fn test_link_simics_linux() -> Result<()> {

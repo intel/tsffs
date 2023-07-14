@@ -481,7 +481,7 @@ impl Project {
             // Creating a new project, we will ignore existing files and add all build systems
             (
                 self.base.path.join("bin").join("project-setup"),
-                vec!["--ignore-existing-files", "--with-gmake", "--with-cmake"],
+                vec!["--ignore-existing-files"],
             )
         };
 
