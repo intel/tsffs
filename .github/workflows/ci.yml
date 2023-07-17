@@ -603,10 +603,11 @@ jobs:
               # are not relevant for us because we also use action checks
             - name: (CT247/CT200) (N/C) - Scan 3rd-Party Components for Vulnerabilities, Verify that project is not using vulnerable 3rd party components
               run: |
+                  # shellcheck disable=SC2086,SC2143
                   LATEST="$(find '.github/dependabot' -name '*.csv' -print0 \
                     | xargs -r -0 ls -1 -t \
                     | head -n 1)"
-                  if [ ! "$(find \"${LATEST}\" -mtime -14)" ]; then
+                  if [ ! "$(find ${LATEST} -mtime -14)" ]; then
                       echo "❗ [CT247/CT200] No dependabot report found from last 2 weeks. Run ./scripts/dependabot.sh."
                       exit 1
                   fi
