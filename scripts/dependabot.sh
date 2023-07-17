@@ -21,9 +21,9 @@ fi
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 DEPENDABOT_DIR="${SCRIPT_DIR}/../.github/dependabot"
 
-pushd "${SCRIPT_DIR}"
+pushd "${SCRIPT_DIR}" || exit 1
 
-REPOSITORY=$(git remote get-url origin | awk -F'/' '{print $(NF-1)"/"$(NF)}')
+# REPOSITORY=$(git remote get-url origin | awk -F'/' '{print $(NF-1)"/"$(NF)}')
 DATE=$(date '+%Y-%m-%d')
 CSV="${DEPENDABOT_DIR}/${DATE}.csv"
 JSON="${DEPENDABOT_DIR}/${DATE}.json"
