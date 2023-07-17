@@ -75,7 +75,7 @@ Project updated successfully
 We will also add a simics script. Add the contents below as `test.simics` in the project
 root.
 
-```
+```simics
 $disk0_image = (lookup-file "%simics%/minimal_boot_disk.craff")
 run-command-file "%simics%/targets/qsp-x86/qsp-hdd-boot.simics" 
 
@@ -110,7 +110,8 @@ script-branch "UEFI Shell Enter Branch" {
 }
 ```
 
-Finally, copy the `HelloWorld.efi` module and the `minimal_boot_disk.craff` image into the project root
+Finally, copy the `HelloWorld.efi` module and the `minimal_boot_disk.craff` image into
+the project root:
 
 ```sh
 cp /path/to/this/repo/examples/hello-world/rsrc/HelloWorld.efi ./
@@ -222,10 +223,9 @@ running> stop
 ```
 
 We stopped our execution after the app executed, so you should see the output from the
-second time we ran it ("Working...") printed on the GUI console. 
+second time we ran it ("Working...") printed on the GUI console.
 
 ![The EFI console, after running again](./images/REQUIREMENTS_Test_Micro_Checkpoints_Post.png)
-
 
 Now, we will restore our micro checkpoint and clear the recorder. The second step is
 important, because if we did not clear the recorder we would *replay* the execution of
@@ -246,7 +246,7 @@ and will look like this:
 
 #### Testing for Your App
 
-What you want to fuzz will depend on your project, so this procedure will change 
+What you want to fuzz will depend on your project, so this procedure will change
 somewhat depending on your project. In general, try to follow this flow:
 
 1. Save a micro checkpoint

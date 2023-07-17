@@ -31,6 +31,12 @@ if ! command -v yamllint &>/dev/null; then
     echo "yamllint must be installed! Install from your package manager."
     exit 1
 fi
+
+if ! command -v markdownlint &>/dev/null; then
+    echo "markdownlint must be installed! Install with 'npm i -g markdownlint-cli'"
+    exit 1
+fi
+
 echo "================="
 echo "Running clippy..."
 echo "================="
@@ -59,4 +65,10 @@ echo "================="
 echo "Running yamllint..."
 echo "================="
 
-fd '.*(\.yml|\.yaml)$' -x yamllint -c "${SCRIPT_DIR}/../.github/linters/.yaml-lint.yml"
+fd '.*(\.yml|\.yaml)$' -x yamllint -c "${SCRIPT_DIR}/../.github/linters/.yaml-lint.yml" {}
+
+echo "================="
+echo "Running markdownlint..."
+echo "================="
+
+fd '.*\.md$' -x markdownlint -c "${SCRIPT_DIR}/../.github/linters/.markdown-lint.yml" {}

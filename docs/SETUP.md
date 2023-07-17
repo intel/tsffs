@@ -1,12 +1,12 @@
 # Setup
 
-Follow these setup steps to prepare this repository to build! If you encounter any issues
-during this process, check the troubleshooting section first for common resolutions.
+Follow these setup steps to prepare this repository to build! If you encounter any
+issues during this process, check the troubleshooting section first for common
+resolutions.
 
 - [Setup](#setup)
   - [Install Prerequisites](#install-prerequisites)
     - [Rust](#rust)
-    - [Docker](#docker)
     - [SIMICS](#simics)
       - [(Optional) Install Simics GUI Dependencies](#optional-install-simics-gui-dependencies)
       - [External Instructions](#external-instructions)
@@ -18,6 +18,7 @@ during this process, check the troubleshooting section first for common resoluti
         - [Install Simics (Internal)](#install-simics-internal)
         - [Check kinit (Internal)](#check-kinit-internal)
         - [Set up SIMICS\_HOME (Internal)](#set-up-simics_home-internal)
+    - [Docker](#docker)
   - [Troubleshooting](#troubleshooting)
     - [Troubleshooting Docker Installations](#troubleshooting-docker-installations)
       - [Docker Group Membership](#docker-group-membership)
@@ -27,10 +28,13 @@ during this process, check the troubleshooting section first for common resoluti
 ## Install Prerequisites
 
 We need a couple of things before we are ready to build. To set up this workspace,
-you'll need `cargo` and `docker` as well as `simics` with the packages necessary to
+you'll need `cargo` as well as `simics` with the packages necessary to
 run whatever it is you want to run. Here, we'll just install the packages needed to
 run the simple samples we provide, but this is where you will want to customize your
 installation if necessary.
+
+Docker installation is optional and only needed if you want to build the EDK2 example
+targets yourself. The pre-built EFI applications for those examples are provided.
 
 ### Rust
 
@@ -49,50 +53,6 @@ Hello, world!
 ```
 
 If you see the `Hello, world!` message, your rust installation is complete!
-
-### Docker
-
-You can find instructions to install docker at
-[docs.docker.com](https://docs.docker.com/engine/install). The instructions vary
-slightly by distribution, so be sure to follow the directions for your particular Linux
-flavor.
-
-After installing docker, you can test that your installation is working by running:
-
-```sh
-$ docker run hello-world
-Unable to find image 'hello-world:latest' locally
-latest: Pulling from library/hello-world
-719385e32844: Pull complete 
-Digest: sha256:a13ec89cdf897b3e551bd9f89d499db6ff3a7f44c5b9eb8bca40da20eb4ea1fa
-Status: Downloaded newer image for hello-world:latest
-
-Hello from Docker!
-This message shows that your installation appears to be working correctly.
-
-To generate this message, Docker took the following steps:
- 1. The Docker client contacted the Docker daemon.
- 2. The Docker daemon pulled the "hello-world" image from the Docker Hub.
-    (amd64)
- 3. The Docker daemon created a new container from that image which runs the
-    executable that produces the output you are currently reading.
- 4. The Docker daemon streamed that output to the Docker client, which sent it
-    to your terminal.
-
-To try something more ambitious, you can run an Ubuntu container with:
- $ docker run -it ubuntu bash
-
-Share images, automate workflows, and more with a free Docker ID:
- https://hub.docker.com/
-
-For more examples and ideas, visit:
- https://docs.docker.com/get-started/
-```
-
-You should see the message that starts `Hello from Docker!`.
-
-For common issues with Docker installation, see `
-
 
 ### SIMICS
 
@@ -146,6 +106,7 @@ wget https://registrationcenter-download.intel.com/akdlm/IRC_NAS/708028d9-b710-4
 wget https://registrationcenter-download.intel.com/akdlm/IRC_NAS/708028d9-b710-45ea-baab-3b9c78c32cfc/simics-6-packages-2022-49-linux64.ispm \
     -O ~/Downloads/simics-6-packages-2022-49-linux64.ipsm
 ```
+
 ##### Install Simics (External)
 
 Assuming the two download locations above, we will install Simics to `~/install/simics`.
@@ -158,6 +119,7 @@ tar -C ~/install/simics -xvf ~/Downloads/intel-simics-package-manager-1.5.3-linu
     --install-bundle ~/Downloads/simics-6-packages-2022-49-linux64.ispm \
     --non-interactive
 ```
+
 ##### Set up SIMICS_HOME (External)
 
 In the root of this project, create a file `.env` containing a line like the below that
@@ -172,9 +134,9 @@ SIMICS_HOME=/home/rhart/install/simics/
 
 ##### Download Simics (Internal)
 
-If you need internal Simics packages, you will need to follow the internal Simics download
-and setup processes. In this case, you likely know what packages you need, and you
-can obtain the Simics download [here](https://goto.intel.com/simics).
+If you need internal Simics packages, you will need to follow the internal Simics
+download and setup processes. In this case, you likely know what packages you need, and
+you can obtain the Simics download [here](https://goto.intel.com/simics).
 
 ##### Install Simics (Internal)
 
@@ -209,6 +171,52 @@ points to your `SIMICS_HOME` directory (the `--install-dir` argument you passed 
 ```sh
 SIMICS_HOME=/home/rhart/install/simics-internal/
 ```
+
+### Docker
+
+Docker installation is completely optional, and is only needed to manually build the
+example EFI applications. Pre-built applications are provided in this repository, so you
+can safely skip this step unless you want to modify them or create your own target EFI
+applications.
+
+You can find instructions to install docker at
+[docs.docker.com](https://docs.docker.com/engine/install). The instructions vary
+slightly by distribution, so be sure to follow the directions for your particular Linux
+flavor.
+
+After installing docker, you can test that your installation is working by running:
+
+```sh
+$ docker run hello-world
+Unable to find image 'hello-world:latest' locally
+latest: Pulling from library/hello-world
+719385e32844: Pull complete 
+Digest: sha256:a13ec89cdf897b3e551bd9f89d499db6ff3a7f44c5b9eb8bca40da20eb4ea1fa
+Status: Downloaded newer image for hello-world:latest
+
+Hello from Docker!
+This message shows that your installation appears to be working correctly.
+
+To generate this message, Docker took the following steps:
+ 1. The Docker client contacted the Docker daemon.
+ 2. The Docker daemon pulled the "hello-world" image from the Docker Hub.
+    (amd64)
+ 3. The Docker daemon created a new container from that image which runs the
+    executable that produces the output you are currently reading.
+ 4. The Docker daemon streamed that output to the Docker client, which sent it
+    to your terminal.
+
+To try something more ambitious, you can run an Ubuntu container with:
+ $ docker run -it ubuntu bash
+
+Share images, automate workflows, and more with a free Docker ID:
+ https://hub.docker.com/
+
+For more examples and ideas, visit:
+ https://docs.docker.com/get-started/
+```
+
+You should see the message that starts `Hello from Docker!`.
 
 ## Troubleshooting
 

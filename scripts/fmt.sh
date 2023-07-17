@@ -29,13 +29,27 @@ if ! command -v isort &>/dev/null; then
     exit 1
 fi
 
+echo "================="
 echo "Formatting C/C++"
+echo "================="
 
 fd '.*(\.h|\.c|\.cc|\.hh)$' -x clang-format -i {}
 
+echo "================="
 echo "Formatting Rust"
+echo "================="
 
 cargo fmt --all
 
+echo "================="
+echo "Formatting Python"
+echo "================="
+
 fd '.*\.py$' -x black --config "${SCRIPT_DIR}/../.github/linters/.python-black" {}
 fd '.*\.py$' -x isort --settings-path "${SCRIPT_DIR}/../.github/linters/.isort.cfg" {}
+
+echo "================="
+echo "Formatting Markdown"
+echo "================="
+
+fd '.*\.md$' -x markdownlint -f -c "${SCRIPT_DIR}/../.github/linters/.markdown-lint.yml" {}
