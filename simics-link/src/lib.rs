@@ -22,7 +22,6 @@ use std::{
     process::{Command, Stdio},
     str::FromStr,
 };
-use tracing::error;
 use version_tools::VersionConstraint;
 use versions::Versioning;
 use walkdir::WalkDir;
@@ -61,6 +60,7 @@ impl From<PublicPackageNumber> for i64 {
 
 pub fn parse_packageinfo<P: AsRef<Path>>(package_path: P) -> Result<Package> {
     let package_path = package_path.as_ref().to_path_buf();
+    eprintln!("Parsing package info from {}", package_path.display());
 
     if !package_path.is_dir() {
         bail!(
@@ -136,14 +136,14 @@ pub fn packages<P: AsRef<Path>>(
     let infos: Vec<Package> = read_dir(&home)?
         .filter_map(|home_dir_entry| {
             home_dir_entry
-                .map_err(|e| error!("Could not read directory entry: {}", e))
+                .map_err(|e| eprintln!("Could not read directory entry: {}", e))
                 .ok()
         })
         .filter_map(|home_dir_entry| {
             let package_path = home_dir_entry.path();
             parse_packageinfo(&package_path)
                 .map_err(|e| {
-                    error!(
+                    eprintln!(
                         "Error parsing package info from package at {}: {}",
                         package_path.display(),
                         e
@@ -362,6 +362,8 @@ impl FromStr for Package {
             }
         });
 
+        eprintln!("Parsed package manifest: {:?}", package);
+
         Ok(package)
     }
 }
@@ -468,14 +470,14 @@ pub fn link_simics_linux<S: AsRef<str>>(version_constraint: S) -> Result<()> {
     )?;
     let simics_base_version = simics_base_info.version.clone();
     let simics_base_dir = simics_base_info.path;
-    println!(
+    eprintln!(
         "Found simics base for version '{}' in {}",
         version_constraint.as_ref(),
         simics_base_dir.display()
     );
 
     let simics_common_lib = find_file_in_dir(&simics_base_dir, "libsimics-common.so")?;
-    println!(
+    eprintln!(
         "Found simics common library: {}",
         simics_common_lib.display()
     );
