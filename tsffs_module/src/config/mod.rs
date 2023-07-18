@@ -56,7 +56,8 @@ pub struct InputConfig {
     pub log_level: LevelFilter,
     pub trace_mode: TraceMode,
     pub coverage_map: (*mut u8, usize),
-    pub cmp_map: *mut AFLppCmpMap,
+    #[builder(default)]
+    pub cmp_map: Option<*mut AFLppCmpMap>,
 }
 
 unsafe impl Send for InputConfig {}
