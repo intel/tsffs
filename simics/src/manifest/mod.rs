@@ -35,10 +35,11 @@ pub fn package_version<P: AsRef<Path>>(
         .max()
         .ok_or_else(|| {
             anyhow!(
-                "No simics base package number {} matching version {:?} in {}",
+                "No simics base package number {} matching version {:?} in {}. Got package infos {:?}",
                 package_number,
                 version_constraint,
-                simics_home.as_ref().display()
+                simics_home.as_ref().display(),
+                infos
             )
         })?;
 
