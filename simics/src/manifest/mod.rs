@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use std::path::Path;
 use version_tools::VersionConstraint;
 use versions::Versioning;
@@ -33,10 +33,17 @@ pub fn package_version<P: AsRef<Path>>(
         .filter_map(|k| Versioning::new(k))
         .filter(|v| version_constraint.matches(v))
         .max()
-        .context("No matching version")?;
+        .ok_or_else(|| {
+            anyhow!(
+                "No simics base package number {} matching version {:?} in {}",
+                package_number,
+                version_constraint,
+                simics_home.as_ref().display()
+            )
+        })?;
 
     Ok(infos
         .get(&version.to_string())
-        .context(format!("No such version {}", version))?
+        .ok_or_else(|| anyhow!("No such version {} in {:?}", version, infos))?
         .clone())
 }

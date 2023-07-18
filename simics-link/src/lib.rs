@@ -396,7 +396,14 @@ pub fn package_version<P: AsRef<Path>>(
         .filter_map(|k| Versioning::new(k))
         .filter(|v| version_constraint.matches(v))
         .max()
-        .ok_or_else(|| anyhow!("No matching version"))?;
+        .ok_or_else(|| {
+            anyhow!(
+                "No simics base package number {} matching version {:?} in {}",
+                package_number,
+                version_constraint,
+                simics_home.as_ref().display()
+            )
+        })?;
 
     Ok(infos
         .get(&version.to_string())
