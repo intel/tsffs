@@ -27,7 +27,7 @@ pub fn package_version<P: AsRef<Path>>(
     package_number: PackageNumber,
     version_constraint: VersionConstraint,
 ) -> Result<Package> {
-    let infos = packages(simics_home)?[&package_number].clone();
+    let infos = packages(simics_home.as_ref())?[&package_number].clone();
     let version = infos
         .keys()
         .filter_map(|k| Versioning::new(k))
