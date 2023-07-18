@@ -11,6 +11,8 @@ bootloaders, kernel modules, firmware, and the like.
   - [Documentation](#documentation)
   - [Authors](#authors)
 
+![A demo video of TSFFS running](./docs/images/mini.mp4)
+
 ## Capabilities
 
 This fuzzer is built using [LibAFL](https://github.com/AFLplusplus/LibAFL) and SIMICS
