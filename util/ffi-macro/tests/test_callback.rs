@@ -1,3 +1,5 @@
+#![allow(clippy::new_without_default)]
+
 use anyhow::Result;
 use ffi_macro::{callback_wrappers, params};
 
