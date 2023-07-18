@@ -67,7 +67,8 @@ int Check(int16_t *buffer, EfiSystemTable *SystemTable) {
                             SystemTable->conOut->output_string(
                                 SystemTable->conOut,
                                 (int16_t *)L"All characters were correct!\r\n");
-                            *((volatile char *)0) = 0;
+                            uint8_t *ptr = (uint8_t *)0xffffffffffffffff;
+                            *ptr = 0;
                           } else {
                             SystemTable->conOut->output_string(
                                 SystemTable->conOut,
@@ -157,7 +158,7 @@ int UefiMain(void *imageHandle, EfiSystemTable *SystemTable) {
   // of data. We will print out the data we got.
 
   for (size_t i = 0; i < size; i++) {
-    if (i != 0 && !(i % 4)) {
+    if (i != 0 && !(i % 8)) {
       SystemTable->conOut->output_string(SystemTable->conOut,
                                          (int16_t *)L"\r\n");
     }
