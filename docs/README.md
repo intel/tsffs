@@ -1,8 +1,8 @@
-# TSFFS Documentation Index
+# Documentation Index
 
 This page is just an index for the documentation to make it easier to navigate. The
 page links below are loosely in order of the order you'll want to read them if you are
-new to using TSFFS or evaluating whether you can use it for your project.
+new to using the fuzzer or evaluating whether you can use it for your project.
 
-- [Verifying Target Software requirements for using TSFFS with your project](./REQUIREMENTS.md)
-- [Installing dependencies, setting up, and building TSFFS](./SETUP.md)
+- [Verify Target Software requirements for using this fuzzer with your project](./Requirements.md)
+- [Install dependencies, set up workspace, and build this fuzzer](./Setup.md)

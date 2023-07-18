@@ -176,56 +176,41 @@ impl SimicsFuzzer {
 
         trace!("Setting up project with args: {:?}", args);
 
-        let builder: ProjectBuilder = if let Some(project_path) = args.project {
+        let mut builder: ProjectBuilder = if let Some(project_path) = args.project {
             if let Ok(project) = Project::try_from(project_path.clone()) {
+                info!("Setting up from existing project");
                 project.into()
             } else {
+                info!("Setting up new project");
                 // TODO: Merge with else branch, they are practically the same code.
                 let mut builder = ProjectBuilder::default();
 
                 builder = builder.path(project_path);
-
-                for p in args.package {
-                    builder = builder.package(p.package);
-                }
-                for m in args.module {
-                    builder = builder.module(m.module);
-                }
-                for d in args.directory {
-                    builder = builder.directory((d.src, d.dst));
-                }
-                for f in args.file {
-                    builder = builder.file((f.src, f.dst));
-                }
-                for s in args.path_symlink {
-                    builder = builder.path_symlink((s.src, s.dst));
-                }
-
                 builder
             }
         } else if let Ok(project) = Project::try_from(PathBuf::from(".")) {
+            info!("Setting up new project in current directory");
             project.into()
         } else {
-            let mut builder = ProjectBuilder::default();
-
-            for p in args.package {
-                builder = builder.package(p.package);
-            }
-            for m in args.module {
-                builder = builder.module(m.module);
-            }
-            for d in args.directory {
-                builder = builder.directory((d.src, d.dst));
-            }
-            for f in args.file {
-                builder = builder.file((f.src, f.dst));
-            }
-            for s in args.path_symlink {
-                builder = builder.path_symlink((s.src, s.dst));
-            }
-
-            builder
+            info!("Setting up new project in default location");
+            ProjectBuilder::default()
         };
+
+        for p in args.package {
+            builder = builder.package(p.package);
+        }
+        for m in args.module {
+            builder = builder.module(m.module);
+        }
+        for d in args.directory {
+            builder = builder.directory((d.src, d.dst));
+        }
+        for f in args.file {
+            builder = builder.file((f.src, f.dst));
+        }
+        for s in args.path_symlink {
+            builder = builder.path_symlink((s.src, s.dst));
+        }
 
         let project = builder
             .module(

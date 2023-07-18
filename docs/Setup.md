@@ -19,6 +19,7 @@ resolutions.
         - [Check kinit (Internal)](#check-kinit-internal)
         - [Set up SIMICS\_HOME (Internal)](#set-up-simics_home-internal)
     - [Docker](#docker)
+  - [Build the Fuzzer](#build-the-fuzzer)
   - [Troubleshooting](#troubleshooting)
     - [Troubleshooting Docker Installations](#troubleshooting-docker-installations)
       - [Docker Group Membership](#docker-group-membership)
@@ -153,7 +154,7 @@ tar -C ~/install/simics-internal -xzvf ~/Downloads/ispm-internal-latest-linux64.
     install \
     --install-dir ~/install/simics-internal \
     --package-repo https://af02p-or.devtools.intel.com/ui/native/simics-local/pub/simics-6/linux64/ \
-    1000-6.0.161 \
+    1000-6.0.166 \
     2096-6.0.66
 ```
 
@@ -216,7 +217,12 @@ For more examples and ideas, visit:
  https://docs.docker.com/get-started/
 ```
 
-You should see the message that starts `Hello from Docker!`.
+You should see the message that starts `Hello from Docker!`. If you don't, check
+[troubleshooting](#troubleshooting-docker-installations)
+
+## Build the Fuzzer
+
+
 
 ## Troubleshooting
 

@@ -5,16 +5,28 @@ easily fuzz things that are traditionally challenging to fuzz, like UEFI applica
 bootloaders, kernel modules, firmware, and the like.
 
 - [TSFFS: Target Software Fuzzer For SIMICS](#tsffs-target-software-fuzzer-for-simics)
+  - [Capabilities](#capabilities)
   - [Setup](#setup)
   - [Running A Sample Target](#running-a-sample-target)
   - [Documentation](#documentation)
   - [Authors](#authors)
 
+## Capabilities
+
+This fuzzer is built using [LibAFL](https://github.com/AFLplusplus/LibAFL) and SIMICS
+and takes advantage of several of the state of the art capabilities
+of both.
+
+- Edge coverage guided
+- Snapshotting (fully deterministic)
+- Parallel fuzzing (across cores, machines soon)
+- Easy to add to existing SIMICS projects
+
 ## Setup
 
 Detailed instructions for setting up and building this project can be found in
-[SETUP.md](./docs/SETUP.md). You should follow the documentation there before trying
-to run the samples.
+[Setup.md](./docs/Setup.md). You should follow the documentation there to set up the
+fuzzer before trying to run the sample targets.
 
 ## Running A Sample Target
 

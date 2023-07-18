@@ -417,13 +417,15 @@ impl TryFrom<PathBuf> for Project {
 
     /// Initialize a project from an existing project on disk
     fn try_from(value: PathBuf) -> Result<Self> {
-        let properties = Properties::try_from(&value)?;
+        let properties = Properties::try_from(&value)
+            .map_err(|e| anyhow!("Failed to get properties from '{}': {}", value.display(), e))?;
         let simics_root = PathBuf::from(&properties.paths.simics_root);
         let home = simics_root
             .parent()
             .ok_or_else(|| anyhow!("No parent found for {}", properties.paths.simics_root))?;
         let base = Package::try_from(PathBuf::from(properties.paths.simics_root))?;
-        let packages = read_to_string(value.join(".package-list"))?
+        let packages = read_to_string(value.join(".package-list"))
+            .unwrap_or_default()
             .lines()
             .filter(|s| !s.trim().is_empty())
             .filter_map(|l| {
@@ -464,7 +466,7 @@ impl TryFrom<PathBuf> for Project {
 }
 
 impl Project {
-    fn setup_project(&self) -> Result<()> {
+    fn setup_project(&mut self) -> Result<()> {
         if !self.path.path.is_dir() {
             debug!(
                 "Project path {} does not exist. Creating it.",
@@ -473,6 +475,8 @@ impl Project {
             create_dir_all(&self.path.path)?;
             set_permissions(&self.path.path, Permissions::from_mode(0o750))?;
         }
+
+        self.path.path = self.path.path.canonicalize()?;
 
         let (project_setup, extra_args) = if self.base.path.join(".project-properties").is_dir() {
             // The project already exists, we don't need to instruct on how to create the project
@@ -701,7 +705,7 @@ impl Project {
         })
     }
 
-    pub fn setup(self) -> Result<Self> {
+    pub fn setup(mut self) -> Result<Self> {
         self.setup_project()?;
         self.setup_project_contents()?;
         self.setup_packages()?;
