@@ -1,18 +1,72 @@
 //! Implements generic processor operations on the simulated CPU or CPUs
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Error, Result};
 
 use simics_api::{
-    attr_string, get_attribute, write_byte, AttrValue, CachedInstructionHandle, ConfObject,
-    CpuCachedInstruction, CpuInstructionQuery, CpuInstrumentationSubscribe, Cycle,
+    attr_string, get_attribute, read_byte, write_byte, AttrValue, CachedInstructionHandle,
+    ConfObject, CpuCachedInstruction, CpuInstructionQuery, CpuInstrumentationSubscribe, Cycle,
     InstructionHandle, IntRegister, ProcessorInfoV2,
 };
-use std::{collections::HashMap, ffi::c_void};
+use std::{collections::HashMap, ffi::c_void, mem::size_of};
 
-mod disassembler;
+pub(crate) mod disassembler;
 
 use disassembler::x86_64::Disassembler as X86_64Disassembler;
 
 use crate::traits::TracerDisassembler;
+
+use self::disassembler::CmpExpr;
+
+#[derive(Debug)]
+pub enum CmpValue {
+    U8(u8),
+    I8(i8),
+    U16(u16),
+    I16(i16),
+    U32(u32),
+    I32(i32),
+    U64(u64),
+    I64(i64),
+    Expr(Box<CmpExpr>),
+}
+
+impl TryFrom<&CmpExpr> for CmpValue {
+    type Error = Error;
+    fn try_from(value: &CmpExpr) -> Result<Self> {
+        Ok(match value {
+            CmpExpr::U8(u) => CmpValue::U8(*u),
+            CmpExpr::I8(i) => CmpValue::I8(*i),
+            CmpExpr::U16(u) => CmpValue::U16(*u),
+            CmpExpr::I16(i) => CmpValue::I16(*i),
+            CmpExpr::U32(u) => CmpValue::U32(*u),
+            CmpExpr::I32(i) => CmpValue::I32(*i),
+            CmpExpr::U64(u) => CmpValue::U64(*u),
+            CmpExpr::I64(i) => CmpValue::I64(*i),
+            _ => bail!("Can't convert directly from non-integral expr"),
+        })
+    }
+}
+
+#[derive(Default, Debug)]
+pub struct TraceResult {
+    pub edge: Option<u64>,
+    pub cmp: Option<Vec<CmpValue>>,
+}
+
+impl TraceResult {
+    fn from_pc(value: Option<u64>) -> Self {
+        Self {
+            edge: value,
+            cmp: None,
+        }
+    }
+
+    fn from_cmp_values(values: Vec<CmpValue>) -> Self {
+        Self {
+            edge: None,
+            cmp: Some(values),
+        }
+    }
+}
 
 pub struct Processor {
     number: i32,
@@ -155,11 +209,64 @@ impl Processor {
         Ok(())
     }
 
+    /// This expression can only be nested approximately 4 deep, so we do this
+    /// reduction recursively
+    pub fn reduce(&mut self, expr: &CmpExpr) -> Result<CmpValue> {
+        match expr {
+            CmpExpr::Deref(e) => {
+                let v = self.reduce(&e)?;
+
+                match v {
+                    CmpValue::U64(a) => {
+                        let bytes: [u8; 8] = self
+                            .read_bytes(a, size_of::<u64>())?
+                            .try_into()
+                            .map_err(|_| anyhow!("Error converting u64 to bytes"))?;
+                        Ok(CmpValue::U64(u64::from_le_bytes(bytes)))
+                    }
+                    _ => bail!("Can't dereference non-address"),
+                }
+            }
+            CmpExpr::Reg(r) => Ok(CmpValue::U64(self.get_reg_value(r)?)),
+            CmpExpr::Mul(l, r) => {
+                let lv = self.reduce(&l)?;
+                let rv = self.reduce(&r)?;
+                match (lv, rv) {
+                    (CmpValue::U64(lu), CmpValue::U64(ru)) => Ok(CmpValue::U64(lu * ru)),
+                    _ => bail!("Can't multiply non-values"),
+                }
+            }
+            CmpExpr::Add(l, r) => {
+                let lv = self.reduce(&l)?;
+                let rv = self.reduce(&r)?;
+                match (lv, rv) {
+                    (CmpValue::U64(lu), CmpValue::U64(ru)) => Ok(CmpValue::U64(lu + ru)),
+                    _ => bail!("Can't multiply non-values"),
+                }
+            }
+            CmpExpr::U8(_)
+            | CmpExpr::I8(_)
+            | CmpExpr::U16(_)
+            | CmpExpr::I16(_)
+            | CmpExpr::U32(_)
+            | CmpExpr::I32(_)
+            | CmpExpr::U64(_)
+            | CmpExpr::I64(_) => CmpValue::try_from(expr),
+            CmpExpr::Addr(a) => {
+                let bytes: [u8; 8] = self
+                    .read_bytes(*a, size_of::<u64>())?
+                    .try_into()
+                    .map_err(|_| anyhow!("Error converting u64 to bytes"))?;
+                Ok(CmpValue::U64(u64::from_le_bytes(bytes)))
+            }
+        }
+    }
+
     pub fn trace(
         &mut self,
         // cpu: *mut ConfObject,
         instruction_query: *mut InstructionHandle,
-    ) -> Result<Option<u64>> {
+    ) -> Result<TraceResult> {
         if let Some(cpu_instruction_query) = self.cpu_instruction_query.as_mut() {
             let bytes = cpu_instruction_query.get_instruction_bytes(self.cpu, instruction_query)?;
             self.disassembler.disassemble(bytes)?;
@@ -169,12 +276,24 @@ impl Processor {
                 || self.disassembler.last_was_ret()?
             {
                 if let Some(processor_info_v2) = self.processor_info_v2.as_mut() {
-                    Ok(processor_info_v2.get_program_counter(self.cpu).ok())
+                    Ok(TraceResult::from_pc(
+                        processor_info_v2.get_program_counter(self.cpu).ok(),
+                    ))
                 } else {
                     bail!("No ProcessorInfoV2 interface registered in processor. Try building with `try_with_processor_info_v2`");
                 }
+            } else if self.disassembler.last_was_cmp()? {
+                let mut cmp_values = Vec::new();
+                if let Ok(cmp) = self.disassembler.cmp() {
+                    for expr in &cmp {
+                        if let Ok(val) = self.reduce(expr) {
+                            cmp_values.push(val);
+                        }
+                    }
+                }
+                Ok(TraceResult::from_cmp_values(cmp_values))
             } else {
-                Ok(None)
+                Ok(TraceResult::default())
             }
         } else {
             bail!("No CpuInstructionQuery interface registered in processor. Try building with `try_with_cpu_instruction_query`");
@@ -238,5 +357,28 @@ impl Processor {
         }
 
         Ok(())
+    }
+
+    pub fn read_bytes(&self, logical_address_start: u64, size: usize) -> Result<Vec<u8>> {
+        let processor_info_v2 = if let Some(processor_info_v2) = self.processor_info_v2.as_ref() {
+            processor_info_v2
+        } else {
+            bail!("No ProcessorInfoV2 interface registered in processor. Try building with `try_with_processor_info_v2`");
+        };
+
+        let physical_memory = processor_info_v2.get_physical_memory(self.cpu)?;
+
+        let mut bytes = Vec::new();
+
+        for i in 0..size {
+            let logical_address = logical_address_start + i as u64;
+            let physical_address =
+                processor_info_v2.logical_to_physical(self.cpu, logical_address)?;
+            bytes.push(read_byte(physical_memory, physical_address.address));
+            // let written = read_byte(physical_memory, physical_address);
+            // ensure!(written == *byte, "Did not read back same written byte");
+        }
+
+        Ok(bytes)
     }
 }
