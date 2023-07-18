@@ -7,6 +7,7 @@ use simics_api::{
     InstructionHandle, IntRegister, ProcessorInfoV2,
 };
 use std::{collections::HashMap, ffi::c_void, mem::size_of};
+use tracing::trace;
 
 pub(crate) mod disassembler;
 
@@ -214,7 +215,7 @@ impl Processor {
     pub fn reduce(&mut self, expr: &CmpExpr) -> Result<CmpValue> {
         match expr {
             CmpExpr::Deref(e) => {
-                let v = self.reduce(&e)?;
+                let v = self.reduce(e)?;
 
                 match v {
                     CmpValue::U64(a) => {
@@ -229,18 +230,32 @@ impl Processor {
             }
             CmpExpr::Reg(r) => Ok(CmpValue::U64(self.get_reg_value(r)?)),
             CmpExpr::Mul(l, r) => {
-                let lv = self.reduce(&l)?;
-                let rv = self.reduce(&r)?;
+                let lv = self.reduce(l)?;
+                let rv = self.reduce(r)?;
                 match (lv, rv) {
+                    (CmpValue::U8(lu), CmpValue::U8(ru)) => Ok(CmpValue::U8(lu * ru)),
+                    (CmpValue::U16(lu), CmpValue::U16(ru)) => Ok(CmpValue::U16(lu * ru)),
+                    (CmpValue::U32(lu), CmpValue::U32(ru)) => Ok(CmpValue::U32(lu * ru)),
                     (CmpValue::U64(lu), CmpValue::U64(ru)) => Ok(CmpValue::U64(lu * ru)),
+                    (CmpValue::I8(lu), CmpValue::I8(ru)) => Ok(CmpValue::I8(lu * ru)),
+                    (CmpValue::I16(lu), CmpValue::I16(ru)) => Ok(CmpValue::I16(lu * ru)),
+                    (CmpValue::I32(lu), CmpValue::I32(ru)) => Ok(CmpValue::I32(lu * ru)),
+                    (CmpValue::I64(lu), CmpValue::I64(ru)) => Ok(CmpValue::I64(lu * ru)),
                     _ => bail!("Can't multiply non-values"),
                 }
             }
             CmpExpr::Add(l, r) => {
-                let lv = self.reduce(&l)?;
-                let rv = self.reduce(&r)?;
+                let lv = self.reduce(l)?;
+                let rv = self.reduce(r)?;
                 match (lv, rv) {
+                    (CmpValue::U8(lu), CmpValue::U8(ru)) => Ok(CmpValue::U8(lu + ru)),
+                    (CmpValue::U16(lu), CmpValue::U16(ru)) => Ok(CmpValue::U16(lu + ru)),
+                    (CmpValue::U32(lu), CmpValue::U32(ru)) => Ok(CmpValue::U32(lu + ru)),
                     (CmpValue::U64(lu), CmpValue::U64(ru)) => Ok(CmpValue::U64(lu + ru)),
+                    (CmpValue::I8(lu), CmpValue::I8(ru)) => Ok(CmpValue::I8(lu + ru)),
+                    (CmpValue::I16(lu), CmpValue::I16(ru)) => Ok(CmpValue::I16(lu + ru)),
+                    (CmpValue::I32(lu), CmpValue::I32(ru)) => Ok(CmpValue::I32(lu + ru)),
+                    (CmpValue::I64(lu), CmpValue::I64(ru)) => Ok(CmpValue::I64(lu + ru)),
                     _ => bail!("Can't multiply non-values"),
                 }
             }

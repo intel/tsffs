@@ -3,6 +3,7 @@
 use crate::faults::Fault;
 use anyhow::{bail, Error, Result};
 use derive_builder::Builder;
+use libafl::prelude::AFLppCmpMap;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, str::FromStr};
 use tracing::metadata::LevelFilter;
@@ -55,6 +56,7 @@ pub struct InputConfig {
     pub log_level: LevelFilter,
     pub trace_mode: TraceMode,
     pub coverage_map: (*mut u8, usize),
+    pub cmp_map: *mut AFLppCmpMap,
 }
 
 unsafe impl Send for InputConfig {}

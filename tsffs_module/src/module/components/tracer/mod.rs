@@ -138,9 +138,11 @@ impl Tracer {
         let processor_number = get_processor_number(cpu);
 
         if let Some(processor) = self.processors.get_mut(&processor_number) {
-            if let Ok(Some(pc)) = processor.trace(handle) {
+            if let Ok(r) = processor.trace(handle) {
                 // trace!("Traced execution was control flow: {:#x}", pc);
-                self.log_pc(pc)?;
+                if let Some(pc) = r.edge {
+                    self.log_pc(pc)?;
+                }
             }
         }
 
@@ -158,9 +160,11 @@ impl Tracer {
         let processor_number = get_processor_number(cpu);
 
         if let Some(processor) = self.processors.get_mut(&processor_number) {
-            if let Ok(Some(pc)) = processor.trace(handle) {
+            if let Ok(r) = processor.trace(handle) {
                 // trace!("Traced execution was control flow: {:#x}", pc);
-                self.log_pc(pc)?;
+                if let Some(pc) = r.edge {
+                    self.log_pc(pc)?;
+                }
             }
         }
 

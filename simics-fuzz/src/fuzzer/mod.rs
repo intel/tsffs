@@ -12,17 +12,23 @@ use libafl::{
         current_nanos, havoc_mutations,
         ondisk::OnDiskMetadataFormat,
         tui::{ui::TuiUI, TuiMonitor},
-        tuple_list, AflMapFeedback, AsMutSlice, AsSlice, BytesInput, CachedOnDiskCorpus, Corpus,
-        CrashFeedback, EventConfig, EventRestarter, ExitKind, HasTargetBytes, HitcountsMapObserver,
-        InProcessExecutor, Launcher, LlmpRestartingEventManager, MultiMonitor, OnDiskCorpus,
-        OwnedMutSlice, RandBytesGenerator, ShMemProvider, StdMapObserver, StdRand,
+        tuple_list, AFLppCmpMap, AFLppRedQueen, AflMapFeedback, AsMutSlice, AsSlice, BytesInput,
+        CachedOnDiskCorpus, CmpMap, CmpObserver, Corpus, CorpusId, CrashFeedback, EventConfig,
+        EventRestarter, ExitKind, HasTargetBytes, HitcountsMapObserver, InProcessExecutor,
+        Launcher, LlmpRestartingEventManager, MultiMonitor, Named, Observer, OnDiskCorpus,
+        OwnedMutSlice, OwnedRefMut, RandBytesGenerator, ShMemProvider, StdMapObserver, StdRand,
         StdScheduledMutator, StdShMemProvider, TimeFeedback, TimeObserver, TimeoutExecutor,
+        UsesInput,
     },
     schedulers::{powersched::PowerSchedule, PowerQueueScheduler},
-    stages::{CalibrationStage, StdPowerMutationalStage},
-    state::{HasCorpus, StdState},
+    stages::{
+        mutational::MultipleMutationalStage, tracing::AFLppCmplogTracingStage, CalibrationStage,
+        ColorizationStage, IfStage, StdPowerMutationalStage,
+    },
+    state::{HasCorpus, HasMetadata, StdState},
     ErrorBacktrace, Fuzzer, StdFuzzer,
 };
+use serde::{Deserialize, Serialize};
 use simics::{
     api::{
         alloc_attr_list, create_object, get_class, get_interface, load_module,
@@ -34,8 +40,11 @@ use simics::{
     simics::Simics,
 };
 use std::{
+    cell::RefCell,
     fs::{set_permissions, OpenOptions, Permissions},
     io::stdout,
+    marker::PhantomData,
+    mem::MaybeUninit,
     net::TcpListener,
     os::unix::prelude::PermissionsExt,
     path::PathBuf,
@@ -59,6 +68,142 @@ use tsffs_module::{
 };
 
 const INITIAL_INPUTS: usize = 16;
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AFLppInprocessesCmpObserver<'a, S>
+where
+    S: UsesInput + HasMetadata,
+{
+    cmp_map: OwnedRefMut<'a, AFLppCmpMap>,
+    size: Option<OwnedRefMut<'a, usize>>,
+    name: String,
+    add_meta: bool,
+    original: bool,
+    phantom: PhantomData<S>,
+}
+
+impl<'a, S> CmpObserver<AFLppCmpMap, S> for AFLppInprocessesCmpObserver<'a, S>
+where
+    S: UsesInput + core::fmt::Debug + HasMetadata,
+{
+    fn usable_count(&self) -> usize {
+        todo!()
+    }
+
+    fn cmp_map(&self) -> &AFLppCmpMap {
+        todo!()
+    }
+
+    fn cmp_map_mut(&mut self) -> &mut AFLppCmpMap {
+        todo!()
+    }
+
+    fn add_cmpvalues_meta(&mut self, state: &mut S)
+    where
+        S: HasMetadata,
+    {
+        #[allow(clippy::option_if_let_else)] // we can't mutate state in a closure
+        let meta = if let Some(meta) = state
+            .metadata_map_mut()
+            .get_mut::<libafl::prelude::CmpValuesMetadata>()
+        {
+            meta
+        } else {
+            state.add_metadata(libafl::prelude::CmpValuesMetadata::new());
+            state
+                .metadata_map_mut()
+                .get_mut::<libafl::prelude::CmpValuesMetadata>()
+                .expect("Couldn't get cmp values metadata")
+        };
+        meta.list.clear();
+        let count = self.usable_count();
+        for i in 0..count {
+            let execs = self.cmp_map().usable_executions_for(i);
+            if execs > 0 {
+                // Recongize loops and discard if needed
+                if execs > 4 {
+                    let mut increasing_v0 = 0;
+                    let mut increasing_v1 = 0;
+                    let mut decreasing_v0 = 0;
+                    let mut decreasing_v1 = 0;
+
+                    let mut last: Option<libafl::prelude::CmpValues> = None;
+                    for j in 0..execs {
+                        if let Some(val) = self.cmp_map().values_of(i, j) {
+                            if let Some(l) = last.and_then(|x| x.to_u64_tuple()) {
+                                if let Some(v) = val.to_u64_tuple() {
+                                    if l.0.wrapping_add(1) == v.0 {
+                                        increasing_v0 += 1;
+                                    }
+                                    if l.1.wrapping_add(1) == v.1 {
+                                        increasing_v1 += 1;
+                                    }
+                                    if l.0.wrapping_sub(1) == v.0 {
+                                        decreasing_v0 += 1;
+                                    }
+                                    if l.1.wrapping_sub(1) == v.1 {
+                                        decreasing_v1 += 1;
+                                    }
+                                }
+                            }
+                            last = Some(val);
+                        }
+                    }
+                    // We check for execs-2 because the logged execs may wrap and have something like
+                    // 8 9 10 3 4 5 6 7
+                    if increasing_v0 >= execs - 2
+                        || increasing_v1 >= execs - 2
+                        || decreasing_v0 >= execs - 2
+                        || decreasing_v1 >= execs - 2
+                    {
+                        continue;
+                    }
+                }
+                for j in 0..execs {
+                    if let Some(val) = self.cmp_map().values_of(i, j) {
+                        meta.list.push(val);
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl<'a, S> Observer<S> for AFLppInprocessesCmpObserver<'a, S> where
+    S: UsesInput + core::fmt::Debug + HasMetadata
+{
+}
+
+impl<'a, S> Named for AFLppInprocessesCmpObserver<'a, S>
+where
+    S: UsesInput + HasMetadata,
+{
+    fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+impl<'a, S> AFLppInprocessesCmpObserver<'a, S>
+where
+    S: UsesInput + HasMetadata,
+{
+    /// Creates a new [`ForkserverCmpObserver`] with the given name and map.
+    #[must_use]
+    pub fn new(name: &'static str, map: &'a mut AFLppCmpMap, add_meta: bool) -> Self {
+        Self {
+            name: name.to_string(),
+            size: None,
+            cmp_map: OwnedRefMut::Ref(map),
+            add_meta,
+            original: false,
+            phantom: PhantomData,
+        }
+    }
+    /// Setter for the flag if the executed input is a mutated one or the original one
+    pub fn set_original(&mut self, v: bool) {
+        self.original = v;
+    }
+}
 
 #[derive(Builder)]
 #[builder(
@@ -355,6 +500,7 @@ impl SimicsFuzzer {
          -> Result<(), libafl::Error> {
             debug!("Running on CPU {:?}", cpu_id);
 
+            let mut cmp_map = unsafe { MaybeUninit::<AFLppCmpMap>::zeroed().assume_init() };
             let mut coverage_map = OwnedMutSlice::from(vec![0; SimicsFuzzer::MAP_SIZE]);
 
             let config = InputConfigBuilder::default()
@@ -362,6 +508,7 @@ impl SimicsFuzzer {
                     coverage_map.as_mut_slice().as_mut_ptr(),
                     coverage_map.as_slice().len(),
                 ))
+                .cmp_map(&mut cmp_map as *mut AFLppCmpMap)
                 .fault(Fault::X86_64(X86_64Fault::Page))
                 .fault(Fault::X86_64(X86_64Fault::InvalidOpcode))
                 .trace_mode(self.trace_mode)
@@ -374,16 +521,19 @@ impl SimicsFuzzer {
             let (otx, rx) = channel::<ModuleMessage>();
 
             let simics = self.simics(otx, orx);
-            let mut client = Client::new(tx, rx);
+            let client = RefCell::new(Client::new(tx, rx));
 
             let _output_config = client
+                .borrow_mut()
                 .initialize(config)
                 .map_err(|e| libafl::Error::Unknown(e.to_string(), ErrorBacktrace::new()))?;
 
             client
+                .borrow_mut()
                 .reset()
                 .map_err(|e| libafl::Error::Unknown(e.to_string(), ErrorBacktrace::new()))?;
 
+            let cmp_observer = AFLppInprocessesCmpObserver::new("cmplog", &mut cmp_map, true);
             let counters_observer =
                 HitcountsMapObserver::new(StdMapObserver::from_mut_slice("coverage", coverage_map));
 
@@ -391,6 +541,7 @@ impl SimicsFuzzer {
 
             let time_observer = TimeObserver::new("time");
 
+            let colorization = ColorizationStage::new(&counters_observer);
             let calibration = CalibrationStage::new(&counters_feedback);
 
             let mut feedback =
@@ -407,7 +558,7 @@ impl SimicsFuzzer {
             let corpus = CachedOnDiskCorpus::with_meta_format(
                 &self.corpus,
                 SimicsFuzzer::CACHE_LEN,
-                Some(OnDiskMetadataFormat::Json),
+                OnDiskMetadataFormat::Json,
             )?;
 
             let mut state = state.unwrap_or_else(|| {
@@ -437,7 +588,7 @@ impl SimicsFuzzer {
 
                 debug!("Sending run signal");
 
-                match client.run(run_input) {
+                match client.borrow_mut().run(run_input) {
                     Ok(reason) => match reason {
                         StopReason::Magic((_magic, _p)) => {
                             exit_kind = ExitKind::Ok;
@@ -465,7 +616,54 @@ impl SimicsFuzzer {
 
                 debug!("Sending reset signal");
 
-                if let Err(e) = client.reset() {
+                if let Err(e) = client.borrow_mut().reset() {
+                    error!("Error resetting SIMICS: {}", e);
+                }
+
+                debug!("Harness done");
+
+                exit_kind
+            };
+
+            let mut tracing_harness = |input: &BytesInput| {
+                let target = input.target_bytes();
+                let buf = target.as_slice();
+                let run_input = buf.to_vec();
+                let mut exit_kind = ExitKind::Ok;
+
+                debug!("Running with input '{:?}'", run_input);
+
+                debug!("Sending run signal");
+
+                match client.borrow_mut().run(run_input) {
+                    Ok(reason) => match reason {
+                        StopReason::Magic((_magic, _p)) => {
+                            exit_kind = ExitKind::Ok;
+                        }
+                        StopReason::SimulationExit(_) => {
+                            exit_kind = ExitKind::Ok;
+                        }
+                        StopReason::Crash((fault, _p)) => {
+                            info!("Target crashed with fault {:?}", fault);
+                            exit_kind = ExitKind::Crash;
+                        }
+                        StopReason::TimeOut => {
+                            info!("Target timed out");
+                            exit_kind = ExitKind::Timeout;
+                        }
+                        StopReason::Error((e, _p)) => {
+                            error!("An error occurred during execution: {:?}", e);
+                            exit_kind = ExitKind::Ok;
+                        }
+                    },
+                    Err(e) => {
+                        error!("Error running SIMICS: {}", e);
+                    }
+                }
+
+                debug!("Sending reset signal");
+
+                if let Err(e) = client.borrow_mut().reset() {
                     error!("Error resetting SIMICS: {}", e);
                 }
 
@@ -485,6 +683,24 @@ impl SimicsFuzzer {
                 // The executor's timeout can be quite long
                 Duration::from_secs(self.executor_timeout),
             );
+
+            let cmp_executor = TimeoutExecutor::new(
+                InProcessExecutor::new(
+                    &mut tracing_harness,
+                    tuple_list!(cmp_observer),
+                    &mut fuzzer,
+                    &mut state,
+                    &mut mgr,
+                )?,
+                // The executor's timeout can be quite long
+                Duration::from_secs(self.executor_timeout),
+            );
+
+            let tracing =
+                AFLppCmplogTracingStage::with_cmplog_observer_name(cmp_executor, "cmplog");
+
+            let redqueen =
+                MultipleMutationalStage::new(AFLppRedQueen::with_cmplog_options(true, true));
 
             if state.must_load_initial_inputs() {
                 if let Some(input) = self.input.as_ref() {
@@ -512,7 +728,18 @@ impl SimicsFuzzer {
                 info!("Imported {} inputs from disk", state.corpus().count());
             }
 
-            let mut stages = tuple_list!(calibration, std_power);
+            let cmp_cb = |_fuzzer: &mut _,
+                          _executor: &mut _,
+                          state: &mut StdState<_, CachedOnDiskCorpus<_>, _, _>,
+                          _event_manager: &mut _,
+                          corpus_id: CorpusId|
+             -> Result<bool, libafl::Error> {
+                let corpus = state.corpus().get(corpus_id)?.borrow();
+                Ok(corpus.scheduled_count() == 1)
+            };
+
+            let cmp_stages = IfStage::new(cmp_cb, tuple_list!(colorization, tracing, redqueen));
+            let mut stages = tuple_list!(calibration, cmp_stages, std_power);
 
             if let Some(iterations) = self.iterations {
                 info!("Fuzzing for {} iterations", iterations);
@@ -531,6 +758,7 @@ impl SimicsFuzzer {
             }
 
             client
+                .borrow_mut()
                 .exit()
                 .map_err(|e| libafl::Error::Unknown(e.to_string(), ErrorBacktrace::new()))?;
 
