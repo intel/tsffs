@@ -607,11 +607,11 @@ jobs:
                   LATEST="$(find '.github/dependabot' -name '*.csv' -print0 \
                     | xargs -r -0 ls -1 -t \
                     | head -n 1)"
-                  if [ ! "$(find ${LATEST} -mtime -14)" ]; then
+                  if ! find '.github/dependabot' -name '*.csv' -mtime -14 | grep -q '.'; then
                       echo "❗ [CT247/CT200] No dependabot report found from last 2 weeks. Run ./scripts/dependabot.sh."
                       exit 1
                   fi
-                  if [ -n "$(tail -n+2 \"${LATEST}\" | grep -qv \".github/actions/toolchain\")" ]; then
+                  if tail -n+2 "${LATEST}" | grep -qv ".github/actions/toolchain"; then
                       cat "${LATEST}"
                       echo "❗ [CT247/CT200] Vulnerabilities found outside of github actions. Please remediate them."
                       exit 1

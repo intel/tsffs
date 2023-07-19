@@ -12,7 +12,7 @@ bootloaders, kernel modules, firmware, and the like.
   - [Authors](#authors)
 
 
-https://github.com/intel-innersource/applications.security.fuzzing.confuse/assets/30083762/004ba56e-561c-470a-baf4-427014b43362
+<https://github.com/intel-innersource/applications.security.fuzzing.confuse/assets/30083762/004ba56e-561c-470a-baf4-427014b43362>
 
 
 ## Capabilities
