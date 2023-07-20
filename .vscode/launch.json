@@ -5,7 +5,7 @@
             "request": "launch",
             "name": "Debug simics-cli-6-0-165",
             "cargo": {
-                "args": ["build", "--bin", "simics-cli-6-0-165", "--features=6.0.165"]
+                "args": ["build", "--bin", "simics-cli", "--features=6.0.167"]
             },
             "args": [],
             "cwd": "${workspaceFolder}"
@@ -15,7 +15,7 @@
             "request": "launch",
             "name": "Debug simics-fuzz",
             "cargo": {
-                "args": ["build", "--bin", "simics-fuzz", "--features=6.0.166"]
+                "args": ["build", "--bin", "simics-fuzz", "--features=6.0.167"]
             },
             "args": [
                 "-c",
@@ -30,17 +30,17 @@
                 "--package",
                 "2096:6.0.66",
                 "--file",
-                "targets/hello-world/src/bin/resource/HelloWorld.efi:%simics%/targets/hello-world/HelloWorld.efi",
+                "examples/hello-world/rsrc/HelloWorld.efi:%simics%/targets/hello-world/HelloWorld.efi",
                 "--file",
-                "targets/hello-world/src/bin/resource/app.py:%simics%/scripts/app.py",
+                "examples/hello-world/rsrc/app.py:%simics%/scripts/app.py",
                 "--file",
-                "targets/hello-world/src/bin/resource/app.yml:%simics%/scripts/app.yml",
+                "examples/hello-world/rsrc/app.yml:%simics%/scripts/app.yml",
                 "--file",
-                "targets/hello-world/src/bin/resource/minimal_boot_disk.craff:%simics%/targets/hello-world/minimal_boot_disk.craff",
+                "examples/hello-world/rsrc/minimal_boot_disk.craff:%simics%/targets/hello-world/minimal_boot_disk.craff",
                 "--file",
-                "targets/hello-world/src/bin/resource/run_uefi_app.nsh:%simics%/targets/hello-world/run_uefi_app.nsh",
+                "examples/hello-world/rsrc/run_uefi_app.nsh:%simics%/targets/hello-world/run_uefi_app.nsh",
                 "--file",
-                "targets/hello-world/src/bin/resource/run-uefi-app.simics:%simics%/targets/hello-world/run-uefi-app.simics",
+                "examples/hello-world/rsrc/run-uefi-app.simics:%simics%/targets/hello-world/run-uefi-app.simics",
                 "--command",
                 "COMMAND:%simics%/scripts/app.yml"
             ],

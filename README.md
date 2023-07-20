@@ -38,7 +38,7 @@ There are two provided sample targets, `hello-world` and `x509-parse`. You can r
 in the basic configuration with the commands below, respectively.
 
 ```sh
-cargo run --release --bin simics-fuzz --features=6.0.166 -- \
+cargo run --release --bin simics-fuzz --features=6.0.167 -- \
   -c /tmp/hello-world-corpus/ -s /tmp/hello-world-solution/ -l ERROR -t -C 1 \
   --package 2096:6.0.66 \
   --file examples/hello-world/rsrc/HelloWorld.efi:%simics%/targets/hello-world/HelloWorld.efi \
@@ -51,7 +51,7 @@ cargo run --release --bin simics-fuzz --features=6.0.166 -- \
 ```
 
 ```sh
-cargo run --release --bin simics-fuzz --features=6.0.166 -- \
+cargo run --release --bin simics-fuzz --features=6.0.167 -- \
   -c /tmp/x509-parse-corpus/ -s /tmp/x509-parse-solution/ -l ERROR -t -C 1 \
   --package 2096:6.0.66 \
   --file examples/x509-parse/rsrc/X509Parse.efi:%simics%/targets/x509-parse/X509Parse.efi \

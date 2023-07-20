@@ -154,8 +154,8 @@ tar -C ~/install/simics-internal -xzvf ~/Downloads/ispm-internal-latest-linux64.
     install \
     --install-dir ~/install/simics-internal \
     --package-repo https://af02p-or.devtools.intel.com/ui/native/simics-local/pub/simics-6/linux64/ \
-    1000-6.0.166 \
-    2096-6.0.66
+    1000-6.0.167 \
+    2096-6.0.68
 ```
 
 ##### Check kinit (Internal)

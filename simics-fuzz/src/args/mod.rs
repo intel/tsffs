@@ -76,7 +76,7 @@ pub struct Args {
     // TODO: This should have an effect with existing projects
     /// Packages to add to the project. This has no effect unless a new project is being
     /// created.  Packages are specified in the form NUMBER:VERSION_CONSTRAINT (e.g.
-    /// 1000:6.0.166, 1000:>=6.0.100)
+    /// 1000:6.0.167, 1000:>=6.0.163)
     pub package: Vec<PackageArg>,
     #[arg(long)]
     // TODO: Enable modules

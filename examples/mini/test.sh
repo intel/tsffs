@@ -10,9 +10,9 @@ ninja
 
 popd || exit 1
 
-cargo run --release --bin simics-fuzz --features=6.0.166 -- \
-    -p test-project -c corpus -s solution -l TRACE  -C 1 \
-    --package 2096:6.0.66 \
+cargo run --release --bin simics-fuzz --features=6.0.167 -- \
+    -p test-project -c corpus -s solution -l TRACE -C 1 \
+    --package 2096:6.0.68 \
     --file "${SCRIPT_DIR}/src/mini.efi:%simics%/mini.efi" \
     --file "${SCRIPT_DIR}/rsrc/minimal_boot_disk.craff:%simics%/minimal_boot_disk.craff" \
     --file "${SCRIPT_DIR}/rsrc/fuzz.simics:%simics%/fuzz.simics" \

@@ -57,7 +57,7 @@ In this case, to test micro checkpoints manually from the SIMICS command line, w
 create a new project:
 
 ```sh
-$ "${SIMICS_HOME}/simics-6.0.166/bin/project-setup" ./test-micro-checkpoints
+$ "${SIMICS_HOME}/simics-6.0.167/bin/project-setup" ./test-micro-checkpoints
 Project created successfully
 $ cd test-micro-checkpoints
 ```

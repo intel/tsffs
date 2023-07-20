@@ -2,12 +2,12 @@
 
 //! ```cargo
 //! [dependencies]
-//! clap = "*"
+//! clap = { version = "*", features = ["derive"] }
 //! anyhow = "*"
 //! bindgen = "*"
 //! bytes = "*"
 //! flate2 = "*"
-//! reqwest = "*"
+//! reqwest = { version = "*", features = ["blocking"] }
 //! tar = "*"
 //! toml_edit = "*"
 //! versions = "*"
@@ -20,18 +20,20 @@
 // bindings file for each one. It will output the bindings to the `src/bindings` directory of
 // this crate, where they will be included by feature flag with the `src/bindings/mod.rs` file.
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{anyhow, bail, ensure, Context, Result};
 use bindgen::{
     callbacks::{MacroParsingBehavior, ParseCallbacks},
-    Builder, CargoCallbacks, FieldVisibilityKind,
+    Builder, FieldVisibilityKind,
 };
+use bytes::{buf::Reader, Buf};
+use clap::Parser;
 use flate2::bufread::GzDecoder;
 use reqwest::blocking::get;
 use std::{
     collections::{HashMap, HashSet},
     ffi::OsStr,
     fs::{create_dir_all, read, read_dir, File, OpenOptions},
-    io::{BufRead, BufReader, Write},
+    io::{copy, BufRead, BufReader, Write},
     path::{Path, PathBuf},
     process::{Command, Stdio},
     thread::spawn,
@@ -55,7 +57,7 @@ struct Args {
     #[arg(short, long)]
     /// Directory to use to download and unpack packages
     packages_dir: PathBuf,
-    #[arg(short, long)]
+    #[arg(short = 'B', long)]
     /// Directory to use to output bindings
     bindings_dir: PathBuf,
     #[arg(short, long)]
@@ -96,16 +98,7 @@ fn download_file<S: AsRef<str>, P: AsRef<Path>>(url: S, path: P) -> Result<()> {
     let response = get(url.as_ref())?;
 
     let mut dest = if path.as_ref().is_dir() {
-        File::create(
-            path.as_ref().join(
-                response
-                    .url()
-                    .path_segments()
-                    .and_then(|s| s.last())
-                    .and_then(|n| n.is_empty().then_some(n.clone()))
-                    .unwrap_or_else(|| anyhow!("No filename for response"))?,
-            ),
-        )?
+        bail!("Can't download into directory. Provide a file path");
     } else {
         ensure!(
             path.as_ref()
@@ -116,7 +109,7 @@ fn download_file<S: AsRef<str>, P: AsRef<Path>>(url: S, path: P) -> Result<()> {
         );
         File::create(path.as_ref())?
     };
-    copy(&mut response.bytes()?, &mut dest)?;
+    copy(&mut response.bytes()?.reader(), &mut dest)?;
     Ok(())
 }
 
@@ -274,12 +267,7 @@ fn generate_bindings(args: &Args) -> Result<()> {
             .cloned()
             .collect::<Vec<_>>()
     } else {
-        SIMICS_BASE_VERSIONS
-            .iter()
-            .map(|s| s.to_string())
-            // Filter out versions we already have bindings for
-            .filter(|s| !existing_versions.contains(&s))
-            .collect::<Vec<_>>()
+        bail!("No base versions provided");
     };
 
     let include_wrappers = base_versions
@@ -559,10 +547,7 @@ fn install_packages(args: &Args) -> Result<()> {
     let base_versions = if !args.base_versions.is_empty() {
         args.base_versions.clone()
     } else {
-        SIMICS_BASE_VERSIONS
-            .iter()
-            .map(|s| s.to_string())
-            .collect::<Vec<_>>()
+        bail!("No base versions");
     };
 
     let existing_versions = get_existing_versions(args)?;
@@ -583,13 +568,16 @@ fn install_packages(args: &Args) -> Result<()> {
         "Installing packages to fake simics home at {}",
         fake_simics_home.display()
     );
-    let ispm_file = File::open(&args.ispm_file)?;
-    let tar = GzDecoder::new(BufReader::new(ispm_file));
-    let mut archive = Archive::new(tar);
     let ispm_dest = fake_simics_home.join("ispm");
-    archive.unpack(&ispm_dest)?;
-
+    let ispm_tarball = fake_simics_home.join("ispm.tar.gz");
     let ispm = ispm_dest.join("ispm");
+
+    if !ispm.is_file() {
+        download_file(&args.ispm_tarball_url, &ispm_tarball)?;
+        let tar = GzDecoder::new(BufReader::new(File::open(&ispm_tarball)?));
+        let mut archive = Archive::new(tar);
+        archive.unpack(&ispm_dest)?;
+    }
 
     if !base_versions_needed.is_empty() {
         let mut ispm_command = Command::new(ispm)
@@ -597,7 +585,7 @@ fn install_packages(args: &Args) -> Result<()> {
             .arg("--install-dir")
             .arg(&fake_simics_home)
             .arg("--package-repo")
-            .arg(SIMICS_PACKAGE_REPO_URL)
+            .arg(&args.simics_package_repo_url)
             .arg("-y")
             .args(
                 base_versions_needed
@@ -739,9 +727,9 @@ fn main() -> Result<()> {
     install_packages(&args)?;
     /// Generate Rust bindings for all the downloaded versions
     generate_bindings(&args)?;
-    /// Generate a top-level mod.rs that includes the versioned bindings based on the set feature
+    // Generate a top-level mod.rs that includes the versioned bindings based on the set feature
     generate_mod(&args)?;
-    /// Add a feature to the Cargo.toml file for each version
+    // Add a feature to the Cargo.toml file for each version
     update_cargo_toml(&args)?;
 
     Ok(())

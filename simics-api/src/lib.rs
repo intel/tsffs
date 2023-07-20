@@ -143,6 +143,7 @@
     feature = "6.0.164",
     feature = "6.0.165",
     feature = "6.0.166",
+    feature = "6.0.167",
 )))]
 compile_error!("Must enable a feature to specify a SIMICS API version");
 
@@ -282,6 +283,7 @@ compile_error!("Must enable a feature to specify a SIMICS API version");
     feature = "6.0.164",
     feature = "6.0.165",
     feature = "6.0.166",
+    feature = "6.0.167",
 ))]
 pub mod safe;
 
@@ -421,6 +423,7 @@ pub mod safe;
     feature = "6.0.164",
     feature = "6.0.165",
     feature = "6.0.166",
+    feature = "6.0.167",
 ))]
 pub use safe::*;
 
