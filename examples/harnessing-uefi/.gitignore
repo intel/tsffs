@@ -1,4 +1,7 @@
 *.o
 *.lib
 *.efi
-target-test
+corpus
+project
+solutions
+src/.ninja_log
