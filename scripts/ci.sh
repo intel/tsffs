@@ -22,6 +22,11 @@ if ! command -v act &>/dev/null; then
     exit 1
 fi
 
+if ! command -v unbuffer &>/dev/null; then
+    echo "unbuffer must be installed! Install 'expect' from your package manager"
+    exit 1
+fi
+
 populate_env_file() {
     ENV_FILE="${1}"
     echo "Attempting automatic configuration of proxy with ENV_FILE=${ENV_FILE}"

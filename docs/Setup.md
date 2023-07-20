@@ -15,8 +15,9 @@ resolutions.
         - [Set up SIMICS\_HOME (External)](#set-up-simics_home-external)
       - [Internal Instructions](#internal-instructions)
         - [Download Simics (Internal)](#download-simics-internal)
-        - [Install Simics (Internal)](#install-simics-internal)
         - [Check kinit (Internal)](#check-kinit-internal)
+        - [Install Simics (Internal, CLI)](#install-simics-internal-cli)
+        - [Install SIMICS (Internal, GUI)](#install-simics-internal-gui)
         - [Set up SIMICS\_HOME (Internal)](#set-up-simics_home-internal)
     - [Docker](#docker)
   - [Build the Fuzzer](#build-the-fuzzer)
@@ -128,7 +129,7 @@ points to your `SIMICS_HOME` directory (the `--install-dir` argument you passed 
 `ispm` in the last step).
 
 ```sh
-SIMICS_HOME=/home/rhart/install/simics/
+SIMICS_HOME=/home/YOUR_USERNAME/install/simics/
 ```
 
 #### Internal Instructions
@@ -137,20 +138,55 @@ SIMICS_HOME=/home/rhart/install/simics/
 
 If you need internal Simics packages, you will need to follow the internal Simics
 download and setup processes. In this case, you likely know what packages you need, and
-you can obtain the Simics download [here](https://goto.intel.com/simics).
+you can obtain the Simics download [here](https://goto.intel.com/simics). If you don't
+know what packages you need, or want to run the examples/tutorials only, download the
+SIMICS package manager `ispm-internal-latest-linux64.tar.gz` from
+[here](https://goto.intel.com/simics).
 
-##### Install Simics (Internal)
+##### Check kinit (Internal)
+
+When using `ispm` internally, you need to have Kerberos set up for authentication.
+Typically this will be done automatically, for example when installing your OS and
+configuring it with
+[intelize](https://github.com/intel-innersource/applications.provisioning.linux-at-intel.intelize/).
+
+Before running `ispm`, you'll want to initialize Kerberos by running:
+
+```sh
+$ kinit
+Password for YOU@XXX.XXXX.XXXXX.COM:
+```
+
+You can check that you have a valid ticket by running:
+
+```sh
+$ klist
+Ticket cache: FILE:/tmp/krb5cc_1000
+Default principal: YOU@XXX.XXXX.XXXXX.COM
+
+Valid starting       Expires              Service principal
+07/20/2023 11:20:34  07/20/2023 21:20:34  krbtgt/XXX.XXXX.XXXXX.COM@XXX.XXXX.XXXXX.COM
+        renew until 07/27/2023 11:20:30
+```
+
+Kerberos should be working in this case, but please report issues.
+
+##### Install Simics (Internal, CLI)
+
+TSFFS can be built against SIMICS installed either with a CLI or GUI installation of
+SIMICS. If you are more comfortable with or used to using the GUI, skip to
+[the next section](#install-simics-internal-gui).
 
 Internal Simics installations require you to know which packages you need. If you need
 internal packages at all, you likely know the full list. Assuming you downloaded
 `ispm-internal-latest-linux64.tar.gz`, you can extract it and install the packages
 required to run the samples (Simics-Base and QSP-x86) with the command below. Replace
-`1.6.1` with the version of ISPM you downloaded.
+`1.7.3` with the version of ISPM you downloaded.
 
 ```sh
 mkdir -p ~/install/simics-internal
 tar -C ~/install/simics-internal -xzvf ~/Downloads/ispm-internal-latest-linux64.tar.gz
-~/install/simics-internal/intel-simics-package-manager-1.6.1-intel-internal/ispm \
+~/install/simics-internal/intel-simics-package-manager-1.7.3-intel-internal/ispm \
     install \
     --install-dir ~/install/simics-internal \
     --package-repo https://af02p-or.devtools.intel.com/ui/native/simics-local/pub/simics-6/linux64/ \
@@ -158,10 +194,57 @@ tar -C ~/install/simics-internal -xzvf ~/Downloads/ispm-internal-latest-linux64.
     2096-6.0.68
 ```
 
-##### Check kinit (Internal)
+##### Install SIMICS (Internal, GUI)
 
-When using `ispm` internally, you need to have Kerberos set up for authentication.
-Typically this will be done automatically, for example when installing
+If you already installed using the ISPM CLI, skip this step and move on to the
+[next](#set-up-simics_home-internal).
+
+After downloading the `ispm-internal-latest-linux64.tar.gz` tarball, create a directory
+to install your packages into, and extract ISPM into it, then run the ISPM GUI.
+
+```sh
+mkdir -p ~/install/simics-internal
+tar -C ~/install/simics-internal -xzvf ~/Downloads/ispm-internal-latest-linux64.tar.gz
+~/install/simics-internal/ispm-gui
+```
+
+The GUI will open and prompt you to select a directory to install packages into. Select
+the directory you just created (`~/install/simics-internal` in this case).
+
+![Select install directory](../docs/images/SETUP_Select_Install_Directory.png)
+
+After selecting your install directory, type `qsp` into the search box. This will bring
+up a multi-package install with SIMICS Base, QSP-x86, and a few additional pacakges.
+
+In the bottom right corner, select `Install Only` and select the option.
+
+![Install Only](../docs/images/SETUP_Install_Only.png)
+
+On the next screen, select `Proceed`.
+
+![Proceed](../docs/images/SETUP_Install_Proceed.png)
+
+After the installation completes, you'll see all green bars:
+
+![Install complete](../docs/images/SETUP_Install_Finished.png)
+
+Finally, check that all the packages installed:
+
+```sh
+$ ls -lh ~/install/simics-test
+total 126M
+drwxr-xr-x. 1 rhart rhart  752 Dec 31  1969 intel-simics-package-manager-1.7.3-intel-internal
+-rw-r--r--. 1 rhart rhart 126M Jun  9 10:44 ispm-internal-latest-linux64.tar.gz
+drwxr-xr-x. 1 rhart rhart   86 Jul 19 17:00 manifests
+drwxr-xr-x. 1 rhart rhart  312 Jul 19 16:59 simics-6.0.167
+drwxr-xr-x. 1 rhart rhart  156 Jul 19 16:59 simics-crypto-engine-6.0.2
+drwxr-xr-x. 1 rhart rhart  148 Jul 19 16:59 simics-eclipse-6.0.33
+drwxr-xr-x. 1 rhart rhart  152 Jul 19 16:59 simics-gdb-6.0.0
+drwx------. 1 rhart rhart    0 Jul 19 17:00 simics-pkg-mgr-tmp-YOUR_USERNAME
+drwxr-xr-x. 1 rhart rhart  172 Jul 19 17:00 simics-qsp-clear-linux-6.0.14
+drwxr-xr-x. 1 rhart rhart  140 Jul 19 16:59 simics-qsp-cpu-6.0.17
+drwxr-xr-x. 1 rhart rhart  168 Jul 19 16:59 simics-qsp-x86-6.0.68
+```
 
 ##### Set up SIMICS_HOME (Internal)
 
@@ -170,7 +253,7 @@ points to your `SIMICS_HOME` directory (the `--install-dir` argument you passed 
 `ispm` in the last step).
 
 ```sh
-SIMICS_HOME=/home/rhart/install/simics-internal/
+SIMICS_HOME=/home/YOUR_USERNAME/install/simics-internal/
 ```
 
 ### Docker
