@@ -1,0 +1,15 @@
+rule cc
+    command = clang -target x86_64-pc-win32-coff -fno-stack-protector -fshort-wchar $
+        -mno-red-zone $cflags -c $in -o $out
+
+rule link
+    command = lld-link -filealign:16 -subsystem:efi_application -nodefaultlib -dll $
+        -entry:UefiMain $in -out:$out
+
+build target.o: cc target.c
+    cflags = -O0
+build target.efi: link target.o
+
+build target-harnessed.o: cc target-harnessed.c
+    cflags = -O0
+build target-harnessed.efi: link target-harnessed.o

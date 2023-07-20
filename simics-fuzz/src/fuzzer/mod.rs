@@ -301,22 +301,15 @@ impl SimicsFuzzer {
                 alloc_attr_list(0),
             )?;
 
-            info!("Got tsffs at {:#x}", tsffs as usize);
-
             let tsffs_interface = get_interface::<ModuleInterface>(
                 tsffs,
                 Interface::Other(TSFFS_MODULE_CRATE_NAME.to_string()),
             )?;
 
-            info!("Got SIMICS object: {:#x}", tsffs as usize);
-            info!("Got tsffs interface at {:#x}", tsffs_interface as usize);
-
             let tx = Box::new(make_attr_data_adopt(tx)?);
             let rx = Box::new(make_attr_data_adopt(rx)?);
             let tx = Box::into_raw(tx);
             let rx = Box::into_raw(rx);
-
-            info!("Tx: {:#x} Rx: {:#x}", tx as usize, rx as usize);
 
             info!("Setting up channels");
 

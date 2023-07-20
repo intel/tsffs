@@ -7,7 +7,7 @@ use crate::{
     traits::{Interface, State},
     CLASS_NAME,
 };
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use ffi_macro::{callback_wrappers, params};
 use simics_api::{
     attr_object_or_nil_from_ptr, break_simulation, event::register_event, event_cancel_time,
@@ -19,7 +19,7 @@ use std::{
     collections::{HashMap, HashSet},
     ffi::c_void,
 };
-use tracing::{debug, info, trace};
+use tracing::{debug, error, info, trace};
 
 #[derive(Default)]
 pub struct Detector {
@@ -28,6 +28,9 @@ pub struct Detector {
     pub timeout_event: Option<*mut EventClass>,
     pub processors: HashMap<i32, Processor>,
     pub stop_reason: Option<StopReason>,
+    pub exception_cb_added: bool,
+    pub triple_cb_added: bool,
+    pub module: Option<*mut ConfObject>,
 }
 
 impl Detector {
@@ -56,22 +59,10 @@ impl State for Detector {
     ) -> Result<OutputConfig> {
         self.faults = input_config.faults.clone();
         self.timeout_seconds = Some(input_config.timeout);
+        self.module = Some(module);
 
-        let func: CoreExceptionCallback = detector_callbacks::on_exception;
-        let _core_handle = hap_add_callback(
-            Hap::CoreException,
-            HapCallback::CoreException(func),
-            Some(module as *mut c_void),
-        )?;
-
-        if self.faults.contains(&Fault::X86_64(X86_64Fault::Triple)) {
-            let func: X86TripleFaultCallback = detector_callbacks::on_x86_triple_fault;
-
-            let _triple_handle = hap_add_callback(
-                Hap::X86TripleFault,
-                HapCallback::X86TripleFault(func),
-                Some(module as *mut c_void),
-            )?;
+        for fault in self.faults.clone() {
+            self.on_add_fault(fault.try_into()?)?;
         }
 
         info!("Initialized Detector");
@@ -174,10 +165,41 @@ impl Interface for Detector {
     }
 
     fn on_add_fault(&mut self, fault: i64) -> Result<()> {
-        let fault = Fault::X86_64(X86_64Fault::try_from(fault)?);
+        let fault = Fault::X86_64(X86_64Fault::try_from(fault).map_err(|e| {
+            error!("Failed to get fault for fault number {}", fault);
+            e
+        })?);
+
         info!("Detector adding fault {:?}", fault);
         // TODO: Arch independent
         self.faults.insert(fault);
+
+        if let Some(module) = self.module {
+            if let Fault::X86_64(X86_64Fault::Triple) = fault {
+                if !self.triple_cb_added {
+                    // Add the triple cb
+                    let func: X86TripleFaultCallback = detector_callbacks::on_x86_triple_fault;
+
+                    let _triple_handle = hap_add_callback(
+                        Hap::X86TripleFault,
+                        HapCallback::X86TripleFault(func),
+                        Some(module as *mut c_void),
+                    )?;
+                    self.triple_cb_added = true;
+                }
+            } else if !self.exception_cb_added {
+                // Add the standard cb
+                let func: CoreExceptionCallback = detector_callbacks::on_exception;
+
+                let _core_handle = hap_add_callback(
+                    Hap::CoreException,
+                    HapCallback::CoreException(func),
+                    Some(module as *mut c_void),
+                )?;
+                self.exception_cb_added = true;
+            }
+        }
+
         Ok(())
     }
 }

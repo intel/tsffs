@@ -10,6 +10,7 @@
 extern crate num_traits;
 use self::x86_64::X86_64Fault;
 
+use anyhow::{Error, Result};
 use serde::{Deserialize, Serialize};
 
 pub mod x86_64;
@@ -19,4 +20,22 @@ pub mod x86_64;
 /// An architecture independent container for faults on various architectures
 pub enum Fault {
     X86_64(X86_64Fault),
+}
+
+impl TryInto<i64> for Fault {
+    type Error = Error;
+    fn try_into(self) -> Result<i64> {
+        match self {
+            Fault::X86_64(f) => f.try_into(),
+        }
+    }
+}
+
+impl TryInto<i64> for &Fault {
+    type Error = Error;
+    fn try_into(self) -> Result<i64> {
+        match self {
+            Fault::X86_64(f) => f.try_into(),
+        }
+    }
 }
