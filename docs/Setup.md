@@ -305,7 +305,12 @@ You should see the message that starts `Hello from Docker!`. If you don't, check
 
 ## Build the Fuzzer
 
+After installing the prerequisites, you can build the fuzzer by running the command
+below in the root of the repository.
 
+```sh
+cargo build --features=6.0.167
+```
 
 ## Troubleshooting
 
