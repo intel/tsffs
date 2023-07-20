@@ -133,6 +133,11 @@ pub fn parse_packageinfo<P: AsRef<Path>>(package_path: P) -> Result<Package> {
 pub fn packages<P: AsRef<Path>>(
     home: P,
 ) -> Result<HashMap<PackageNumber, HashMap<PackageVersion, Package>>> {
+    eprintln!(
+        "Parsing packages from home directory {}",
+        home.as_ref().display()
+    );
+
     let infos: Vec<Package> = read_dir(&home)?
         .filter_map(|home_dir_entry| {
             home_dir_entry

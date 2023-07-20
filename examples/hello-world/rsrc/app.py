@@ -47,6 +47,8 @@ except simics.SimExc_General as e:
 conf.tsffs_module.iface.tsffs_module.add_processor(
     SIM_get_object(simenv.system).mb.cpu0.core[0][0]
 )
+conf.tsffs_module.iface.tsffs_module.add_fault(14)
+conf.tsffs_module.iface.tsffs_module.add_fault(6)
 SIM_log_info(1, conf.sim, 0, "Added processor")
 conf.tsffs_module.iface.tsffs_module.start(True)
 SIM_log_info(1, conf.sim, 0, "Started module")

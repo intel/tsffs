@@ -46,6 +46,26 @@ except simics.SimExc_General as e:
 conf.tsffs_module.iface.tsffs_module.add_processor(
     SIM_get_object(simenv.system).mb.cpu0.core[0][0]
 )
+# triple
+conf.tsffs_module.iface.tsffs_module.add_fault(-1)
+# divide by 0
+conf.tsffs_module.iface.tsffs_module.add_fault(0)
+# overflow
+conf.tsffs_module.iface.tsffs_module.add_fault(4)
+# invalid opcode
+conf.tsffs_module.iface.tsffs_module.add_fault(6)
+# double fault
+conf.tsffs_module.iface.tsffs_module.add_fault(8)
+# segment not present
+conf.tsffs_module.iface.tsffs_module.add_fault(11)
+# stack segment
+conf.tsffs_module.iface.tsffs_module.add_fault(12)
+# gpf
+conf.tsffs_module.iface.tsffs_module.add_fault(13)
+# page
+conf.tsffs_module.iface.tsffs_module.add_fault(14)
+# FPE
+conf.tsffs_module.iface.tsffs_module.add_fault(16)
 SIM_log_info(1, conf.sim, 0, "Added processor")
 conf.tsffs_module.iface.tsffs_module.start()
 SIM_log_info(1, conf.sim, 0, "Started module")

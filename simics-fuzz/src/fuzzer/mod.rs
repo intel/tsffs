@@ -52,7 +52,6 @@ use tracing_subscriber::{filter::filter_fn, fmt, prelude::*, registry, Layer};
 use tsffs_module::{
     client::Client,
     config::{InputConfigBuilder, TraceMode},
-    faults::{x86_64::X86_64Fault, Fault},
     messages::{client::ClientMessage, module::ModuleMessage},
     stops::StopReason,
     traits::ThreadClient,
@@ -362,8 +361,6 @@ impl SimicsFuzzer {
                     coverage_map.as_mut_slice().as_mut_ptr(),
                     coverage_map.as_slice().len(),
                 ))
-                .fault(Fault::X86_64(X86_64Fault::Page))
-                .fault(Fault::X86_64(X86_64Fault::InvalidOpcode))
                 .trace_mode(self.trace_mode)
                 .timeout(self.timeout)
                 .log_level(self.log_level)
