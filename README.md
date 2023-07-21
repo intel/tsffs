@@ -1,6 +1,6 @@
 # TSFFS: Target Software Fuzzer For SIMICS
 
-CONFUSE is a snapshotting simulator, coverage-guided fuzzer built on Simics! It lets you
+TSFFS is a snapshotting simulator, coverage-guided fuzzer built on Simics! It lets you
 easily fuzz things that are traditionally challenging to fuzz, like UEFI applications,
 bootloaders, kernel modules, firmware, and the like.
 
