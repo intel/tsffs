@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/images/logo.png" alt="TSFFS Logo">
+</p>
+
 # TSFFS: Target Software Fuzzer For SIMICS
 
 TSFFS is a snapshotting simulator, coverage-guided fuzzer built on the
