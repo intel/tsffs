@@ -114,4 +114,9 @@ pub struct Args {
     /// be used for CI fuzzing, instead run the fuzzer with the `timeout` shell command to run
     /// for a specific amount of time.
     pub iterations: Option<u64>,
+    #[arg(long)]
+    /// Reproduce a solution on a target. When specified, SIMICS will be run with the module
+    /// installed, and you will be dropped into the SIMICS REPL at the crash location with a
+    /// reverse execution recording from the start harness.
+    pub repro: Option<PathBuf>,
 }

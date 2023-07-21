@@ -34,7 +34,7 @@ use simics::{
     simics::Simics,
 };
 use std::{
-    fs::{set_permissions, OpenOptions, Permissions},
+    fs::{read, set_permissions, OpenOptions, Permissions},
     io::stdout,
     net::TcpListener,
     os::unix::prelude::PermissionsExt,
@@ -92,6 +92,8 @@ pub struct SimicsFuzzer {
     iterations: Option<u64>,
     #[builder(setter(into))]
     tui_stdout_file: PathBuf,
+    #[builder(default)]
+    repro: Option<PathBuf>,
 }
 
 impl SimicsFuzzerBuilder {
@@ -246,6 +248,7 @@ impl SimicsFuzzer {
             .simics_gui(args.enable_simics_gui)
             .iterations(args.iterations)
             .tui_stdout_file(args.tui_stdout_file)
+            .repro(args.repro)
             .build()?
             .launch()?;
 
@@ -332,9 +335,52 @@ impl SimicsFuzzer {
         })
     }
 
+    pub fn repro(&mut self) -> Result<()> {
+        let mut coverage_map = OwnedMutSlice::from(vec![0; SimicsFuzzer::MAP_SIZE]);
+
+        let config = InputConfigBuilder::default()
+            .coverage_map((
+                coverage_map.as_mut_slice().as_mut_ptr(),
+                coverage_map.as_slice().len(),
+            ))
+            .trace_mode(self.trace_mode)
+            .timeout(self.timeout)
+            .log_level(self.log_level)
+            .repro(true)
+            .build()
+            .map_err(|e| libafl::Error::Unknown(e.to_string(), ErrorBacktrace::new()))?;
+
+        let (tx, orx) = channel::<ClientMessage>();
+        let (otx, rx) = channel::<ModuleMessage>();
+
+        let simics = self.simics(otx, orx);
+        let mut client = Client::new(tx, rx);
+
+        let _output_config = client
+            .initialize(config)
+            .map_err(|e| libafl::Error::Unknown(e.to_string(), ErrorBacktrace::new()))?;
+
+        client
+            .reset()
+            .map_err(|e| libafl::Error::Unknown(e.to_string(), ErrorBacktrace::new()))?;
+        let run_input = read(
+            self.repro
+                .as_ref()
+                .ok_or_else(|| anyhow!("Repro file disappeared"))?,
+        )?;
+
+        client.run(run_input)?;
+
+        Ok(())
+    }
+
     pub fn launch(&mut self) -> Result<()> {
         if self.tui {
             self.log_level = LevelFilter::ERROR;
+        }
+
+        if self.repro.is_some() {
+            return Ok(self.repro()?);
         }
 
         let shmem_provider = StdShMemProvider::new()?;

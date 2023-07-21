@@ -15,9 +15,10 @@ use tracing::{debug, error, info, trace};
 
 use simics_api::{
     attr_data, attr_object_or_nil_from_ptr, break_simulation, clear_exception,
-    continue_simulation_alone, discard_future, get_processor_number, hap_add_callback, last_error,
-    quit, register_interface, restore_micro_checkpoint, save_micro_checkpoint, AttrValue,
-    ConfObject, Hap, HapCallback, MicroCheckpointFlags, SimException,
+    continue_simulation_alone, discard_future, get_processor_number, hap_add_callback,
+    init_command_line, last_error, main_loop, quit, register_interface, restore_micro_checkpoint,
+    save_micro_checkpoint, AttrValue, ConfObject, Hap, HapCallback, MicroCheckpointFlags,
+    SimException,
 };
 use simics_api::{SimicsClassCreate, SimicsModule};
 use simics_api_macro::module;
@@ -43,6 +44,7 @@ pub struct Module {
     buffer_address: u64,
     buffer_size: u64,
     last_start_processor_number: i32,
+    repro_mode: bool,
 }
 
 impl SimicsModule for Module {
@@ -66,6 +68,7 @@ impl SimicsModule for Module {
             0,
             0,
             -1,
+            false,
         ))
     }
 }
@@ -112,6 +115,11 @@ impl Module {
         output_config = self
             .tracer
             .on_initialize(self_ptr, &mut input_config, output_config)?;
+
+        if input_config.repro {
+            info!("Initializing module in repro mode. Stopping on first fault.");
+            self.repro_mode = true;
+        }
 
         info!("Sending initialized message");
 
@@ -193,6 +201,12 @@ impl Module {
 
         continue_simulation_alone();
 
+        Ok(())
+    }
+
+    fn repro(&mut self) -> Result<()> {
+        init_command_line();
+        main_loop();
         Ok(())
     }
 }
@@ -294,6 +308,9 @@ impl Module {
                 self.reset_and_run(processor_number)?;
             }
             StopReason::Crash((fault, processor_number)) => {
+                if self.repro_mode {
+                    self.repro()?;
+                }
                 self.send_msg(ModuleMessage::Stopped(StopReason::Crash((
                     fault,
                     processor_number,
@@ -301,11 +318,17 @@ impl Module {
                 self.reset_and_run(processor_number)?;
             }
             StopReason::TimeOut => {
+                if self.repro_mode {
+                    self.repro()?;
+                }
                 self.send_msg(ModuleMessage::Stopped(StopReason::TimeOut))?;
                 let processor_number = self.last_start_processor_number;
                 self.reset_and_run(processor_number)?;
             }
             StopReason::Error((_error, _processor_number)) => {
+                if self.repro_mode {
+                    self.repro()?;
+                }
                 // TODO: Error reporting
                 let self_ptr = self as *mut Self as *mut ConfObject;
                 self.detector.on_exit(self_ptr)?;
@@ -424,14 +447,14 @@ impl Module {
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 /// This is the rust definition for the tffs_module_interface_t declaration in the stubs, which
 /// are used to generate the interface module. This struct definition must match that one exactly
-/// 
+///
 /// # Examples
-/// 
+///
 /// Assuming your model is configured, and by resuming the simulation the target
 /// software will reach the start harness, the following SIMICS code is typically sufficient to
 /// start the fuzzer immediately.
-/// 
-/// 
+///
+///
 /// ```simics
 /// stop
 /// @conf.tsffs_module.iface.tsffs_module.add_processor(SIM_get_object(simenv.system).mb.cpu0.core[0][0])
@@ -441,11 +464,11 @@ impl Module {
 /// @conf.tsffs_module.iface.tsffs_module.add_fault(13)
 /// @conf.tsffs_module.iface.tsffs_module.start(True)
 /// ```
-/// 
+///
 /// If your model is configured, but needs some other input to trigger the code path that reaches
 /// the start harness (in this example, a console input to run a target EFI application), you
 /// can pass `False` to `start()` and manually `continue` model execution.
-/// 
+///
 /// ```simics
 /// stop
 /// @conf.tsffs_module.iface.tsffs_module.add_processor(SIM_get_object(simenv.system).mb.cpu0.core[0][0])

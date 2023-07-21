@@ -55,6 +55,9 @@ pub struct InputConfig {
     pub log_level: LevelFilter,
     pub trace_mode: TraceMode,
     pub coverage_map: (*mut u8, usize),
+    /// If repro is set, the simics thread will drop into the CLI on the first exception
+    #[builder(default)]
+    pub repro: bool,
 }
 
 unsafe impl Send for InputConfig {}
