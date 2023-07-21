@@ -12,7 +12,7 @@ generated from. This means that without any feature flags, this crate does nothi
 To use it in your crate, you should write, for example:
 
 ```toml
-simics-api-sys = { version = "0.1.0", features = ["6.0.162"] }
+simics-api-sys = { version = "0.1.0", features = ["6.0.167"] }
 ```
 
 ## Updating Bindings
