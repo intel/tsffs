@@ -6,7 +6,7 @@
 
 TSFFS is a snapshotting simulator, coverage-guided fuzzer built on the
 [SIMICS](https://www.intel.com/content/www/us/en/developer/articles/tool/simics-simulator.html)
-full system simulator. SIMICS makes it easy fuzz traditionally challenging targets
+full system simulator. SIMICS makes it easy to fuzz traditionally challenging targets
 including UEFI applications, bootloaders, BIOS, kernel modules, and device firmware.
 
 - [TSFFS: Target Software Fuzzer For SIMICS](#tsffs-target-software-fuzzer-for-simics)
