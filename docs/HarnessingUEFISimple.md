@@ -20,6 +20,7 @@ add a harness for it.
   - [Modify the SIMICS Script](#modify-the-simics-script)
   - [Create an Input Corpus](#create-an-input-corpus)
   - [Fuzz the Harnessed Target](#fuzz-the-harnessed-target)
+  - [Triage the Crash](#triage-the-crash)
 
 
 ## Set Up The Fuzzer
@@ -34,7 +35,7 @@ For this tutorial, you need:
 - `clang`
 - `lld`
 
-You can install all three from your package maanger.
+You can install both from your package manager.
 
 ### Ubuntu
 
@@ -60,15 +61,15 @@ like any other software using `clang` and `lld`.
 
 Our target will be as simple as possible -- it will print out in hex the contents of a
 buffer. This is a poor target for fuzzing, but it will allow us to see our fuzzer in
-action. We will write our target in one file for maximum simplicity.
+action. We will write our target in one file to keep things simple.
 
 ### target.c
 
 First, we need to define a few [EFI-specified](https://uefi.org/specifications)
 structures. These structures define the system table, the header for the table, and the
-protocol for the *EFI Simple Text Output Protocol*, which we will use to print text to the
-screen. Don't worry too much about the contents of these structures, it isn't relevant
-to harnessing. Write all the code below into `target.c`.
+protocol for the *EFI Simple Text Output Protocol*, which we will use to print text to
+the screen. Don't worry too much about the contents of these structures, it isn't
+relevant to harnessing. paste all the code below into `target.c`.
 
 ```c
 #include <stdint.h>
@@ -118,7 +119,7 @@ typedef struct EfiSystemTable {
 
 ```
 
-Now that we have defined our spec-mandated structures, we can write our application
+We have now defined our spec-mandated structures, and we can move on to our application
 code. This code declares a (probably stack) buffer, and prints out the buffer as hex
 to the screen before returning. Notice that because UEFI mandates wide characters, our
 buffer is of 16-bit integers.
@@ -168,15 +169,40 @@ lld-link -filealign:16 -subsystem:efi_application -nodefaultlib -dll -entry:Uefi
   target.o -out:target.efi
 ```
 
-You should have an output `target.efi` file. 
+Some of these arguments are probably unfamiliar, so we'll walk through each one:
+
+- [`-target x86_64-pc-win32-coff`](https://clang.llvm.org/docs/CrossCompilation.html):
+  output code for x86_64 architecture, for generic PCs (i.e. not Apple, NVidia, IBM),
+  for the Win32 operating system, in COFF file format. UEFI is compatible with Win32
+  in terms of object files and ABI, which is why we use this target and not one like
+  "x86_64-pc-uefi" (which doesn't exist).
+- [`-fno-stack-protector`](https://clang.llvm.org/docs/ClangCommandLineReference.html):
+  Do not emit a stack protector
+- [`-fshort-wchar`](https://clang.llvm.org/docs/ClangCommandLineReference.html):
+  specifies that `wchar_t` is an unsigned short value.
+- [`-mno-red-zone`](https://clang.llvm.org/docs/ClangCommandLineReference.html):
+  Do not use a red-zone, which is an ABI-mandated 128-byte area beyond the stack pointer
+  that is not modified by signal/interrupt handlers.
+- [`-filealign:16`](https://lld.llvm.org/ELF/linker_script.html): 16-bit align the
+  executable's sections.
+- [`-subsystem:efi_application`](https://learn.microsoft.com/en-us/cpp/build/reference/subsystem-specify-subsystem?view=msvc-170):
+  Specify linking for the EFI_APPLICATION subsystem.
+- [`-nodefaultlib`](https://github.com/llvm/llvm-project/blob/bf98aaae00465c1e52376f8e138e4c51eb526d12/lld/COFF/Options.td#L82):
+  Remove all default libraries from linker output (i.e. no glibc)
+- [`-dll`](https://github.com/llvm/llvm-project/blob/bf98aaae00465c1e52376f8e138e4c51eb526d12/lld/COFF/Options.td#L139):
+  Output a DLL (Dynamically Linked Library)
+- [`-entry:UefiMain`](https://github.com/llvm/llvm-project/blob/bf98aaae00465c1e52376f8e138e4c51eb526d12/lld/COFF/Options.td#L47):
+  Specify the name of the entrypoint symbol
+
+You should have an output file, `target.efi`.
 
 ## Test the Target
 
 Now that we have an EFI application, we should test it before we run it with the fuzzer.
-Create and configure new SIMICS project like so (replacing `${SIMICS_HOME}` with the
-directory you installed SIMICS to during setup). If you would like, you can run 
-`export $(cat .env | xargs)` in the root of this repository to export the variable(s)
-from the `.env` file you set up in the setup instructions.
+In the following commands, replace `${SIMICS_HOME}` with the directory you installed
+SIMICS into during setup. If you would like, you can run `export $(cat .env | xargs)` in
+the root of this repository to export the variable(s) from the `.env` file you set up in
+the setup instructions.
 
 ### Set Up the Project
 
@@ -277,10 +303,11 @@ terminal you ran SIMICS in, then typing `exit` to exit SIMICS.
 ## Add the Harness
 
 This fuzzer's "harness" uses SIMICS' *Magic Instruction* capabilities, which is a fancy
-way of saying "run a `cpuid` instruction with a specific leaf value". Therefore, to
-harness source code, all we need to do is issue a `cpuid` to tell the fuzzer where the
-beginning of the fuzzing loop is, and another `cpuid` to tell the fuzzer where the
-end of the fuzzing loop is in our code.
+way of saying "run a `cpuid` instruction with a specific
+[leaf value](https://www.felixcloutier.com/x86/cpuid)". Therefore, to harness source 
+code, all we need to do is issue a `cpuid` to tell the fuzzer where the beginning of the
+fuzzing loop is, and another `cpuid` to tell the fuzzer where the end of the fuzzing
+loop is in our code.
 
 We'll copy `target.c` to `target-harnessed.c` and modify our `UefiMain` function to look
 like this:
@@ -550,6 +577,10 @@ This is obviously not an ideal corpus, but it
 
 ## Fuzz the Harnessed Target
 
+If you aren't familiar with [`cargo`](https://doc.rust-lang.org/cargo/), it is the
+Rust package manager and general utility tool for running and managing *crates*, which
+is Rust's name for packages. We will use it to build and run our project.
+
 The easiest way to run this fuzzer is by passing `--manifest-path` to `cargo run`. This
 lets us run the fuzzer from anywhere, but avoids the need to install it in your `PATH`.
 
@@ -650,3 +681,101 @@ aCCCCCCCC%
 And indeed, our found solution does have 'a' as the first character (which corresponds
 with the invalid opcode crash we have). If we let the fuzzer continue, we will find
 another solution that triggers the second crash.
+
+## Triage the Crash
+
+Now that we have some crashes in our `solutions` directory, we can triage the crash 
+using SIMICS' excellent debugging capabilities. To enter "repro" mode, add an argument
+`--repro solutions/SOLUTION_FILE` to your command (leaving all other arguments the
+same).
+
+```sh
+cargo run --manifest-path /path/to/this/repository/Cargo.toml --release \
+  --bin simics-fuzz --features=6.0.167 -- \
+  --project ./project --input ./input --solutions ./solutions --corpus ./corpus \
+  --log-level INFO --trace-mode once --executor-timeout 60 --timeout 3 --cores 1 \
+  --package 2096:6.0.68 \
+  --file "./target-harnessed.efi:%simics%/target-harnessed.efi" \
+  --file "./fuzz.simics:%simics%/fuzz.simics" \
+  --file "/path/to/this/repository/examples/harnessing-uefi/rsrc/minimal_boot_disk.craff:%simics%/minimal_boot_disk.craff" \
+  --command 'COMMAND:run-script "%simics%/fuzz.simics"' \
+  --repro solutions/SOLUTION_FILE
+```
+
+The process will run up until a fault, SIMICS error, or timeout occurs, so this mode
+can be used to analyze all kinds of errors. Once the fault we're examining occurs, you
+will be dropped into a SIMICS CLI:
+
+```simics
+  2023-07-21T20:14:52.840971Z  INFO tsffs_module::module::components::detector: Got exception with fault: X86_64(InvalidOpcode)
+    at tsffs_module/src/module/components/detector/mod.rs:225
+
+  2023-07-21T20:14:52.841090Z  INFO tsffs_module::module: Entering repro mode, starting SIMICS CLI
+    at tsffs_module/src/module/mod.rs:214
+
+simics>
+```
+
+From this point, you can use SIMICS as you normally would to debug the crash state. For
+example, you can view the state of registers at the crash:
+
+```simics
+simics> pregs
+64-bit mode
+Pending exception, vector 6
+rax = 0x0000000000000061             r8  = 0x0000000000000000
+rcx = 0x0000000000000000             r9  = 0x0000000000000260
+rdx = 0x0000000000000012             r10 = 0x00000000f016d1c0
+rbx = 0x00000000df321b18             r11 = 0x0000000000000020
+rsp = 0x00000000df3218d0             r12 = 0x0000000000000000
+rbp = 0x00000000df321b08             r13 = 0x00000000dda2b918
+rsi = 0x00000000df321920             r14 = 0x00000000dd7d2cd0
+rdi = 0x0000000000000009             r15 = 0x00000000dd838bc8
+
+rip = 0x00000001800011c0
+
+eflags = 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 1 0 0 0 1 1 0 = 0x00000246
+         I V V A V R - N I I O D I T S Z - A - P - C
+         D I I C M F   T O O F F F F F F   F   F   F
+           P F           P P                        
+                         L L                        
+```
+
+Since this is exception #6, invalid opcode, we might want to examine memory at the
+instruction pointer to figure out why we are executing an invalid instruction:
+
+```simics
+simics> x %rip
+ds:0x00000001800011c0  06e9 2700 0000 0fbe 4424 5083 f862 0f85  ..'.....D$P..b..
+```
+
+If we were really debugging, we would have found the problem: `0x06` isn't a valid
+x86_64 instruction!
+
+One key option that is available in addition to normal SIMICS commands is reverse
+execution and restoring to the initial snapshot (which was taken for you by the fuzzer).
+The bookmark created by the fuzzer just after writing the testcase into memory is called
+`start`.
+
+```simics
+simics> list-bookmarks
+ name                                     cycles
+------------------------------------------------------
+ start                              75187942584
+ <current execution point>          75188460742
+------------------------------------------------------
+```
+
+We can restore the bookmark by running:
+
+```simics
+simics> reverse-to start
+[board.mb.cpu0.core[0][0]]  cs:0x0000000180001047 p:0x180001047  cpuid
+```
+
+From this point, we can continue to view registers, step instructions forward, modify
+memory, step *backward* (because we have reverse execution enabled), and so forth. You
+can find complete documentation for SIMICS including all of its powerful debugging tools
+in the documentation by running `./documentation` in the SIMICS project we created in
+`./project`.
+

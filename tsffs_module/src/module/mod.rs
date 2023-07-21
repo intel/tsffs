@@ -15,10 +15,10 @@ use tracing::{debug, error, info, trace};
 
 use simics_api::{
     attr_data, attr_object_or_nil_from_ptr, break_simulation, clear_exception,
-    continue_simulation_alone, discard_future, get_processor_number, hap_add_callback,
-    init_command_line, last_error, main_loop, quit, register_interface, restore_micro_checkpoint,
-    save_micro_checkpoint, AttrValue, ConfObject, Hap, HapCallback, MicroCheckpointFlags,
-    SimException,
+    continue_simulation_alone, discard_future, free_attribute, get_processor_number,
+    hap_add_callback, init_command_line, last_error, main_loop, quit, register_interface,
+    restore_micro_checkpoint, run_alone, run_command, save_micro_checkpoint, AttrValue, ConfObject,
+    Hap, HapCallback, MicroCheckpointFlags, SimException,
 };
 use simics_api::{SimicsClassCreate, SimicsModule};
 use simics_api_macro::module;
@@ -44,7 +44,12 @@ pub struct Module {
     buffer_address: u64,
     buffer_size: u64,
     last_start_processor_number: i32,
+    /// Whether we are running in repro mode, which means once we hit a stop harness we will
+    /// drop into the CLI
     repro_mode: bool,
+    /// Set to true when running in repro mode once we have reached the stop harness. This is
+    /// used to disable the normal fuzzing procedures when reproducing issues.
+    repro_started: bool,
 }
 
 impl SimicsModule for Module {
@@ -68,6 +73,7 @@ impl SimicsModule for Module {
             0,
             0,
             -1,
+            false,
             false,
         ))
     }
@@ -199,15 +205,23 @@ impl Module {
         // callback
         self.stop_reason = None;
 
+        // If we are in repro mode, we create a bookmark here, after writing the buffer
+        if self.repro_mode {
+            free_attribute(run_command("set-bookmark start")?);
+        }
+
         continue_simulation_alone();
 
         Ok(())
     }
 
-    fn repro(&mut self) -> Result<()> {
-        init_command_line();
-        main_loop();
-        Ok(())
+    fn repro(&mut self) {
+        info!("Entering repro mode, starting SIMICS CLI");
+        self.repro_started = true;
+        run_alone(|| {
+            init_command_line();
+            main_loop();
+        });
     }
 }
 
@@ -230,11 +244,11 @@ impl Module {
         // Error string is always NULL
         _error_string: *mut std::ffi::c_char,
     ) -> Result<()> {
-        debug!(
-            "Module got stopped simulation with reason {:?}",
-            self.stop_reason
-        );
-
+        if self.repro_started {
+            // We bail out here, we still want the detector and tracer to be able to do their
+            // thing (the detector needs to cancel its timeout and so forth)
+            return Ok(());
+        }
         let reason = if let Some(detector_reason) = &self.detector.stop_reason {
             detector_reason
         } else if let Some(reason) = &self.stop_reason {
@@ -243,6 +257,8 @@ impl Module {
             bail!("Stopped without a reason - this should be impossible");
         }
         .clone();
+
+        debug!("Module got stopped simulation with reason {:?}", reason);
 
         // TODO: bruh
         let self_ptr = self as *mut Self as *mut ConfObject;
@@ -309,31 +325,34 @@ impl Module {
             }
             StopReason::Crash((fault, processor_number)) => {
                 if self.repro_mode {
-                    self.repro()?;
+                    self.repro();
+                } else {
+                    self.send_msg(ModuleMessage::Stopped(StopReason::Crash((
+                        fault,
+                        processor_number,
+                    ))))?;
+                    self.reset_and_run(processor_number)?;
                 }
-                self.send_msg(ModuleMessage::Stopped(StopReason::Crash((
-                    fault,
-                    processor_number,
-                ))))?;
-                self.reset_and_run(processor_number)?;
             }
             StopReason::TimeOut => {
                 if self.repro_mode {
-                    self.repro()?;
+                    self.repro();
+                } else {
+                    self.send_msg(ModuleMessage::Stopped(StopReason::TimeOut))?;
+                    let processor_number = self.last_start_processor_number;
+                    self.reset_and_run(processor_number)?;
                 }
-                self.send_msg(ModuleMessage::Stopped(StopReason::TimeOut))?;
-                let processor_number = self.last_start_processor_number;
-                self.reset_and_run(processor_number)?;
             }
             StopReason::Error((_error, _processor_number)) => {
                 if self.repro_mode {
-                    self.repro()?;
+                    self.repro();
+                } else {
+                    // TODO: Error reporting
+                    let self_ptr = self as *mut Self as *mut ConfObject;
+                    self.detector.on_exit(self_ptr)?;
+                    self.tracer.on_exit(self_ptr)?;
+                    quit(1);
                 }
-                // TODO: Error reporting
-                let self_ptr = self as *mut Self as *mut ConfObject;
-                self.detector.on_exit(self_ptr)?;
-                self.tracer.on_exit(self_ptr)?;
-                quit(1);
             }
         }
 
@@ -346,6 +365,10 @@ impl Module {
         trigger_obj: *mut ConfObject,
         parameter: i64,
     ) -> Result<()> {
+        if self.repro_started {
+            return Ok(());
+        }
+
         trace!("Got Magic instruction callback");
         // The trigger obj is a CPU
         let processor_number = get_processor_number(trigger_obj);
