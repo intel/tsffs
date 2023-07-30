@@ -353,7 +353,7 @@ impl SimicsFuzzer {
         let (tx, orx) = channel::<ClientMessage>();
         let (otx, rx) = channel::<ModuleMessage>();
 
-        let simics = self.simics(otx, orx);
+        let _simics = self.simics(otx, orx);
         let mut client = Client::new(tx, rx);
 
         let _output_config = client

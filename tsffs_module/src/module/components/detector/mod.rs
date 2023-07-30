@@ -7,7 +7,7 @@ use crate::{
     traits::{Interface, State},
     CLASS_NAME,
 };
-use anyhow::{anyhow, bail, Result};
+use anyhow::{bail, Result};
 use ffi_macro::{callback_wrappers, params};
 use simics_api::{
     attr_object_or_nil_from_ptr, break_simulation, event::register_event, event_cancel_time,
