@@ -1,3 +1,6 @@
+//! Utilities for linking to the simics library. This linking process is only compatible
+//! with Linux.
+
 use crate::{
     manifest::package_version, package::PublicPackageNumber, simics::home::simics_home,
     util::find_file_in_dir,

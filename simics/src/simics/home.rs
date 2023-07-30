@@ -1,3 +1,5 @@
+//! Source of trust for identifying the SIMICS home location
+
 use anyhow::{bail, Result};
 use dotenvy_macro::dotenv;
 use std::path::PathBuf;

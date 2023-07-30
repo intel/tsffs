@@ -1,6 +1,6 @@
 //! Simics Project
 //!
-//! This crate provides tools for managing simics projects, including linking to simics, loading
+//! Tools for managing simics projects, including linking to simics, loading
 //! modules, and creating and destroying temporary project directories, and actually running
 //! the SIMICS process after configuration
 

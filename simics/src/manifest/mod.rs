@@ -1,3 +1,6 @@
+//! Parse package manifest files and extract package specifications containing information about
+//! files in the package, package version, etc.
+
 use anyhow::{anyhow, Context, Result};
 use std::path::Path;
 use version_tools::VersionConstraint;

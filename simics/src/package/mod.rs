@@ -1,3 +1,6 @@
+//! Utilities for managing SIMICS packages, reading and writing their metadata, and creating
+//! packages from a specification
+
 use crate::simics::home::simics_home;
 use anyhow::{anyhow, bail, Error, Result};
 use derive_builder::Builder;

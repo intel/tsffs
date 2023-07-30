@@ -1,3 +1,5 @@
+//! High level control of SIMICS running inside the current process
+
 use anyhow::{bail, Result};
 use simics_api::{
     clear_exception, free_attribute, init_command_line, init_environment, init_simulator,
