@@ -1,15 +1,27 @@
+# Debugging the Fuzzer
+
+If you aren't a developer for the fuzzer, please file an issue for any problems you
+have that make you want or need to debug the fuzzer. It isn't something most users
+should need to do.
+
+## Environment
+
+First, you should be using VSCode with rust-analyzer. You'll also need the CodeLLDB
+extension for VSCode, with lldb installed.
+
+## Configuration
+
+We'll debug the `simics-fuzz` binary, although you may need to debug a test in
+`simics-tests` or the CLI from `simics-cli`.
+
+Create a CodeLLDB
+[configuration](https://github.com/vadimcn/codelldb/blob/master/MANUAL.md#starting-a-new-debug-session)
+that looks something like this:
+
+
+```json
 {
     "configurations": [
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug simics-cli-6-0-165",
-            "cargo": {
-                "args": ["build", "--bin", "simics-cli", "--features=6.0.168"]
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
         {
             "type": "lldb",
             "request": "launch",
@@ -26,7 +38,6 @@
                 "DEBUG",
                 "-C",
                 "1",
-                "-g",
                 "--package",
                 "2096:6.0.69",
                 "--file",
@@ -48,3 +59,16 @@
         }
     ]
 }
+```
+
+This specifies the command we'll run, the args to run it, and the cargo command
+needed to build it.
+
+## Debugging
+
+To debug, first open the Run and Debug menu in VSCode (the icon is a bug over a play
+button). Select your launch configuration in the dropdown like so:
+
+![](./images/DEBUGGING_FUZZER_Run_and_Debug.png)
+
+Press the play button at the top and the binary will build and run.
