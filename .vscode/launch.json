@@ -5,7 +5,7 @@
             "request": "launch",
             "name": "Debug simics-cli-6-0-165",
             "cargo": {
-                "args": ["build", "--bin", "simics-cli", "--features=6.0.167"]
+                "args": ["build", "--bin", "simics-cli", "--features=6.0.168"]
             },
             "args": [],
             "cwd": "${workspaceFolder}"
@@ -15,7 +15,7 @@
             "request": "launch",
             "name": "Debug simics-fuzz",
             "cargo": {
-                "args": ["build", "--bin", "simics-fuzz", "--features=6.0.167"]
+                "args": ["build", "--bin", "simics-fuzz", "--features=6.0.168"]
             },
             "args": [
                 "-c",

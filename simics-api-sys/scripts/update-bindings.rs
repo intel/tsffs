@@ -570,14 +570,20 @@ fn install_packages(args: &Args) -> Result<()> {
     );
     let ispm_dest = fake_simics_home.join("ispm");
     let ispm_tarball = fake_simics_home.join("ispm.tar.gz");
-    let ispm = ispm_dest.join("ispm");
 
-    if !ispm.is_file() {
+    if !ispm_dest.is_dir() {
         download_file(&args.ispm_tarball_url, &ispm_tarball)?;
         let tar = GzDecoder::new(BufReader::new(File::open(&ispm_tarball)?));
         let mut archive = Archive::new(tar);
         archive.unpack(&ispm_dest)?;
     }
+
+    let ispm = read_dir(&ispm_dest)?
+        .filter_map(|e| e.ok())
+        .next()
+        .ok_or_else(|| anyhow!("No entries in unpacked directory"))?
+        .path()
+        .join("ispm");
 
     if !base_versions_needed.is_empty() {
         let mut ispm_command = Command::new(ispm)

@@ -190,7 +190,7 @@ tar -C ~/install/simics-internal -xzvf ~/Downloads/ispm-internal-latest-linux64.
     install \
     --install-dir ~/install/simics-internal \
     --package-repo https://af02p-or.devtools.intel.com/ui/native/simics-local/pub/simics-6/linux64/ \
-    1000-6.0.167 \
+    1000-6.0.168 \
     2096-6.0.68
 ```
 
@@ -236,7 +236,7 @@ total 126M
 drwxr-xr-x. 1 rhart rhart  752 Dec 31  1969 intel-simics-package-manager-1.7.3-intel-internal
 -rw-r--r--. 1 rhart rhart 126M Jun  9 10:44 ispm-internal-latest-linux64.tar.gz
 drwxr-xr-x. 1 rhart rhart   86 Jul 19 17:00 manifests
-drwxr-xr-x. 1 rhart rhart  312 Jul 19 16:59 simics-6.0.167
+drwxr-xr-x. 1 rhart rhart  312 Jul 19 16:59 simics-6.0.168
 drwxr-xr-x. 1 rhart rhart  156 Jul 19 16:59 simics-crypto-engine-6.0.2
 drwxr-xr-x. 1 rhart rhart  148 Jul 19 16:59 simics-eclipse-6.0.33
 drwxr-xr-x. 1 rhart rhart  152 Jul 19 16:59 simics-gdb-6.0.0
@@ -309,7 +309,7 @@ After installing the prerequisites, you can build the fuzzer by running the comm
 below in the root of the repository.
 
 ```sh
-cargo build --features=6.0.167
+cargo build --features=6.0.168
 ```
 
 ## Troubleshooting

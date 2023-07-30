@@ -208,7 +208,7 @@ the setup instructions.
 ### Set Up the Project
 
 ```sh
-${SIMICS_HOME}/simics-6.0.167/bin/project-setup ./target-test
+${SIMICS_HOME}/simics-6.0.168/bin/project-setup ./target-test
 cd ./target-test
 echo "${SIMICS_HOME}/simics-qsp-x86-6.0.68/" > .package-list
 ./bin/project-setup
@@ -595,7 +595,7 @@ Before we run the fuzzer, let's take a look at its help output (replace
 
 ```sh
 cargo run --manifest-path /path/to/this/repository/Cargo.toml --release \
-  --bin simics-fuzz --features=6.0.167 -- \
+  --bin simics-fuzz --features=6.0.168 -- \
   --help
 ```
 
@@ -606,7 +606,7 @@ to start the fuzzer all we need to do is run the command below (replace
 
 ```sh
 cargo run --manifest-path /path/to/this/repository/Cargo.toml --release \
-  --bin simics-fuzz --features=6.0.167 -- \
+  --bin simics-fuzz --features=6.0.168 -- \
   --project ./project --input ./input --solutions ./solutions --corpus ./corpus \
   --log-level INFO --trace-mode once --executor-timeout 60 --timeout 3 --cores 1 \
   --package 2096:6.0.68 \
@@ -692,7 +692,7 @@ to your command.
 
 ```sh
 cargo run --manifest-path /path/to/this/repository/Cargo.toml --release \
-  --bin simics-fuzz --features=6.0.167 -- \
+  --bin simics-fuzz --features=6.0.168 -- \
   --project ./project --input ./input --solutions ./solutions --corpus ./corpus \
   --log-level INFO --trace-mode once --executor-timeout 60 --timeout 3 --cores 1 \
   --package 2096:6.0.68 \

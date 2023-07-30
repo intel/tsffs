@@ -597,16 +597,16 @@ pub fn link_simics_linux<S: AsRef<str>>(version_constraint: S) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "6.0.167")]
+    #[cfg(feature = "6.0.168")]
     use anyhow::Result;
 
-    #[cfg(feature = "6.0.167")]
+    #[cfg(feature = "6.0.168")]
     use crate::link_simics_linux;
 
-    #[cfg(feature = "6.0.167")]
+    #[cfg(feature = "6.0.168")]
     #[test]
     #[cfg_attr(miri, ignore)]
     fn test_link_simics_linux() -> Result<()> {
-        link_simics_linux("6.0.167")
+        link_simics_linux("6.0.168")
     }
 }

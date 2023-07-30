@@ -5,7 +5,7 @@ ninja
 popd || exit 1
 
 cargo run --manifest-path ../../Cargo.toml --release \
-    --bin simics-fuzz --features=6.0.167 -- \
+    --bin simics-fuzz --features=6.0.168 -- \
     --project ./project --input ./input --solutions ./solutions --corpus ./corpus \
     --log-level INFO --trace-mode once --executor-timeout 60 --timeout 3 --cores 1 \
     --package 2096:6.0.68 \

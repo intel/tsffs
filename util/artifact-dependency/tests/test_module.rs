@@ -9,7 +9,7 @@ fn test() {
         .artifact_type(CrateType::CDynamicLibrary)
         .target_name("test_module")
         .crate_name("tsffs_module")
-        .feature("6.0.167")
+        .feature("6.0.168")
         .build()
         .expect("Couldn't build dependency")
         .build()
