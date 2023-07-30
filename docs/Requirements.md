@@ -64,10 +64,10 @@ $ cd test-micro-checkpoints
 
 This Hello World example project needs the `2096` package, which is for the SIMICS QSP
 platform model.  Add the package to the project by running (assuming you have version
-`6.0.66` installed):
+`6.0.69` installed):
 
 ```sh
-$ echo "${SIMICS_HOME}/simics-qsp-x86-6.0.66/" >> ".package-list"
+$ echo "${SIMICS_HOME}/simics-qsp-x86-6.0.69/" >> ".package-list"
 $ ./bin/project-setup
 Project updated successfully
 ```

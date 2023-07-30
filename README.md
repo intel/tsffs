@@ -47,7 +47,7 @@ in the basic configuration with the commands below, respectively.
 ```sh
 cargo run --release --bin simics-fuzz --features=6.0.168 -- \
   -c /tmp/hello-world-corpus/ -s /tmp/hello-world-solution/ -l ERROR -t -C 1 \
-  --package 2096:6.0.66 \
+  --package 2096:6.0.69 \
   --file examples/hello-world/rsrc/HelloWorld.efi:%simics%/targets/hello-world/HelloWorld.efi \
   --file examples/hello-world/rsrc/app.py:%simics%/scripts/app.py \
   --file examples/hello-world/rsrc/app.yml:%simics%/scripts/app.yml \
@@ -60,7 +60,7 @@ cargo run --release --bin simics-fuzz --features=6.0.168 -- \
 ```sh
 cargo run --release --bin simics-fuzz --features=6.0.168 -- \
   -c /tmp/x509-parse-corpus/ -s /tmp/x509-parse-solution/ -l ERROR -t -C 1 \
-  --package 2096:6.0.66 \
+  --package 2096:6.0.69 \
   --file examples/x509-parse/rsrc/X509Parse.efi:%simics%/targets/x509-parse/X509Parse.efi \
   --file examples/x509-parse/rsrc/app.py:%simics%/scripts/app.py \
   --file examples/x509-parse/rsrc/app.yml:%simics%/scripts/app.yml \
