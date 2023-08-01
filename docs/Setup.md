@@ -191,7 +191,7 @@ tar -C ~/install/simics-internal -xzvf ~/Downloads/ispm-internal-latest-linux64.
     --install-dir ~/install/simics-internal \
     --package-repo https://af02p-or.devtools.intel.com/ui/native/simics-local/pub/simics-6/linux64/ \
     1000-6.0.168 \
-    2096-6.0.68
+    2096-6.0.69
 ```
 
 ##### Install SIMICS (Internal, GUI)
@@ -243,7 +243,7 @@ drwxr-xr-x. 1 rhart rhart  152 Jul 19 16:59 simics-gdb-6.0.0
 drwx------. 1 rhart rhart    0 Jul 19 17:00 simics-pkg-mgr-tmp-YOUR_USERNAME
 drwxr-xr-x. 1 rhart rhart  172 Jul 19 17:00 simics-qsp-clear-linux-6.0.14
 drwxr-xr-x. 1 rhart rhart  140 Jul 19 16:59 simics-qsp-cpu-6.0.17
-drwxr-xr-x. 1 rhart rhart  168 Jul 19 16:59 simics-qsp-x86-6.0.68
+drwxr-xr-x. 1 rhart rhart  168 Jul 19 16:59 simics-qsp-x86-6.0.69
 ```
 
 ##### Set up SIMICS_HOME (Internal)

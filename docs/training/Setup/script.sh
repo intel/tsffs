@@ -104,9 +104,9 @@ krun '$HOME/simics/intel-simics-package-manager-1.7.3-intel-internal/ispm' \
     install \
     --install-dir '$HOME/simics/' \
     --package-repo 'https://af02p-or.devtools.intel.com/ui/native/simics-local/pub/simics-6/linux64/' \
-    '1000-6.0.167' \
-    '2096-6.0.68'
+    '1000-6.0.168' \
+    '2096-6.0.69'
 krun Y
 krun cd '$HOME/applications.security.fuzzing.confuse'
-krun cargo build --features=6.0.167
+krun cargo build --features=6.0.168
 read -p "Press enter to finish"

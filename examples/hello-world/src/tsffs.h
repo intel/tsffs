@@ -28,6 +28,7 @@
                            : "0"(level), "1"(0), "2"(0), "S"(in_0),    \
                              "D"(in_1));                               \
   } while (0)
+
 #define __cpuid_extended1(level, a, b, c, d, inout_ptr_0)            \
   do {                                                               \
     if (__builtin_constant_p(level) && (level) != 1)                 \
@@ -40,6 +41,7 @@
                            : "=a"(a), "=b"(b), "=c"(c), "=d"(d)      \
                            : "0"(level), "1"(0), "2"(0), "S"(in_0)); \
   } while (0)
+
 #define __cpuid(level, a, b, c, d)                              \
   do {                                                          \
     if (__builtin_constant_p(level) && (level) != 1)            \

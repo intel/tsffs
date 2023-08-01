@@ -210,7 +210,7 @@ the setup instructions.
 ```sh
 ${SIMICS_HOME}/simics-6.0.168/bin/project-setup ./target-test
 cd ./target-test
-echo "${SIMICS_HOME}/simics-qsp-x86-6.0.68/" > .package-list
+echo "${SIMICS_HOME}/simics-qsp-x86-6.0.69/" > .package-list
 ./bin/project-setup
 ```
 
@@ -609,7 +609,7 @@ cargo run --manifest-path /path/to/this/repository/Cargo.toml --release \
   --bin simics-fuzz --features=6.0.168 -- \
   --project ./project --input ./input --solutions ./solutions --corpus ./corpus \
   --log-level INFO --trace-mode once --executor-timeout 60 --timeout 3 --cores 1 \
-  --package 2096:6.0.68 \
+  --package 2096:6.0.69 \
   --file "./target-harnessed.efi:%simics%/target-harnessed.efi" \
   --file "./fuzz.simics:%simics%/fuzz.simics" \
   --file "/path/to/this/repository/examples/harnessing-uefi/rsrc/minimal_boot_disk.craff:%simics%/minimal_boot_disk.craff" \
@@ -695,7 +695,7 @@ cargo run --manifest-path /path/to/this/repository/Cargo.toml --release \
   --bin simics-fuzz --features=6.0.168 -- \
   --project ./project --input ./input --solutions ./solutions --corpus ./corpus \
   --log-level INFO --trace-mode once --executor-timeout 60 --timeout 3 --cores 1 \
-  --package 2096:6.0.68 \
+  --package 2096:6.0.69 \
   --file "./target-harnessed.efi:%simics%/target-harnessed.efi" \
   --file "./fuzz.simics:%simics%/fuzz.simics" \
   --file "/path/to/this/repository/examples/harnessing-uefi/rsrc/minimal_boot_disk.craff:%simics%/minimal_boot_disk.craff" \

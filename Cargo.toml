@@ -1,6 +1,8 @@
 [workspace]
 resolver = "2"
 members = [
+    # Include file for harnessing
+    "include",
     # Provide simics 
     # Provide real simics APIs
     "simics-api-sys",
@@ -21,6 +23,8 @@ members = [
     "util/tmp-dir",
 ]
 default-members = [
+    # Include file for harnessing
+    "include",
     # Provide simics 
     # Provide real simics APIs
     "simics-api-sys",

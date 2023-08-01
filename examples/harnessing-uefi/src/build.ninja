@@ -13,3 +13,7 @@ build target.efi: link target.o
 build target-harnessed.o: cc target-harnessed.c
     cflags = -O0
 build target-harnessed.efi: link target-harnessed.o
+
+build target-harnessed-include.o: cc target-harnessed-include.c
+    cflags = -I ../../../include/
+build target-harnessed-include.efi: link target-harnessed-include.o
