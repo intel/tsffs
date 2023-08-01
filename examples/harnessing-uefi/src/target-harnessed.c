@@ -56,7 +56,7 @@ int UefiMain(void *imageHandle, EfiSystemTable *SystemTable) {
   __asm__ __volatile__(
       "cpuid\n\t"
       : "=a"(_a), "=b"(_b), "=c"(_c), "=d"(_d), "=S"(buffer_ptr), "=D"(size)
-      : "0"((0x4343U << 16U) | 0x4711U), "S"(buffer_ptr), "D"(size));
+      : "0"((0x0001U << 16U) | 0x4711U), "S"(buffer_ptr), "D"(size));
 
   for (size_t i = 0; i < size; i++) {
     if (i != 0 && !(i % 8)) {
@@ -87,7 +87,7 @@ int UefiMain(void *imageHandle, EfiSystemTable *SystemTable) {
 
   __asm__ __volatile__("cpuid\n\t"
                        : "=a"(_a), "=b"(_b), "=c"(_c), "=d"(_d)
-                       : "0"((0x4242U << 16U) | 0x4711U));
+                       : "0"((0x0002U << 16U) | 0x4711U));
 
   return 0;
 }

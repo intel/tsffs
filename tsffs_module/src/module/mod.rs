@@ -384,6 +384,7 @@ impl Module {
 
     #[params(!slf: *mut simics_api::ConfObject, ...)]
     pub fn on_add_fault(&mut self, fault: i64) -> Result<()> {
+        info!("Module adding fault to watched set: {}", fault);
         self.detector.on_add_fault(fault)?;
         self.tracer.on_add_fault(fault)?;
 

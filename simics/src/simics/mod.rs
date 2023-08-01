@@ -4,6 +4,7 @@ use anyhow::{bail, Result};
 use simics_api::{
     clear_exception, free_attribute, init_command_line, init_environment, init_simulator,
     last_error, main_loop, run_command, run_python, source_python, InitArgs, SimException,
+    continue_simulation_alone,
 };
 use std::{env::current_exe, path::Path};
 use tracing::info;
@@ -22,6 +23,7 @@ impl Simics {
     }
 
     pub fn run() -> ! {
+        continue_simulation_alone();
         main_loop()
     }
 

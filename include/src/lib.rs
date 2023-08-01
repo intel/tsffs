@@ -1,5 +1,4 @@
-pub const STOP: u16 = 0x4242;
-pub const START: u16 = 0x4343;
+use tsffs_module::magic::{MAGIC_STOP, MAGIC_START};
 
 #[cfg(any(target_arch = "i386", target_arch = "i586", target_arch = "i686"))]
 pub mod i386 {
@@ -33,7 +32,7 @@ pub mod i386 {
     ///         uint32_t _b __attribute__((unused)) = 0; \ \
     ///         uint32_t _c __attribute__((unused)) = 0; \ \
     ///         uint32_t _d __attribute__((unused)) = 0; \ \
-    ///         uint32_t leaf = (START << 16U) | MAGIC; \ \
+    ///         uint32_t leaf = (MAGIC_START << 16U) | MAGIC; \ \
     ///         __cpuid_extended2(leaf, _a, _b, _c, _d, addr_ptr, size_ptr); \ \
     ///     } while (0) \
     /// \
@@ -43,7 +42,7 @@ pub mod i386 {
     ///         uint32_t _b __attribute__((unused)) = 0; \ \
     ///         uint32_t _c __attribute__((unused)) = 0; \ \
     ///         uint32_t _d __attribute__((unused)) = 0; \ \
-    ///         uint32_t leaf = (STOP << 16U) | MAGIC; \ \
+    ///         uint32_t leaf = (MAGIC_STOP << 16U) | MAGIC; \ \
     ///         __cpuid(leaf, _a, _b, _c, _d); \ \
     ///     } while (0) \
     /// \
@@ -53,7 +52,7 @@ pub mod i386 {
     ///         uint32_t _b __attribute__((unused)) = 0; \ \
     ///         uint32_t _c __attribute__((unused)) = 0; \ \
     ///         uint32_t _d __attribute__((unused)) = 0; \ \
-    ///         uint32_t leaf = (STOP << 16U) | MAGIC; \ \
+    ///         uint32_t leaf = (MAGIC_STOP << 16U) | MAGIC; \ \
     ///         __cpuid_extended1(leaf, _a, _b, _c, _d, val_ptr); \ \
     ///     } while (0) \
     ///
@@ -89,7 +88,7 @@ pub mod x86_64 {
     ///         uint32_t _b __attribute__((unused)) = 0; \ \
     ///         uint32_t _c __attribute__((unused)) = 0; \ \
     ///         uint32_t _d __attribute__((unused)) = 0; \ \
-    ///         uint32_t leaf = (START << 16U) | MAGIC; \ \
+    ///         uint32_t leaf = (MAGIC_START << 16U) | MAGIC; \ \
     ///         __cpuid_extended2(leaf, _a, _b, _c, _d, addr_ptr, size_ptr); \ \
     ///     } while (0) \
     /// \
@@ -99,7 +98,7 @@ pub mod x86_64 {
     ///         uint32_t _b __attribute__((unused)) = 0; \ \
     ///         uint32_t _c __attribute__((unused)) = 0; \ \
     ///         uint32_t _d __attribute__((unused)) = 0; \ \
-    ///         uint32_t leaf = (STOP << 16U) | MAGIC; \ \
+    ///         uint32_t leaf = (MAGIC_STOP << 16U) | MAGIC; \ \
     ///         __cpuid(leaf, _a, _b, _c, _d); \ \
     ///     } while (0) \
     /// \
@@ -109,7 +108,7 @@ pub mod x86_64 {
     ///         uint32_t _b __attribute__((unused)) = 0; \ \
     ///         uint32_t _c __attribute__((unused)) = 0; \ \
     ///         uint32_t _d __attribute__((unused)) = 0; \ \
-    ///         uint32_t leaf = (STOP << 16U) | MAGIC; \ \
+    ///         uint32_t leaf = (MAGIC_STOP << 16U) | MAGIC; \ \
     ///         __cpuid_extended1(leaf, _a, _b, _c, _d, val_ptr); \ \
     ///     } while (0) \
     ///

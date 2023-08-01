@@ -35,8 +35,6 @@ impl From<*mut std::ffi::c_void> for &mut Tracer {
 }
 
 impl Tracer {
-    pub const COVERAGE_MAP_SIZE: usize = 0x10000;
-
     /// Try to instantiate a new AFL Coverage Tracer
     pub fn try_new() -> Result<Self> {
         Ok(Self {
@@ -76,6 +74,7 @@ impl State for Tracer {
             )
         };
         self.coverage_prev_loc = thread_rng().gen_range(0..self.coverage.as_slice().len()) as u64;
+        info!("Initialized Tracer");
         Ok(output_config)
     }
 

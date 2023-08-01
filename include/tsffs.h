@@ -4,10 +4,6 @@
 #include <stdint.h>
 
 
-#define STOP 16962
-
-#define START 17219
-
 #if (defined(__i386__) || defined(__i586__) || defined(__i686__))
 #define MAGIC 18193
 #endif
@@ -15,6 +11,10 @@
 #if defined(__x86_64__)
 #define MAGIC 18193
 #endif
+
+#define MAGIC_START 1
+
+#define MAGIC_STOP 2
 
 #if (defined(__i386__) || defined(__i586__) || defined(__i686__))
 /**
@@ -48,7 +48,7 @@
         uint32_t _b __attribute__((unused)) = 0; \
         uint32_t _c __attribute__((unused)) = 0; \
         uint32_t _d __attribute__((unused)) = 0; \
-        uint32_t leaf = (START << 16U) | MAGIC; \
+        uint32_t leaf = (MAGIC_START << 16U) | MAGIC; \
         __cpuid_extended2(leaf, _a, _b, _c, _d, addr_ptr, size_ptr); \
     } while (0)
 
@@ -58,7 +58,7 @@
         uint32_t _b __attribute__((unused)) = 0; \
         uint32_t _c __attribute__((unused)) = 0; \
         uint32_t _d __attribute__((unused)) = 0; \
-        uint32_t leaf = (STOP << 16U) | MAGIC; \
+        uint32_t leaf = (MAGIC_STOP << 16U) | MAGIC; \
         __cpuid(leaf, _a, _b, _c, _d); \
     } while (0)
 
@@ -68,7 +68,7 @@
         uint32_t _b __attribute__((unused)) = 0; \
         uint32_t _c __attribute__((unused)) = 0; \
         uint32_t _d __attribute__((unused)) = 0; \
-        uint32_t leaf = (STOP << 16U) | MAGIC; \
+        uint32_t leaf = (MAGIC_STOP << 16U) | MAGIC; \
         __cpuid_extended1(leaf, _a, _b, _c, _d, val_ptr); \
     } while (0)
 
@@ -104,7 +104,7 @@ void __marker_i386(void);
         uint32_t _b __attribute__((unused)) = 0; \
         uint32_t _c __attribute__((unused)) = 0; \
         uint32_t _d __attribute__((unused)) = 0; \
-        uint32_t leaf = (START << 16U) | MAGIC; \
+        uint32_t leaf = (MAGIC_START << 16U) | MAGIC; \
         __cpuid_extended2(leaf, _a, _b, _c, _d, addr_ptr, size_ptr); \
     } while (0)
 
@@ -114,7 +114,7 @@ void __marker_i386(void);
         uint32_t _b __attribute__((unused)) = 0; \
         uint32_t _c __attribute__((unused)) = 0; \
         uint32_t _d __attribute__((unused)) = 0; \
-        uint32_t leaf = (STOP << 16U) | MAGIC; \
+        uint32_t leaf = (MAGIC_STOP << 16U) | MAGIC; \
         __cpuid(leaf, _a, _b, _c, _d); \
     } while (0)
 
@@ -124,7 +124,7 @@ void __marker_i386(void);
         uint32_t _b __attribute__((unused)) = 0; \
         uint32_t _c __attribute__((unused)) = 0; \
         uint32_t _d __attribute__((unused)) = 0; \
-        uint32_t leaf = (STOP << 16U) | MAGIC; \
+        uint32_t leaf = (MAGIC_STOP << 16U) | MAGIC; \
         __cpuid_extended1(leaf, _a, _b, _c, _d, val_ptr); \
     } while (0)
 
@@ -153,5 +153,11 @@ void __marker_x86_64(void);
     } while (0)
 
 void __marker(void);
+
+/**
+ * Called by SIMICS C stub to initialize the module, this is the entrypoint of the entire
+ * module
+ */
+void module_init_local(void);
 
 #endif /* TSFFS_H */

@@ -114,7 +114,6 @@ allow_static_const = true
 allow_constexpr = false
 sort_by = "None"
 
-
 [macro_expansion]
 bitflags = false
 
@@ -122,11 +121,11 @@ bitflags = false
 ############## Options for How Your Rust library Should Be Parsed ##############
 
 [parse]
-parse_deps = false
-# include = []
+parse_deps = true
+include = ["tsffs_module"]
 exclude = []
 clean = false
-extra_bindings = []
+extra_bindings = ["tsffs_module"]
 
 
 [parse.expand]

@@ -324,7 +324,7 @@ int UefiMain(void *imageHandle, EfiSystemTable *SystemTable) {
   __asm__ __volatile__(
       "cpuid\n\t"
       : "=a"(_a), "=b"(_b), "=c"(_c), "=d"(_d), "=S"(buffer_ptr), "=D"(size)
-      : "0"((0x4343U << 16U) | 0x4711U), "S"(buffer_ptr), "D"(size));
+      : "0"((0x0001U << 16U) | 0x4711U), "S"(buffer_ptr), "D"(size));
 
   for (size_t i = 0; i < size; i++) {
     if (i != 0 && !(i % 8)) {
@@ -350,7 +350,7 @@ int UefiMain(void *imageHandle, EfiSystemTable *SystemTable) {
 
   __asm__ __volatile__("cpuid\n\t"
                        : "=a"(_a), "=b"(_b), "=c"(_c), "=d"(_d)
-                       : "0"((0x4242U << 16U) | 0x4711U));
+                       : "0"((0x0002U << 16U) | 0x4711U));
 
   return 0;
 }
@@ -392,7 +392,7 @@ should be in `rsi`, and so forth. If you're curious, you can read the
 __asm__ __volatile__(
     "cpuid\n\t"
     : "=a"(_a), "=b"(_b), "=c"(_c), "=d"(_d), "=S"(buffer_ptr), "=D"(size)
-    : "0"((0x4343U << 16U) | 0x4711U), "S"(buffer_ptr), "D"(size));
+    : "0"((0x0001U << 16U) | 0x4711U), "S"(buffer_ptr), "D"(size));
 ```
 
 The block above translates to the assembly code:
@@ -403,7 +403,7 @@ The block above translates to the assembly code:
 0x180001033      mov   qword [var_40h], rax
 0x180001038      mov   rsi, qword [var_40h]
 0x18000103d      mov   rdi, qword [var_48h]
-0x180001042      mov   eax, 0x43434711
+0x180001042      mov   eax, 0x00014711
 0x180001047      cpuid
 0x180001049      mov   dword [var_9ch], eax
 0x180001050      mov   dword [var_98h], ebx
@@ -415,7 +415,7 @@ The block above translates to the assembly code:
 ```
 
 We set `rsi` to the address of our buffer and `rdi` to the size of our buffer. Then,
-we set `eax` to `0x43434711`. `0x4343` is the code the fuzzer recognizes indicating
+we set `eax` to `0x00014711`. `0x0001` is the code the fuzzer recognizes indicating
 this is a *start* harness (as opposed to a *stop* harness, or some other future type).
 `0x4711` is the code SIMICS recognizes indicating this is a "magic" `cpuid`. Other
 `cpuid` leaves will not trigger SIMICS' magic cpuid code.
@@ -436,13 +436,13 @@ understand how this works under the hood in case you need to customize this proc
 The final block below performs the same operation, but doesn't need any input or output
 to or from the fuzzer because it simply signals the end of the fuzzing loop. When the
 code reaches this point, the fuzzer will stop it and restore the snapshot at the start
-with a new input. The only difference here is the magic value `0x4242` instead of
-`0x4343` signifying a *stop* instead of a *start* harness.
+with a new input. The only difference here is the magic value `0x2` instead of
+`0x1` signifying a *stop* instead of a *start* harness.
 
 ```c
 __asm__ __volatile__("cpuid\n\t"
                       : "=a"(_a), "=b"(_b), "=c"(_c), "=d"(_d)
-                      : "0"((0x4242U << 16U) | 0x4711U));
+                      : "0"((0x0002U << 16U) | 0x4711U));
 ```
 
 Finally, you probably noticed we added the code below:

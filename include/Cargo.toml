@@ -5,6 +5,9 @@ edition = "2021"
 
 
 [features]
+
+[dependencies]
+tsffs_module.workspace = true
 # i386 = []
 # i586 = []
 # i686 = []

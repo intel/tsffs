@@ -145,14 +145,14 @@ int UefiMain(void *imageHandle, EfiSystemTable *SystemTable) {
   int16_t *buffer_ptr = &buffer[0];
 
   // Our "start harness" is just a CPUID with some special values:
-  // - (0x43434711 indicates START, which is just our START signal 0x4343
+  // - (0x00014711 indicates START, which is just our START signal 0x0001
   //   shifted left 16 bits, ORed with the signal for SIMICS that this is a
   //   magic instruction, 0x4711).
   // - The buffer address
   __asm__ __volatile__(
       "cpuid\n\t"
       : "=a"(_a), "=b"(_b), "=c"(_c), "=d"(_d), "=S"(buffer_ptr), "=D"(size)
-      : "0"((0x4343U << 16U) | 0x4711U), "S"(buffer_ptr), "D"(size));
+      : "0"((0x0001U << 16U) | 0x4711U), "S"(buffer_ptr), "D"(size));
 
   // Once we reach this point, the fuzzer has filled our buffer with some amount
   // of data. We will print out the data we got.
@@ -184,7 +184,7 @@ int UefiMain(void *imageHandle, EfiSystemTable *SystemTable) {
 
   __asm__ __volatile__("cpuid\n\t"
                        : "=a"(_a), "=b"(_b), "=c"(_c), "=d"(_d)
-                       : "0"((0x4242U << 16U) | 0x4711U));
+                       : "0"((0x0002U << 16U) | 0x4711U));
 
   return 0;
 }
