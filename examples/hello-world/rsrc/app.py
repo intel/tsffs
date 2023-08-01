@@ -34,7 +34,7 @@ if SIM_get_batch_mode():
 
 SIM_log_info(1, conf.sim, 0, "Done disconnecting")
 
-conf.tsffs_module.iface.tsffs_module.start(False)
+conf.tsffs_module.iface.tsffs_module.init()
 conf.tsffs_module.iface.tsffs_module.add_processor(
     SIM_get_object(simenv.system).mb.cpu0.core[0][0]
 )

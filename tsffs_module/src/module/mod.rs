@@ -411,25 +411,10 @@ impl Module {
         Ok(())
     }
 
-    #[params(!slf: *mut simics_api::ConfObject, ...)]
-    pub fn on_start(&mut self, run: bool) -> Result<()> {
-        info!("Received start signal, initializing module state.");
+    #[params(!slf: *mut simics_api::ConfObject)]
+    pub fn on_init(&mut self) -> Result<()> {
+        info!("Received init signal, initializing module state.");
         self.initialize()?;
-
-        // Trigger anything that needs to happen before we start up (run for the first time)
-        self.detector.on_start()?;
-        self.tracer.on_start()?;
-
-        // Run -- we will get a callback on the Magic::Start instruction
-        // trace!("Running until first `Magic::Start`");
-
-        if run {
-            info!("Starting simulation");
-            continue_simulation_alone();
-        } else {
-            info!("Module ready, but simulation will not start automatically. Continue or run to the harness and fuzzing will begin.");
-        }
-
         Ok(())
     }
 
@@ -471,37 +456,24 @@ impl Module {
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 /// This is the rust definition for the tffs_module_interface_t declaration in the stubs, which
 /// are used to generate the interface module. This struct definition must match that one exactly
-///
+/// 
 /// # Examples
-///
-/// Assuming your model is configured, and by resuming the simulation the target
-/// software will reach the start harness, the following SIMICS code is typically sufficient to
-/// start the fuzzer immediately.
-///
-///
+/// 
+/// Assuming your model is configured, and by resuming the simulation the target The
+/// following SIMICS code (either in a SIMICS script, or in an equivalent Python script)
+/// is typically sufficient to start the fuzzer immediately.
+/// 
 /// ```simics
 /// stop
+/// @conf.tsffs_module.iface.tsffs_module.init()
 /// @conf.tsffs_module.iface.tsffs_module.add_processor(SIM_get_object(simenv.system).mb.cpu0.core[0][0])
 /// # Add triple fault (special, -1 code because it has no interrupt number)
 /// @conf.tsffs_module.iface.tsffs_module.add_fault(-1)
 /// # Add general protection fault (interrupt #13)
 /// @conf.tsffs_module.iface.tsffs_module.add_fault(13)
-/// @conf.tsffs_module.iface.tsffs_module.start(True)
-/// ```
-///
-/// If your model is configured, but needs some other input to trigger the code path that reaches
-/// the start harness (in this example, a console input to run a target EFI application), you
-/// can pass `False` to `start()` and manually `continue` model execution.
-///
-/// ```simics
-/// stop
-/// @conf.tsffs_module.iface.tsffs_module.add_processor(SIM_get_object(simenv.system).mb.cpu0.core[0][0])
-/// # Add triple fault (special, -1 code because it has no interrupt number)
-/// @conf.tsffs_module.iface.tsffs_module.add_fault(-1)
-/// # Add general protection fault (interrupt #13)
-/// @conf.tsffs_module.iface.tsffs_module.add_fault(13)
-/// @conf.tsffs_module.iface.tsffs_module.start(False)
 /// $con.input "target.efi\n"
+/// # This continue is optional, the fuzzer will resume execution for you if you do not resume
+/// # it at the end of your script
 /// continue
 /// ```
 pub struct ModuleInterface {
@@ -509,7 +481,7 @@ pub struct ModuleInterface {
     /// will be entered. If you need to run additional scripting commands after signaling the
     /// fuzzer to start, pass `False` instead, and later call either `SIM_continue()` or `run` for
     /// Python and SIMICS scripts respectively.
-    pub start: extern "C" fn(obj: *mut ConfObject, run: bool),
+    pub init: extern "C" fn(obj: *mut ConfObject),
     /// Inform the module of a processor that should be traced and listened to for timeout and
     /// crash objectives. You must add exactly one processor.
     pub add_processor: extern "C" fn(obj: *mut ConfObject, processor: *mut AttrValue),
@@ -524,7 +496,7 @@ pub struct ModuleInterface {
 impl Default for ModuleInterface {
     fn default() -> Self {
         Self {
-            start: module_callbacks::on_start,
+            init: module_callbacks::on_init,
             add_processor: module_callbacks::on_add_processor,
             add_fault: module_callbacks::on_add_fault,
             add_channels: module_callbacks::on_add_channels,

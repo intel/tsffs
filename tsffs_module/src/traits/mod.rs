@@ -60,10 +60,6 @@ pub trait State {
 }
 
 pub trait Interface {
-    fn on_start(&mut self) -> Result<()> {
-        Ok(())
-    }
-
     fn on_add_processor(&mut self, _processor: *mut AttrValue) -> Result<()> {
         Ok(())
     }

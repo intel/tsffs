@@ -43,7 +43,7 @@ except simics.SimExc_General as e:
     # SIM_get_object("tsffs_module", "tsffs_module")
     SIM_log_info(1, conf.sim, 0, "Module object already exists: " + str(e))
 
-conf.tsffs_module.iface.tsffs_module.start(False)
+conf.tsffs_module.iface.tsffs_module.init()
 conf.tsffs_module.iface.tsffs_module.add_processor(
     SIM_get_object(simenv.system).mb.cpu0.core[0][0]
 )

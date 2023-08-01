@@ -525,13 +525,13 @@ script-branch "UEFI Shell Enter Branch" {
 
     stop
 
-
+    # Configure the fuzzer
+    @conf.tsffs_module.iface.tsffs_module.init()
     @conf.tsffs_module.iface.tsffs_module.add_processor(SIM_get_object(simenv.system).mb.cpu0.core[0][0])
     # Page fault
     @conf.tsffs_module.iface.tsffs_module.add_fault(14)
     # Invalid opcode
     @conf.tsffs_module.iface.tsffs_module.add_fault(6)
-    @conf.tsffs_module.iface.tsffs_module.start(False)
 
     $con.input "target-harnessed.efi\n"
     continue
@@ -547,18 +547,21 @@ run unattended, we need to "type in" the name of the EFI application to run, so 
 is loaded into SIMICS. The fuzzer module's API is documented on the
 [API page](./ModuleApi.md).
 
-First, we provide the processor object of the first (and in this case only) processor
-we are running, which informs the module that it should be traced and listened to for
-faults.
+First, we call the `init` method. This tells the fuzzer to initialize itself at this
+point and set up its internal state.
 
-Next, we inform the module that we want to treat exception #14 (page fault) as an
+Next, we provide the processor object of the first (and in this case only, as this test
+is single-threaded) processor we are running, which informs the module that it should be
+traced and listened to for faults.
+
+Finally, we inform the module that we want to treat exception #14 (page fault) as an
 objective for this fuzzing campaign. The default is not to detect any exceptions as
 objectives, so be sure to add a fault when you run the fuzzer.
 
-Finally, we call the `start` method, with a `False` argument. This tells the fuzzer to
-ready itself, but not to resume model execution. We still need to "type in" the EFI
-application we want to run, so we issue the `continue` ourselves in this case. If we
-had already sent the name over the console previously, we could pass `True` here.
+You should customize the set of faults you set for your fuzzing task. For example, not
+all applications will consider a page fault an error condition if they have paging
+enabled, but may consider a double fault a serious issue indicating a problem with
+the page fault handler.
 
 ## Create an Input Corpus
 

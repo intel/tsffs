@@ -17,34 +17,20 @@ That API looks like this in Rust:
 /// 
 /// # Examples
 /// 
-/// Assuming your model is configured, and by resuming the simulation the target
-/// software will reach the start harness, the following SIMICS code is typically sufficient to
-/// start the fuzzer immediately.
-/// 
+/// Assuming your model is configured, and by resuming the simulation the target The
+/// following SIMICS code (either in a SIMICS script, or in an equivalent Python script)
+/// is typically sufficient to start the fuzzer immediately.
 /// 
 /// ```simics
 /// stop
+/// @conf.tsffs_module.iface.tsffs_module.init()
 /// @conf.tsffs_module.iface.tsffs_module.add_processor(SIM_get_object(simenv.system).mb.cpu0.core[0][0])
 /// # Add triple fault (special, -1 code because it has no interrupt number)
 /// @conf.tsffs_module.iface.tsffs_module.add_fault(-1)
 /// # Add general protection fault (interrupt #13)
 /// @conf.tsffs_module.iface.tsffs_module.add_fault(13)
-/// @conf.tsffs_module.iface.tsffs_module.start(True)
-/// ```
-/// 
-/// If your model is configured, but needs some other input to trigger the code path that reaches
-/// the start harness (in this example, a console input to run a target EFI application), you
-/// can pass `False` to `start()` and manually `continue` model execution.
-/// 
-/// ```simics
-/// stop
-/// @conf.tsffs_module.iface.tsffs_module.add_processor(SIM_get_object(simenv.system).mb.cpu0.core[0][0])
-/// # Add triple fault (special, -1 code because it has no interrupt number)
-/// @conf.tsffs_module.iface.tsffs_module.add_fault(-1)
-/// # Add general protection fault (interrupt #13)
-/// @conf.tsffs_module.iface.tsffs_module.add_fault(13)
-/// @conf.tsffs_module.iface.tsffs_module.start(False)
 /// $con.input "target.efi\n"
+/// # This continue is optional, the fuzzer will resume execution for you if you do not
 /// continue
 /// ```
 pub struct ModuleInterface {
@@ -52,7 +38,7 @@ pub struct ModuleInterface {
     /// will be entered. If you need to run additional scripting commands after signaling the
     /// fuzzer to start, pass `False` instead, and later call either `SIM_continue()` or `run` for
     /// Python and SIMICS scripts respectively.
-    pub start: extern "C" fn(obj: *mut ConfObject, run: bool),
+    pub init: extern "C" fn(obj: *mut ConfObject),
     /// Inform the module of a processor that should be traced and listened to for timeout and
     /// crash objectives. You must add exactly one processor.
     pub add_processor: extern "C" fn(obj: *mut ConfObject, processor: *mut AttrValue),
