@@ -1,0 +1,62 @@
+[package]
+name = "include"
+version = "0.1.0"
+edition = "2021"
+
+
+[features]
+# i386 = []
+# i586 = []
+# i686 = []
+# x86_64 = []
+# powerpc = []
+# powerpc64 = []
+# powerpc64le = []
+# aarch64 = []
+# arm = []
+# armv7 = []
+# "thumbv8m.main" = []
+# "thumbv8m.base" = []
+# "thumbv7m" = []
+# "thumbv7em" = []
+# "thumbv7a" = []
+# mips = []
+# mipsel = []
+# mips64 = []
+# mips64el = []
+# riscv32gc = []
+# riscv32i = []
+# riscv32im = []
+# riscv32imac = []
+# riscv32imc = []
+# riscv64gc = []
+# riscv64imac = []
+# 
+# default = [
+#     "i386",
+#     "i586",
+#     "i686",
+#     "x86_64",
+#     "powerpc",
+#     "powerpc64",
+#     "powerpc64le",
+#     "aarch64",
+#     "arm",
+#     "armv7",
+#     "thumbv8m.main",
+#     "thumbv8m.base",
+#     "thumbv7m",
+#     "thumbv7em",
+#     "thumbv7a",
+#     "mips",
+#     "mipsel",
+#     "mips64",
+#     "mips64el",
+#     "riscv32gc",
+#     "riscv32i",
+#     "riscv32im",
+#     "riscv32imac",
+#     "riscv32imc",
+#     "riscv64gc",
+#     "riscv64imac",
+# ]
