@@ -33,7 +33,7 @@ script-branch "UEFI Shell Enter Branch" {
 
     # We are now in the UEFI shell, we'll download our EFI app
     local $manager = (start-agent-manager)
-    $con.input ("SimicsAgent.efi --download " + (lookup-file "%simics%/target-harnessed.efi") + "\n")
+    $con.input ("SimicsAgent.efi --download " + (lookup-file "%simics%/target.efi") + "\n")
     bp.time.wait-for seconds = .5
 
     stop
@@ -46,7 +46,7 @@ script-branch "UEFI Shell Enter Branch" {
     # Invalid opcode
     @conf.tsffs_module.iface.tsffs_module.add_fault(6)
 
-    $con.input "target-harnessed.efi\n"
+    $con.input "target.efi\n"
     continue
 
 }

@@ -529,7 +529,7 @@ script-branch "UEFI Shell Enter Branch" {
 
     # We are now in the UEFI shell, we'll download our EFI app
     local \$manager = (start-agent-manager)
-    \$con.input ("SimicsAgent.efi --download " + (lookup-file "%simics%/target-harnessed.efi") + "\n")
+    \$con.input ("SimicsAgent.efi --download " + (lookup-file "%simics%/target.efi") + "\n")
     bp.time.wait-for seconds = .5
 
     stop
@@ -542,7 +542,7 @@ script-branch "UEFI Shell Enter Branch" {
     # Invalid opcode
     @conf.tsffs_module.iface.tsffs_module.add_fault(6)
 
-    $con.input "target-harnessed.efi\n"
+    $con.input "target.efi\n"
     continue
 
 }
@@ -622,7 +622,7 @@ cargo run --manifest-path /path/to/this/repository/Cargo.toml --release \
   --project ./project --input ./input --solutions ./solutions --corpus ./corpus \
   --log-level INFO --trace-mode once --executor-timeout 60 --timeout 3 --cores 1 \
   --package 2096:6.0.69 \
-  --file "./target-harnessed.efi:%simics%/target-harnessed.efi" \
+  --file "./target-harnessed.efi:%simics%/target.efi" \
   --file "./fuzz.simics:%simics%/fuzz.simics" \
   --file "/path/to/this/repository/examples/harnessing-uefi/rsrc/minimal_boot_disk.craff:%simics%/minimal_boot_disk.craff" \
   --command 'COMMAND:run-script "%simics%/fuzz.simics"'

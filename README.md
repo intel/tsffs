@@ -14,7 +14,8 @@ the [requirements](./docs/Requirements.md) to find out if TSSFS can fuzz your co
 - [TSFFS: Target Software Fuzzer For SIMICS](#tsffs-target-software-fuzzer-for-simics)
   - [Capabilities](#capabilities)
   - [Setup](#setup)
-  - [Running A Sample Target](#running-a-sample-target)
+  - [Running a Simple Sample Target](#running-a-simple-sample-target)
+  - [Running an EDK2 Sample Target](#running-an-edk2-sample-target)
   - [Documentation](#documentation)
   - [Roadmap](#roadmap)
   - [Authors](#authors)
@@ -40,7 +41,26 @@ Detailed instructions for setting up and building this project can be found in
 [Setup.md](./docs/Setup.md). You should follow the documentation there to set up the
 fuzzer before trying to run the sample targets.
 
-## Running A Sample Target
+## Running a Simple Sample Target
+
+We provide a sample target that represents the simplest possible use of the fuzzer. Once
+you have set up the fuzzer by following the directions [above](#setup), you can run it
+with (from the root of this repo):
+
+```sh
+cargo run --release --bin simics-fuzz --features=6.0.168 -- \
+    --corpus /tmp/corpus --solutions solution --log-level INFO --cores 1  \
+    --file examples/harnessing-uefi/rsrc/target.efi:%simics%/target.efi \
+    --file examples/harnessing-uefi/rsrc/fuzz.simics:%simics%/fuzz.simics \
+    --file examples/harnessing-uefi/rsrc/minimal_boot_disk.craff:%simics%/minimal_boot_disk.craff \
+    --package 2096:6.0.69 \
+    --command 'COMMAND:run-script "%simics%/fuzz.simics"'
+```
+
+If you want to see the visualizer above, you can enable the SIMICS GUI during fuzzing
+by adding `--enable-simics-gui`!
+
+## Running an EDK2 Sample Target 
 
 There are two provided sample targets, `hello-world` and `x509-parse`. You can run them
 in the basic configuration with the commands below, respectively.
