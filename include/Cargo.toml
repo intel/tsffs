@@ -5,6 +5,13 @@ edition = "2021"
 
 
 [features]
+"6.0.163" = ["tsffs_module/6.0.163"]
+"6.0.164" = ["tsffs_module/6.0.164"]
+"6.0.165" = ["tsffs_module/6.0.165"]
+"6.0.166" = ["tsffs_module/6.0.166"]
+"6.0.167" = ["tsffs_module/6.0.167"]
+"6.0.168" = ["tsffs_module/6.0.168"]
+
 
 [dependencies]
 tsffs_module.workspace = true

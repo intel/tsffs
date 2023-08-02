@@ -25,7 +25,7 @@ and fault detection on other architectures.
 
 ## Micro Checkpoints
 
-SIMICS has a new feature called *micro checkpoints* that allows in-memory snapshots of the
+SIMICS has a feature called *micro checkpoints* that allows in-memory snapshots of the
 target software state, as well as reasonably fast restoration of these snapshots to
 enable fuzzing.
 

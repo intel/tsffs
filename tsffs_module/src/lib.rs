@@ -28,6 +28,7 @@ pub mod config;
 pub mod faults;
 pub mod magic;
 pub mod messages;
+/// cbindgen:ignore
 pub mod module;
 mod processor;
 pub mod state;

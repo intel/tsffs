@@ -43,18 +43,6 @@ krun() {
     kitty @ send-text --to "unix://${SOCK}" "\n"
 }
 
-krun_silent() {
-    read -p "Press enter to continue: "
-    for arg in "$@"; do
-        for ((i = 0; i < ${#arg}; i++)); do
-            kitty @ send-text --to "unix://${SOCK}" "${arg:$i:1}"
-            slow
-        done
-        kitty @ send-text --to "unix://${SOCK}" " "
-    done
-    kitty @ send-text --to "unix://${SOCK}" "\n"
-}
-
 krun_fast() {
     kitty @ send-text --to "unix://${SOCK}" "${@}"
     kitty @ send-text --to "unix://${SOCK}" "\n"

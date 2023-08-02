@@ -111,7 +111,7 @@ private_default_tagged_enum_constructor = false
 
 [const]
 allow_static_const = true
-allow_constexpr = false
+allow_constexpr = true
 sort_by = "None"
 
 [macro_expansion]
@@ -129,7 +129,7 @@ extra_bindings = ["tsffs_module"]
 
 
 [parse.expand]
-crates = []
+crates = ["include"]
 all_features = false
-default_features = true
-features = []
+default_features = false
+features = ["6.0.168"]

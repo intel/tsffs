@@ -310,6 +310,15 @@ code, all we need to do is issue a `cpuid` to tell the fuzzer where the beginnin
 fuzzing loop is, and another `cpuid` to tell the fuzzer where the end of the fuzzing
 loop is in our code.
 
+The harness we will cover first is the no-frills approach, invoking the SIMICS magic
+instruction directly. In practice, we provide a [single header file](../include/tsffs.h)
+you should use, which we'll cover [in another
+document](./Harnessing.md#harnessing-with-provided-include-file). For the sake of
+complete understanding, we will pull back the curtain first. After finishing this
+tutorial, you should always prefer using the `tsffs.h` header file. You can check out
+[target-harnessed-include.c](../examples/harnessing-uefi/src/target-harnessed-include.c)
+to see how this target should be harnessed using the header.
+
 We'll copy `target.c` to `target-harnessed.c` and modify our `UefiMain` function to look
 like this:
 
@@ -782,4 +791,3 @@ memory, step *backward* (because we have reverse execution enabled), etc. You
 can find complete documentation for SIMICS including all of its powerful debugging tools
 in the documentation by running `./documentation` in the SIMICS project we created in
 `./project`.
-

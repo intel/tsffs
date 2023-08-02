@@ -4,10 +4,6 @@
 #include <stdint.h>
 
 
-#if (defined(__i386__) || defined(__i586__) || defined(__i686__))
-#define MAGIC 18193
-#endif
-
 #if defined(__x86_64__)
 #define MAGIC 18193
 #endif
@@ -16,64 +12,29 @@
 
 #define MAGIC_STOP 2
 
-#if (defined(__i386__) || defined(__i586__) || defined(__i686__))
 /**
- * X86 32:
  *
  */
+#define TSFFS_INCLUDE_VERSION "0.1.0"
+ void __version_marker(void);
 
-#define __cpuid_extended2(level, a, b, c, d, inout_ptr_0, inout_ptr_1) \
-    __asm__ __volatile__("push %%ebx; cpuid; pop %%ebx\n\t" \
-                       : "=a"(a), "=b"(b), "=c"(c), "=d"(d), \
-                         "=S"(*inout_ptr_0), "=D"(*inout_ptr_1) \
-                       : "0"(level), "S"(*inout_ptr_0), "D"(*inout_ptr_1) \
-                       : "memory")
+/**
+ *
+ */
+#define TSFFS_INCLUDE_VERSION_MAJOR "0"
+ void __version_marker_major(void);
 
-#define __cpuid_extended1(level, a, b, c, d, inout_ptr_0) \
-    __asm__ __volatile__("push %%ebx; cpuid; pop %%ebx\n\t" \
-                       : "=a"(a), "=b"(b), "=c"(c), "=d"(d), \
-                         "=S"(*inout_ptr_0) \
-                       : "0"(level), "S"(*inout_ptr_0) \
-                       : "memory")
+/**
+ *
+ */
+#define TSFFS_INCLUDE_VERSION_MINOR "1"
+ void __version_marker_minor(void);
 
-#define __cpuid(level, a, b, c, d) \
-    __asm__ __volatile__("push %%ebx; cpuid; pop %%ebx\n\t" \
-                       : "=a"(a), "=b"(b), "=c"(c), "=d"(d) \
-                       : "0"(level) \
-                       : "memory")
-
-#define __arch_harness_start(addr_ptr, size_ptr) \
-    do { \
-        uint32_t _a __attribute__((unused)) = 0; \
-        uint32_t _b __attribute__((unused)) = 0; \
-        uint32_t _c __attribute__((unused)) = 0; \
-        uint32_t _d __attribute__((unused)) = 0; \
-        uint32_t leaf = (MAGIC_START << 16U) | MAGIC; \
-        __cpuid_extended2(leaf, _a, _b, _c, _d, addr_ptr, size_ptr); \
-    } while (0)
-
-#define __arch_harness_stop() \
-    do { \
-        uint32_t _a __attribute__((unused)) = 0; \
-        uint32_t _b __attribute__((unused)) = 0; \
-        uint32_t _c __attribute__((unused)) = 0; \
-        uint32_t _d __attribute__((unused)) = 0; \
-        uint32_t leaf = (MAGIC_STOP << 16U) | MAGIC; \
-        __cpuid(leaf, _a, _b, _c, _d); \
-    } while (0)
-
-#define __arch_harness_stop_extended(val_ptr) \
-    do { \
-        uint32_t _a __attribute__((unused)) = 0; \
-        uint32_t _b __attribute__((unused)) = 0; \
-        uint32_t _c __attribute__((unused)) = 0; \
-        uint32_t _d __attribute__((unused)) = 0; \
-        uint32_t leaf = (MAGIC_STOP << 16U) | MAGIC; \
-        __cpuid_extended1(leaf, _a, _b, _c, _d, val_ptr); \
-    } while (0)
-
-void __marker_i386(void);
-#endif
+/**
+ *
+ */
+#define TSFFS_INCLUDE_VERSION_PATCH "0"
+ void __version_marker_patch(void);
 
 #if defined(__x86_64__)
 /**
@@ -153,11 +114,5 @@ void __marker_x86_64(void);
     } while (0)
 
 void __marker(void);
-
-/**
- * Called by SIMICS C stub to initialize the module, this is the entrypoint of the entire
- * module
- */
-void module_init_local(void);
 
 #endif /* TSFFS_H */

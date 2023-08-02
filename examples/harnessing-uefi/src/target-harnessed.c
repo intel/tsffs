@@ -52,11 +52,12 @@ int UefiMain(void *imageHandle, EfiSystemTable *SystemTable) {
   int16_t buffer[0x20];
   size_t size = sizeof(buffer) - 1;
   int16_t *buffer_ptr = &buffer[0];
+  size_t *size_ptr = &size;
 
   __asm__ __volatile__(
       "cpuid\n\t"
-      : "=a"(_a), "=b"(_b), "=c"(_c), "=d"(_d), "=S"(buffer_ptr), "=D"(size)
-      : "0"((0x0001U << 16U) | 0x4711U), "S"(buffer_ptr), "D"(size));
+      : "=a"(_a), "=b"(_b), "=c"(_c), "=d"(_d), "=S"(buffer_ptr), "=D"(size_ptr)
+      : "0"((0x0001U << 16U) | 0x4711U), "S"(buffer_ptr), "D"(size_ptr));
 
   for (size_t i = 0; i < size; i++) {
     if (i != 0 && !(i % 8)) {

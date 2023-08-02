@@ -52,10 +52,10 @@ int UefiMain(void *imageHandle, EfiSystemTable *SystemTable) {
   uint32_t _a, _b, _c, _d = 0;
 
   int16_t buffer[0x20];
-  size_t size = sizeof(buffer) - 1;
   int16_t *buffer_ptr = &buffer[0];
+  size_t size = sizeof(buffer) - 1;
 
-  HARNESS_START(buffer_ptr, &size);
+  HARNESS_START(&buffer_ptr, &size);
 
   for (size_t i = 0; i < size; i++) {
     if (i != 0 && !(i % 8)) {

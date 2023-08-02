@@ -1,7 +1,7 @@
 use self::components::{detector::Detector, tracer::Tracer};
 use crate::{
     config::OutputConfig,
-    magic::Magic,
+    magic::{Magic, MAGIC_ARG0_REG_X86_64, MAGIC_ARG1_REG_X86_64},
     messages::{client::ClientMessage, module::ModuleMessage},
     processor::Processor,
     state::ModuleStateMachine,
@@ -198,7 +198,7 @@ impl Module {
             // Write the testcase to the guest's memory
             processor.write_bytes(self.buffer_address, &input)?;
             // Write the testcase size back to rdi
-            processor.set_reg_value("rdi", input.len() as u64)?;
+            processor.set_reg_value(MAGIC_ARG1_REG_X86_64, input.len() as u64)?;
         }
 
         // Run the simulation until the magic start instruction, where we will receive a stop
@@ -277,8 +277,10 @@ impl Module {
                                     self.processors.get_mut(&processor_number).with_context(
                                         || format!("No processor number {}", processor_number),
                                     )?;
-                                self.buffer_address = processor.get_reg_value("rsi")?;
-                                self.buffer_size = processor.get_reg_value("rdi")?;
+                                self.buffer_address =
+                                    processor.get_reg_value(MAGIC_ARG0_REG_X86_64)?;
+                                self.buffer_size =
+                                    processor.get_reg_value(MAGIC_ARG1_REG_X86_64)?;
                             }
                             save_micro_checkpoint(
                                 "origin",
@@ -307,7 +309,7 @@ impl Module {
                             .processors
                             .get_mut(&processor_number)
                             .with_context(|| format!("No processor number {}", processor_number))?;
-                        let stop_value = processor.get_reg_value("rsi")?;
+                        let stop_value = processor.get_reg_value(MAGIC_ARG0_REG_X86_64)?;
                         let magic = Magic::Stop((code, Some(stop_value)));
                         self.send_msg(ModuleMessage::Stopped(StopReason::Magic((
                             magic,
@@ -456,13 +458,13 @@ impl Module {
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 /// This is the rust definition for the tffs_module_interface_t declaration in the stubs, which
 /// are used to generate the interface module. This struct definition must match that one exactly
-/// 
+///
 /// # Examples
-/// 
+///
 /// Assuming your model is configured, and by resuming the simulation the target The
 /// following SIMICS code (either in a SIMICS script, or in an equivalent Python script)
 /// is typically sufficient to start the fuzzer immediately.
-/// 
+///
 /// ```simics
 /// stop
 /// @conf.tsffs_module.iface.tsffs_module.init()
