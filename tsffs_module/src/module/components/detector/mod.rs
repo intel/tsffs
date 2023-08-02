@@ -65,18 +65,12 @@ impl State for Detector {
             self.on_add_fault(fault.try_into()?)?;
         }
 
-        let _bp_handle = hap_add_callback(
-            Hap::CoreBreakpointMemop,
-            HapCallback::CoreBreakpointMemop(detector_callbacks::on_breakpoint_memop),
-            Some(module as *mut c_void),
-        );
-
         info!("Initialized Detector");
 
         Ok(output_config)
     }
 
-    fn pre_first_run(&mut self, _module: *mut ConfObject) -> Result<()> {
+    fn pre_first_run(&mut self, module: *mut ConfObject) -> Result<()> {
         let module_cls = get_class(CLASS_NAME)?;
 
         let event = register_event(
@@ -85,6 +79,12 @@ impl State for Detector {
             detector_callbacks::on_timeout_event,
             &[],
         )?;
+
+        let _bp_handle = hap_add_callback(
+            Hap::CoreBreakpointMemop,
+            HapCallback::CoreBreakpointMemop(detector_callbacks::on_breakpoint_memop),
+            Some(module as *mut c_void),
+        );
 
         self.timeout_event = Some(event);
 
