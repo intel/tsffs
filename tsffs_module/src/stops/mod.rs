@@ -8,6 +8,7 @@ use crate::{faults::Fault, magic::Magic};
 pub enum StopError {
     UnknownFault(i64),
     NonErrorFault(Fault),
+    Other(String),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

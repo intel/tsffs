@@ -5,13 +5,13 @@ use crate::{
     messages::{client::ClientMessage, module::ModuleMessage},
     processor::Processor,
     state::ModuleStateMachine,
-    stops::StopReason,
+    stops::{StopError, StopReason},
     traits::{Interface, State},
     CLASS_NAME,
 };
 use anyhow::{anyhow, bail, Context, Result};
 use ffi_macro::{callback_wrappers, params};
-use tracing::{debug, error, info, trace};
+use tracing::{debug, error, info, trace, warn};
 
 use simics_api::{
     attr_data, attr_object_or_nil_from_ptr, break_simulation, clear_exception,
@@ -244,19 +244,24 @@ impl Module {
         // Error string is always NULL
         _error_string: *mut std::ffi::c_char,
     ) -> Result<()> {
-        if self.repro_started {
+        if self.repro_mode && !self.repro_started {
+            info!("Simulation stopped in repro mode before repro started");
+        } else if self.repro_started {
             // We bail out here, we still want the detector and tracer to be able to do their
             // thing (the detector needs to cancel its timeout and so forth)
+            info!("Simulation stopped during repro");
             return Ok(());
         }
+
         let reason = if let Some(detector_reason) = &self.detector.stop_reason {
-            detector_reason
+            detector_reason.clone()
         } else if let Some(reason) = &self.stop_reason {
-            reason
+            reason.clone()
         } else {
-            bail!("Stopped without a reason - this should be impossible");
-        }
-        .clone();
+            warn!("Stopped without reason -- continuing");
+            continue_simulation_alone();
+            return Ok(());
+        };
 
         debug!("Module got stopped simulation with reason {:?}", reason);
 
@@ -361,6 +366,7 @@ impl Module {
                     self.repro();
                 } else {
                     // TODO: Error reporting
+                    error!("Simulation error! Exiting");
                     let self_ptr = self as *mut Self as *mut ConfObject;
                     self.detector.on_exit(self_ptr)?;
                     self.tracer.on_exit(self_ptr)?;
