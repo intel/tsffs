@@ -6,6 +6,9 @@ the fuzzing process. Please file an issue if you have a use case that cannot be
 satisfied by any of the approaches outlined here.
 
 - [Harnessing](#harnessing)
+  - [Harnessing With Provided Include File](#harnessing-with-provided-include-file)
+  - [Harnessing In Non-C Languages](#harnessing-in-non-c-languages)
+
 
 ## Harnessing With Provided Include File
 
