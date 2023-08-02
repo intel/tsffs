@@ -11,7 +11,7 @@ use crate::{
 };
 use anyhow::{anyhow, bail, Context, Result};
 use ffi_macro::{callback_wrappers, params};
-use tracing::{debug, error, info, trace, warn};
+use tracing::{debug, error, info, trace};
 
 use simics_api::{
     attr_data, attr_object_or_nil_from_ptr, break_simulation, clear_exception,
@@ -253,15 +253,16 @@ impl Module {
             return Ok(());
         }
 
-        let reason = if let Some(detector_reason) = &self.detector.stop_reason {
-            detector_reason.clone()
-        } else if let Some(reason) = &self.stop_reason {
-            reason.clone()
-        } else {
-            warn!("Stopped without reason -- continuing");
-            continue_simulation_alone();
-            return Ok(());
-        };
+        let reason =
+            if let Some(detector_reason) = &self.detector.stop_reason {
+                detector_reason.clone()
+            } else if let Some(reason) = &self.stop_reason {
+                reason.clone()
+            } else {
+                StopReason::Error((StopError::Other(
+                "Stop occurred without a reason -- this probably means a SIMICS error occurred"
+                    .into()), 0))
+            };
 
         debug!("Module got stopped simulation with reason {:?}", reason);
 
