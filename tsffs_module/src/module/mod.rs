@@ -345,6 +345,17 @@ impl Module {
                     self.reset_and_run(processor_number)?;
                 }
             }
+            StopReason::Breakpoint(breakpoint_number) => {
+                if self.repro_mode {
+                    self.repro();
+                } else {
+                    self.send_msg(ModuleMessage::Stopped(StopReason::Breakpoint(
+                        breakpoint_number,
+                    )))?;
+                    let processor_number = self.last_start_processor_number;
+                    self.reset_and_run(processor_number)?;
+                }
+            }
             StopReason::Error((_error, _processor_number)) => {
                 if self.repro_mode {
                     self.repro();

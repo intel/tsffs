@@ -489,6 +489,10 @@ impl SimicsFuzzer {
                             info!("Target timed out");
                             exit_kind = ExitKind::Timeout;
                         }
+                        StopReason::Breakpoint(breakpoint_number) => {
+                            info!("Target got a breakpoint #{}", breakpoint_number);
+                            exit_kind = ExitKind::Crash;
+                        }
                         StopReason::Error((e, _p)) => {
                             error!("An error occurred during execution: {:?}", e);
                             exit_kind = ExitKind::Ok;

@@ -12,8 +12,8 @@ use ffi_macro::{callback_wrappers, params};
 use simics_api::{
     attr_object_or_nil_from_ptr, break_simulation, event::register_event, event_cancel_time,
     event_find_next_time, event_post_time, get_class, get_processor_number, hap_add_callback,
-    object_clock, AttrValue, ConfObject, CoreExceptionCallback, EventClass, Hap, HapCallback,
-    X86TripleFaultCallback,
+    object_clock, AttrValue, ConfObject, CoreExceptionCallback, EventClass, GenericTransaction,
+    Hap, HapCallback, X86TripleFaultCallback,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -64,6 +64,12 @@ impl State for Detector {
         for fault in self.faults.clone() {
             self.on_add_fault(fault.try_into()?)?;
         }
+
+        let _bp_handle = hap_add_callback(
+            Hap::CoreBreakpointMemop,
+            HapCallback::CoreBreakpointMemop(detector_callbacks::on_breakpoint_memop),
+            Some(module as *mut c_void),
+        );
 
         info!("Initialized Detector");
 
@@ -254,6 +260,21 @@ impl Detector {
             processor_number,
         )));
         break_simulation("triple")?;
+        Ok(())
+    }
+
+    #[params(!slf: *mut std::ffi::c_void, ...)]
+    pub fn on_breakpoint_memop(
+        &mut self,
+        _trigger_obj: *mut ConfObject,
+        breakpoint_number: i64,
+        _memop: *mut GenericTransaction,
+    ) -> Result<()> {
+        info!("Got breakpoint");
+        // TODO: Use trigger_obj (which is cpu?) to get address of the bp directly, memory op info
+        // and so forth? Or we can just have people use repro for this and save the trouble.
+        self.stop_reason = Some(StopReason::Breakpoint(breakpoint_number));
+        break_simulation("breakpoint")?;
         Ok(())
     }
 }
