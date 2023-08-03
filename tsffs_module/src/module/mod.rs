@@ -471,6 +471,15 @@ impl Module {
             }
         }
     }
+
+    #[params(!slf: *mut simics_api::ConfObject, ...)]
+    pub fn on_set_breakpoints_are_faults(&mut self, breakpoints_are_faults: bool) -> Result<()> {
+        self.detector
+            .on_set_breakpoints_are_faults(breakpoints_are_faults)?;
+        self.tracer
+            .on_set_breakpoints_are_faults(breakpoints_are_faults)?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
@@ -511,6 +520,9 @@ pub struct ModuleInterface {
     /// Add channels to the module. This API should not be called by users from Python and is
     /// instead used by the fuzzer frontend to initiate communication with the module.
     pub add_channels: extern "C" fn(obj: *mut ConfObject, tx: *mut AttrValue, rx: *mut AttrValue),
+    /// Set whether breakpoints are treated as faults
+    pub set_breakpoints_are_faults:
+        extern "C" fn(obj: *mut ConfObject, breakpoints_are_faults: bool),
 }
 
 impl Default for ModuleInterface {
@@ -520,6 +532,7 @@ impl Default for ModuleInterface {
             add_processor: module_callbacks::on_add_processor,
             add_fault: module_callbacks::on_add_fault,
             add_channels: module_callbacks::on_add_channels,
+            set_breakpoints_are_faults: module_callbacks::on_set_breakpoints_are_faults,
         }
     }
 }

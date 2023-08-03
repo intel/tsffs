@@ -6,6 +6,10 @@ rule link
     command = lld-link -filealign:16 -subsystem:efi_application -nodefaultlib -dll $
         -entry:UefiMain $in -out:$out
 
+rule copy
+    command = cp $in $out
+
 build target.o: cc target.c
-    cflags = -I ../../../include/ -O0
+    cflags = -I ../../../include/ -O0 -g
 build target.efi: link target.o
+build ../rsrc/target.efi: copy target.efi

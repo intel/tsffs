@@ -36,6 +36,8 @@ SIM_INTERFACE(tsffs_module) {
   void (*add_processor)(conf_object_t* obj, attr_value_t* processor);
   void (*add_fault)(conf_object_t* obj, int64 fault);
   void (*add_channels)(conf_object_t* obj, attr_value_t* tx, attr_value_t* rx);
+  void (*set_breakpoints_are_faults)(conf_object_t* obj,
+                                     bool breakpoints_are_faults);
 #ifndef PYWRAP
   /* methods that cannot be exported to Python, for example as it refers
      to unknown data types, must be enclosed by "#ifndef PYWRAP" ...

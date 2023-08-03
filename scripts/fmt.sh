@@ -25,7 +25,12 @@ if ! command -v black &>/dev/null; then
 fi
 
 if ! command -v isort &>/dev/null; then
-    echo "black must be installed! Install with 'python3 -m pip install black'"
+    echo "isort must be installed! Install with 'python3 -m pip install isort'"
+    exit 1
+fi
+
+if ! command -v markdownlint &>/dev/null; then
+    echo "markdownlint must be installed! Install with 'npm i -g markdownlint-cli'"
     exit 1
 fi
 

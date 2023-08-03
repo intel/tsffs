@@ -31,6 +31,7 @@ pub struct Detector {
     pub exception_cb_added: bool,
     pub triple_cb_added: bool,
     pub module: Option<*mut ConfObject>,
+    pub breakpoints_are_faults: bool,
 }
 
 impl Detector {
@@ -208,6 +209,11 @@ impl Interface for Detector {
 
         Ok(())
     }
+
+    fn on_set_breakpoints_are_faults(&mut self, breakpoints_are_faults: bool) -> Result<()> {
+        self.breakpoints_are_faults = breakpoints_are_faults;
+        Ok(())
+    }
 }
 
 #[callback_wrappers(pub, unwrap_result)]
@@ -270,11 +276,13 @@ impl Detector {
         breakpoint_number: i64,
         _memop: *mut GenericTransaction,
     ) -> Result<()> {
-        info!("Got breakpoint");
-        // TODO: Use trigger_obj (which is cpu?) to get address of the bp directly, memory op info
-        // and so forth? Or we can just have people use repro for this and save the trouble.
-        self.stop_reason = Some(StopReason::Breakpoint(breakpoint_number));
-        break_simulation("breakpoint")?;
+        if self.breakpoints_are_faults {
+            info!("Got breakpoint");
+            // TODO: Use trigger_obj (which is cpu?) to get address of the bp directly, memory op info
+            // and so forth? Or we can just have people use repro for this and save the trouble.
+            self.stop_reason = Some(StopReason::Breakpoint(breakpoint_number));
+            break_simulation("breakpoint")?;
+        }
         Ok(())
     }
 }

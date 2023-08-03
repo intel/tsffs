@@ -45,6 +45,8 @@ script-branch "UEFI Shell Enter Branch" {
     @conf.tsffs_module.iface.tsffs_module.add_fault(14)
     # Invalid opcode
     @conf.tsffs_module.iface.tsffs_module.add_fault(6)
+    # Treat breakpoints as faults
+    @conf.tsffs_module.iface.tsffs_module.set_breakpoints_are_faults(True)
 
     $con.input "target.efi\n"
     continue
@@ -52,14 +54,34 @@ script-branch "UEFI Shell Enter Branch" {
 }
 
 script-branch "Set breakpoints" {
-    local $START = 1
-    bp.magic.wait-for $START
+    local $TARGET_HARNESS_ADDRESS = 0x180001082
+    local $TARGET_INSTRUCTION_ADDRESS = 0x180001267
+    local $TARGET_DATA_ADDRESS = 0x180003000
 
+    local $MAGIC_START = 1
+    bp.magic.wait-for $MAGIC_START
+
+    # Create a context for the CPU to set virtual address breakpoints. If you only need
+    # physical address breakpoints, you can just use `break`
+    local $ctx = (new-context)
+    board.mb.cpu0.core[0][0].set-context $ctx
+
+    # Get the value of the IP and the offset from the known address (in this case, it
+    # should be 0)
     local $rip = (board.mb.cpu0.core[0][0].read-reg rip)
-    local $offset = 0x0000000180001097 - 0x0000000180001076
-    local $break_addr = ($rip + $offset)
-    board.mb.cpu0.core[0][0].break-register rip $break_addr
-    echo "Set breakpoint, continuing"
+    local $offset = $rip - $TARGET_HARNESS_ADDRESS
+
+    # Set a breakpoint on the bad instruction
+    local $harness_break_addr = ($TARGET_INSTRUCTION_ADDRESS + $offset)
+    echo "Setting instruction harness on:"
+    print -x $harness_break_addr
+    $ctx.break -x $harness_break_addr
+
+    # Set a breakpoint on the data memory range
+    local $data_break_addr = ($TARGET_DATA_ADDRESS + $offset)
+    echo "Setting data harness on:"
+    print -x $data_break_addr
+    $ctx.break -r -w $data_break_addr
 }
 
 run

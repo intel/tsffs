@@ -69,6 +69,6 @@ needed to build it.
 To debug, first open the Run and Debug menu in VSCode (the icon is a bug over a play
 button). Select your launch configuration in the dropdown like so:
 
-![](./images/DEBUGGING_FUZZER_Run_and_Debug.png)
+![Launch configuration](./images/DEBUGGING_FUZZER_Run_and_Debug.png)
 
 Press the play button at the top and the binary will build and run.

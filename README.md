@@ -1,6 +1,4 @@
-<p align="center">
-  <img src="docs/images/logo.png" alt="TSFFS Logo">
-</p>
+<p align="center"><img src="docs/images/logo.png" alt="TSFFS Logo"></p>
 
 # TSFFS: Target Software Fuzzer For SIMICS
 
@@ -60,7 +58,7 @@ cargo run --release --bin simics-fuzz --features=6.0.168 -- \
 If you want to see the visualizer above, you can enable the SIMICS GUI during fuzzing
 by adding `--enable-simics-gui` and if you want a fancy TUI output, add the `-t` flag!
 
-## Running an EDK2 Sample Target 
+## Running an EDK2 Sample Target
 
 There are two provided sample targets, `hello-world` and `x509-parse`. You can run them
 in the basic configuration with the commands below, respectively.

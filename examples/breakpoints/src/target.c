@@ -48,6 +48,8 @@ typedef struct EfiSystemTable {
 const char hex[] = {'0', '1', '2', '3', '4', '5', '6', '7',
                     '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
+char off_limits[0x100] = {0x00};
+
 int UefiMain(void *imageHandle, EfiSystemTable *SystemTable) {
   uint32_t _a, _b, _c, _d = 0;
 
@@ -82,6 +84,14 @@ int UefiMain(void *imageHandle, EfiSystemTable *SystemTable) {
     // Crash
     uint8_t *bad_ptr = (uint8_t *)0xffffffffffffffff;
     *bad_ptr = 0;
+  } else if (*(char *)buffer == 'c') {
+    // Breakpoint-defined fault location (instruction BP)
+    SystemTable->conOut->output_string(SystemTable->conOut,
+                                       (int16_t *)L"Uh oh!\r\n");
+  } else if (*(char *)buffer == 'd') {
+    for (size_t i = 0; i < sizeof(off_limits); i++) {
+      off_limits[i] = 'X';
+    }
   }
 
   HARNESS_STOP();

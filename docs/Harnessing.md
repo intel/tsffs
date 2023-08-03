@@ -27,7 +27,7 @@ rough order of best to worst.
 - Copy `tsffs.h` into your source code next to the target file you are harnessing
   and add the line `#include "tsffs.h"`
 - Add the line
-  `#include "/path/to/applications.fuzzing.security.confuse/include/tsffs.h"` to your 
+  `#include "/path/to/applications.fuzzing.security.confuse/include/tsffs.h"` to your
   source code in the target file.
 - Copy and paste the contents of `tsffs.h` into your source file.
 

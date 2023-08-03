@@ -550,6 +550,17 @@ impl SimicsFuzzer {
                     )?;
                 }
                 info!("Imported {} inputs from disk", state.corpus().count());
+
+                if state.corpus().count() == 0 {
+                    error!(
+                        "No interesting cases found from inputs! This may mean \
+                        your harness is incorrect (check your arguments), your inputs \
+                        are not triggering new code paths, or all inputs are causing \
+                        crashes."
+                    );
+                    mgr.send_exiting()?;
+                    return Ok(());
+                }
             }
 
             let mut stages = tuple_list!(calibration, std_power);
