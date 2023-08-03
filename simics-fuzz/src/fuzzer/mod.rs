@@ -489,6 +489,10 @@ impl SimicsFuzzer {
                             info!("Target timed out");
                             exit_kind = ExitKind::Timeout;
                         }
+                        StopReason::Breakpoint(breakpoint_number) => {
+                            info!("Target got a breakpoint #{}", breakpoint_number);
+                            exit_kind = ExitKind::Crash;
+                        }
                         StopReason::Error((e, _p)) => {
                             error!("An error occurred during execution: {:?}", e);
                             exit_kind = ExitKind::Ok;
@@ -546,6 +550,17 @@ impl SimicsFuzzer {
                     )?;
                 }
                 info!("Imported {} inputs from disk", state.corpus().count());
+
+                if state.corpus().count() == 0 {
+                    error!(
+                        "No interesting cases found from inputs! This may mean \
+                        your harness is incorrect (check your arguments), your inputs \
+                        are not triggering new code paths, or all inputs are causing \
+                        crashes."
+                    );
+                    mgr.send_exiting()?;
+                    return Ok(());
+                }
             }
 
             let mut stages = tuple_list!(calibration, std_power);

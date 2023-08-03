@@ -67,6 +67,10 @@ pub trait Interface {
     fn on_add_fault(&mut self, _fault: i64) -> Result<()> {
         Ok(())
     }
+
+    fn on_set_breakpoints_are_faults(&mut self, _breakpoints_are_faults: bool) -> Result<()> {
+        Ok(())
+    }
 }
 
 /// Trait for disassemblers of various architectures to implement to permit branch

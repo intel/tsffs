@@ -12,8 +12,8 @@ use ffi_macro::{callback_wrappers, params};
 use simics_api::{
     attr_object_or_nil_from_ptr, break_simulation, event::register_event, event_cancel_time,
     event_find_next_time, event_post_time, get_class, get_processor_number, hap_add_callback,
-    object_clock, AttrValue, ConfObject, CoreExceptionCallback, EventClass, Hap, HapCallback,
-    X86TripleFaultCallback,
+    object_clock, AttrValue, ConfObject, CoreExceptionCallback, EventClass, GenericTransaction,
+    Hap, HapCallback, X86TripleFaultCallback,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -31,6 +31,7 @@ pub struct Detector {
     pub exception_cb_added: bool,
     pub triple_cb_added: bool,
     pub module: Option<*mut ConfObject>,
+    pub breakpoints_are_faults: bool,
 }
 
 impl Detector {
@@ -70,7 +71,7 @@ impl State for Detector {
         Ok(output_config)
     }
 
-    fn pre_first_run(&mut self, _module: *mut ConfObject) -> Result<()> {
+    fn pre_first_run(&mut self, module: *mut ConfObject) -> Result<()> {
         let module_cls = get_class(CLASS_NAME)?;
 
         let event = register_event(
@@ -79,6 +80,12 @@ impl State for Detector {
             detector_callbacks::on_timeout_event,
             &[],
         )?;
+
+        let _bp_handle = hap_add_callback(
+            Hap::CoreBreakpointMemop,
+            HapCallback::CoreBreakpointMemop(detector_callbacks::on_breakpoint_memop),
+            Some(module as *mut c_void),
+        );
 
         self.timeout_event = Some(event);
 
@@ -202,6 +209,11 @@ impl Interface for Detector {
 
         Ok(())
     }
+
+    fn on_set_breakpoints_are_faults(&mut self, breakpoints_are_faults: bool) -> Result<()> {
+        self.breakpoints_are_faults = breakpoints_are_faults;
+        Ok(())
+    }
 }
 
 #[callback_wrappers(pub, unwrap_result)]
@@ -254,6 +266,23 @@ impl Detector {
             processor_number,
         )));
         break_simulation("triple")?;
+        Ok(())
+    }
+
+    #[params(!slf: *mut std::ffi::c_void, ...)]
+    pub fn on_breakpoint_memop(
+        &mut self,
+        _trigger_obj: *mut ConfObject,
+        breakpoint_number: i64,
+        _memop: *mut GenericTransaction,
+    ) -> Result<()> {
+        if self.breakpoints_are_faults {
+            info!("Got breakpoint");
+            // TODO: Use trigger_obj (which is cpu?) to get address of the bp directly, memory op info
+            // and so forth? Or we can just have people use repro for this and save the trouble.
+            self.stop_reason = Some(StopReason::Breakpoint(breakpoint_number));
+            break_simulation("breakpoint")?;
+        }
         Ok(())
     }
 }

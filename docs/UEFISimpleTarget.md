@@ -58,7 +58,7 @@ dnf -y install clang lld
 
 Typically, UEFI app targets will be based on an existing UEFI framework, like EDK2. For
 simplicity, we'll first cover harnessing using a much simpler target that we can compile
-like any other software using `clang` and `lld`. 
+like any other software using `clang` and `lld`.
 
 Our target will be as simple as possible -- it will print out in hex the contents of a
 buffer. This is a poor target for fuzzing, but it will allow us to see our fuzzer in
@@ -305,7 +305,7 @@ terminal you ran SIMICS in, then typing `exit` to exit SIMICS.
 
 This fuzzer's "harness" uses SIMICS' *Magic Instruction* capabilities, which is a fancy
 way of saying "run a `cpuid` instruction with a specific
-[leaf value](https://www.felixcloutier.com/x86/cpuid)". Therefore, to harness source 
+[leaf value](https://www.felixcloutier.com/x86/cpuid)". Therefore, to harness source
 code, all we need to do is issue a `cpuid` to tell the fuzzer where the beginning of the
 fuzzing loop is, and another `cpuid` to tell the fuzzer where the end of the fuzzing
 loop is in our code.
@@ -395,7 +395,7 @@ written to the variable `size`. The last line specifies our inputs, where `"0"`
 specifies that this argument should be in the same position as the first output
 argument, so in this cas in register `eax`, `"S"` specifies that the buffer address
 should be in `rsi`, and so forth. If you're curious, you can read the
-[docs](https://gcc.gnu.org/onlinedocs/gcc/Extended-Asm.html#x86-Operand-Modifiers). 
+[docs](https://gcc.gnu.org/onlinedocs/gcc/Extended-Asm.html#x86-Operand-Modifiers).
 
 ```c
 __asm__ __volatile__(
@@ -478,7 +478,7 @@ from the [API](./ModuleApi.md) page.
 
 Like before, we will compile our target:
 
-```
+```sh
 clang -target x86_64-pc-win32-coff -fno-stack-protector -fshort-wchar -mno-red-zone \
   -O0 -c target-harnessed.c -o target-harnessed.o
 lld-link -filealign:16 -subsystem:efi_application -nodefaultlib -dll -entry:UefiMain \
@@ -586,7 +586,7 @@ echo "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC" > input/3
 echo "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD" > input/4
 ```
 
-This is obviously not an ideal corpus, but it 
+This is obviously not an ideal corpus, but it
 
 ## Fuzz the Harnessed Target
 
@@ -697,7 +697,7 @@ another solution that triggers the second crash.
 
 ## Triage the Crash
 
-Now that we have some crashes in our `solutions` directory, we can triage the crash 
+Now that we have some crashes in our `solutions` directory, we can triage the crash
 using SIMICS' excellent debugging capabilities. To drop into the SIMICS command line
 interface, at the point of the crash, add an argument `--repro solutions/SOLUTION_FILE`
 to your command.

@@ -5,7 +5,7 @@ use crate::{
     messages::{client::ClientMessage, module::ModuleMessage},
     processor::Processor,
     state::ModuleStateMachine,
-    stops::StopReason,
+    stops::{StopError, StopReason},
     traits::{Interface, State},
     CLASS_NAME,
 };
@@ -244,19 +244,25 @@ impl Module {
         // Error string is always NULL
         _error_string: *mut std::ffi::c_char,
     ) -> Result<()> {
-        if self.repro_started {
+        if self.repro_mode && !self.repro_started {
+            info!("Simulation stopped in repro mode before repro started");
+        } else if self.repro_started {
             // We bail out here, we still want the detector and tracer to be able to do their
             // thing (the detector needs to cancel its timeout and so forth)
+            info!("Simulation stopped during repro");
             return Ok(());
         }
-        let reason = if let Some(detector_reason) = &self.detector.stop_reason {
-            detector_reason
-        } else if let Some(reason) = &self.stop_reason {
-            reason
-        } else {
-            bail!("Stopped without a reason - this should be impossible");
-        }
-        .clone();
+
+        let reason =
+            if let Some(detector_reason) = &self.detector.stop_reason {
+                detector_reason.clone()
+            } else if let Some(reason) = &self.stop_reason {
+                reason.clone()
+            } else {
+                StopReason::Error((StopError::Other(
+                "Stop occurred without a reason -- this probably means a SIMICS error occurred"
+                    .into()), 0))
+            };
 
         debug!("Module got stopped simulation with reason {:?}", reason);
 
@@ -345,11 +351,23 @@ impl Module {
                     self.reset_and_run(processor_number)?;
                 }
             }
+            StopReason::Breakpoint(breakpoint_number) => {
+                if self.repro_mode {
+                    self.repro();
+                } else {
+                    self.send_msg(ModuleMessage::Stopped(StopReason::Breakpoint(
+                        breakpoint_number,
+                    )))?;
+                    let processor_number = self.last_start_processor_number;
+                    self.reset_and_run(processor_number)?;
+                }
+            }
             StopReason::Error((_error, _processor_number)) => {
                 if self.repro_mode {
                     self.repro();
                 } else {
                     // TODO: Error reporting
+                    error!("Simulation error! Exiting");
                     let self_ptr = self as *mut Self as *mut ConfObject;
                     self.detector.on_exit(self_ptr)?;
                     self.tracer.on_exit(self_ptr)?;
@@ -453,6 +471,15 @@ impl Module {
             }
         }
     }
+
+    #[params(!slf: *mut simics_api::ConfObject, ...)]
+    pub fn on_set_breakpoints_are_faults(&mut self, breakpoints_are_faults: bool) -> Result<()> {
+        self.detector
+            .on_set_breakpoints_are_faults(breakpoints_are_faults)?;
+        self.tracer
+            .on_set_breakpoints_are_faults(breakpoints_are_faults)?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
@@ -493,6 +520,9 @@ pub struct ModuleInterface {
     /// Add channels to the module. This API should not be called by users from Python and is
     /// instead used by the fuzzer frontend to initiate communication with the module.
     pub add_channels: extern "C" fn(obj: *mut ConfObject, tx: *mut AttrValue, rx: *mut AttrValue),
+    /// Set whether breakpoints are treated as faults
+    pub set_breakpoints_are_faults:
+        extern "C" fn(obj: *mut ConfObject, breakpoints_are_faults: bool),
 }
 
 impl Default for ModuleInterface {
@@ -502,6 +532,7 @@ impl Default for ModuleInterface {
             add_processor: module_callbacks::on_add_processor,
             add_fault: module_callbacks::on_add_fault,
             add_channels: module_callbacks::on_add_channels,
+            set_breakpoints_are_faults: module_callbacks::on_set_breakpoints_are_faults,
         }
     }
 }
