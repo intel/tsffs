@@ -10,6 +10,7 @@ new to using the fuzzer or evaluating whether you can use it for your project.
 - [Install dependencies, set up workspace, and build this fuzzer](./Setup.md)
 - [Module SIMICS/SIMICS Python scripting interface](./ModuleApi.md)
 - [Harnessing Target Software in C, Rust, and Assembly](./Harnessing.md)
+- [Fault detection with breakpoints](./Breakpoints.md)
 
 ## Tutorials
 
