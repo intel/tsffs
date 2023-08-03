@@ -2,6 +2,9 @@
 
 # TSFFS: Target Software Fuzzer For SIMICS
 
+![Discord](https://img.shields.io/discord/%2FgCraWct)
+
+
 TSFFS is a snapshotting, coverage-guided fuzzer built on the
 [SIMICS](https://www.intel.com/content/www/us/en/developer/articles/tool/simics-simulator.html)
 full system simulator. TSFFS makes it easy to fuzz and traige crashes on traditionally
