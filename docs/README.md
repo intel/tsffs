@@ -11,6 +11,7 @@ new to using the fuzzer or evaluating whether you can use it for your project.
 - [Module SIMICS/SIMICS Python scripting interface](./ModuleApi.md)
 - [Harnessing Target Software in C, Rust, and Assembly](./Harnessing.md)
 - [Fault detection with breakpoints](./Breakpoints.md)
+- [FAQ](./FAQ.md)
 
 ## Tutorials
 

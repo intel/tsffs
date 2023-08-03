@@ -2,8 +2,6 @@
 
 # TSFFS: Target Software Fuzzer For SIMICS
 
-![Discord](https://img.shields.io/discord/%2FgCraWct)
-
 
 TSFFS is a snapshotting, coverage-guided fuzzer built on the
 [SIMICS](https://www.intel.com/content/www/us/en/developer/articles/tool/simics-simulator.html)
@@ -14,10 +12,11 @@ the [requirements](./docs/Requirements.md) to find out if TSSFS can fuzz your co
 
 - [TSFFS: Target Software Fuzzer For SIMICS](#tsffs-target-software-fuzzer-for-simics)
   - [Capabilities](#capabilities)
+  - [Documentation](#documentation)
   - [Setup](#setup)
   - [Running a Simple Sample Target](#running-a-simple-sample-target)
   - [Running an EDK2 Sample Target](#running-an-edk2-sample-target)
-  - [Documentation](#documentation)
+  - [Contact](#contact)
   - [Roadmap](#roadmap)
   - [Authors](#authors)
 
@@ -35,6 +34,12 @@ and takes advantage of several of the state of the art capabilities of both.
 - Parallel fuzzing (across cores, machines soon)
 - Easy to add to existing SIMICS projects
 - Triage mode to reproduce and debug crashes
+
+## Documentation
+
+Documentation for this project lives in the [docs](./docs/README.md) directory of this
+repository.
+
 
 ## Setup
 
@@ -92,10 +97,18 @@ cargo run --release --bin simics-fuzz --features=6.0.168 -- \
   --command CONFIG:%simics%/scripts/app.yml
 ```
 
-## Documentation
+## Contact
 
-Documentation for this project lives in the [docs](./docs/README.md) directory of this
-repository.
+If you discover a non-security issue or problem, please file an [issue](https://github.com/intel-innersource/applications.security.fuzzing.confuse/issues)!
+
+The best place to ask questions about and get help using TSFFS is in the [Awesome
+Fuzzing](https://discord.gg/gCraWct) Discord server. If you prefer, you can email the
+[authors](#authors). Questions we receive are periodically added from both Discord and
+email to the [FAQ](./docs/FAQ.md).
+
+Please do not create issues or ask publicly about possible security issues you discover
+in TSFFS. Instead, see our [Security Policy](./SECURITY.md) and follow the linked
+guidelines.
 
 ## Roadmap
 
