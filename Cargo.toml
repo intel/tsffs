@@ -58,7 +58,8 @@ tmp-dir = { path = "./util/tmp-dir" }
 raw-cstr = { path = "./util/raw-cstr" }
 version-tools = { path = "./util/version-tools" }
 ffi-macro = { path = "./util/ffi-macro" }
-libafl = { git = "https://github.com/AFLplusplus/LibAFL", branch = "libfuzzer" }
+libafl = { git = "https://github.com/AFLplusplus/LibAFL", rev = "5dd5b1efa81521f3af059a0eb3013979036bd7b9" }
+libafl_bolts = { git = "https://github.com/AFLplusplus/LibAFL", rev = "5dd5b1efa81521f3af059a0eb3013979036bd7b9" }
 anyhow = "1.0.71"
 # Match these versions to cargo_metadata -- it breaks on current versions
 serde = "1.0.136"

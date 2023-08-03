@@ -46,7 +46,6 @@ script-branch "UEFI Shell Enter Branch" {
     @conf.tsffs_module.iface.tsffs_module.add_fault(6)
 
     $con.input "mini.efi\n"
-    continue
 }
 
 run
