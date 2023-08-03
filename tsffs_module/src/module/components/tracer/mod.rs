@@ -9,7 +9,7 @@ use crate::{
 use anyhow::Result;
 
 use ffi_macro::{callback_wrappers, params};
-use libafl::prelude::{AsMutSlice, AsSlice, OwnedMutSlice};
+use libafl_bolts::{bolts_prelude::OwnedMutSlice, AsMutSlice, AsSlice};
 use rand::{thread_rng, Rng};
 use tracing::info;
 

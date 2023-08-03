@@ -6,22 +6,28 @@ use anyhow::{anyhow, bail, Error, Result};
 use artifact_dependency::{ArtifactDependencyBuilder, CrateType};
 use derive_builder::Builder;
 use libafl::{
-    bolts::core_affinity::Cores,
     feedback_and_fast, feedback_not, feedback_or_fast,
     prelude::{
-        current_nanos, havoc_mutations,
+        havoc_mutations,
         ondisk::OnDiskMetadataFormat,
         tui::{ui::TuiUI, TuiMonitor},
-        tuple_list, AflMapFeedback, AsMutSlice, AsSlice, BytesInput, CachedOnDiskCorpus, Corpus,
-        CrashFeedback, EventConfig, EventRestarter, ExitKind, HasTargetBytes, HitcountsMapObserver,
-        InProcessExecutor, Launcher, LlmpRestartingEventManager, MultiMonitor, OnDiskCorpus,
-        OwnedMutSlice, RandBytesGenerator, ShMemProvider, StdMapObserver, StdRand,
-        StdScheduledMutator, StdShMemProvider, TimeFeedback, TimeObserver, TimeoutExecutor,
+        AflMapFeedback, BytesInput, CachedOnDiskCorpus, Corpus, CrashFeedback, EventConfig,
+        EventRestarter, ExitKind, HasTargetBytes, HitcountsMapObserver, InProcessExecutor,
+        Launcher, LlmpRestartingEventManager, MultiMonitor, OnDiskCorpus, RandBytesGenerator,
+        StdMapObserver, StdScheduledMutator, TimeFeedback, TimeObserver, TimeoutExecutor,
     },
     schedulers::{powersched::PowerSchedule, PowerQueueScheduler},
     stages::{CalibrationStage, StdPowerMutationalStage},
     state::{HasCorpus, StdState},
-    ErrorBacktrace, Fuzzer, StdFuzzer,
+    Fuzzer, StdFuzzer,
+};
+use libafl_bolts::{
+    bolts_prelude::{ShMemProvider, StdRand, StdShMemProvider},
+    core_affinity::Cores,
+    current_nanos,
+    prelude::OwnedMutSlice,
+    tuples::tuple_list,
+    AsMutSlice, AsSlice, ErrorBacktrace,
 };
 use simics::{
     api::{
@@ -443,7 +449,7 @@ impl SimicsFuzzer {
             let corpus = CachedOnDiskCorpus::with_meta_format(
                 &self.corpus,
                 SimicsFuzzer::CACHE_LEN,
-                Some(OnDiskMetadataFormat::Json),
+                OnDiskMetadataFormat::Json,
             )?;
 
             let mut state = state.unwrap_or_else(|| {
