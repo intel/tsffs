@@ -181,7 +181,10 @@ impl Processor {
         }
     }
 
-    pub fn get_reg_value<S: AsRef<str>>(&mut self, reg: S) -> Result<u64> {
+    pub fn get_reg_value<S>(&mut self, reg: S) -> Result<u64>
+    where
+        S: AsRef<str>,
+    {
         let int_register = if let Some(int_register) = self.int_register.as_ref() {
             int_register
         } else {
@@ -200,7 +203,10 @@ impl Processor {
         int_register.read(self.cpu, reg_number)
     }
 
-    pub fn set_reg_value<S: AsRef<str>>(&mut self, reg: S, val: u64) -> Result<()> {
+    pub fn set_reg_value<S>(&mut self, reg: S, val: u64) -> Result<()>
+    where
+        S: AsRef<str>,
+    {
         let int_register = if let Some(int_register) = self.int_register.as_ref() {
             int_register
         } else {

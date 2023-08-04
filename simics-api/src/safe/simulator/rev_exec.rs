@@ -46,7 +46,10 @@ pub fn restore_micro_checkpoint(index: i32) {
 }
 
 /// Save a micro checkpoint with some set of flags
-pub fn save_micro_checkpoint<S: AsRef<str>>(name: S, flags: &[MicroCheckpointFlags]) -> Result<()> {
+pub fn save_micro_checkpoint<S>(name: S, flags: &[MicroCheckpointFlags]) -> Result<()>
+where
+    S: AsRef<str>,
+{
     let mut checkpoint_flags = 0;
     for flag in flags {
         checkpoint_flags |= *flag as u32;

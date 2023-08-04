@@ -54,7 +54,10 @@ struct ModuleAttr {
 }
 
 impl Hash for ModuleAttr {
-    fn hash<H: Hasher>(&self, state: &mut H) {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
         self.typ.hash(state);
     }
 }
@@ -327,7 +330,10 @@ pub fn module(args: TokenStream, input: TokenStream) -> TokenStream {
     r
 }
 
-fn ffi_impl<S: AsRef<str>>(name: S) -> TokenStream2 {
+fn ffi_impl<S>(name: S) -> TokenStream2
+where
+    S: AsRef<str>,
+{
     let name_string = name.as_ref().to_string().to_ascii_lowercase();
     let name = format_ident!("{}", name.as_ref());
     let alloc_fn_name = format_ident!("{}_alloc", &name_string);
@@ -381,7 +387,10 @@ fn ffi_impl<S: AsRef<str>>(name: S) -> TokenStream2 {
     }
 }
 
-fn create_impl<S: AsRef<str>>(name: S, args: &Args, parms: &Generics) -> TokenStream2 {
+fn create_impl<S>(name: S, args: &Args, parms: &Generics) -> TokenStream2
+where
+    S: AsRef<str>,
+{
     let name_string = name.as_ref().to_string().to_ascii_lowercase();
     let name = format_ident!("{}", name.as_ref());
 
@@ -434,7 +443,10 @@ fn create_impl<S: AsRef<str>>(name: S, args: &Args, parms: &Generics) -> TokenSt
     }
 }
 
-fn raw_impl<S: AsRef<str>>(name: S, fields: &Fields, parms: &Generics) -> TokenStream2 {
+fn raw_impl<S>(name: S, fields: &Fields, parms: &Generics) -> TokenStream2
+where
+    S: AsRef<str>,
+{
     let name = format_ident!("{}", name.as_ref());
 
     let mut field_parameters = Vec::new();
@@ -476,7 +488,10 @@ fn raw_impl<S: AsRef<str>>(name: S, fields: &Fields, parms: &Generics) -> TokenS
     }
 }
 
-fn from_impl<S: AsRef<str>>(name: S) -> TokenStream2 {
+fn from_impl<S>(name: S) -> TokenStream2
+where
+    S: AsRef<str>,
+{
     let name_string = name.as_ref().to_string();
     let name = format_ident!("{}", name.as_ref());
 

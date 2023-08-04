@@ -34,7 +34,10 @@ pub enum ClassKind {
 }
 
 /// Register a class with a given name
-pub fn register_class<S: AsRef<str>>(name: S, class_data: ClassData) -> Result<*mut ConfClass> {
+pub fn register_class<S>(name: S, class_data: ClassData) -> Result<*mut ConfClass>
+where
+    S: AsRef<str>,
+{
     let name_raw = raw_cstr(name.as_ref())?;
 
     // The reference can be dropped after the `SIM_register_class` function returns,
@@ -49,7 +52,10 @@ pub fn register_class<S: AsRef<str>>(name: S, class_data: ClassData) -> Result<*
 }
 
 /// Create a class instance
-pub fn create_class<S: AsRef<str>>(name: S, class_info: ClassInfo) -> Result<*mut ConfClass> {
+pub fn create_class<S>(name: S, class_info: ClassInfo) -> Result<*mut ConfClass>
+where
+    S: AsRef<str>,
+{
     let name_raw = raw_cstr(name.as_ref())?;
 
     // The reference can be dropped after the `SIM_create_class` function returns,
@@ -68,8 +74,9 @@ pub fn create_class<S: AsRef<str>>(name: S, class_info: ClassInfo) -> Result<*mu
 }
 
 /// Register an interface for a class
-pub fn register_interface<S: AsRef<str>, T>(cls: *mut ConfClass, name: S) -> Result<i32>
+pub fn register_interface<S, T>(cls: *mut ConfClass, name: S) -> Result<i32>
 where
+    S: AsRef<str>,
     T: Default,
 {
     let name_raw = raw_cstr(name.as_ref())?;
@@ -101,7 +108,10 @@ pub fn get_interface<T>(obj: *mut ConfObject, iface: Interface) -> Result<*mut T
 }
 
 /// Get a class instance by name
-pub fn get_class<S: AsRef<str>>(name: S) -> Result<*mut ConfClass> {
+pub fn get_class<S>(name: S) -> Result<*mut ConfClass>
+where
+    S: AsRef<str>,
+{
     let name_raw = raw_cstr(name.as_ref())?;
 
     let cls = unsafe { SIM_get_class(name_raw) };
@@ -113,11 +123,10 @@ pub fn get_class<S: AsRef<str>>(name: S) -> Result<*mut ConfClass> {
     }
 }
 
-pub fn create_object<S: AsRef<str>>(
-    cls: *mut ConfClass,
-    name: S,
-    attrs: AttrValue,
-) -> Result<*mut ConfObject> {
+pub fn create_object<S>(cls: *mut ConfClass, name: S, attrs: AttrValue) -> Result<*mut ConfObject>
+where
+    S: AsRef<str>,
+{
     let obj = unsafe { SIM_create_object(cls.into(), raw_cstr(name)?, attrs) };
 
     if obj.is_null() {
@@ -127,7 +136,10 @@ pub fn create_object<S: AsRef<str>>(
     }
 }
 
-pub fn get_object<S: AsRef<str>>(name: S) -> Result<*mut ConfObject> {
+pub fn get_object<S>(name: S) -> Result<*mut ConfObject>
+where
+    S: AsRef<str>,
+{
     let obj = unsafe { SIM_get_object(raw_cstr(name.as_ref())?) };
 
     if obj.is_null() {

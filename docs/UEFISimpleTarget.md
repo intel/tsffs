@@ -632,7 +632,7 @@ The target software will start up and begin fuzzing. There is a fair amount of o
 but the key messages to keep an eye on are messages showing that processors are
 correctly added for the module, detector, and tracer components:
 
-```
+```text
   2023-07-20T22:45:26.689753Z  INFO tsffs_module::module::components::detector: Detector added processor #0
     at tsffs_module/src/module/components/detector/mod.rs:162
 
@@ -645,7 +645,7 @@ correctly added for the module, detector, and tracer components:
 
 As well as the message showing which faults have been added:
 
-```
+```text
   2023-07-20T22:45:26.689868Z  INFO tsffs_module::module::components::detector: Detector adding fault X86_64(Page)
     at tsffs_module/src/module/components/detector/mod.rs:173
 
@@ -656,7 +656,7 @@ As well as the message showing which faults have been added:
 The fuzzer will display an informational message every 15 seconds approximately (sooner
 if an event occurs) that looks like this:
 
-```
+```text
   2023-07-20T22:45:30.044546Z  INFO simics_fuzz::fuzzer: [Testcase    #1]  (GLOBAL) run time: 0h-0m-15s, clients: 2, corpus: 3, objectives: 0, executions: 5, exec/sec: 3.250
     at simics-fuzz/src/fuzzer/mod.rs:565 on main ThreadId(1)
 
@@ -669,7 +669,7 @@ After a minute or so, you should see the messages indicating that first, an exce
 was seen (and it was a registered exception with `add_fault`) and second, a new
 objective was picked up by the fuzzer.
 
-```
+```text
 2023-07-20T22:45:51.695252Z  INFO tsffs_module::module::components::detector: Got exception with fault: X86_64(InvalidOpcode)
     at tsffs_module/src/module/components/detector/mod.rs:223
 
@@ -686,7 +686,7 @@ objective was picked up by the fuzzer.
 This will be accompanied by a new solution file in our solutions directory:
 
 
-```
+```sh
 $ cat solutions/*
 aCCCCCCCC%
 ```

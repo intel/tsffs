@@ -50,7 +50,10 @@ impl From<PublicPackageNumber> for i64 {
     }
 }
 
-pub fn parse_packageinfo<P: AsRef<Path>>(package_path: P) -> Result<Package> {
+pub fn parse_packageinfo<P>(package_path: P) -> Result<Package>
+where
+    P: AsRef<Path>,
+{
     let package_path = package_path.as_ref().to_path_buf();
 
     if !package_path.is_dir() {
@@ -121,9 +124,10 @@ pub fn parse_packageinfo<P: AsRef<Path>>(package_path: P) -> Result<Package> {
 /// Get all the package information of all packages in the `simics_home` installation directory as
 /// a mapping between the package number and a nested mapping of package version to the package
 /// info for the package
-pub fn packages<P: AsRef<Path>>(
-    home: P,
-) -> Result<HashMap<PackageNumber, HashMap<PackageVersion, Package>>> {
+pub fn packages<P>(home: P) -> Result<HashMap<PackageNumber, HashMap<PackageVersion, Package>>>
+where
+    P: AsRef<Path>,
+{
     let infos: Vec<Package> = read_dir(&home)?
         .filter_map(|home_dir_entry| {
             home_dir_entry

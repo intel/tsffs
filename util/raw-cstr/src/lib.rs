@@ -31,7 +31,10 @@ thread_local! {
 ///   [`CStr::from_ptr`] instead, and convert to a string with
 ///   `.to_str().expect("...").to_owned()` instead.
 ///
-pub fn raw_cstr<S: AsRef<str>>(str: S) -> Result<*mut i8> {
+pub fn raw_cstr<S>(str: S) -> Result<*mut i8>
+where
+    S: AsRef<str>,
+{
     // This is the old, inefficient way to implement this. Instead, we use a thread local cache
     // of raw strings, because we only use this function to talk to SIMICS
     // let raw = CString::new(str.as_ref())?.into_raw();

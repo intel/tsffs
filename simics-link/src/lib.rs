@@ -58,7 +58,10 @@ impl From<PublicPackageNumber> for i64 {
     }
 }
 
-pub fn parse_packageinfo<P: AsRef<Path>>(package_path: P) -> Result<Package> {
+pub fn parse_packageinfo<P>(package_path: P) -> Result<Package>
+where
+    P: AsRef<Path>,
+{
     let package_path = package_path.as_ref().to_path_buf();
     eprintln!("Parsing package info from {}", package_path.display());
 
@@ -130,9 +133,10 @@ pub fn parse_packageinfo<P: AsRef<Path>>(package_path: P) -> Result<Package> {
 /// Get all the package information of all packages in the `simics_home` installation directory as
 /// a mapping between the package number and a nested mapping of package version to the package
 /// info for the package
-pub fn packages<P: AsRef<Path>>(
-    home: P,
-) -> Result<HashMap<PackageNumber, HashMap<PackageVersion, Package>>> {
+pub fn packages<P>(home: P) -> Result<HashMap<PackageNumber, HashMap<PackageVersion, Package>>>
+where
+    P: AsRef<Path>,
+{
     eprintln!(
         "Parsing packages from home directory {}",
         home.as_ref().display()
@@ -392,11 +396,14 @@ fn simics_home() -> Result<PathBuf> {
 }
 
 /// Find the latest version of the Simics Base package with a particular constraint.
-pub fn package_version<P: AsRef<Path>>(
+pub fn package_version<P>(
     simics_home: P,
     package_number: PackageNumber,
     version_constraint: VersionConstraint,
-) -> Result<Package> {
+) -> Result<Package>
+where
+    P: AsRef<Path>,
+{
     let infos = packages(simics_home.as_ref())?[&package_number].clone();
     let version = infos
         .keys()
@@ -421,10 +428,11 @@ pub fn package_version<P: AsRef<Path>>(
 
 /// Locate a file recursively using a regex pattern in the simics base directory. If there are
 /// multiple occurrences of a filename, it is undefined which will be returned.
-pub fn find_file_in_dir<P: AsRef<Path>, S: AsRef<str>>(
-    simics_base_dir: P,
-    file_name_pattern: S,
-) -> Result<PathBuf> {
+pub fn find_file_in_dir<P, S>(simics_base_dir: P, file_name_pattern: S) -> Result<PathBuf>
+where
+    P: AsRef<Path>,
+    S: AsRef<str>,
+{
     let file_name_regex = Regex::new(file_name_pattern.as_ref())?;
     let found_file = WalkDir::new(&simics_base_dir)
         .into_iter()
@@ -465,7 +473,10 @@ pub fn find_file_in_dir<P: AsRef<Path>, S: AsRef<str>>(
 }
 
 /// Emit cargo directives to link to SIMICS given a particular version constraint
-pub fn link_simics_linux<S: AsRef<str>>(version_constraint: S) -> Result<()> {
+pub fn link_simics_linux<S>(version_constraint: S) -> Result<()>
+where
+    S: AsRef<str>,
+{
     let simics_home_dir = simics_home()?;
 
     let simics_base_info = package_version(

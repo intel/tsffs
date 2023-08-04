@@ -40,7 +40,10 @@ use version_tools::VersionConstraint;
 ///
 /// - Taken from the `cargo` project which is Apache/MIT dual licensed
 ///   https://github.com/rust-lang/cargo/blob/fede83ccf973457de319ba6fa0e36ead454d2e20/src/cargo/util/paths.rs#L61
-pub fn normalize_path<P: AsRef<Path>>(path: P) -> PathBuf {
+pub fn normalize_path<P>(path: P) -> PathBuf
+where
+    P: AsRef<Path>,
+{
     let mut components = path.as_ref().components().peekable();
     let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
         components.next();
@@ -74,7 +77,10 @@ pub struct SimicsPath {
 }
 
 impl SimicsPath {
-    fn new<P: AsRef<Path>>(p: P, from: Option<SimicsPathMarker>) -> Self {
+    fn new<P>(p: P, from: Option<SimicsPathMarker>) -> Self
+    where
+        P: AsRef<Path>,
+    {
         if from.is_some() {
             let to = p.as_ref().to_path_buf().components().skip(1).collect();
             Self { from, to }
@@ -86,19 +92,31 @@ impl SimicsPath {
         }
     }
 
-    pub fn simics<P: AsRef<Path>>(p: P) -> Self {
+    pub fn simics<P>(p: P) -> Self
+    where
+        P: AsRef<Path>,
+    {
         Self::new(p, Some(SimicsPathMarker::Simics))
     }
 
-    pub fn script<P: AsRef<Path>>(p: P) -> Self {
+    pub fn script<P>(p: P) -> Self
+    where
+        P: AsRef<Path>,
+    {
         Self::new(p, Some(SimicsPathMarker::Script))
     }
 
-    pub fn path<P: AsRef<Path>>(p: P) -> Self {
+    pub fn path<P>(p: P) -> Self
+    where
+        P: AsRef<Path>,
+    {
         Self::new(p, None)
     }
 
-    pub fn canonicalize<P: AsRef<Path>>(&self, base: P) -> Result<PathBuf> {
+    pub fn canonicalize<P>(&self, base: P) -> Result<PathBuf>
+    where
+        P: AsRef<Path>,
+    {
         debug!(
             "Canonicalizing {:?} on base {}",
             self,

@@ -65,12 +65,15 @@ pub enum EventFlags {
 
 /// Register an event with a callback. If `flags` is `&[EventFlags::NotSaved]`, `cls` may be
 /// null.
-pub fn register_event<S: AsRef<str>>(
+pub fn register_event<S>(
     name: S,
     cls: *mut ConfClass,
     callback: extern "C" fn(trigger_obj: *mut ConfObject, user_data: *mut c_void),
     flags: &[EventFlags],
-) -> Result<*mut EventClass> {
+) -> Result<*mut EventClass>
+where
+    S: AsRef<str>,
+{
     let mut event_flags = EventFlags::None as u32;
     for flag in flags {
         event_flags |= *flag as u32;

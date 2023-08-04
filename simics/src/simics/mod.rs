@@ -32,19 +32,28 @@ impl Simics {
         main_loop()
     }
 
-    pub fn command<S: AsRef<str>>(command: S) -> Result<()> {
+    pub fn command<S>(command: S) -> Result<()>
+    where
+        S: AsRef<str>,
+    {
         info!("Running SIMICS command {}", command.as_ref());
         free_attribute(run_command(command)?);
 
         Ok(())
     }
 
-    pub fn python<P: AsRef<Path>>(file: P) -> Result<()> {
+    pub fn python<P>(file: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
         info!("Running SIMICS Python file {}", file.as_ref().display());
         source_python(file)
     }
 
-    pub fn config<P: AsRef<Path>>(file: P) -> Result<()> {
+    pub fn config<P>(file: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
         info!("Running SIMICS config {}", file.as_ref().display());
 
         // TODO: Figure out the C apis for doing this

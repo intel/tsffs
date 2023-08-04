@@ -94,7 +94,11 @@ const IGNORE_MACROS: [&str; 20] = [
     "IPPORT_RESERVED",
 ];
 
-fn download_file<S: AsRef<str>, P: AsRef<Path>>(url: S, path: P) -> Result<()> {
+fn download_file<S, P>(url: S, path: P) -> Result<()>
+where
+    S: AsRef<str>,
+    P: AsRef<Path>,
+{
     let response = get(url.as_ref())?;
 
     let mut dest = if path.as_ref().is_dir() {
@@ -132,7 +136,10 @@ impl IgnoreMacros {
     }
 }
 
-fn generate_include_wrapper<P: AsRef<Path>>(base_package_path: P) -> Result<String> {
+fn generate_include_wrapper<P>(base_package_path: P) -> Result<String>
+where
+    P: AsRef<Path>,
+{
     let simics_include_path = base_package_path.as_ref().join("src").join("include");
     let simics_include_path = simics_include_path.canonicalize()?;
 

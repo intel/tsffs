@@ -18,7 +18,7 @@ if ! command -v pylint &>/dev/null; then
 fi
 
 if ! command -v mypy &>/dev/null; then
-    echo "pylint must be installed! Install with 'python3 -m pip install pylint'"
+    echo "mypy must be installed! Install with 'python3 -m pip install mypy'"
     exit 1
 fi
 
@@ -34,6 +34,11 @@ fi
 
 if ! command -v markdownlint &>/dev/null; then
     echo "markdownlint must be installed! Install with 'npm i -g markdownlint-cli'"
+    exit 1
+fi
+
+if ! command -v docker &>/dev/null; then
+    echo "docker must be installed! Install from https://docs.docker.com/engine/install/"
     exit 1
 fi
 
@@ -72,3 +77,15 @@ echo "Running markdownlint..."
 echo "================="
 
 fd '.*\.md$' -x markdownlint -c "${SCRIPT_DIR}/../.github/linters/.markdown-lint.yml" {}
+
+echo "================="
+echo "Running hadolint..."
+echo "================="
+
+fd 'Dockerfile.*$' -x bash -c 'echo {}:; docker run --rm -i hadolint/hadolint < {}'
+
+echo "================="
+echo "Running old name check..."
+echo "================="
+
+grep -rIi "confuse" "${SCRIPT_DIR}/.." | grep -iv "confused" | grep -v "applications.security.fuzzing.confuse" | grep -v "simics-api-sys/packages/"

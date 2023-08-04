@@ -100,7 +100,10 @@ pub fn make_attr_boolean(b: bool) -> Result<AttrValue> {
 }
 
 /// Create a newly allocated string [`AttrValue`] with a value of `s`
-pub fn make_attr_string_adopt<S: AsRef<str>>(s: S) -> Result<AttrValue> {
+pub fn make_attr_string_adopt<S>(s: S) -> Result<AttrValue>
+where
+    S: AsRef<str>,
+{
     let string = raw_cstr(s)?;
     Ok(AttrValue {
         private_kind: if string.is_null() {
@@ -350,7 +353,10 @@ pub fn attr_dict_value(attr: AttrValue, index: u32) -> Result<AttrValue> {
 }
 
 /// Get an attribute of an object
-pub fn get_attribute<S: AsRef<str>>(obj: *mut ConfObject, attribute: S) -> Result<AttrValue> {
+pub fn get_attribute<S>(obj: *mut ConfObject, attribute: S) -> Result<AttrValue>
+where
+    S: AsRef<str>,
+{
     Ok(unsafe { SIM_get_attribute(obj.into(), raw_cstr(attribute)?) })
 }
 

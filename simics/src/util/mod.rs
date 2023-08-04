@@ -12,7 +12,10 @@ use walkdir::WalkDir;
 
 /// Copy the contents of one directory to another, recursively, overwriting files if they exist but
 /// without replacing directories or their contents if they already exist
-pub fn copy_dir_contents<P: AsRef<Path>>(src_dir: P, dst_dir: P) -> Result<()> {
+pub fn copy_dir_contents<P>(src_dir: P, dst_dir: P) -> Result<()>
+where
+    P: AsRef<Path>,
+{
     let src_dir = src_dir.as_ref().to_path_buf();
     ensure!(src_dir.is_dir(), "Source must be a directory");
     let dst_dir = dst_dir.as_ref().to_path_buf();
@@ -75,10 +78,11 @@ impl LibraryType {
 
 /// Locate a file recursively using a regex pattern in the simics base directory. If there are
 /// multiple occurrences of a filename, it is undefined which will be returned.
-pub fn find_file_in_dir<P: AsRef<Path>, S: AsRef<str>>(
-    simics_base_dir: P,
-    file_name_pattern: S,
-) -> Result<PathBuf> {
+pub fn find_file_in_dir<P, S>(simics_base_dir: P, file_name_pattern: S) -> Result<PathBuf>
+where
+    P: AsRef<Path>,
+    S: AsRef<str>,
+{
     let file_name_regex = Regex::new(file_name_pattern.as_ref())?;
     let found_file = WalkDir::new(&simics_base_dir)
         .into_iter()

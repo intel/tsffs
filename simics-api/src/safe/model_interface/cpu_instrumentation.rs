@@ -251,7 +251,10 @@ impl IntRegister {
     }
 
     /// Get the number for a register name
-    pub fn get_number<S: AsRef<str>>(&self, cpu: *mut ConfObject, register: S) -> Result<i32> {
+    pub fn get_number<S>(&self, cpu: *mut ConfObject, register: S) -> Result<i32>
+    where
+        S: AsRef<str>,
+    {
         if let Some(get_number) = unsafe { *self.iface }.get_number {
             Ok(unsafe { get_number(cpu.into(), raw_cstr(register.as_ref())?) })
         } else {

@@ -17,7 +17,7 @@ the [requirements](./docs/Requirements.md) to find out if TSSFS can fuzz your co
   - [Running a Simple Sample Target](#running-a-simple-sample-target)
   - [Running an EDK2 Sample Target](#running-an-edk2-sample-target)
   - [Contact](#contact)
-  - [Roadmap](#roadmap)
+  - [Help Wanted / Roadmap](#help-wanted--roadmap)
   - [Authors](#authors)
 
 
@@ -99,7 +99,8 @@ cargo run --release --bin simics-fuzz --features=6.0.168 -- \
 
 ## Contact
 
-If you discover a non-security issue or problem, please file an [issue](https://github.com/intel-innersource/applications.security.fuzzing.confuse/issues)!
+If you discover a non-security issue or problem, please file an
+[issue](https://github.com/intel-innersource/applications.security.fuzzing.confuse/issues)!
 
 The best place to ask questions about and get help using TSFFS is in the [Awesome
 Fuzzing](https://discord.gg/gCraWct) Discord server. If you prefer, you can email the
@@ -110,11 +111,13 @@ Please do not create issues or ask publicly about possible security issues you d
 in TSFFS. Instead, see our [Security Policy](./SECURITY.md) and follow the linked
 guidelines.
 
-## Roadmap
+## Help Wanted / Roadmap
 
 See the
 [issues](https://github.com/intel-innersource/applications.security.fuzzing.confuse/issues?q=is%3Aopen+is%3Aissue+label%3Afeature)
-for a roadmap of planned features and enhancements.
+for a roadmap of planned features and enhancements. Help is welcome for any features
+listed here. If someone is assigned an issue you'd like to work on, please ping them to
+avoid duplicating effort!
 
 ## Authors
 

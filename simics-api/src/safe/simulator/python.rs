@@ -5,11 +5,14 @@ use anyhow::{anyhow, Result};
 use raw_cstr::raw_cstr;
 use simics_api_sys::{SIM_run_python, SIM_source_python, VT_call_python_module_function};
 
-pub fn call_python_module_function<S: AsRef<str>>(
+pub fn call_python_module_function<S>(
     module: S,
     function: S,
     args: *mut AttrValue,
-) -> Result<AttrValue> {
+) -> Result<AttrValue>
+where
+    S: AsRef<str>,
+{
     Ok(unsafe {
         VT_call_python_module_function(
             raw_cstr(module.as_ref())?,
@@ -19,7 +22,10 @@ pub fn call_python_module_function<S: AsRef<str>>(
     })
 }
 
-pub fn source_python<P: AsRef<Path>>(file: P) -> Result<()> {
+pub fn source_python<P>(file: P) -> Result<()>
+where
+    P: AsRef<Path>,
+{
     unsafe { SIM_source_python(raw_cstr(file.as_ref().to_string_lossy())?) };
 
     match clear_exception()? {
@@ -28,7 +34,10 @@ pub fn source_python<P: AsRef<Path>>(file: P) -> Result<()> {
     }
 }
 
-pub fn run_python<S: AsRef<str>>(line: S) -> Result<()> {
+pub fn run_python<S>(line: S) -> Result<()>
+where
+    S: AsRef<str>,
+{
     unsafe { SIM_run_python(raw_cstr(line)?) };
 
     match clear_exception()? {

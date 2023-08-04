@@ -386,7 +386,7 @@ impl SimicsFuzzer {
         }
 
         if self.repro.is_some() {
-            return Ok(self.repro()?);
+            return self.repro();
         }
 
         let shmem_provider = StdShMemProvider::new()?;

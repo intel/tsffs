@@ -81,7 +81,10 @@ pub fn get_all_failed_modules() -> AttrValue {
     unsafe { SIM_get_all_failed_modules() }
 }
 
-pub fn add_module_dir<P: AsRef<Path>>(path: P) -> Result<()> {
+pub fn add_module_dir<P>(path: P) -> Result<()>
+where
+    P: AsRef<Path>,
+{
     unsafe { SIM_add_module_dir(raw_cstr(path.as_ref().to_string_lossy())?) }
     Ok(())
 }
@@ -90,7 +93,10 @@ pub fn module_list_refresh() {
     unsafe { SIM_module_list_refresh() };
 }
 
-pub fn load_module<S: AsRef<str>>(module: S) -> Result<()> {
+pub fn load_module<S>(module: S) -> Result<()>
+where
+    S: AsRef<str>,
+{
     unsafe { SIM_load_module(raw_cstr(module)?) }
     match get_pending_exception() {
         Ok(SimException::NoException) => Ok(()),

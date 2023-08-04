@@ -10,10 +10,10 @@ use crate::package::{packages, Package, PackageNumber};
 
 /// Parse all SIMICS manifest(s) in the installation to determine the latest simics version and
 /// return its manifest
-pub fn package_latest<P: AsRef<Path>>(
-    simics_home: P,
-    package_number: PackageNumber,
-) -> Result<Package> {
+pub fn package_latest<P>(simics_home: P, package_number: PackageNumber) -> Result<Package>
+where
+    P: AsRef<Path>,
+{
     let infos = packages(simics_home)?[&package_number].clone();
 
     let max_base = infos
@@ -25,11 +25,14 @@ pub fn package_latest<P: AsRef<Path>>(
 }
 
 /// Find the latest version of the Simics Base package with a particular constraint.
-pub fn package_version<P: AsRef<Path>>(
+pub fn package_version<P>(
     simics_home: P,
     package_number: PackageNumber,
     version_constraint: VersionConstraint,
-) -> Result<Package> {
+) -> Result<Package>
+where
+    P: AsRef<Path>,
+{
     let infos = packages(simics_home.as_ref())?[&package_number].clone();
     let version = infos
         .keys()

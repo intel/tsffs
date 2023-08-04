@@ -72,7 +72,10 @@ impl InputConfig {
 
     /// Add one or more faults to the set of faults considered crashes for a given fuzzing
     /// campaign
-    pub fn with_faults<I: IntoIterator<Item = Fault>>(mut self, faults: I) -> Self {
+    pub fn with_faults<I>(mut self, faults: I) -> Self
+    where
+        I: IntoIterator<Item = Fault>,
+    {
         faults.into_iter().for_each(|i| {
             self.faults.insert(i);
         });

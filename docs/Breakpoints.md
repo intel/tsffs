@@ -7,8 +7,8 @@ For example, if your platform considers it an error for any code to write to a
 particular memory address range, breakpoints can be used to allow the fuzzer to detect
 that event and report it as a fault.
 
-Along the way, if you'd like to skp the programming, you can find the full source for this tutorial in
-the [breakpoints example](../examples/breakpoints/).
+Along the way, if you'd like to skp the programming, you can find the full source for
+this tutorial in the [breakpoints example](../examples/breakpoints/).
 
 - [Breakpoints](#breakpoints)
   - [Install Rizin](#install-rizin)
@@ -119,7 +119,7 @@ second of which is our *stop* harness. We'll use the first addres `0x180001082` 
 as `TARGET_HARNESS_ADDRESS`.
 
 Next, we want to find the address of the instruction that is printing out the "Uh oh!"
-string. 
+string.
 
 ```sh
 $ rizin -Aqqc 'e asm.var=false; e asm.lines=false; sf entry0; pdf ~Uh oh!' \
@@ -235,7 +235,7 @@ cargo run --manifest-path ../../Cargo.toml --release \
 
 We'll eventually see some output like:
 
-```
+```text
   2023-08-03T19:47:35.634199Z  INFO tsffs_module::module::components::detector: Got breakpoint
     at tsffs_module/src/module/components/detector/mod.rs:280
 

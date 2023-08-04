@@ -13,7 +13,10 @@ use std::{
 };
 
 /// Emit cargo directives to link to SIMICS given a particular version constraint
-pub fn link_simics_linux<S: AsRef<str>>(version_constraint: S) -> Result<()> {
+pub fn link_simics_linux<S>(version_constraint: S) -> Result<()>
+where
+    S: AsRef<str>,
+{
     let simics_home_dir = simics_home()?;
 
     let simics_base_info = package_version(

@@ -11,7 +11,7 @@ use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use std::{
     env::var,
-    hash::Hash,
+    hash::{Hash, Hasher},
     path::PathBuf,
     process::{Command, Stdio},
 };
@@ -138,7 +138,10 @@ pub struct Artifact {
 }
 
 impl Hash for Artifact {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
         self.path.hash(state);
         self.package.name.hash(state);
         self.package.version.hash(state);

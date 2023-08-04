@@ -4,6 +4,9 @@ use simics_api_sys::SIM_run_command;
 
 use crate::AttrValue;
 
-pub fn run_command<S: AsRef<str>>(line: S) -> Result<AttrValue> {
+pub fn run_command<S>(line: S) -> Result<AttrValue>
+where
+    S: AsRef<str>,
+{
     Ok(unsafe { SIM_run_command(raw_cstr(line)?) })
 }
