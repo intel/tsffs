@@ -191,20 +191,20 @@ jobs:
               run: |
                   mkdir -p "${HOME}/simics"
                   cd "${HOME}/simics"
-                  curl -o intel-simics-package-manager-1.7.3-linux64.tar.gz \
-                    https://af02p-or.devtools.intel.com/artifactory/simics-local/pub/simics-installer/external/1.7.3/intel-simics-package-manager-1.7.3-linux64.tar.gz
-                  tar -xvf intel-simics-package-manager-1.7.3-linux64.tar.gz
+                  curl -o intel-simics-package-manager-1.7.4-linux64.tar.gz \
+                    https://af02p-or.devtools.intel.com/artifactory/simics-local/pub/simics-installer/external/1.7.4/intel-simics-package-manager-1.7.4-linux64.tar.gz
+                  tar -xvf intel-simics-package-manager-1.7.4-linux64.tar.gz
                   {
                     echo "1000 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}";
                     echo "2096 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}";
                     echo "8112 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}";
                   } > /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
                   cat /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
-                  ./intel-simics-package-manager-1.7.3/ispm settings \
+                  ./intel-simics-package-manager-1.7.4/ispm settings \
                     --config-file /ispm.conf decryption-key-files \
                     --add /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
                   cat /ispm.conf
-                  ./intel-simics-package-manager-1.7.3/ispm \
+                  ./intel-simics-package-manager-1.7.4/ispm \
                     --config-file /ispm.conf \
                     --non-interactive \
                     --verbose \
@@ -284,20 +284,20 @@ jobs:
               run: |
                   mkdir -p "${HOME}/simics"
                   cd "${HOME}/simics"
-                  curl -o intel-simics-package-manager-1.7.3-linux64.tar.gz \
-                    https://af02p-or.devtools.intel.com/artifactory/simics-local/pub/simics-installer/external/1.7.3/intel-simics-package-manager-1.7.3-linux64.tar.gz
-                  tar -xvf intel-simics-package-manager-1.7.3-linux64.tar.gz
+                  curl -o intel-simics-package-manager-1.7.4-linux64.tar.gz \
+                    https://af02p-or.devtools.intel.com/artifactory/simics-local/pub/simics-installer/external/1.7.4/intel-simics-package-manager-1.7.4-linux64.tar.gz
+                  tar -xvf intel-simics-package-manager-1.7.4-linux64.tar.gz
                   {
                     echo "1000 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}";
                     echo "2096 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}";
                     echo "8112 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}";
                   } > /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
                   cat /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
-                  ./intel-simics-package-manager-1.7.3/ispm settings \
+                  ./intel-simics-package-manager-1.7.4/ispm settings \
                     --config-file /ispm.conf decryption-key-files \
                     --add /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
                   cat /ispm.conf
-                  ./intel-simics-package-manager-1.7.3/ispm \
+                  ./intel-simics-package-manager-1.7.4/ispm \
                     --config-file /ispm.conf \
                     --non-interactive \
                     --verbose \
@@ -352,20 +352,20 @@ jobs:
               run: |
                   mkdir -p "${HOME}/simics"
                   cd "${HOME}/simics"
-                  curl -o intel-simics-package-manager-1.7.3-linux64.tar.gz \
-                    https://af02p-or.devtools.intel.com/artifactory/simics-local/pub/simics-installer/external/1.7.3/intel-simics-package-manager-1.7.3-linux64.tar.gz
-                  tar -xvf intel-simics-package-manager-1.7.3-linux64.tar.gz
+                  curl -o intel-simics-package-manager-1.7.4-linux64.tar.gz \
+                    https://af02p-or.devtools.intel.com/artifactory/simics-local/pub/simics-installer/external/1.7.4/intel-simics-package-manager-1.7.4-linux64.tar.gz
+                  tar -xvf intel-simics-package-manager-1.7.4-linux64.tar.gz
                   {
                     echo "1000 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}";
                     echo "2096 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}";
                     echo "8112 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}";
                   } > /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
                   cat /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
-                  ./intel-simics-package-manager-1.7.3/ispm settings \
+                  ./intel-simics-package-manager-1.7.4/ispm settings \
                     --config-file /ispm.conf decryption-key-files \
                     --add /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
                   cat /ispm.conf
-                  ./intel-simics-package-manager-1.7.3/ispm \
+                  ./intel-simics-package-manager-1.7.4/ispm \
                     --config-file /ispm.conf \
                     --non-interactive \
                     --verbose \

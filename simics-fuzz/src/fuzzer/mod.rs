@@ -141,7 +141,7 @@ impl SimicsFuzzer {
                 .with_filter(args.log_level)
                 .with_filter(filter_fn(|metadata| {
                     // LLMP absolutely spams the log when tracing
-                    !(metadata.target() == "libafl::bolts::llmp"
+                    !(metadata.target() == "libafl_bolts::llmp"
                         && matches!(metadata.level(), &Level::TRACE))
                 }))
         });

@@ -3,7 +3,7 @@ rule cc
         -mno-red-zone $cflags -c $in -o $out
 
 rule link
-    command = lld-link -filealign:16 -subsystem:efi_application -nodefaultlib -dll $
+    command = lld-link -filealign:16 -subsystem:efi_application -dll -nodefaultlib $
         -entry:UefiMain $in -out:$out
 
 build target.o: cc target.c

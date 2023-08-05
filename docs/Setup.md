@@ -181,12 +181,12 @@ Internal Simics installations require you to know which packages you need. If yo
 internal packages at all, you likely know the full list. Assuming you downloaded
 `ispm-internal-latest-linux64.tar.gz`, you can extract it and install the packages
 required to run the samples (Simics-Base and QSP-x86) with the command below. Replace
-`1.7.3` with the version of ISPM you downloaded.
+`1.7.4` with the version of ISPM you downloaded.
 
 ```sh
 mkdir -p ~/install/simics-internal
 tar -C ~/install/simics-internal -xzvf ~/Downloads/ispm-internal-latest-linux64.tar.gz
-~/install/simics-internal/intel-simics-package-manager-1.7.3-intel-internal/ispm \
+~/install/simics-internal/intel-simics-package-manager-1.7.4-intel-internal/ispm \
     install \
     --install-dir ~/install/simics-internal \
     --package-repo https://af02p-or.devtools.intel.com/ui/native/simics-local/pub/simics-6/linux64/ \
@@ -233,7 +233,7 @@ Finally, check that all the packages installed:
 ```sh
 $ ls -lh ~/install/simics-test
 total 126M
-drwxr-xr-x. 1 rhart rhart  752 Dec 31  1969 intel-simics-package-manager-1.7.3-intel-internal
+drwxr-xr-x. 1 rhart rhart  752 Dec 31  1969 intel-simics-package-manager-1.7.4-intel-internal
 -rw-r--r--. 1 rhart rhart 126M Jun  9 10:44 ispm-internal-latest-linux64.tar.gz
 drwxr-xr-x. 1 rhart rhart   86 Jul 19 17:00 manifests
 drwxr-xr-x. 1 rhart rhart  312 Jul 19 16:59 simics-6.0.168

@@ -212,7 +212,7 @@ script-branch "Set breakpoints" {
     local $data_break_addr = ($TARGET_DATA_ADDRESS + $offset)
     echo "Setting data harness on:"
     print -x $data_break_addr
-    $ctx.break -r -w $data_break_addr
+    $ctx.break -r -w $data_break_addr 0x100
 }
 ```
 

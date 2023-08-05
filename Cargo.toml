@@ -44,6 +44,7 @@ default-members = [
     "util/artifact-dependency",
     "util/tmp-dir",
 ]
+exclude = ["docs/videos/adv"]
 
 [workspace.dependencies]
 artifact-dependency = { path = "./util/artifact-dependency" }
