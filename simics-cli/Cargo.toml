@@ -3,9 +3,17 @@
 
 [package]
 name = "simics-cli"
-version = "0.1.0"
-edition = "2021"
-publish = false
+categories.workspace = true
+description = "Basic SIMICS CLI for testing purposes"
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+publish.workspace = true
+readme.workspace = true
+repository.workspace = true
+version.workspace = true
+
 
 [dependencies]
 anyhow.workspace = true

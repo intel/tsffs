@@ -3,9 +3,17 @@
 
 [package]
 name = "tsffs_module"
-version = "0.1.0"
-edition = "2021"
-publish = false
+categories.workspace = true
+description = "Loadable SIMICS module for TSFFS fuzzer"
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+publish.workspace = true
+readme.workspace = true
+repository.workspace = true
+version.workspace = true
+
 
 # This metadata table configures the `SimicsProject` we'll eventually add this module to
 [package.metadata.module]

@@ -7,14 +7,16 @@ authors = [
     "Brandon Marken <brandon.marken@intel.com>",
     "Robert Geunzel <robert.geunzel@intel.com>",
 ]
+categories = ["development-tools::testing", "emulators", "simulation"]
 description = "A snapshotting, coverage-guided fuzzer for software (UEFI, Kernel, firmware, BIOS) built on SIMICS"
+edition = "2021"
 homepage = "https://github.com/intel-innersource/applications.security.fuzzing.confuse"
-license-file = "LICENSE"
+keywords = ["SIMICS", "fuzzing", "security", "testing", "simulator"]
 license = "Apache-2.0"
 publish = false
+readme = "README.md"
 repository = "https://github.com/intel-innersource/applications.security.fuzzing.confuse"
 version = "0.1.0"
-readme = "README.md"
 
 [workspace]
 resolver = "2"
@@ -89,3 +91,7 @@ rpath = true
 
 [profile.release]
 rpath = true
+lto = true
+codegen-units = 1
+opt-level = 3
+debug = true
