@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 use crate::{
     args::{command::Command, Args},
     modules::tsffs::{ModuleInterface, TSFFS_MODULE_CRATE_NAME, TSFFS_WORKSPACE_PATH},

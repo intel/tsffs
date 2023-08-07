@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! SIMICS API
 //!
 //! High Level safe bindings to the SIMICS API

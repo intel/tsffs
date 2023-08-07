@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! Implements generic processor operations on the simulated CPU or CPUs
 use anyhow::{bail, Result};
 

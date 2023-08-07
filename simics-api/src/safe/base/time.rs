@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 use crate::{last_error, ConfObject};
 use anyhow::{bail, Result};
 use simics_api_sys::SIM_object_clock;

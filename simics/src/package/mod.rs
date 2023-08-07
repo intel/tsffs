@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! Utilities for managing SIMICS packages, reading and writing their metadata, and creating
 //! packages from a specification
 

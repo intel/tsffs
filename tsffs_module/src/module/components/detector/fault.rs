@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! Defines a Fault that is interpreted by the `FaultDetector` component of the
 //! module to determine what faults are "valid" i.e. are faults that we care about for a
 //! given run. For example, an x86_64 edk2 UEFI application dereferncing an unmapped

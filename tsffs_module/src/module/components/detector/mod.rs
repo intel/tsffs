@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 use crate::{
     config::OutputConfig,
     faults::{x86_64::X86_64Fault, Fault},

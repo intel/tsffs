@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 use crate::ConfObject;
 use anyhow::Result;
 use simics_api_sys::{SIM_log_error, SIM_log_info, SIM_log_level, SIM_set_log_level};

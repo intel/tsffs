@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! Configuration data for the module, passed to it when it starts up
 
 use anyhow::{Context, Result};

@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! Utilities for managing simics modules, specifically adding them to a project.
 //!
 //! Rust Simics Modules are Rust cdylib crates that are linked into a SIMICS module to provide

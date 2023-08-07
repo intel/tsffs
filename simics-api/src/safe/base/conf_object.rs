@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! conf_object - High level bindings for conf-object.h
 //!
 //! Defines:

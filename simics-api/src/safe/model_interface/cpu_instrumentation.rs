@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 use crate::{
     attr_object_or_nil, get_interface, AccessType, AttrValue, ConfObject, Interface, PhysicalBlock,
 };

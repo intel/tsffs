@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! High level control of SIMICS running inside the current process
 
 use anyhow::{bail, Result};

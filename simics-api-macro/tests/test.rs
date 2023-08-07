@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! Tests that the derive macro can correctly parse an input struct
 
 use simics_api::{ClassKind, ConfObject, SimicsModule};

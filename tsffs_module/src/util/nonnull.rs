@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 #[macro_export]
 /// Ensure a pointer value is non-null. Log an error and return an Err value if it is null.
 macro_rules! nonnull {

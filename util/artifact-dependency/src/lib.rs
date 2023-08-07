@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! Feature-light crate to build and use dependencies whose results are Artifacts:
 //! - Static Libraries
 //! - C Dynamic Libraries

@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 use adv::{Config, KittyConfigBuilder, KittyProcess, Secrets};
 use anyhow::{anyhow, Result};
 use clap::Parser;

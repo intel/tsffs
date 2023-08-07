@@ -1,5 +1,9 @@
 #!/usr/bin/env -S cargo +nightly -Zscript
 
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
+
 //! ```cargo
 //! [dependencies]
 //! clap = { version = "*", features = ["derive"] }

@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! Implements the state machine for this module. This state machine represents the different
 //! states the module (and through it, simics) can be in and the transitions between those states
 //!

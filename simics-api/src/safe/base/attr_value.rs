@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! Safe wrappers for attr_value_t operations
 //!
 //! `attr_value_t` instances are basically Python objects as tagged unions (like an `enum`), these

@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! The TSFFS module client provides a common client-side controller for a fuzzer or other tool
 //! to communicate with the module while keeping consistent with the state machine the module
 //! implements.

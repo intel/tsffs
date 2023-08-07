@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 use crate::{last_error, ConfClass, ConfObject};
 use anyhow::{bail, ensure, Result};
 use raw_cstr::raw_cstr;

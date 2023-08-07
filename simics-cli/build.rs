@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 use anyhow::Result;
 use simics_api::sys::SIMICS_VERSION;
 use simics_link::link_simics_linux;

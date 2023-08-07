@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 use std::ffi::c_void;
 
 use simics_api_sys::SIM_run_alone;

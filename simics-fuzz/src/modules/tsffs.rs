@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! The tsffs module build along with this binary
 
 // TODO: Just use include_dir! for this now that the bug with massive compiles has been fixed

@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! Temporary directory management with more explicit options than the language team crate `tmpdir`
 //! and correct temporary directory permissions (user-only r-x)
 

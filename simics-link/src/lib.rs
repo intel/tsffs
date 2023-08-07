@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! Standalone simics linking functionality. This copies from the `simics` crate and should be updated
 //! if the linking strategy there changes.
 

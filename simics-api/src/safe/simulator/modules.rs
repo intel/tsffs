@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 use anyhow::{anyhow, bail, ensure, Error, Result};
 use raw_cstr::raw_cstr;
 use std::path::Path;

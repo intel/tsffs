@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! Derive/attribute macros for simics-api
 //!
 //! Provides the `#[module()]` and `#[derive(Module)]` macros

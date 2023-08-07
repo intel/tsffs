@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! Parse package manifest files and extract package specifications containing information about
 //! files in the package, package version, etc.
 

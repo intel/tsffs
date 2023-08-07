@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! Utility functionality to assist managing SIMICS projects
 
 use anyhow::{bail, ensure, Context, Error, Result};

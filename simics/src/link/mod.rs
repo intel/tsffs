@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! Utilities for linking to the simics library. This linking process is only compatible
 //! with Linux.
 
