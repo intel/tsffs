@@ -21,3 +21,4 @@ new to using the fuzzer or evaluating whether you can use it for your project.
 
 - [Debugging the Fuzzer](./DebuggingFuzzer.md)
 - [Updating SIMICS API bindings for new SIMICS versions](./UpdateBindings.md)
+- [Various additional developer information](./DevGuide.md)
