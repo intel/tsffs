@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright (C) 2023 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
 if ! command -v jq &>/dev/null; then
     echo "jq must be installed. Install it with your package manager"
     exit 1

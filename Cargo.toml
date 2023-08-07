@@ -1,3 +1,21 @@
+# Copyright (C) 2023 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+[workspace.package]
+authors = [
+    "Rowan Hart <rowan.hart@intel.com>",
+    "Brandon Marken <brandon.marken@intel.com>",
+    "Robert Geunzel <robert.geunzel@intel.com>",
+]
+description = "A snapshotting, coverage-guided fuzzer for software (UEFI, Kernel, firmware, BIOS) built on SIMICS"
+homepage = "https://github.com/intel-innersource/applications.security.fuzzing.confuse"
+license-file = "LICENSE"
+license = "Apache-2.0"
+publish = false
+repository = "https://github.com/intel-innersource/applications.security.fuzzing.confuse"
+version = "0.1.0"
+readme = "README.md"
+
 [workspace]
 resolver = "2"
 members = [

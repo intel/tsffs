@@ -1,3 +1,6 @@
+# Copyright (C) 2023 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
 rule cc
     command = clang -target x86_64-pc-win32-coff -fno-stack-protector -fshort-wchar $
         -mno-red-zone $cflags -c $in -o $out

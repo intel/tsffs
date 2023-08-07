@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright (C) 2023 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
 # Build the HelloWorld.efi module and copy it into the resource directory for the example
 # this only needs to be run if you want to modify the source code for the HelloWorld.efi module,
 # otherwise, the EFI is included in the source tree for ease of use

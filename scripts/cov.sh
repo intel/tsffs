@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright (C) 2023 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 
 if ! command -v cargo-llvm-cov &>/dev/null; then

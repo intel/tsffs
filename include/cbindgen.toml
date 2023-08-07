@@ -1,3 +1,6 @@
+# Copyright (C) 2023 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
 # This is a template cbindgen.toml file with all of the default values.
 # Some values are commented out because their absence is the real default.
 #

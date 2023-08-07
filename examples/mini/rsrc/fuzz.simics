@@ -1,3 +1,6 @@
+# Copyright (C) 2023 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
 $disk0_image = (lookup-file "%simics%/minimal_boot_disk.craff")
 run-command-file "%simics%/targets/qsp-x86/qsp-hdd-boot.simics" 
 

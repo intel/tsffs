@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright (C) 2023 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
 pushd src || exit 1
 ninja
 popd || exit 1

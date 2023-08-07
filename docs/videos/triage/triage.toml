@@ -1,3 +1,6 @@
+# Copyright (C) 2023 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
 secrets = ["USERNAME", "PASSWORD", "GH_TOKEN"]
 secrets_file = "secrets.toml"
 wpm = 130

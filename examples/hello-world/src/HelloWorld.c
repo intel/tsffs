@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 /** @file
   This sample application bases on HelloWorld PCD setting
   to print "UEFI Hello World!" to the UEFI Console.

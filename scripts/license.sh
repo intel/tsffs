@@ -12,14 +12,12 @@ if ! command -v rargs &>/dev/null; then
     exit 1
 fi
 
-LICENSE_RUST="// Copyright (C) 2023 Intel Corporation\n\
-// SPDX-License-Identifier: Apache-2.0\n"
-LICENSE_PYTHON="# Copyright (C) 2023 Intel Corporation\n\
-# SPDX-License-Identifier: Apache-2.0\n"
-LICENSE_C="// Copyright (C) 2023 Intel Corporation\n\
-// SPDX-License-Identifier: Apache-2.0\n"
+LICENSE_REQUIRED_EXTS=(
+    "c" "dml" "dsc" "h" ".inf" "ini" "ninja" "nsh" "py" "rs" "sh" "simics" "toml"
+    "yaml" "yml"
+)
 
-fd -t f -0 -E 'simics-api-sys/src/bindings' '.*\.rs$' "${SCRIPT_DIR}/../" | rargs -0 bash -c \
+fd -t f -0 '.*\.rs$' "${SCRIPT_DIR}/../" | rargs -0 bash -c \
     "if ! grep -q 'SPDX-License-Identifier: Apache-2.0' {}; then
         if grep -qzE '^#!/' {}; then
             echo 'Adding license to file with shebang' {}
@@ -29,3 +27,33 @@ fd -t f -0 -E 'simics-api-sys/src/bindings' '.*\.rs$' "${SCRIPT_DIR}/../" | rarg
             sed -i '1s/^/\/\/ Copyright (C) 2023 Intel Corporation\n\/\/ SPDX-License-Identifier: Apache-2.0\n\n/' {}
         fi
     fi"
+
+fd -t f -0 '.*\.(c|h|cc|hh|hpp|cpp)$' "${SCRIPT_DIR}/../" | rargs -0 bash -c \
+    "if ! grep -q 'SPDX-License-Identifier: Apache-2.0' {}; then
+        sed -i '1s/^/\/\/ Copyright (C) 2023 Intel Corporation\n\/\/ SPDX-License-Identifier: Apache-2.0\n\n/' {}
+    fi"
+
+fd -t f -0 '.*\.(c|h|cc|hh|hpp|cpp)$' "${SCRIPT_DIR}/../" | rargs -0 bash -c \
+    "if ! grep -q 'SPDX-License-Identifier: Apache-2.0' {}; then
+        sed -i '1s/^/# Copyright (C) 2023 Intel Corporation\n\# SPDX-License-Identifier: Apache-2.0\n\n/' {}
+    fi"
+
+MISSING_LICENSE_FILES=()
+
+while IFS= read -r -d $'\0' LICENSE_REQUIRED_FILE; do
+    if ! grep -q 'SPDX-License-Identifier: Apache-2.0' "${LICENSE_REQUIRED_FILE}"; then
+        MISSING_LICENSE_FILES+=("${LICENSE_REQUIRED_FILE}")
+    fi
+done < <(fd -0 -t f -e 'c' -e 'dml' -e 'h' \
+    -e 'inf' -e 'ini' -e 'ninja' -e 'nsh' -e 'py' -e 'rs' -e 'sh' -e 'simics' \
+    -e 'toml' -e 'yaml' -e 'yml' -e 'cpp' -e 'cc' -e 'hh' -e 'hpp' . "${SCRIPT_DIR}/../")
+
+if [ "${#MISSING_LICENSE_FILES[@]}" -eq 0 ]; then
+    exit 0
+else
+    echo "Files found missing license block:"
+    for MISSING_LICENSE_FILE in "${MISSING_LICENSE_FILES[@]}"; do
+        echo "${MISSING_LICENSE_FILE}"
+    done
+    exit 1
+fi
