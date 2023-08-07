@@ -1,6 +1,7 @@
-#include "tsffs.h"
 #include <stddef.h>
 #include <stdint.h>
+
+#include "tsffs.h"
 
 // NOTE: Forward declaration
 struct EfiSimpleTextOutputProtocol;
@@ -55,7 +56,6 @@ int UefiMain(void *imageHandle, EfiSystemTable *SystemTable) {
   int16_t *buffer_ptr = &buffer[0];
   HARNESS_START(&buffer, &size);
 
-
   for (size_t i = 0; i < size; i++) {
     if (i != 0 && !(i % 8)) {
       SystemTable->conOut->output_string(SystemTable->conOut,
@@ -88,8 +88,7 @@ int UefiMain(void *imageHandle, EfiSystemTable *SystemTable) {
   } else if (*(char *)buffer == 'd') {
     for (size_t i = 0; i < sizeof(off_limits); i++) {
       off_limits[i] = 'X';
-       HARNESS_STOP();
-
+      HARNESS_STOP();
     }
   }
 

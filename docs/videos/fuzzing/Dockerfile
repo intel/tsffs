@@ -7,7 +7,17 @@ ARG PASSWORD
 ARG GH_TOKEN
 
 RUN apt-get -y update && \
-    apt-get -y install krb5-user smbclient curl git build-essential gpg bash
+    apt-get -y install --no-install-recommends \
+    krb5-user=1.19.2-2ubuntu0.2 \
+    smbclient=2:4.15.13+dfsg-0ubuntu1.2 \
+    curl=7.81.0-1ubuntu1.13 \
+    git=1:2.34.1-1ubuntu1.9 \
+    build-essential=12.9ubuntu3 \
+    gpg=2.2.27-3ubuntu2.1 \
+    bash=5.1-6ubuntu1 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
@@ -29,7 +39,9 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
     | tee /etc/apt/sources.list.d/github-cli.list >/dev/null && \
     apt-get -y update && \
-    apt-get -y install gh
+    apt-get -y --no-install-recommends install gh=1.43.0-1build3 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
 

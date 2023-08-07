@@ -67,6 +67,12 @@ echo "================="
 fd '.*\.py$' -x pylint {}
 
 echo "================="
+echo "Running clang-format"
+echo "================="
+
+fd '.*(\.h|\.c|\.cc|\.hh)$' -x clang-format --Werror --dry-run {}
+
+echo "================="
 echo "Running yamllint..."
 echo "================="
 
@@ -82,10 +88,10 @@ echo "================="
 echo "Running hadolint..."
 echo "================="
 
-fd 'Dockerfile.*$' -x bash -c 'echo {}:; docker run --rm -i hadolint/hadolint < {}'
+fd 'Dockerfile.*$' -x bash -c "echo {}:; docker run --rm -v ${SCRIPT_DIR}/../.github/linters/.hadolint.yaml:/.config/hadolint.yaml -i hadolint/hadolint < {}"
 
 echo "================="
 echo "Running old name check..."
 echo "================="
 
-grep -rIi "confuse" "${SCRIPT_DIR}/.." | grep -iv "confused" | grep -v "applications.security.fuzzing.confuse" | grep -v "simics-api-sys/packages/"
+grep -rIi "confuse" "${SCRIPT_DIR}/.." 2>/dev/null | grep -iv "confused" | grep -v "applications.security.fuzzing.confuse" | grep -v "simics-api-sys/packages/"
