@@ -90,6 +90,7 @@ int UefiMain(void *imageHandle, EfiSystemTable *SystemTable) {
       off_limits[i] = 'X';
     }
   }
+
   HARNESS_STOP();
 
   return 0;

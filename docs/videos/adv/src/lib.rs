@@ -1,3 +1,5 @@
+#![deny(clippy::unwrap_used)]
+
 use anyhow::{anyhow, bail, Result};
 use derive_builder::Builder;
 use indicatif::ProgressBar;

@@ -1,3 +1,4 @@
+#![deny(clippy::unwrap_used)]
 #![allow(unused)]
 
 use tsffs_module::magic::{MAGIC_START, MAGIC_STOP};
