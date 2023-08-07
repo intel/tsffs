@@ -523,9 +523,10 @@ jobs:
               run: |
                   # We mark this task as NA because we do not publish any release
                   # package, so we check that we indeed cannot publish anything
+                  grep -q "publish = false" 'Cargo.toml' || ( echo "❗ [CT37] Crate {} is publishable" && exit 1 )
                   find . -mindepth 2 -type f -name 'Cargo.toml' -not -path './target/*' -print0 2> /dev/null \
                     | xargs -0 -i bash -c \
-                      'grep -q "publish = false" {} || ( echo "❗ [CT37] Crate {} is publishable" && exit 1 )' \
+                      'grep -qE "publish.workspace = true|publish = false" {} || ( echo "❗ [CT37] Crate {} is publishable" && exit 1 )' \
                   || exit 1
                   echo "✅ [CT37] No release package is provided by this repository"
             - name: (T152, T14, T174) (N/C) - Avoid asking for and using excessive permissions, Enforce Principle of least privilege, Test that the client application is not asking for excessive permissions
