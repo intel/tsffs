@@ -1,1 +1,2 @@
-# This module is automatically imported by simics when simics is launched
+# Copyright (C) 2023 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0

@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 use anyhow::Result;
 use clap::ValueEnum;
 use paste::paste;
@@ -93,7 +96,10 @@ macro_rules! impl_string_arg {
 }
 
 impl InitArg {
-    pub fn boolean<S: AsRef<str>>(name: S, enabled: bool) -> Result<Self> {
+    pub fn boolean<S>(name: S, enabled: bool) -> Result<Self>
+    where
+        S: AsRef<str>,
+    {
         Ok(InitArg(init_arg_t {
             name: raw_cstr(name)?,
             boolean: true,
@@ -101,7 +107,10 @@ impl InitArg {
         }))
     }
 
-    pub fn string<S: AsRef<str>>(name: S, value: S) -> Result<Self> {
+    pub fn string<S>(name: S, value: S) -> Result<Self>
+    where
+        S: AsRef<str>,
+    {
         Ok(InitArg(init_arg_t {
             name: raw_cstr(name)?,
             boolean: false,

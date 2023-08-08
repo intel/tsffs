@@ -29,9 +29,9 @@ env:
     CARGO_TERM_COLOR: always
 
     # Simics base
-    SIMICS_PUBLIC_PACKAGE_VERSION_1000: 6.0.166
+    SIMICS_PUBLIC_PACKAGE_VERSION_1000: 6.0.168
     # QSP X86
-    SIMICS_PUBLIC_PACKAGE_VERSION_2096: 6.0.68
+    SIMICS_PUBLIC_PACKAGE_VERSION_2096: 6.0.69
     # QSP CPU
     SIMICS_PUBLIC_PACKAGE_VERSION_8112: 6.0.17
 
@@ -75,7 +75,7 @@ jobs:
                         # "6.0.63",
                         # "6.0.64",
                         # "6.0.65",
-                        # "6.0.66",
+                        # "6.0.69",
                         # "6.0.67",
                         # "6.0.68",
                         # "6.0.69",
@@ -164,8 +164,8 @@ jobs:
                         "6.0.164",
                         "6.0.165",
                         "6.0.166",
-                        # Not yet supported
-                        # "6.0.167",
+                        "6.0.167",
+                        "6.0.168",
                     ]
         container: cache-registry.caas.intel.com/cache/library/ubuntu
         runs-on: [self-hosted, gasp]
@@ -191,20 +191,20 @@ jobs:
               run: |
                   mkdir -p "${HOME}/simics"
                   cd "${HOME}/simics"
-                  curl -o intel-simics-package-manager-1.7.3-linux64.tar.gz \
-                    https://af02p-or.devtools.intel.com/artifactory/simics-local/pub/simics-installer/external/1.7.3/intel-simics-package-manager-1.7.3-linux64.tar.gz
-                  tar -xvf intel-simics-package-manager-1.7.3-linux64.tar.gz
+                  curl -o intel-simics-package-manager-1.7.4-linux64.tar.gz \
+                    https://af02p-or.devtools.intel.com/artifactory/simics-local/pub/simics-installer/external/1.7.4/intel-simics-package-manager-1.7.4-linux64.tar.gz
+                  tar -xvf intel-simics-package-manager-1.7.4-linux64.tar.gz
                   {
                     echo "1000 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}";
                     echo "2096 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}";
                     echo "8112 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}";
                   } > /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
                   cat /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
-                  ./intel-simics-package-manager-1.7.3/ispm settings \
+                  ./intel-simics-package-manager-1.7.4/ispm settings \
                     --config-file /ispm.conf decryption-key-files \
                     --add /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
                   cat /ispm.conf
-                  ./intel-simics-package-manager-1.7.3/ispm \
+                  ./intel-simics-package-manager-1.7.4/ispm \
                     --config-file /ispm.conf \
                     --non-interactive \
                     --verbose \
@@ -284,20 +284,20 @@ jobs:
               run: |
                   mkdir -p "${HOME}/simics"
                   cd "${HOME}/simics"
-                  curl -o intel-simics-package-manager-1.7.3-linux64.tar.gz \
-                    https://af02p-or.devtools.intel.com/artifactory/simics-local/pub/simics-installer/external/1.7.3/intel-simics-package-manager-1.7.3-linux64.tar.gz
-                  tar -xvf intel-simics-package-manager-1.7.3-linux64.tar.gz
+                  curl -o intel-simics-package-manager-1.7.4-linux64.tar.gz \
+                    https://af02p-or.devtools.intel.com/artifactory/simics-local/pub/simics-installer/external/1.7.4/intel-simics-package-manager-1.7.4-linux64.tar.gz
+                  tar -xvf intel-simics-package-manager-1.7.4-linux64.tar.gz
                   {
                     echo "1000 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}";
                     echo "2096 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}";
                     echo "8112 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}";
                   } > /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
                   cat /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
-                  ./intel-simics-package-manager-1.7.3/ispm settings \
+                  ./intel-simics-package-manager-1.7.4/ispm settings \
                     --config-file /ispm.conf decryption-key-files \
                     --add /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
                   cat /ispm.conf
-                  ./intel-simics-package-manager-1.7.3/ispm \
+                  ./intel-simics-package-manager-1.7.4/ispm \
                     --config-file /ispm.conf \
                     --non-interactive \
                     --verbose \
@@ -352,20 +352,20 @@ jobs:
               run: |
                   mkdir -p "${HOME}/simics"
                   cd "${HOME}/simics"
-                  curl -o intel-simics-package-manager-1.7.3-linux64.tar.gz \
-                    https://af02p-or.devtools.intel.com/artifactory/simics-local/pub/simics-installer/external/1.7.3/intel-simics-package-manager-1.7.3-linux64.tar.gz
-                  tar -xvf intel-simics-package-manager-1.7.3-linux64.tar.gz
+                  curl -o intel-simics-package-manager-1.7.4-linux64.tar.gz \
+                    https://af02p-or.devtools.intel.com/artifactory/simics-local/pub/simics-installer/external/1.7.4/intel-simics-package-manager-1.7.4-linux64.tar.gz
+                  tar -xvf intel-simics-package-manager-1.7.4-linux64.tar.gz
                   {
                     echo "1000 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}";
                     echo "2096 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}";
                     echo "8112 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}";
                   } > /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
                   cat /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
-                  ./intel-simics-package-manager-1.7.3/ispm settings \
+                  ./intel-simics-package-manager-1.7.4/ispm settings \
                     --config-file /ispm.conf decryption-key-files \
                     --add /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
                   cat /ispm.conf
-                  ./intel-simics-package-manager-1.7.3/ispm \
+                  ./intel-simics-package-manager-1.7.4/ispm \
                     --config-file /ispm.conf \
                     --non-interactive \
                     --verbose \
@@ -523,9 +523,10 @@ jobs:
               run: |
                   # We mark this task as NA because we do not publish any release
                   # package, so we check that we indeed cannot publish anything
+                  grep -q "publish = false" 'Cargo.toml' || ( echo "❗ [CT37] Crate {} is publishable" && exit 1 )
                   find . -mindepth 2 -type f -name 'Cargo.toml' -not -path './target/*' -print0 2> /dev/null \
                     | xargs -0 -i bash -c \
-                      'grep -q "publish = false" {} || ( echo "❗ [CT37] Crate {} is publishable" && exit 1 )' \
+                      'grep -qE "publish.workspace = true|publish = false" {} || ( echo "❗ [CT37] Crate {} is publishable" && exit 1 )' \
                   || exit 1
                   echo "✅ [CT37] No release package is provided by this repository"
             - name: (T152, T14, T174) (N/C) - Avoid asking for and using excessive permissions, Enforce Principle of least privilege, Test that the client application is not asking for excessive permissions
@@ -607,11 +608,11 @@ jobs:
                   LATEST="$(find '.github/dependabot' -name '*.csv' -print0 \
                     | xargs -r -0 ls -1 -t \
                     | head -n 1)"
-                  if [ ! "$(find ${LATEST} -mtime -14)" ]; then
+                  if ! find '.github/dependabot' -name '*.csv' -mtime -14 | grep -q '.'; then
                       echo "❗ [CT247/CT200] No dependabot report found from last 2 weeks. Run ./scripts/dependabot.sh."
                       exit 1
                   fi
-                  if [ -n "$(tail -n+2 \"${LATEST}\" | grep -qv \".github/actions/toolchain\")" ]; then
+                  if tail -n+2 "${LATEST}" | grep -qv ".github/actions/toolchain"; then
                       cat "${LATEST}"
                       echo "❗ [CT247/CT200] Vulnerabilities found outside of github actions. Please remediate them."
                       exit 1

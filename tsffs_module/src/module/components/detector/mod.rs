@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 use crate::{
     config::OutputConfig,
     faults::{x86_64::X86_64Fault, Fault},
@@ -12,14 +15,14 @@ use ffi_macro::{callback_wrappers, params};
 use simics_api::{
     attr_object_or_nil_from_ptr, break_simulation, event::register_event, event_cancel_time,
     event_find_next_time, event_post_time, get_class, get_processor_number, hap_add_callback,
-    object_clock, AttrValue, ConfObject, CoreExceptionCallback, EventClass, Hap, HapCallback,
-    X86TripleFaultCallback,
+    object_clock, AttrValue, ConfObject, CoreExceptionCallback, EventClass, GenericTransaction,
+    Hap, HapCallback, X86TripleFaultCallback,
 };
 use std::{
     collections::{HashMap, HashSet},
     ffi::c_void,
 };
-use tracing::{debug, info, trace};
+use tracing::{debug, error, info, trace};
 
 #[derive(Default)]
 pub struct Detector {
@@ -28,6 +31,10 @@ pub struct Detector {
     pub timeout_event: Option<*mut EventClass>,
     pub processors: HashMap<i32, Processor>,
     pub stop_reason: Option<StopReason>,
+    pub exception_cb_added: bool,
+    pub triple_cb_added: bool,
+    pub module: Option<*mut ConfObject>,
+    pub breakpoints_are_faults: bool,
 }
 
 impl Detector {
@@ -56,22 +63,10 @@ impl State for Detector {
     ) -> Result<OutputConfig> {
         self.faults = input_config.faults.clone();
         self.timeout_seconds = Some(input_config.timeout);
+        self.module = Some(module);
 
-        let func: CoreExceptionCallback = detector_callbacks::on_exception;
-        let _core_handle = hap_add_callback(
-            Hap::CoreException,
-            HapCallback::CoreException(func),
-            Some(module as *mut c_void),
-        )?;
-
-        if self.faults.contains(&Fault::X86_64(X86_64Fault::Triple)) {
-            let func: X86TripleFaultCallback = detector_callbacks::on_x86_triple_fault;
-
-            let _triple_handle = hap_add_callback(
-                Hap::X86TripleFault,
-                HapCallback::X86TripleFault(func),
-                Some(module as *mut c_void),
-            )?;
+        for fault in self.faults.clone() {
+            self.on_add_fault(fault.try_into()?)?;
         }
 
         info!("Initialized Detector");
@@ -79,7 +74,7 @@ impl State for Detector {
         Ok(output_config)
     }
 
-    fn pre_first_run(&mut self, _module: *mut ConfObject) -> Result<()> {
+    fn pre_first_run(&mut self, module: *mut ConfObject) -> Result<()> {
         let module_cls = get_class(CLASS_NAME)?;
 
         let event = register_event(
@@ -88,6 +83,12 @@ impl State for Detector {
             detector_callbacks::on_timeout_event,
             &[],
         )?;
+
+        let _bp_handle = hap_add_callback(
+            Hap::CoreBreakpointMemop,
+            HapCallback::CoreBreakpointMemop(detector_callbacks::on_breakpoint_memop),
+            Some(module as *mut c_void),
+        );
 
         self.timeout_event = Some(event);
 
@@ -174,10 +175,46 @@ impl Interface for Detector {
     }
 
     fn on_add_fault(&mut self, fault: i64) -> Result<()> {
-        let fault = Fault::X86_64(X86_64Fault::try_from(fault)?);
+        let fault = Fault::X86_64(X86_64Fault::try_from(fault).map_err(|e| {
+            error!("Failed to get fault for fault number {}", fault);
+            e
+        })?);
+
         info!("Detector adding fault {:?}", fault);
         // TODO: Arch independent
         self.faults.insert(fault);
+
+        if let Some(module) = self.module {
+            if let Fault::X86_64(X86_64Fault::Triple) = fault {
+                if !self.triple_cb_added {
+                    // Add the triple cb
+                    let func: X86TripleFaultCallback = detector_callbacks::on_x86_triple_fault;
+
+                    let _triple_handle = hap_add_callback(
+                        Hap::X86TripleFault,
+                        HapCallback::X86TripleFault(func),
+                        Some(module as *mut c_void),
+                    )?;
+                    self.triple_cb_added = true;
+                }
+            } else if !self.exception_cb_added {
+                // Add the standard cb
+                let func: CoreExceptionCallback = detector_callbacks::on_exception;
+
+                let _core_handle = hap_add_callback(
+                    Hap::CoreException,
+                    HapCallback::CoreException(func),
+                    Some(module as *mut c_void),
+                )?;
+                self.exception_cb_added = true;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn on_set_breakpoints_are_faults(&mut self, breakpoints_are_faults: bool) -> Result<()> {
+        self.breakpoints_are_faults = breakpoints_are_faults;
         Ok(())
     }
 }
@@ -232,6 +269,23 @@ impl Detector {
             processor_number,
         )));
         break_simulation("triple")?;
+        Ok(())
+    }
+
+    #[params(!slf: *mut std::ffi::c_void, ...)]
+    pub fn on_breakpoint_memop(
+        &mut self,
+        _trigger_obj: *mut ConfObject,
+        breakpoint_number: i64,
+        _memop: *mut GenericTransaction,
+    ) -> Result<()> {
+        if self.breakpoints_are_faults {
+            info!("Got breakpoint");
+            // TODO: Use trigger_obj (which is cpu?) to get address of the bp directly, memory op info
+            // and so forth? Or we can just have people use repro for this and save the trouble.
+            self.stop_reason = Some(StopReason::Breakpoint(breakpoint_number));
+            break_simulation("breakpoint")?;
+        }
         Ok(())
     }
 }

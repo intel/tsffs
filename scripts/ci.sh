@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright (C) 2023 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
 #Run workflows locally using act
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
@@ -19,6 +22,11 @@ fi
 
 if ! command -v act &>/dev/null; then
     echo "act must be installed! Install at https://github.com/nektos/act"
+    exit 1
+fi
+
+if ! command -v unbuffer &>/dev/null; then
+    echo "unbuffer must be installed! Install 'expect' from your package manager"
     exit 1
 fi
 
@@ -74,9 +82,9 @@ ENV_FILE=$(mktemp)
 ARTIFACT_DIR=$(mktemp -d)
 populate_env_file "${ENV_FILE}"
 docker pull amr-registry.caas.intel.com/1source/github-actions-runner:v2.304.0-ubuntu-20.04
-act -W "${WORKFLOW_FILE}" --env-file="${ENV_FILE}" --secret-file="${SECRETS_FILE}" \
+unbuffer act -W "${WORKFLOW_FILE}" --env-file="${ENV_FILE}" --secret-file="${SECRETS_FILE}" \
     -P gasp=github-actions-runner:v2.304.0-ubuntu-20.04 \
     -P self-hosted=github-actions-runner:v2.304.0-ubuntu-20.04 \
     --artifact-server-path "${ARTIFACT_DIR}" \
-    "$@"
+    "$@" | tee "${SCRIPT_DIR}/../.github/logs/$(date '+%F-%T').log"
 rm "${ENV_FILE}"

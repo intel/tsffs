@@ -1,3 +1,9 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
+//! Utilities for linking to the simics library. This linking process is only compatible
+//! with Linux.
+
 use crate::{
     manifest::package_version, package::PublicPackageNumber, simics::home::simics_home,
     util::find_file_in_dir,
@@ -10,7 +16,10 @@ use std::{
 };
 
 /// Emit cargo directives to link to SIMICS given a particular version constraint
-pub fn link_simics_linux<S: AsRef<str>>(version_constraint: S) -> Result<()> {
+pub fn link_simics_linux<S>(version_constraint: S) -> Result<()>
+where
+    S: AsRef<str>,
+{
     let simics_home_dir = simics_home()?;
 
     let simics_base_info = package_version(

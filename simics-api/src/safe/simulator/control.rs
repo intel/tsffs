@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 use std::{mem::transmute, ptr::null_mut};
 
 use anyhow::Result;
@@ -12,7 +15,10 @@ pub fn quit(exit_code: i32) {
 }
 
 /// Stop the simulation
-pub fn break_simulation<S: AsRef<str>>(msg: S) -> Result<()> {
+pub fn break_simulation<S>(msg: S) -> Result<()>
+where
+    S: AsRef<str>,
+{
     unsafe { SIM_break_simulation(raw_cstr(msg.as_ref())?) };
     Ok(())
 }

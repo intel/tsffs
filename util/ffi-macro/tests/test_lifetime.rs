@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 #![allow(clippy::new_without_default)]
 
 use anyhow::Result;

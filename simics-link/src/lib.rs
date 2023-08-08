@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! Standalone simics linking functionality. This copies from the `simics` crate and should be updated
 //! if the linking strategy there changes.
 
@@ -22,7 +25,6 @@ use std::{
     process::{Command, Stdio},
     str::FromStr,
 };
-use tracing::error;
 use version_tools::VersionConstraint;
 use versions::Versioning;
 use walkdir::WalkDir;
@@ -59,8 +61,12 @@ impl From<PublicPackageNumber> for i64 {
     }
 }
 
-pub fn parse_packageinfo<P: AsRef<Path>>(package_path: P) -> Result<Package> {
+pub fn parse_packageinfo<P>(package_path: P) -> Result<Package>
+where
+    P: AsRef<Path>,
+{
     let package_path = package_path.as_ref().to_path_buf();
+    eprintln!("Parsing package info from {}", package_path.display());
 
     if !package_path.is_dir() {
         bail!(
@@ -130,20 +136,26 @@ pub fn parse_packageinfo<P: AsRef<Path>>(package_path: P) -> Result<Package> {
 /// Get all the package information of all packages in the `simics_home` installation directory as
 /// a mapping between the package number and a nested mapping of package version to the package
 /// info for the package
-pub fn packages<P: AsRef<Path>>(
-    home: P,
-) -> Result<HashMap<PackageNumber, HashMap<PackageVersion, Package>>> {
+pub fn packages<P>(home: P) -> Result<HashMap<PackageNumber, HashMap<PackageVersion, Package>>>
+where
+    P: AsRef<Path>,
+{
+    eprintln!(
+        "Parsing packages from home directory {}",
+        home.as_ref().display()
+    );
+
     let infos: Vec<Package> = read_dir(&home)?
         .filter_map(|home_dir_entry| {
             home_dir_entry
-                .map_err(|e| error!("Could not read directory entry: {}", e))
+                .map_err(|e| eprintln!("Could not read directory entry: {}", e))
                 .ok()
         })
         .filter_map(|home_dir_entry| {
             let package_path = home_dir_entry.path();
             parse_packageinfo(&package_path)
                 .map_err(|e| {
-                    error!(
+                    eprintln!(
                         "Error parsing package info from package at {}: {}",
                         package_path.display(),
                         e
@@ -362,6 +374,8 @@ impl FromStr for Package {
             }
         });
 
+        eprintln!("Parsed package manifest: {:?}", package);
+
         Ok(package)
     }
 }
@@ -385,18 +399,29 @@ fn simics_home() -> Result<PathBuf> {
 }
 
 /// Find the latest version of the Simics Base package with a particular constraint.
-pub fn package_version<P: AsRef<Path>>(
+pub fn package_version<P>(
     simics_home: P,
     package_number: PackageNumber,
     version_constraint: VersionConstraint,
-) -> Result<Package> {
-    let infos = packages(simics_home)?[&package_number].clone();
+) -> Result<Package>
+where
+    P: AsRef<Path>,
+{
+    let infos = packages(simics_home.as_ref())?[&package_number].clone();
     let version = infos
         .keys()
         .filter_map(|k| Versioning::new(k))
         .filter(|v| version_constraint.matches(v))
         .max()
-        .ok_or_else(|| anyhow!("No matching version"))?;
+        .ok_or_else(|| {
+            anyhow!(
+                "No simics base package number {} matching version {:?} in {}. Package infos found: {:?}",
+                package_number,
+                version_constraint,
+                simics_home.as_ref().display(),
+                infos,
+            )
+        })?;
 
     Ok(infos
         .get(&version.to_string())
@@ -406,10 +431,11 @@ pub fn package_version<P: AsRef<Path>>(
 
 /// Locate a file recursively using a regex pattern in the simics base directory. If there are
 /// multiple occurrences of a filename, it is undefined which will be returned.
-pub fn find_file_in_dir<P: AsRef<Path>, S: AsRef<str>>(
-    simics_base_dir: P,
-    file_name_pattern: S,
-) -> Result<PathBuf> {
+pub fn find_file_in_dir<P, S>(simics_base_dir: P, file_name_pattern: S) -> Result<PathBuf>
+where
+    P: AsRef<Path>,
+    S: AsRef<str>,
+{
     let file_name_regex = Regex::new(file_name_pattern.as_ref())?;
     let found_file = WalkDir::new(&simics_base_dir)
         .into_iter()
@@ -450,7 +476,10 @@ pub fn find_file_in_dir<P: AsRef<Path>, S: AsRef<str>>(
 }
 
 /// Emit cargo directives to link to SIMICS given a particular version constraint
-pub fn link_simics_linux<S: AsRef<str>>(version_constraint: S) -> Result<()> {
+pub fn link_simics_linux<S>(version_constraint: S) -> Result<()>
+where
+    S: AsRef<str>,
+{
     let simics_home_dir = simics_home()?;
 
     let simics_base_info = package_version(
@@ -460,14 +489,14 @@ pub fn link_simics_linux<S: AsRef<str>>(version_constraint: S) -> Result<()> {
     )?;
     let simics_base_version = simics_base_info.version.clone();
     let simics_base_dir = simics_base_info.path;
-    println!(
+    eprintln!(
         "Found simics base for version '{}' in {}",
         version_constraint.as_ref(),
         simics_base_dir.display()
     );
 
     let simics_common_lib = find_file_in_dir(&simics_base_dir, "libsimics-common.so")?;
-    println!(
+    eprintln!(
         "Found simics common library: {}",
         simics_common_lib.display()
     );
@@ -582,16 +611,16 @@ pub fn link_simics_linux<S: AsRef<str>>(version_constraint: S) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "6.0.166")]
+    #[cfg(feature = "6.0.168")]
     use anyhow::Result;
 
-    #[cfg(feature = "6.0.166")]
+    #[cfg(feature = "6.0.168")]
     use crate::link_simics_linux;
 
-    #[cfg(feature = "6.0.166")]
+    #[cfg(feature = "6.0.168")]
     #[test]
     #[cfg_attr(miri, ignore)]
     fn test_link_simics_linux() -> Result<()> {
-        link_simics_linux("6.0.166")
+        link_simics_linux("6.0.168")
     }
 }

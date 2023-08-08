@@ -1,3 +1,7 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
+pub mod callbacks;
 pub mod control;
 pub mod embed;
 pub mod hap_consumer;
@@ -8,6 +12,7 @@ pub mod python;
 pub mod rev_exec;
 pub mod script;
 
+pub use callbacks::*;
 pub use control::*;
 pub use embed::*;
 pub use hap_consumer::*;

@@ -1,11 +1,14 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 use self::components::{detector::Detector, tracer::Tracer};
 use crate::{
     config::OutputConfig,
-    magic::Magic,
+    magic::{Magic, MAGIC_ARG0_REG_X86_64, MAGIC_ARG1_REG_X86_64},
     messages::{client::ClientMessage, module::ModuleMessage},
     processor::Processor,
     state::ModuleStateMachine,
-    stops::StopReason,
+    stops::{StopError, StopReason},
     traits::{Interface, State},
     CLASS_NAME,
 };
@@ -15,9 +18,10 @@ use tracing::{debug, error, info, trace};
 
 use simics_api::{
     attr_data, attr_object_or_nil_from_ptr, break_simulation, clear_exception,
-    continue_simulation_alone, discard_future, get_processor_number, hap_add_callback, last_error,
-    quit, register_interface, restore_micro_checkpoint, save_micro_checkpoint, AttrValue,
-    ConfObject, Hap, HapCallback, MicroCheckpointFlags, SimException,
+    continue_simulation_alone, discard_future, free_attribute, get_processor_number,
+    hap_add_callback, init_command_line, last_error, main_loop, quit, register_interface,
+    restore_micro_checkpoint, run_alone, run_command, save_micro_checkpoint, AttrValue, ConfObject,
+    Hap, HapCallback, MicroCheckpointFlags, SimException,
 };
 use simics_api::{SimicsClassCreate, SimicsModule};
 use simics_api_macro::module;
@@ -43,6 +47,12 @@ pub struct Module {
     buffer_address: u64,
     buffer_size: u64,
     last_start_processor_number: i32,
+    /// Whether we are running in repro mode, which means once we hit a stop harness we will
+    /// drop into the CLI
+    repro_mode: bool,
+    /// Set to true when running in repro mode once we have reached the stop harness. This is
+    /// used to disable the normal fuzzing procedures when reproducing issues.
+    repro_started: bool,
 }
 
 impl SimicsModule for Module {
@@ -66,6 +76,8 @@ impl SimicsModule for Module {
             0,
             0,
             -1,
+            false,
+            false,
         ))
     }
 }
@@ -112,6 +124,11 @@ impl Module {
         output_config = self
             .tracer
             .on_initialize(self_ptr, &mut input_config, output_config)?;
+
+        if input_config.repro {
+            info!("Initializing module in repro mode. Stopping on first fault.");
+            self.repro_mode = true;
+        }
 
         info!("Sending initialized message");
 
@@ -184,16 +201,30 @@ impl Module {
             // Write the testcase to the guest's memory
             processor.write_bytes(self.buffer_address, &input)?;
             // Write the testcase size back to rdi
-            processor.set_reg_value("rdi", input.len() as u64)?;
+            processor.set_reg_value(MAGIC_ARG1_REG_X86_64, input.len() as u64)?;
         }
 
         // Run the simulation until the magic start instruction, where we will receive a stop
         // callback
         self.stop_reason = None;
 
+        // If we are in repro mode, we create a bookmark here, after writing the buffer
+        if self.repro_mode {
+            free_attribute(run_command("set-bookmark start")?);
+        }
+
         continue_simulation_alone();
 
         Ok(())
+    }
+
+    fn repro(&mut self) {
+        info!("Entering repro mode, starting SIMICS CLI");
+        self.repro_started = true;
+        run_alone(|| {
+            init_command_line();
+            main_loop();
+        });
     }
 }
 
@@ -216,19 +247,27 @@ impl Module {
         // Error string is always NULL
         _error_string: *mut std::ffi::c_char,
     ) -> Result<()> {
-        debug!(
-            "Module got stopped simulation with reason {:?}",
-            self.stop_reason
-        );
-
-        let reason = if let Some(detector_reason) = &self.detector.stop_reason {
-            detector_reason
-        } else if let Some(reason) = &self.stop_reason {
-            reason
-        } else {
-            bail!("Stopped without a reason - this should be impossible");
+        if self.repro_mode && !self.repro_started {
+            info!("Simulation stopped in repro mode before repro started");
+        } else if self.repro_started {
+            // We bail out here, we still want the detector and tracer to be able to do their
+            // thing (the detector needs to cancel its timeout and so forth)
+            info!("Simulation stopped during repro");
+            return Ok(());
         }
-        .clone();
+
+        let reason =
+            if let Some(detector_reason) = &self.detector.stop_reason {
+                detector_reason.clone()
+            } else if let Some(reason) = &self.stop_reason {
+                reason.clone()
+            } else {
+                StopReason::Error((StopError::Other(
+                "Stop occurred without a reason -- this probably means a SIMICS error occurred"
+                    .into()), 0))
+            };
+
+        debug!("Module got stopped simulation with reason {:?}", reason);
 
         // TODO: bruh
         let self_ptr = self as *mut Self as *mut ConfObject;
@@ -247,8 +286,10 @@ impl Module {
                                     self.processors.get_mut(&processor_number).with_context(
                                         || format!("No processor number {}", processor_number),
                                     )?;
-                                self.buffer_address = processor.get_reg_value("rsi")?;
-                                self.buffer_size = processor.get_reg_value("rdi")?;
+                                self.buffer_address =
+                                    processor.get_reg_value(MAGIC_ARG0_REG_X86_64)?;
+                                self.buffer_size =
+                                    processor.get_reg_value(MAGIC_ARG1_REG_X86_64)?;
                             }
                             save_micro_checkpoint(
                                 "origin",
@@ -277,7 +318,7 @@ impl Module {
                             .processors
                             .get_mut(&processor_number)
                             .with_context(|| format!("No processor number {}", processor_number))?;
-                        let stop_value = processor.get_reg_value("rsi")?;
+                        let stop_value = processor.get_reg_value(MAGIC_ARG0_REG_X86_64)?;
                         let magic = Magic::Stop((code, Some(stop_value)));
                         self.send_msg(ModuleMessage::Stopped(StopReason::Magic((
                             magic,
@@ -294,23 +335,47 @@ impl Module {
                 self.reset_and_run(processor_number)?;
             }
             StopReason::Crash((fault, processor_number)) => {
-                self.send_msg(ModuleMessage::Stopped(StopReason::Crash((
-                    fault,
-                    processor_number,
-                ))))?;
-                self.reset_and_run(processor_number)?;
+                if self.repro_mode {
+                    self.repro();
+                } else {
+                    self.send_msg(ModuleMessage::Stopped(StopReason::Crash((
+                        fault,
+                        processor_number,
+                    ))))?;
+                    self.reset_and_run(processor_number)?;
+                }
             }
             StopReason::TimeOut => {
-                self.send_msg(ModuleMessage::Stopped(StopReason::TimeOut))?;
-                let processor_number = self.last_start_processor_number;
-                self.reset_and_run(processor_number)?;
+                if self.repro_mode {
+                    self.repro();
+                } else {
+                    self.send_msg(ModuleMessage::Stopped(StopReason::TimeOut))?;
+                    let processor_number = self.last_start_processor_number;
+                    self.reset_and_run(processor_number)?;
+                }
+            }
+            StopReason::Breakpoint(breakpoint_number) => {
+                if self.repro_mode {
+                    self.repro();
+                } else {
+                    self.send_msg(ModuleMessage::Stopped(StopReason::Breakpoint(
+                        breakpoint_number,
+                    )))?;
+                    let processor_number = self.last_start_processor_number;
+                    self.reset_and_run(processor_number)?;
+                }
             }
             StopReason::Error((_error, _processor_number)) => {
-                // TODO: Error reporting
-                let self_ptr = self as *mut Self as *mut ConfObject;
-                self.detector.on_exit(self_ptr)?;
-                self.tracer.on_exit(self_ptr)?;
-                quit(1);
+                if self.repro_mode {
+                    self.repro();
+                } else {
+                    // TODO: Error reporting
+                    error!("Simulation error! Exiting");
+                    let self_ptr = self as *mut Self as *mut ConfObject;
+                    self.detector.on_exit(self_ptr)?;
+                    self.tracer.on_exit(self_ptr)?;
+                    quit(1);
+                }
             }
         }
 
@@ -323,6 +388,10 @@ impl Module {
         trigger_obj: *mut ConfObject,
         parameter: i64,
     ) -> Result<()> {
+        if self.repro_started {
+            return Ok(());
+        }
+
         trace!("Got Magic instruction callback");
         // The trigger obj is a CPU
         let processor_number = get_processor_number(trigger_obj);
@@ -338,6 +407,7 @@ impl Module {
 
     #[params(!slf: *mut simics_api::ConfObject, ...)]
     pub fn on_add_fault(&mut self, fault: i64) -> Result<()> {
+        info!("Module adding fault to watched set: {}", fault);
         self.detector.on_add_fault(fault)?;
         self.tracer.on_add_fault(fault)?;
 
@@ -364,25 +434,10 @@ impl Module {
         Ok(())
     }
 
-    #[params(!slf: *mut simics_api::ConfObject, ...)]
-    pub fn on_start(&mut self, run: bool) -> Result<()> {
-        info!("Received start signal, initializing module state.");
+    #[params(!slf: *mut simics_api::ConfObject)]
+    pub fn on_init(&mut self) -> Result<()> {
+        info!("Received init signal, initializing module state.");
         self.initialize()?;
-
-        // Trigger anything that needs to happen before we start up (run for the first time)
-        self.detector.on_start()?;
-        self.tracer.on_start()?;
-
-        // Run -- we will get a callback on the Magic::Start instruction
-        // trace!("Running until first `Magic::Start`");
-
-        if run {
-            info!("Starting simulation");
-            continue_simulation_alone();
-        } else {
-            info!("Module ready, but simulation will not start automatically. Continue or run to the harness and fuzzing will begin.");
-        }
-
         Ok(())
     }
 
@@ -419,25 +474,68 @@ impl Module {
             }
         }
     }
+
+    #[params(!slf: *mut simics_api::ConfObject, ...)]
+    pub fn on_set_breakpoints_are_faults(&mut self, breakpoints_are_faults: bool) -> Result<()> {
+        self.detector
+            .on_set_breakpoints_are_faults(breakpoints_are_faults)?;
+        self.tracer
+            .on_set_breakpoints_are_faults(breakpoints_are_faults)?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 /// This is the rust definition for the tffs_module_interface_t declaration in the stubs, which
 /// are used to generate the interface module. This struct definition must match that one exactly
+///
+/// # Examples
+///
+/// Assuming your model is configured, and by resuming the simulation the target The
+/// following SIMICS code (either in a SIMICS script, or in an equivalent Python script)
+/// is typically sufficient to start the fuzzer immediately.
+///
+/// ```simics
+/// stop
+/// @conf.tsffs_module.iface.tsffs_module.init()
+/// @conf.tsffs_module.iface.tsffs_module.add_processor(SIM_get_object(simenv.system).mb.cpu0.core[0][0])
+/// # Add triple fault (special, -1 code because it has no interrupt number)
+/// @conf.tsffs_module.iface.tsffs_module.add_fault(-1)
+/// # Add general protection fault (interrupt #13)
+/// @conf.tsffs_module.iface.tsffs_module.add_fault(13)
+/// $con.input "target.efi\n"
+/// # This continue is optional, the fuzzer will resume execution for you if you do not resume
+/// # it at the end of your script
+/// continue
+/// ```
 pub struct ModuleInterface {
-    pub start: extern "C" fn(obj: *mut ConfObject, run: bool),
+    /// Start the fuzzer. If `run` is true, this call will not return and the SIMICS main loop
+    /// will be entered. If you need to run additional scripting commands after signaling the
+    /// fuzzer to start, pass `False` instead, and later call either `SIM_continue()` or `run` for
+    /// Python and SIMICS scripts respectively.
+    pub init: extern "C" fn(obj: *mut ConfObject),
+    /// Inform the module of a processor that should be traced and listened to for timeout and
+    /// crash objectives. You must add exactly one processor.
     pub add_processor: extern "C" fn(obj: *mut ConfObject, processor: *mut AttrValue),
+    /// Add a fault to the set of faults listened to by the fuzzer. The default set of faults is
+    /// no faults, although the fuzzer frontend being used typically specifies a limited set.
     pub add_fault: extern "C" fn(obj: *mut ConfObject, fault: i64),
+    /// Add channels to the module. This API should not be called by users from Python and is
+    /// instead used by the fuzzer frontend to initiate communication with the module.
     pub add_channels: extern "C" fn(obj: *mut ConfObject, tx: *mut AttrValue, rx: *mut AttrValue),
+    /// Set whether breakpoints are treated as faults
+    pub set_breakpoints_are_faults:
+        extern "C" fn(obj: *mut ConfObject, breakpoints_are_faults: bool),
 }
 
 impl Default for ModuleInterface {
     fn default() -> Self {
         Self {
-            start: module_callbacks::on_start,
+            init: module_callbacks::on_init,
             add_processor: module_callbacks::on_add_processor,
             add_fault: module_callbacks::on_add_fault,
             add_channels: module_callbacks::on_add_channels,
+            set_breakpoints_are_faults: module_callbacks::on_set_breakpoints_are_faults,
         }
     }
 }

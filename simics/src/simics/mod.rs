@@ -1,7 +1,13 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
+//! High level control of SIMICS running inside the current process
+
 use anyhow::{bail, Result};
 use simics_api::{
-    clear_exception, free_attribute, init_command_line, init_environment, init_simulator,
-    last_error, main_loop, run_command, run_python, source_python, InitArgs, SimException,
+    clear_exception, continue_simulation_alone, free_attribute, init_command_line,
+    init_environment, init_simulator, last_error, main_loop, run_command, run_python,
+    source_python, InitArgs, SimException,
 };
 use std::{env::current_exe, path::Path};
 use tracing::info;
@@ -20,6 +26,7 @@ impl Simics {
     }
 
     pub fn run() -> ! {
+        continue_simulation_alone();
         main_loop()
     }
 
@@ -28,19 +35,28 @@ impl Simics {
         main_loop()
     }
 
-    pub fn command<S: AsRef<str>>(command: S) -> Result<()> {
+    pub fn command<S>(command: S) -> Result<()>
+    where
+        S: AsRef<str>,
+    {
         info!("Running SIMICS command {}", command.as_ref());
         free_attribute(run_command(command)?);
 
         Ok(())
     }
 
-    pub fn python<P: AsRef<Path>>(file: P) -> Result<()> {
+    pub fn python<P>(file: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
         info!("Running SIMICS Python file {}", file.as_ref().display());
         source_python(file)
     }
 
-    pub fn config<P: AsRef<Path>>(file: P) -> Result<()> {
+    pub fn config<P>(file: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
         info!("Running SIMICS config {}", file.as_ref().display());
 
         // TODO: Figure out the C apis for doing this

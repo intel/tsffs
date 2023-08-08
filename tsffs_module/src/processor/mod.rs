@@ -1,13 +1,18 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! Implements generic processor operations on the simulated CPU or CPUs
 use anyhow::{anyhow, bail, Error, Result};
 
+use libafl::prelude::CmpValues;
+use num_traits::ToBytes;
 use simics_api::{
     attr_string, get_attribute, read_byte, write_byte, AttrValue, CachedInstructionHandle,
     ConfObject, CpuCachedInstruction, CpuInstructionQuery, CpuInstrumentationSubscribe, Cycle,
     InstructionHandle, IntRegister, ProcessorInfoV2,
 };
 use std::{collections::HashMap, ffi::c_void, mem::size_of};
-use tracing::trace;
+use tracing::{error, trace};
 
 pub(crate) mod disassembler;
 
@@ -50,7 +55,7 @@ impl TryFrom<&CmpExpr> for CmpValue {
 #[derive(Default, Debug)]
 pub struct TraceResult {
     pub edge: Option<u64>,
-    pub cmp: Option<Vec<CmpValue>>,
+    pub cmp: Option<(u64, CmpValues)>,
 }
 
 impl TraceResult {
@@ -61,10 +66,10 @@ impl TraceResult {
         }
     }
 
-    fn from_cmp_values(values: Vec<CmpValue>) -> Self {
+    fn from_pc_and_cmp_value(pc: u64, value: CmpValues) -> Self {
         Self {
             edge: None,
-            cmp: Some(values),
+            cmp: Some((pc, value)),
         }
     }
 }
@@ -212,24 +217,102 @@ impl Processor {
 
     /// This expression can only be nested approximately 4 deep, so we do this
     /// reduction recursively
+    ///
+    /// We don't implement this as try_from because we need to read mem and regs
     pub fn reduce(&mut self, expr: &CmpExpr) -> Result<CmpValue> {
+        trace!("Reducing {:?}", expr);
         match expr {
-            CmpExpr::Deref(e) => {
-                let v = self.reduce(e)?;
+            CmpExpr::Deref((expr, width)) => {
+                let v = self.reduce(expr)?;
 
                 match v {
                     CmpValue::U64(a) => {
-                        let bytes: [u8; 8] = self
-                            .read_bytes(a, size_of::<u64>())?
-                            .try_into()
-                            .map_err(|_| anyhow!("Error converting u64 to bytes"))?;
-                        Ok(CmpValue::U64(u64::from_le_bytes(bytes)))
+                        let casted = match width {
+                            Some(1) => CmpValue::U8(u8::from_le_bytes(
+                                self.read_bytes(a, size_of::<u8>())
+                                    .map_err(|e| {
+                                        error!("Error reading bytes from {:#x}: {}", a, e);
+                                        anyhow!("Error reading bytes from {:#x}: {}", a, e)
+                                    })?
+                                    .try_into()
+                                    .map_err(|v| {
+                                        error!("Error converting u64 vec {:?} to byte array", v);
+                                        anyhow!("Error converting u64 vec {:?} to byte array", v)
+                                    })?,
+                            )),
+                            Some(2) => CmpValue::U16(u16::from_le_bytes(
+                                self.read_bytes(a, size_of::<u16>())
+                                    .map_err(|e| {
+                                        error!("Error reading bytes from {:#x}: {}", a, e);
+                                        anyhow!("Error reading bytes from {:#x}: {}", a, e)
+                                    })?
+                                    .try_into()
+                                    .map_err(|v| {
+                                        error!("Error converting u64 vec {:?} to byte array", v);
+                                        anyhow!("Error converting u64 vec {:?} to byte array", v)
+                                    })?,
+                            )),
+                            Some(4) => CmpValue::U32(u32::from_le_bytes(
+                                self.read_bytes(a, size_of::<u32>())
+                                    .map_err(|e| {
+                                        error!("Error reading bytes from {:#x}: {}", a, e);
+                                        anyhow!("Error reading bytes from {:#x}: {}", a, e)
+                                    })?
+                                    .try_into()
+                                    .map_err(|v| {
+                                        error!("Error converting u64 vec {:?} to byte array", v);
+                                        anyhow!("Error converting u64 vec {:?} to byte array", v)
+                                    })?,
+                            )),
+                            Some(8) => CmpValue::U64(u64::from_le_bytes(
+                                self.read_bytes(a, size_of::<u64>())
+                                    .map_err(|e| {
+                                        error!("Error reading bytes from {:#x}: {}", a, e);
+                                        anyhow!("Error reading bytes from {:#x}: {}", a, e)
+                                    })?
+                                    .try_into()
+                                    .map_err(|v| {
+                                        error!("Error converting u64 vec {:?} to byte array", v);
+                                        anyhow!("Error converting u64 vec {:?} to byte array", v)
+                                    })?,
+                            )),
+                            _ => bail!("Can't cast to non-power-of-2 width {:?}", width),
+                        };
+                        Ok(casted)
                     }
                     _ => bail!("Can't dereference non-address"),
                 }
             }
-            CmpExpr::Reg(r) => Ok(CmpValue::U64(self.get_reg_value(r)?)),
-            CmpExpr::Mul(l, r) => {
+            CmpExpr::Reg((name, width)) => {
+                let value = self.get_reg_value(name).map_err(|e| {
+                    error!("Couldn't read register value for register {}: {}", name, e);
+                    anyhow!("Couldn't read register value for register {}: {}", name, e)
+                })?;
+
+                let casted = match width {
+                    1 => CmpValue::U8(value.to_le_bytes()[0]),
+                    2 => CmpValue::U16(u16::from_le_bytes(
+                        value.to_le_bytes()[..size_of::<u16>()]
+                            .try_into()
+                            .map_err(|e| {
+                                error!("Error converting to u32 bytes: {}", e);
+                                anyhow!("Error converting to u32 bytes: {}", e)
+                            })?,
+                    )),
+                    4 => CmpValue::U32(u32::from_le_bytes(
+                        value.to_le_bytes()[..size_of::<u32>()]
+                            .try_into()
+                            .map_err(|e| {
+                                error!("Error converting to u32 bytes: {}", e);
+                                anyhow!("Error converting to u32 bytes: {}", e)
+                            })?,
+                    )),
+                    8 => CmpValue::U64(u64::from_le_bytes(value.to_le_bytes())),
+                    _ => bail!("Can't cast to non-power-of-2 width {}", width),
+                };
+                Ok(casted)
+            }
+            CmpExpr::Mul((l, r)) => {
                 let lv = self.reduce(l)?;
                 let rv = self.reduce(r)?;
                 match (lv, rv) {
@@ -244,7 +327,7 @@ impl Processor {
                     _ => bail!("Can't multiply non-values"),
                 }
             }
-            CmpExpr::Add(l, r) => {
+            CmpExpr::Add((l, r)) => {
                 let lv = self.reduce(l)?;
                 let rv = self.reduce(r)?;
                 match (lv, rv) {
@@ -269,9 +352,16 @@ impl Processor {
             | CmpExpr::I64(_) => CmpValue::try_from(expr),
             CmpExpr::Addr(a) => {
                 let bytes: [u8; 8] = self
-                    .read_bytes(*a, size_of::<u64>())?
+                    .read_bytes(*a, size_of::<u64>())
+                    .map_err(|e| {
+                        error!("Error reading bytes from {:#x}: {}", a, e);
+                        anyhow!("Error reading bytes from {:#x}: {}", a, e)
+                    })?
                     .try_into()
-                    .map_err(|_| anyhow!("Error converting u64 to bytes"))?;
+                    .map_err(|v| {
+                        error!("Error converting u64 vec {:?} to byte array", v);
+                        anyhow!("Error converting u64 vec {:?} to byte array", v)
+                    })?;
                 Ok(CmpValue::U64(u64::from_le_bytes(bytes)))
             }
         }
@@ -298,15 +388,60 @@ impl Processor {
                     bail!("No ProcessorInfoV2 interface registered in processor. Try building with `try_with_processor_info_v2`");
                 }
             } else if self.disassembler.last_was_cmp()? {
+                let pc = if let Some(processor_info_v2) = self.processor_info_v2.as_mut() {
+                    processor_info_v2.get_program_counter(self.cpu)?
+                } else {
+                    bail!("No ProcessorInfoV2 interface registered in processor. Try building with `try_with_processor_info_v2`");
+                };
+
                 let mut cmp_values = Vec::new();
+
                 if let Ok(cmp) = self.disassembler.cmp() {
                     for expr in &cmp {
-                        if let Ok(val) = self.reduce(expr) {
-                            cmp_values.push(val);
+                        match self.reduce(expr) {
+                            Ok(value) => cmp_values.push(value),
+                            Err(e) => {
+                                error!("Error reducing expression {:?}: {}", expr, e);
+                            }
                         }
                     }
                 }
-                Ok(TraceResult::from_cmp_values(cmp_values))
+
+                trace!("Got cmp values: {:?}", cmp_values);
+
+                let cmp_value = if let (Some(l), Some(r)) = (cmp_values.get(0), cmp_values.get(1)) {
+                    match (l, r) {
+                        (CmpValue::U8(l), CmpValue::U8(r)) => Some(CmpValues::U8((*l, *r))),
+                        (CmpValue::I8(l), CmpValue::I8(r)) => Some(CmpValues::U8((
+                            u8::from_le_bytes(l.to_le_bytes()),
+                            u8::from_le_bytes(r.to_le_bytes()),
+                        ))),
+                        (CmpValue::U16(l), CmpValue::U16(r)) => Some(CmpValues::U16((*l, *r))),
+                        (CmpValue::I16(l), CmpValue::I16(r)) => Some(CmpValues::U16((
+                            u16::from_le_bytes(l.to_le_bytes()),
+                            u16::from_le_bytes(r.to_le_bytes()),
+                        ))),
+                        (CmpValue::U32(l), CmpValue::U32(r)) => Some(CmpValues::U32((*l, *r))),
+                        (CmpValue::I32(l), CmpValue::I32(r)) => Some(CmpValues::U32((
+                            u32::from_le_bytes(l.to_le_bytes()),
+                            u32::from_le_bytes(r.to_le_bytes()),
+                        ))),
+                        (CmpValue::U64(l), CmpValue::U64(r)) => Some(CmpValues::U64((*l, *r))),
+                        (CmpValue::I64(l), CmpValue::I64(r)) => Some(CmpValues::U64((
+                            u64::from_le_bytes(l.to_le_bytes()),
+                            u64::from_le_bytes(r.to_le_bytes()),
+                        ))),
+                        (CmpValue::Expr(_), CmpValue::Expr(_)) => None,
+                        _ => None,
+                    }
+                } else {
+                    None
+                };
+
+                Ok(TraceResult::from_pc_and_cmp_value(
+                    pc,
+                    cmp_value.ok_or_else(|| anyhow!("No cmp value available"))?,
+                ))
             } else {
                 Ok(TraceResult::default())
             }
@@ -315,7 +450,10 @@ impl Processor {
         }
     }
 
-    pub fn get_reg_value<S: AsRef<str>>(&mut self, reg: S) -> Result<u64> {
+    pub fn get_reg_value<S>(&mut self, reg: S) -> Result<u64>
+    where
+        S: AsRef<str>,
+    {
         let int_register = if let Some(int_register) = self.int_register.as_ref() {
             int_register
         } else {
@@ -334,7 +472,10 @@ impl Processor {
         int_register.read(self.cpu, reg_number)
     }
 
-    pub fn set_reg_value<S: AsRef<str>>(&mut self, reg: S, val: u64) -> Result<()> {
+    pub fn set_reg_value<S>(&mut self, reg: S, val: u64) -> Result<()>
+    where
+        S: AsRef<str>,
+    {
         let int_register = if let Some(int_register) = self.int_register.as_ref() {
             int_register
         } else {

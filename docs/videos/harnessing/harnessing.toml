@@ -1,0 +1,194 @@
+# Copyright (C) 2023 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+secrets = ["USERNAME", "PASSWORD", "GH_TOKEN"]
+secrets_file = "secrets.toml"
+wpm = 130
+keep_open = true
+
+[kitty]
+font_size = 28.0
+allow_remote_control = "yes"
+
+[[command]]
+# Use for real demo:
+# docker build -q -t demo-training-harnessing-tsffs --build-arg "USERNAME=$USERNAME" --build-arg "PASSWORD=$PASSWORD" --build-arg "GH_TOKEN=$GH_TOKEN" .
+command = """
+docker build -q -t demo-training-harnessing-tsffs --build-context "applications.security.fuzzing.confuse=../../../" --build-arg "USERNAME=$USERNAME" --build-arg "PASSWORD=$PASSWORD" --build-arg "GH_TOKEN=$GH_TOKEN" .
+docker run --rm --name demo-training-harnessing-tsffs -it demo-training-harnessing-tsffs bash
+apt-get -y update
+clear
+"""
+prompt = true
+immediate = true
+
+[[command]]
+script_pre = """
+Welcome back to our series on TSFFS: Target software fuzzer for SIMICS.
+
+In this video, I'll be walking through how to build and harness a UEFI application
+target for fuzzing.
+
+Harnessing for fuzzing essentially means wrapping some part of your target software in
+an interface that consumes and uses data provided by the fuzzer. Here we'll target some
+very simple code, but TSFFS doesn't impose any restrictions on what you can harness.
+
+We'll start off by installing our dependencies, clang and LLD, which we need to compile
+our application.
+
+I'm also going to install vim as my text editor, but you are more than welcome to use
+whatever you are most comfortable with -- nano, emacs et. cetera.
+
+Choosing software to fuzz and harness for fuzzing is more of an art than a
+science, and there are more complete videos and documentation on the subject,
+but there are a few good guidelines to keep in mind:
+
+- First, look for code that is internally complex but with a simple API
+- Look for code that consumes untrusted data
+- Finally, trust your intuition: if something seems like it should be fuzzed,
+  it probably should!
+"""
+prompt = true
+command = "apt-get -y install clang lld vim\n"
+
+[[command]]
+script_pre = """
+With our dependencies installed, we'll go into our source directory. I'm going to use
+the example directory provided in the repository to avoid live-coding the UEFI
+application code.
+"""
+command = "cd docs/videos/harnessing/src/\n"
+prompt = true
+
+[[command]]
+script_pre = """
+Now let's take a look at our un-harnessed target.
+"""
+command = "vim target.c\n"
+script_post = """
+Up top, we have definitions of the subset of UEFI-specified structures we need
+to define in order to run this program. 
+
+If you're curious about these structures UEFI.org has excellent documentation of all of them.
+"""
+prompt = true
+
+[[command]]
+command = "G"
+script_post = """
+Our main function declares a buffer and a variable with the size of the buffer,
+then prints out the contents of the buffer as hex. Once it has printed out the buffer,
+it checks the first character and takes one of four actions depending on what the first
+character is:
+
+- If it's 'a', we execute an invalid instruction
+- If it's 'b', we dereference an unmapped pointer, which causes a page fault
+- If it's 'c', we print out another message
+- And finally if it's 'd', we write to a static buffer called off_limits
+
+This might seem strange, because as the code is now there is no input, which
+means we would end up printing out and acting upon uninitialized memory. That's
+true until we harness this code for the fuzzer.
+
+Once we've harnessed this code, each iteration of the the fuzzing loop the fuzzer will
+provide a new testcase to the target software by writing it directly into memory in the
+buffer we specify. This means the buffer won't contain uninitialized memory while we're
+fuzzing, it will actually contain our test case.
+"""
+prompt = true
+
+[[command]]
+script_pre = """
+We'll go ahead and close vim, then we'll make a copy of this target file that we'll add
+our harness into, and open the copy.
+"""
+command = ":x\ncp target.c target-harnessed.c\nvim target-harnessed.c\n"
+prompt = true
+
+[[command]]
+script_pre = """
+The first step for harnessing is to include the header file we provide that defines the
+start and end harness code for each architecture. The file is in the include crate in
+the repository, but we'll use a command line flag to add that directory to the include
+search path later, so we'll just include it as tsffs.h.
+"""
+command = 'i#include \"tsffs.h\"\n\e'
+prompt = true
+
+[[command]]
+script_pre = """
+The header file defines two macros for us: HARNESS_START and HARNESS_STOP.
+
+We'll go ahead and add the HARNESS_START macro first. It takes a pointer to a buffer
+and a pointer to the size of the buffer.
+
+When we're executing the target software and HARNESS_START executes, it executes a magic
+instruction that passes the buffer pointer and size pointer to the fuzzer.
+
+Then each fuzzing iteration, the fuzzer will fill the buffer with test case data, which
+we can go ahead and use however we need to depending on our application.
+
+The fuzzer will save the initial size as a maximum size, so it will never write more
+than that amount of data to the buffer, but keep in mind it might write less.
+
+
+We'll go ahead and call the start macro, take note that I'm just duplicating the buffer
+variable as a pointer type so clang doesn't complain.
+"""
+command = ':54\noint16_t *buffer_ptr = &buffer[0];\nHARNESS_START(&buffer_ptr, &size);\n\e'
+prompt = true
+
+[[command]]
+script_pre = """
+Now we'll go ahead and add our stop macro as well. This one doesn't take any arguments,
+because it just signals that we should reset to our snapshot which was taken at our
+start harness.
+"""
+command = ':92\no HARNESS_STOP();\n\e'
+prompt = true
+
+[[command]]
+script_pre = """
+Now that we have our harness in place, we'll go ahead and exit vim and move up to the
+source directory's parent.
+"""
+command = ":x\ncd ..\n"
+prompt = true
+
+[[command]]
+script_pre = """
+We're going to use clang to compile this UEFI application.
+
+We'll pass command line arguments specifying that we want to target x86_64 in COFF or PE
+format, which is what UEFI application binaries are, and then no stack protector, short
+wide characters, and no redzone are all required by the UEFI specification.
+
+We'll also pass the '-g' flag to emit debug info, the '-O0' flag to avoid any
+optimization (which you don't need in real usage, but we'll be looking at disassembly
+later so '-O0' makes that easier).
+
+Finally, we pass the '-I' flag to let clang find our 'tsffs.h' include file.
+"""
+command = "clang -target x86_64-pc-win32-coff -fno-stack-protector -fshort-wchar -mno-red-zone -g -O0 -I ../../../include/ -c -o rsrc/target.o src/target-harnessed.c\n"
+prompt = true
+
+
+[[command]]
+script_pre = """
+Next we'll link the target with lld.
+
+We'll pass command line arguments specifying we want our output aligned to 16-bit
+boundaries, to use the EFI Application subsystem, since that is what we're targeting. We
+also pass the '-dll' flag to specify the PE file format and '-nodefaultlib' to tell lld
+not to link libc or anything like that. Finally we'll pass '-entry' to tell the linker
+where callers should start executing our UEFI app.
+"""
+command = "lld-link -filealign:16 -subsystem:efi_application -dll -nodefaultlib -entry:UefiMain rsrc/target.o -out:rsrc/target.efi\n"
+prompt = true
+
+[[command]]
+script_pre = """
+You should end up with a target.efi file, and if so you're done harnessing your
+application!
+"""
+command = "ls -lah rsrc/target.efi\n"

@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! Definitions of various reasons the simulation can stop
 
 use serde::{Deserialize, Serialize};
@@ -8,6 +11,7 @@ use crate::{faults::Fault, magic::Magic};
 pub enum StopError {
     UnknownFault(i64),
     NonErrorFault(Fault),
+    Other(String),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -27,4 +31,7 @@ pub enum StopReason {
     TimeOut,
     /// An error occurred either during simulation or internally in the module
     Error((StopError, i32)),
+    /// A breakpoint was encountered, report its number (this can be used to determine why the
+    /// breakpoint is an error or some such thing)
+    Breakpoint(i64),
 }

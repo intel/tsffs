@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! Definitions of various reasons the simulation can stop
 
 use serde::{Deserialize, Serialize};

@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 extern "C" {
     /// Discard recorded future events and forget them
     pub fn CORE_discard_future();

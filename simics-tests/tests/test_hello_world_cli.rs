@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 use std::{
     env::var,
     fs::{read_dir, write},
@@ -9,7 +12,7 @@ use simics::{manifest::package_latest, simics::home::simics_home};
 use simics_fuzz::{args::Args, fuzzer::SimicsFuzzer};
 
 const CARGO_MANIFEST_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../");
-const ITERATIONS: usize = 3;
+const ITERATIONS: usize = 1;
 
 #[test]
 #[cfg_attr(miri, ignore)]

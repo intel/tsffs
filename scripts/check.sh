@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright (C) 2023 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 
 if ! command -v fd &>/dev/null; then
@@ -18,7 +21,7 @@ if ! command -v pylint &>/dev/null; then
 fi
 
 if ! command -v mypy &>/dev/null; then
-    echo "pylint must be installed! Install with 'python3 -m pip install pylint'"
+    echo "mypy must be installed! Install with 'python3 -m pip install mypy'"
     exit 1
 fi
 
@@ -37,11 +40,16 @@ if ! command -v markdownlint &>/dev/null; then
     exit 1
 fi
 
+if ! command -v docker &>/dev/null; then
+    echo "docker must be installed! Install from https://docs.docker.com/engine/install/"
+    exit 1
+fi
+
 echo "================="
 echo "Running clippy..."
 echo "================="
 
-cargo clippy --features=6.0.166
+cargo clippy --features=6.0.168
 
 echo "================="
 echo "Running flake8..."
@@ -62,6 +70,12 @@ echo "================="
 fd '.*\.py$' -x pylint {}
 
 echo "================="
+echo "Running clang-format"
+echo "================="
+
+fd '.*(\.h|\.c|\.cc|\.hh)$' -x clang-format --Werror --dry-run {}
+
+echo "================="
 echo "Running yamllint..."
 echo "================="
 
@@ -72,3 +86,15 @@ echo "Running markdownlint..."
 echo "================="
 
 fd '.*\.md$' -x markdownlint -c "${SCRIPT_DIR}/../.github/linters/.markdown-lint.yml" {}
+
+echo "================="
+echo "Running hadolint..."
+echo "================="
+
+fd 'Dockerfile.*$' -x bash -c "echo {}:; docker run --rm -v ${SCRIPT_DIR}/../.github/linters/.hadolint.yaml:/.config/hadolint.yaml -i hadolint/hadolint < {}"
+
+echo "================="
+echo "Running old name check..."
+echo "================="
+
+grep -rIi "confuse" "${SCRIPT_DIR}/.." 2>/dev/null | grep -iv "confused" | grep -v "applications.security.fuzzing.confuse" | grep -v "simics-api-sys/packages/"

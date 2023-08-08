@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 use crate::{
     args::{command::Command, Args},
     modules::tsffs::{ModuleInterface, TSFFS_MODULE_CRATE_NAME, TSFFS_WORKSPACE_PATH},
@@ -6,27 +9,33 @@ use anyhow::{anyhow, bail, Error, Result};
 use artifact_dependency::{ArtifactDependencyBuilder, CrateType};
 use derive_builder::Builder;
 use libafl::{
-    bolts::core_affinity::Cores,
     feedback_and_fast, feedback_not, feedback_or_fast,
     prelude::{
-        current_nanos, havoc_mutations,
+        havoc_mutations,
         ondisk::OnDiskMetadataFormat,
         tui::{ui::TuiUI, TuiMonitor},
-        tuple_list, AFLppCmpMap, AFLppRedQueen, AflMapFeedback, AsMutSlice, AsSlice, BytesInput,
+        AFLppCmpMap, AFLppForkserverCmpObserver, AFLppRedQueen, AflMapFeedback, BytesInput,
         CachedOnDiskCorpus, CmpMap, CmpObserver, Corpus, CorpusId, CrashFeedback, EventConfig,
         EventRestarter, ExitKind, HasTargetBytes, HitcountsMapObserver, InProcessExecutor,
-        Launcher, LlmpRestartingEventManager, MultiMonitor, Named, Observer, OnDiskCorpus,
-        OwnedMutSlice, OwnedRefMut, RandBytesGenerator, ShMemProvider, StdMapObserver, StdRand,
-        StdScheduledMutator, StdShMemProvider, TimeFeedback, TimeObserver, TimeoutExecutor,
-        UsesInput,
+        Launcher, LlmpRestartingEventManager, MultiMonitor, Observer, OnDiskCorpus,
+        RandBytesGenerator, StdMapObserver, StdScheduledMutator, TimeFeedback, TimeObserver,
+        TimeoutExecutor, UsesInput,
     },
     schedulers::{powersched::PowerSchedule, PowerQueueScheduler},
     stages::{
-        mutational::MultipleMutationalStage, tracing::AFLppCmplogTracingStage, CalibrationStage,
+        mutational::MultiMutationalStage, tracing::AFLppCmplogTracingStage, CalibrationStage,
         ColorizationStage, IfStage, StdPowerMutationalStage,
     },
     state::{HasCorpus, HasMetadata, StdState},
-    ErrorBacktrace, Fuzzer, StdFuzzer,
+    Fuzzer, StdFuzzer,
+};
+use libafl_bolts::{
+    bolts_prelude::{ShMemProvider, StdRand, StdShMemProvider},
+    core_affinity::Cores,
+    current_nanos,
+    prelude::{OwnedMutSlice, OwnedRefMut},
+    tuples::tuple_list,
+    AsMutSlice, AsSlice, ErrorBacktrace, Named,
 };
 use serde::{Deserialize, Serialize};
 use simics::{
@@ -40,11 +49,12 @@ use simics::{
     simics::Simics,
 };
 use std::{
+    alloc::{alloc_zeroed, Layout},
     cell::RefCell,
-    fs::{set_permissions, OpenOptions, Permissions},
+    fs::{read, set_permissions, OpenOptions, Permissions},
     io::stdout,
     marker::PhantomData,
-    mem::MaybeUninit,
+    mem::zeroed,
     net::TcpListener,
     os::unix::prelude::PermissionsExt,
     path::PathBuf,
@@ -61,7 +71,6 @@ use tracing_subscriber::{filter::filter_fn, fmt, prelude::*, registry, Layer};
 use tsffs_module::{
     client::Client,
     config::{InputConfigBuilder, TraceMode},
-    faults::{x86_64::X86_64Fault, Fault},
     messages::{client::ClientMessage, module::ModuleMessage},
     stops::StopReason,
     traits::ThreadClient,
@@ -238,6 +247,8 @@ pub struct SimicsFuzzer {
     iterations: Option<u64>,
     #[builder(setter(into))]
     tui_stdout_file: PathBuf,
+    #[builder(default)]
+    repro: Option<PathBuf>,
 }
 
 impl SimicsFuzzerBuilder {
@@ -279,7 +290,7 @@ impl SimicsFuzzer {
                 .with_filter(args.log_level)
                 .with_filter(filter_fn(|metadata| {
                     // LLMP absolutely spams the log when tracing
-                    !(metadata.target() == "libafl::bolts::llmp"
+                    !(metadata.target() == "libafl_bolts::llmp"
                         && matches!(metadata.level(), &Level::TRACE))
                 }))
         });
@@ -392,6 +403,7 @@ impl SimicsFuzzer {
             .simics_gui(args.enable_simics_gui)
             .iterations(args.iterations)
             .tui_stdout_file(args.tui_stdout_file)
+            .repro(args.repro)
             .build()?
             .launch()?;
 
@@ -447,22 +459,15 @@ impl SimicsFuzzer {
                 alloc_attr_list(0),
             )?;
 
-            info!("Got tsffs at {:#x}", tsffs as usize);
-
             let tsffs_interface = get_interface::<ModuleInterface>(
                 tsffs,
                 Interface::Other(TSFFS_MODULE_CRATE_NAME.to_string()),
             )?;
 
-            info!("Got SIMICS object: {:#x}", tsffs as usize);
-            info!("Got tsffs interface at {:#x}", tsffs_interface as usize);
-
             let tx = Box::new(make_attr_data_adopt(tx)?);
             let rx = Box::new(make_attr_data_adopt(rx)?);
             let tx = Box::into_raw(tx);
             let rx = Box::into_raw(rx);
-
-            info!("Tx: {:#x} Rx: {:#x}", tx as usize, rx as usize);
 
             info!("Setting up channels");
 
@@ -485,9 +490,60 @@ impl SimicsFuzzer {
         })
     }
 
+    pub fn repro(&mut self) -> Result<()> {
+        let mut afl_cmp_map: Box<AFLppCmpMap> = unsafe {
+            let layout = Layout::new::<AFLppCmpMap>();
+            let ptr = alloc_zeroed(layout) as *mut AFLppCmpMap;
+
+            Box::from_raw(ptr)
+        };
+        let mut coverage_map = OwnedMutSlice::from(vec![0; SimicsFuzzer::MAP_SIZE]);
+
+        let config = InputConfigBuilder::default()
+            .coverage_map((
+                coverage_map.as_mut_slice().as_mut_ptr(),
+                coverage_map.as_slice().len(),
+            ))
+            .cmp_map(&mut *afl_cmp_map)
+            .trace_mode(self.trace_mode)
+            .timeout(self.timeout)
+            .log_level(self.log_level)
+            .repro(true)
+            .build()
+            .map_err(|e| libafl::Error::Unknown(e.to_string(), ErrorBacktrace::new()))?;
+
+        let (tx, orx) = channel::<ClientMessage>();
+        let (otx, rx) = channel::<ModuleMessage>();
+
+        let _simics = self.simics(otx, orx);
+        let mut client = Client::new(tx, rx);
+
+        let _output_config = client
+            .initialize(config)
+            .map_err(|e| libafl::Error::Unknown(e.to_string(), ErrorBacktrace::new()))?;
+
+        client
+            .reset()
+            .map_err(|e| libafl::Error::Unknown(e.to_string(), ErrorBacktrace::new()))?;
+
+        let run_input = read(
+            self.repro
+                .as_ref()
+                .ok_or_else(|| anyhow!("Repro file disappeared"))?,
+        )?;
+
+        client.run(run_input)?;
+
+        Ok(())
+    }
+
     pub fn launch(&mut self) -> Result<()> {
         if self.tui {
             self.log_level = LevelFilter::ERROR;
+        }
+
+        if self.repro.is_some() {
+            return self.repro();
         }
 
         let shmem_provider = StdShMemProvider::new()?;
@@ -500,7 +556,12 @@ impl SimicsFuzzer {
          -> Result<(), libafl::Error> {
             debug!("Running on CPU {:?}", cpu_id);
 
-            // let mut cmp_map = unsafe { MaybeUninit::<AFLppCmpMap>::zeroed().assume_init() };
+            let mut afl_cmp_map: Box<AFLppCmpMap> = unsafe {
+                let layout = Layout::new::<AFLppCmpMap>();
+                let ptr = alloc_zeroed(layout) as *mut AFLppCmpMap;
+
+                Box::from_raw(ptr)
+            };
             let mut coverage_map = OwnedMutSlice::from(vec![0; SimicsFuzzer::MAP_SIZE]);
 
             let config = InputConfigBuilder::default()
@@ -508,9 +569,7 @@ impl SimicsFuzzer {
                     coverage_map.as_mut_slice().as_mut_ptr(),
                     coverage_map.as_slice().len(),
                 ))
-                // .cmp_map(&mut cmp_map as *mut AFLppCmpMap)
-                .fault(Fault::X86_64(X86_64Fault::Page))
-                .fault(Fault::X86_64(X86_64Fault::InvalidOpcode))
+                .cmp_map(&mut *afl_cmp_map)
                 .trace_mode(self.trace_mode)
                 .timeout(self.timeout)
                 .log_level(self.log_level)
@@ -537,11 +596,13 @@ impl SimicsFuzzer {
             let counters_observer =
                 HitcountsMapObserver::new(StdMapObserver::from_mut_slice("coverage", coverage_map));
 
+            let cmp_observer = AFLppForkserverCmpObserver::new("cmplog", &mut afl_cmp_map, true);
+
             let counters_feedback = AflMapFeedback::new(&counters_observer);
 
             let time_observer = TimeObserver::new("time");
 
-            // let colorization = ColorizationStage::new(&counters_observer);
+            let colorization = ColorizationStage::new(&counters_observer);
             let calibration = CalibrationStage::new(&counters_feedback);
 
             let mut feedback =
@@ -604,6 +665,10 @@ impl SimicsFuzzer {
                             info!("Target timed out");
                             exit_kind = ExitKind::Timeout;
                         }
+                        StopReason::Breakpoint(breakpoint_number) => {
+                            info!("Target got a breakpoint #{}", breakpoint_number);
+                            exit_kind = ExitKind::Crash;
+                        }
                         StopReason::Error((e, _p)) => {
                             error!("An error occurred during execution: {:?}", e);
                             exit_kind = ExitKind::Ok;
@@ -625,52 +690,56 @@ impl SimicsFuzzer {
                 exit_kind
             };
 
-            // let mut tracing_harness = |input: &BytesInput| {
-            //     let target = input.target_bytes();
-            //     let buf = target.as_slice();
-            //     let run_input = buf.to_vec();
-            //     let mut exit_kind = ExitKind::Ok;
+            let mut tracing_harness = |input: &BytesInput| {
+                let target = input.target_bytes();
+                let buf = target.as_slice();
+                let run_input = buf.to_vec();
+                let mut exit_kind = ExitKind::Ok;
 
-            //     debug!("Running with input '{:?}'", run_input);
+                debug!("Running with input '{:?}'", run_input);
 
-            //     debug!("Sending run signal");
+                debug!("Sending run signal");
 
-            //     match client.borrow_mut().run(run_input) {
-            //         Ok(reason) => match reason {
-            //             StopReason::Magic((_magic, _p)) => {
-            //                 exit_kind = ExitKind::Ok;
-            //             }
-            //             StopReason::SimulationExit(_) => {
-            //                 exit_kind = ExitKind::Ok;
-            //             }
-            //             StopReason::Crash((fault, _p)) => {
-            //                 info!("Target crashed with fault {:?}", fault);
-            //                 exit_kind = ExitKind::Crash;
-            //             }
-            //             StopReason::TimeOut => {
-            //                 info!("Target timed out");
-            //                 exit_kind = ExitKind::Timeout;
-            //             }
-            //             StopReason::Error((e, _p)) => {
-            //                 error!("An error occurred during execution: {:?}", e);
-            //                 exit_kind = ExitKind::Ok;
-            //             }
-            //         },
-            //         Err(e) => {
-            //             error!("Error running SIMICS: {}", e);
-            //         }
-            //     }
+                match client.borrow_mut().run(run_input) {
+                    Ok(reason) => match reason {
+                        StopReason::Magic((_magic, _p)) => {
+                            exit_kind = ExitKind::Ok;
+                        }
+                        StopReason::SimulationExit(_) => {
+                            exit_kind = ExitKind::Ok;
+                        }
+                        StopReason::Crash((fault, _p)) => {
+                            info!("Target crashed with fault {:?}", fault);
+                            exit_kind = ExitKind::Crash;
+                        }
+                        StopReason::TimeOut => {
+                            info!("Target timed out");
+                            exit_kind = ExitKind::Timeout;
+                        }
+                        StopReason::Breakpoint(breakpoint_number) => {
+                            info!("Target got a breakpoint #{}", breakpoint_number);
+                            exit_kind = ExitKind::Crash;
+                        }
+                        StopReason::Error((e, _p)) => {
+                            error!("An error occurred during execution: {:?}", e);
+                            exit_kind = ExitKind::Ok;
+                        }
+                    },
+                    Err(e) => {
+                        error!("Error running SIMICS: {}", e);
+                    }
+                }
 
-            //     debug!("Sending reset signal");
+                debug!("Sending reset signal");
 
-            //     if let Err(e) = client.borrow_mut().reset() {
-            //         error!("Error resetting SIMICS: {}", e);
-            //     }
+                if let Err(e) = client.borrow_mut().reset() {
+                    error!("Error resetting SIMICS: {}", e);
+                }
 
-            //     debug!("Harness done");
+                debug!("Harness done");
 
-            //     exit_kind
-            // };
+                exit_kind
+            };
 
             let mut executor = TimeoutExecutor::new(
                 InProcessExecutor::new(
@@ -684,23 +753,23 @@ impl SimicsFuzzer {
                 Duration::from_secs(self.executor_timeout),
             );
 
-            // let cmp_executor = TimeoutExecutor::new(
-            //     InProcessExecutor::new(
-            //         &mut tracing_harness,
-            //         tuple_list!(cmp_observer),
-            //         &mut fuzzer,
-            //         &mut state,
-            //         &mut mgr,
-            //     )?,
-            //     // The executor's timeout can be quite long
-            //     Duration::from_secs(self.executor_timeout),
-            // );
+            let cmp_executor = TimeoutExecutor::new(
+                InProcessExecutor::new(
+                    &mut tracing_harness,
+                    tuple_list!(cmp_observer),
+                    &mut fuzzer,
+                    &mut state,
+                    &mut mgr,
+                )?,
+                // The executor's timeout can be quite long
+                Duration::from_secs(self.executor_timeout),
+            );
 
-            // let tracing =
-            //     AFLppCmplogTracingStage::with_cmplog_observer_name(cmp_executor, "cmplog");
+            let tracing =
+                AFLppCmplogTracingStage::with_cmplog_observer_name(cmp_executor, "cmplog");
 
-            // let redqueen =
-            //     MultipleMutationalStage::new(AFLppRedQueen::with_cmplog_options(true, true));
+            let redqueen =
+                MultiMutationalStage::new(AFLppRedQueen::with_cmplog_options(true, true));
 
             if state.must_load_initial_inputs() {
                 if let Some(input) = self.input.as_ref() {
@@ -726,20 +795,31 @@ impl SimicsFuzzer {
                     )?;
                 }
                 info!("Imported {} inputs from disk", state.corpus().count());
+
+                if state.corpus().count() == 0 {
+                    error!(
+                        "No interesting cases found from inputs! This may mean \
+                        your harness is incorrect (check your arguments), your inputs \
+                        are not triggering new code paths, or all inputs are causing \
+                        crashes."
+                    );
+                    mgr.send_exiting()?;
+                    return Ok(());
+                }
             }
 
-            // let cmp_cb = |_fuzzer: &mut _,
-            //               _executor: &mut _,
-            //               state: &mut StdState<_, CachedOnDiskCorpus<_>, _, _>,
-            //               _event_manager: &mut _,
-            //               corpus_id: CorpusId|
-            //  -> Result<bool, libafl::Error> {
-            //     let corpus = state.corpus().get(corpus_id)?.borrow();
-            //     Ok(corpus.scheduled_count() == 1)
-            // };
+            let cmp_cb = |_fuzzer: &mut _,
+                          _executor: &mut _,
+                          state: &mut StdState<_, CachedOnDiskCorpus<_>, _, _>,
+                          _event_manager: &mut _,
+                          corpus_id: CorpusId|
+             -> Result<bool, libafl::Error> {
+                let corpus = state.corpus().get(corpus_id)?.borrow();
+                Ok(corpus.scheduled_count() == 1)
+            };
 
-            // let cmp_stages = IfStage::new(cmp_cb, tuple_list!(colorization, tracing, redqueen));
-            let mut stages = tuple_list!(calibration, /* cmp_stages , */ std_power);
+            let cmp_stages = IfStage::new(cmp_cb, tuple_list!(colorization, tracing, redqueen));
+            let mut stages = tuple_list!(calibration, cmp_stages, std_power);
 
             if let Some(iterations) = self.iterations {
                 info!("Fuzzing for {} iterations", iterations);

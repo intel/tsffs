@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! Utilities for managing simics modules, specifically adding them to a project.
 //!
 //! Rust Simics Modules are Rust cdylib crates that are linked into a SIMICS module to provide
@@ -101,6 +104,8 @@ impl TryFrom<&Artifact> for ModuleCargoMetadata {
 
 #[derive(Builder, Debug, Clone, Serialize, Deserialize, Hash, Eq, PartialEq)]
 #[builder(build_fn(skip))]
+/// A built module, including the built artifact object (shared object, binary, etc) and the
+/// metadata for the crate that built the artifact
 pub struct Module {
     #[builder(setter(skip))]
     pub metadata: ModuleCargoMetadata,
@@ -126,6 +131,8 @@ impl ModuleBuilder {
 }
 
 impl Setup for Module {
+    /// Add the files for a module to a project, compile the module with its stub and interface
+    /// files, and make them available to load and run in SIMICS
     fn setup(&self, project: &Project) -> Result<&Self>
     where
         Self: Sized,

@@ -1,15 +1,16 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 use crate::ConfObject;
 use anyhow::Result;
 use simics_api_sys::{SIM_log_error, SIM_log_info, SIM_log_level, SIM_set_log_level};
 use std::ffi::CString;
 
 /// Log an info-level message through the SIMICS logging functions
-pub fn log_info<S: AsRef<str>>(
-    level: i32,
-    device: *mut ConfObject,
-    group: i32,
-    msg: S,
-) -> Result<()> {
+pub fn log_info<S>(level: i32, device: *mut ConfObject, group: i32, msg: S) -> Result<()>
+where
+    S: AsRef<str>,
+{
     let msg_cstring = CString::new(msg.as_ref())?;
 
     unsafe {

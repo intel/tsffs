@@ -1,0 +1,10 @@
+---
+##########################
+## Hadolint config file ##
+##########################
+
+failure-threshold: warning
+
+ignored:
+  - DL3022 # DL3022 raises a false positive when --build-context is used to provide multiple
+           # contexts

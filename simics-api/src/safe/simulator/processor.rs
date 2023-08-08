@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 use crate::ConfObject;
 use simics_api_sys::{SIM_get_processor, SIM_get_processor_number};
 

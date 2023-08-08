@@ -1,8 +1,19 @@
+# Copyright (C) 2023 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
 [package]
 name = "artifact-dependency"
-version = "0.1.0"
-edition = "2021"
-publish = false
+categories.workspace = true
+description = "Bare-bones artifact dependency utility crate for run and build-time Rust artifact dependencies."
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+publish.workspace = true
+readme.workspace = true
+repository.workspace = true
+version.workspace = true
+
 
 [lib]
 crate-type = ["lib"]

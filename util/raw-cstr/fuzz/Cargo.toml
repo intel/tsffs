@@ -1,8 +1,13 @@
+# Copyright (C) 2023 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
 [package]
 name = "raw-cstr-fuzz"
-version = "0.0.0"
-publish = false
+description = "Macro for routing C FFI callbacks to struct methods"
 edition = "2021"
+publish = false
+version = "0.0.0"
+
 
 [package.metadata]
 cargo-fuzz = true

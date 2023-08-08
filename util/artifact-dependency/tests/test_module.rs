@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 use artifact_dependency::{ArtifactDependencyBuilder, CrateType};
 
 #[test]
@@ -9,7 +12,7 @@ fn test() {
         .artifact_type(CrateType::CDynamicLibrary)
         .target_name("test_module")
         .crate_name("tsffs_module")
-        .feature("6.0.166")
+        .feature("6.0.168")
         .build()
         .expect("Couldn't build dependency")
         .build()

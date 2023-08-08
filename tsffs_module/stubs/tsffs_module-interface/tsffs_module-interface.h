@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 /*
   © 2017 Intel Corporation
 */
@@ -32,11 +35,12 @@ extern "C" {
 /* This defines a new interface type. Its corresponding C data type will be
    called "tsffs_module_interface_t". */
 SIM_INTERFACE(tsffs_module) {
-  void (*start)(conf_object_t * obj, bool run);
-  void (*add_processor)(conf_object_t * obj, attr_value_t * processor);
-  void (*add_fault)(conf_object_t * obj, int64 fault);
-  void (*add_channels)(conf_object_t * obj, attr_value_t * tx,
-                       attr_value_t * rx);
+  void (*init)(conf_object_t* obj);
+  void (*add_processor)(conf_object_t* obj, attr_value_t* processor);
+  void (*add_fault)(conf_object_t* obj, int64 fault);
+  void (*add_channels)(conf_object_t* obj, attr_value_t* tx, attr_value_t* rx);
+  void (*set_breakpoints_are_faults)(conf_object_t* obj,
+                                     bool breakpoints_are_faults);
 #ifndef PYWRAP
   /* methods that cannot be exported to Python, for example as it refers
      to unknown data types, must be enclosed by "#ifndef PYWRAP" ...

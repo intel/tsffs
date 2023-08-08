@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! Implements the state machine for this module. This state machine represents the different
 //! states the module (and through it, simics) can be in and the transitions between those states
 //!
@@ -97,7 +100,10 @@ impl ModuleStateMachine {
     /// as an argument. Inconsistent state will occur if this rule isn't followed, so be sure
     /// to use the `send` and `recv` methods on the `Client` and `Controller` respectively to
     /// keep this consistent, as they will call this method automatically
-    pub fn consume<M: Into<ModuleInput>>(&mut self, message: M) -> Result<Option<()>> {
+    pub fn consume<M>(&mut self, message: M) -> Result<Option<()>>
+    where
+        M: Into<ModuleInput>,
+    {
         let input: ModuleInput = message.into();
         let pre_state = self.machine.state().clone();
         let result = self.machine.consume(&input);

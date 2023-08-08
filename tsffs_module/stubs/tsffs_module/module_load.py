@@ -1,2 +1,2 @@
-# © 2010 Intel Corporation
-# This file is imported by SIMICS when the module is loaded
+# Copyright (C) 2023 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0

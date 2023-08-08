@@ -1,4 +1,8 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 use anyhow::{bail, Error, Result};
+use tracing::trace;
 use yaxpeax_x86::amd64::{InstDecoder, Instruction, Opcode, Operand};
 
 use crate::traits::TracerDisassembler;
@@ -19,11 +23,14 @@ impl Disassembler {
     }
 }
 
-impl TryFrom<&Operand> for CmpExpr {
+impl TryFrom<(&Operand, Option<u8>)> for CmpExpr {
     type Error = Error;
 
-    fn try_from(value: &Operand) -> Result<Self> {
-        Ok(match value {
+    fn try_from(value: (&Operand, Option<u8>)) -> Result<Self> {
+        let width = value.1;
+        let value = value.0;
+
+        let expr = match value {
             Operand::ImmediateI8(i) => CmpExpr::I8(*i),
             Operand::ImmediateU8(u) => CmpExpr::U8(*u),
             Operand::ImmediateI16(i) => CmpExpr::I16(*i),
@@ -32,57 +39,83 @@ impl TryFrom<&Operand> for CmpExpr {
             Operand::ImmediateU32(u) => CmpExpr::U32(*u),
             Operand::ImmediateI64(i) => CmpExpr::I64(*i),
             Operand::ImmediateU64(u) => CmpExpr::U64(*u),
-            Operand::Register(r) => CmpExpr::Reg(r.name().to_string()),
+            Operand::Register(r) => CmpExpr::Reg((r.name().to_string(), r.width())),
             Operand::DisplacementU32(d) => CmpExpr::Addr(*d as u64),
             Operand::DisplacementU64(d) => CmpExpr::Addr(*d),
-            Operand::RegDeref(r) => CmpExpr::Deref(Box::new(CmpExpr::Reg(r.name().to_string()))),
-            Operand::RegDisp(r, d) => CmpExpr::Deref(Box::new(CmpExpr::Add(
-                Box::new(CmpExpr::Reg(r.name().to_string())),
-                Box::new(CmpExpr::I32(*d)),
-            ))),
-            Operand::RegScale(r, s) => CmpExpr::Deref(Box::new(CmpExpr::Mul(
-                Box::new(CmpExpr::Reg(r.name().to_string())),
-                Box::new(CmpExpr::U8(*s)),
-            ))),
-            Operand::RegIndexBase(r, i) => CmpExpr::Deref(Box::new(CmpExpr::Add(
-                Box::new(CmpExpr::Reg(r.name().to_string())),
-                Box::new(CmpExpr::Reg(i.name().to_string())),
-            ))),
-            Operand::RegIndexBaseDisp(r, i, d) => CmpExpr::Deref(Box::new(CmpExpr::Add(
-                Box::new(CmpExpr::Add(
-                    Box::new(CmpExpr::Reg(r.name().to_string())),
-                    Box::new(CmpExpr::Reg(i.name().to_string())),
-                )),
-                Box::new(CmpExpr::I32(*d)),
-            ))),
-            Operand::RegScaleDisp(r, s, d) => CmpExpr::Deref(Box::new(CmpExpr::Add(
-                Box::new(CmpExpr::Mul(
-                    Box::new(CmpExpr::Reg(r.name().to_string())),
+            Operand::RegDeref(r) => CmpExpr::Deref((
+                Box::new(CmpExpr::Reg((r.name().to_string(), r.width()))),
+                width,
+            )),
+            Operand::RegDisp(r, d) => CmpExpr::Deref((
+                Box::new(CmpExpr::Add((
+                    Box::new(CmpExpr::Reg((r.name().to_string(), r.width()))),
+                    Box::new(CmpExpr::I32(*d)),
+                ))),
+                width,
+            )),
+            Operand::RegScale(r, s) => CmpExpr::Deref((
+                Box::new(CmpExpr::Mul((
+                    Box::new(CmpExpr::Reg((r.name().to_string(), r.width()))),
                     Box::new(CmpExpr::U8(*s)),
-                )),
-                Box::new(CmpExpr::I32(*d)),
-            ))),
-            Operand::RegIndexBaseScale(r, i, s) => CmpExpr::Deref(Box::new(CmpExpr::Add(
-                Box::new(CmpExpr::Reg(r.name().to_string())),
-                Box::new(CmpExpr::Add(
-                    Box::new(CmpExpr::Reg(i.name().to_string())),
-                    Box::new(CmpExpr::U8(*s)),
-                )),
-            ))),
-            Operand::RegIndexBaseScaleDisp(r, i, s, d) => CmpExpr::Deref(Box::new(CmpExpr::Add(
-                Box::new(CmpExpr::Add(
-                    Box::new(CmpExpr::Reg(r.name().to_string())),
-                    Box::new(CmpExpr::Add(
-                        Box::new(CmpExpr::Reg(i.name().to_string())),
+                ))),
+                width,
+            )),
+            Operand::RegIndexBase(r, i) => CmpExpr::Deref((
+                Box::new(CmpExpr::Add((
+                    Box::new(CmpExpr::Reg((r.name().to_string(), r.width()))),
+                    Box::new(CmpExpr::Reg((i.name().to_string(), i.width()))),
+                ))),
+                width,
+            )),
+            Operand::RegIndexBaseDisp(r, i, d) => CmpExpr::Deref((
+                Box::new(CmpExpr::Add((
+                    Box::new(CmpExpr::Add((
+                        Box::new(CmpExpr::Reg((r.name().to_string(), r.width()))),
+                        Box::new(CmpExpr::Reg((i.name().to_string(), i.width()))),
+                    ))),
+                    Box::new(CmpExpr::I32(*d)),
+                ))),
+                width,
+            )),
+            Operand::RegScaleDisp(r, s, d) => CmpExpr::Deref((
+                Box::new(CmpExpr::Add((
+                    Box::new(CmpExpr::Mul((
+                        Box::new(CmpExpr::Reg((r.name().to_string(), r.width()))),
                         Box::new(CmpExpr::U8(*s)),
-                    )),
-                )),
-                Box::new(CmpExpr::I32(*d)),
-            ))),
+                    ))),
+                    Box::new(CmpExpr::I32(*d)),
+                ))),
+                width,
+            )),
+            Operand::RegIndexBaseScale(r, i, s) => CmpExpr::Deref((
+                Box::new(CmpExpr::Add((
+                    Box::new(CmpExpr::Reg((r.name().to_string(), r.width()))),
+                    Box::new(CmpExpr::Add((
+                        Box::new(CmpExpr::Reg((i.name().to_string(), i.width()))),
+                        Box::new(CmpExpr::U8(*s)),
+                    ))),
+                ))),
+                width,
+            )),
+            Operand::RegIndexBaseScaleDisp(r, i, s, d) => CmpExpr::Deref((
+                Box::new(CmpExpr::Add((
+                    Box::new(CmpExpr::Add((
+                        Box::new(CmpExpr::Reg((r.name().to_string(), r.width()))),
+                        Box::new(CmpExpr::Add((
+                            Box::new(CmpExpr::Reg((i.name().to_string(), i.width()))),
+                            Box::new(CmpExpr::U8(*s)),
+                        ))),
+                    ))),
+                    Box::new(CmpExpr::I32(*d)),
+                ))),
+                width,
+            )),
             _ => {
                 bail!("Unsupported operand type for cmplog");
             }
-        })
+        };
+        trace!("Convert operand {:?} to cmpexpr {:?}", value, expr);
+        Ok(expr)
     }
 }
 
@@ -218,7 +251,14 @@ impl TracerDisassembler for Disassembler {
             if let Some(last) = self.last {
                 for op_idx in 0..last.operand_count() {
                     let op = last.operand(op_idx);
-                    if let Ok(expr) = CmpExpr::try_from(&op) {
+                    let width = if let Some(width) = op.width() {
+                        Some(width)
+                    } else if let Some(width) = last.mem_size() {
+                        width.bytes_size()
+                    } else {
+                        None
+                    };
+                    if let Ok(expr) = CmpExpr::try_from((&op, width)) {
                         cmp_exprs.push(expr);
                     }
                 }

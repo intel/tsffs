@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! Provides the `callback_wrappers` attribute for automatically generating CFFI functions for
 //! callbacks into struct methods
 

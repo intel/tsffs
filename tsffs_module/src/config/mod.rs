@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! Configuration data for the module, passed to it when it starts up
 
 use crate::faults::Fault;
@@ -56,8 +59,10 @@ pub struct InputConfig {
     pub log_level: LevelFilter,
     pub trace_mode: TraceMode,
     pub coverage_map: (*mut u8, usize),
+    pub cmp_map: *mut AFLppCmpMap,
+    /// If repro is set, the simics thread will drop into the CLI on the first exception
     #[builder(default)]
-    pub cmp_map: Option<*mut AFLppCmpMap>,
+    pub repro: bool,
 }
 
 unsafe impl Send for InputConfig {}
@@ -72,7 +77,10 @@ impl InputConfig {
 
     /// Add one or more faults to the set of faults considered crashes for a given fuzzing
     /// campaign
-    pub fn with_faults<I: IntoIterator<Item = Fault>>(mut self, faults: I) -> Self {
+    pub fn with_faults<I>(mut self, faults: I) -> Self
+    where
+        I: IntoIterator<Item = Fault>,
+    {
         faults.into_iter().for_each(|i| {
             self.faults.insert(i);
         });

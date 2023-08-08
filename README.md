@@ -1,30 +1,45 @@
+<p align="center"><img src="docs/images/logo.png" alt="TSFFS Logo"></p>
+
 # TSFFS: Target Software Fuzzer For SIMICS
 
-CONFUSE is a snapshotting simulator, coverage-guided fuzzer built on Simics! It lets you
-easily fuzz things that are traditionally challenging to fuzz, like UEFI applications,
-bootloaders, kernel modules, firmware, and the like.
+
+TSFFS is a snapshotting, coverage-guided fuzzer built on the
+[SIMICS](https://www.intel.com/content/www/us/en/developer/articles/tool/simics-simulator.html)
+full system simulator. TSFFS makes it easy to fuzz and traige crashes on traditionally
+challenging targets including UEFI applications, bootloaders, BIOS, kernel modules, and
+device firmware. TSSFS can even fuzz user-space applications on Linux and Windows. See
+the [requirements](./docs/Requirements.md) to find out if TSSFS can fuzz your code.
 
 - [TSFFS: Target Software Fuzzer For SIMICS](#tsffs-target-software-fuzzer-for-simics)
   - [Capabilities](#capabilities)
-  - [Setup](#setup)
-  - [Running A Sample Target](#running-a-sample-target)
   - [Documentation](#documentation)
+  - [Setup](#setup)
+  - [Running a Simple Sample Target](#running-a-simple-sample-target)
+  - [Running an EDK2 Sample Target](#running-an-edk2-sample-target)
+  - [Contact](#contact)
+  - [Help Wanted / Roadmap](#help-wanted--roadmap)
   - [Authors](#authors)
 
 
-https://github.com/intel-innersource/applications.security.fuzzing.confuse/assets/30083762/004ba56e-561c-470a-baf4-427014b43362
+<https://github.com/intel-innersource/applications.security.fuzzing.confuse/assets/30083762/004ba56e-561c-470a-baf4-427014b43362>
 
 
 ## Capabilities
 
 This fuzzer is built using [LibAFL](https://github.com/AFLplusplus/LibAFL) and SIMICS
-and takes advantage of several of the state of the art capabilities
-of both.
+and takes advantage of several of the state of the art capabilities of both.
 
 - Edge coverage guided
 - Snapshotting (fully deterministic)
 - Parallel fuzzing (across cores, machines soon)
 - Easy to add to existing SIMICS projects
+- Triage mode to reproduce and debug crashes
+
+## Documentation
+
+Documentation for this project lives in the [docs](./docs/README.md) directory of this
+repository.
+
 
 ## Setup
 
@@ -32,15 +47,34 @@ Detailed instructions for setting up and building this project can be found in
 [Setup.md](./docs/Setup.md). You should follow the documentation there to set up the
 fuzzer before trying to run the sample targets.
 
-## Running A Sample Target
+## Running a Simple Sample Target
+
+We provide a sample target that represents the simplest possible use of the fuzzer. Once
+you have set up the fuzzer by following the directions [above](#setup), you can run it
+with (from the root of this repo):
+
+```sh
+cargo run --release --bin simics-fuzz --features=6.0.168 -- \
+    --corpus /tmp/corpus --solutions solution --log-level INFO --cores 1  \
+    --file examples/harnessing-uefi/rsrc/target.efi:%simics%/target.efi \
+    --file examples/harnessing-uefi/rsrc/fuzz.simics:%simics%/fuzz.simics \
+    --file examples/harnessing-uefi/rsrc/minimal_boot_disk.craff:%simics%/minimal_boot_disk.craff \
+    --package 2096:6.0.69 \
+    --command 'COMMAND:run-script "%simics%/fuzz.simics"'
+```
+
+If you want to see the visualizer above, you can enable the SIMICS GUI during fuzzing
+by adding `--enable-simics-gui` and if you want a fancy TUI output, add the `-t` flag!
+
+## Running an EDK2 Sample Target
 
 There are two provided sample targets, `hello-world` and `x509-parse`. You can run them
 in the basic configuration with the commands below, respectively.
 
 ```sh
-cargo run --release --bin simics-fuzz --features=6.0.166 -- \
+cargo run --release --bin simics-fuzz --features=6.0.168 -- \
   -c /tmp/hello-world-corpus/ -s /tmp/hello-world-solution/ -l ERROR -t -C 1 \
-  --package 2096:6.0.66 \
+  --package 2096:6.0.69 \
   --file examples/hello-world/rsrc/HelloWorld.efi:%simics%/targets/hello-world/HelloWorld.efi \
   --file examples/hello-world/rsrc/app.py:%simics%/scripts/app.py \
   --file examples/hello-world/rsrc/app.yml:%simics%/scripts/app.yml \
@@ -51,9 +85,9 @@ cargo run --release --bin simics-fuzz --features=6.0.166 -- \
 ```
 
 ```sh
-cargo run --release --bin simics-fuzz --features=6.0.166 -- \
+cargo run --release --bin simics-fuzz --features=6.0.168 -- \
   -c /tmp/x509-parse-corpus/ -s /tmp/x509-parse-solution/ -l ERROR -t -C 1 \
-  --package 2096:6.0.66 \
+  --package 2096:6.0.69 \
   --file examples/x509-parse/rsrc/X509Parse.efi:%simics%/targets/x509-parse/X509Parse.efi \
   --file examples/x509-parse/rsrc/app.py:%simics%/scripts/app.py \
   --file examples/x509-parse/rsrc/app.yml:%simics%/scripts/app.yml \
@@ -63,10 +97,27 @@ cargo run --release --bin simics-fuzz --features=6.0.166 -- \
   --command CONFIG:%simics%/scripts/app.yml
 ```
 
-## Documentation
+## Contact
 
-Documentation for this project lives in the [docs](./docs/README.md) directory of this
-repository.
+If you discover a non-security issue or problem, please file an
+[issue](https://github.com/intel-innersource/applications.security.fuzzing.confuse/issues)!
+
+The best place to ask questions about and get help using TSFFS is in the [Awesome
+Fuzzing](https://discord.gg/gCraWct) Discord server. If you prefer, you can email the
+[authors](#authors). Questions we receive are periodically added from both Discord and
+email to the [FAQ](./docs/FAQ.md).
+
+Please do not create issues or ask publicly about possible security issues you discover
+in TSFFS. Instead, see our [Security Policy](./SECURITY.md) and follow the linked
+guidelines.
+
+## Help Wanted / Roadmap
+
+See the
+[issues](https://github.com/intel-innersource/applications.security.fuzzing.confuse/issues?q=is%3Aopen+is%3Aissue+label%3Afeature)
+for a roadmap of planned features and enhancements. Help is welcome for any features
+listed here. If someone is assigned an issue you'd like to work on, please ping them to
+avoid duplicating effort!
 
 ## Authors
 

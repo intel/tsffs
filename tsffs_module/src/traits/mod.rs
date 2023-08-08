@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! Traits for common functionality used throughout the module
 
 use crate::{
@@ -61,15 +64,15 @@ pub trait State {
 }
 
 pub trait Interface {
-    fn on_start(&mut self) -> Result<()> {
-        Ok(())
-    }
-
     fn on_add_processor(&mut self, _processor: *mut AttrValue) -> Result<()> {
         Ok(())
     }
 
     fn on_add_fault(&mut self, _fault: i64) -> Result<()> {
+        Ok(())
+    }
+
+    fn on_set_breakpoints_are_faults(&mut self, _breakpoints_are_faults: bool) -> Result<()> {
         Ok(())
     }
 }

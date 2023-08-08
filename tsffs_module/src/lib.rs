@@ -1,3 +1,6 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 //! TFFS Module for SIMICS
 //!
 //! # Overview
@@ -28,6 +31,7 @@ pub mod config;
 pub mod faults;
 pub mod magic;
 pub mod messages;
+/// cbindgen:ignore
 pub mod module;
 mod processor;
 pub mod state;
