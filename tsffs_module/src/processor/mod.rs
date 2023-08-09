@@ -5,7 +5,6 @@
 use anyhow::{anyhow, bail, Error, Result};
 
 use libafl::prelude::CmpValues;
-use num_traits::ToBytes;
 use simics_api::{
     attr_string, get_attribute, read_byte, write_byte, AttrValue, CachedInstructionHandle,
     ConfObject, CpuCachedInstruction, CpuInstructionQuery, CpuInstrumentationSubscribe, Cycle,
