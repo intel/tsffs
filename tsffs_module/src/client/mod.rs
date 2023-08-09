@@ -18,7 +18,7 @@ use crate::{
 };
 use anyhow::{bail, Result};
 use std::sync::mpsc::{Receiver, Sender};
-use tracing::{debug, info};
+use tracing::{info, trace};
 
 /// The client for the module. Allows controlling the module over IPC using the child
 /// process spawned by a running project.
@@ -70,10 +70,10 @@ impl ThreadClient for Client {
     /// Changes the internal state from `Stopped` or `Initialized` to `HalfReady`, then
     /// from `HalfReady` to `Ready`.
     fn reset(&mut self) -> Result<()> {
-        debug!("Sending reset message");
+        trace!("Sending reset message");
         self.send_msg(ClientMessage::Reset)?;
 
-        debug!("Waiting for ready message");
+        trace!("Waiting for ready message");
         if let ModuleMessage::Ready = self.recv_msg()? {
             Ok(())
         } else {
@@ -87,10 +87,10 @@ impl ThreadClient for Client {
     /// module detects it, so it may take a long time or if there is an unexpected bug it may
     /// hang.
     fn run(&mut self, input: Vec<u8>) -> Result<StopReason> {
-        debug!("Sending run message");
+        trace!("Sending run message");
         self.send_msg(ClientMessage::Run(input))?;
 
-        debug!("Waiting for stopped message");
+        trace!("Waiting for stopped message");
         if let ModuleMessage::Stopped(reason) = self.recv_msg()? {
             Ok(reason)
         } else {

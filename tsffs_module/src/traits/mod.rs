@@ -6,6 +6,7 @@
 use crate::{
     config::{InputConfig, OutputConfig},
     messages::{client::ClientMessage, module::ModuleMessage},
+    processor::disassembler::CmpExpr,
     state::ModuleStateMachine,
     stops::StopReason,
 };
@@ -84,6 +85,7 @@ pub trait TracerDisassembler {
     fn last_was_call(&self) -> Result<bool>;
     fn last_was_ret(&self) -> Result<bool>;
     fn last_was_cmp(&self) -> Result<bool>;
+    fn cmp(&self) -> Result<Vec<CmpExpr>>;
 }
 
 pub trait ThreadClient {

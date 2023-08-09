@@ -18,7 +18,13 @@ if [ -z "${GITHUB_TOKEN}" ]; then
         echo "gh must be installed. Install it with your package manager"
         exit 1
     fi
-    GITHUB_TOKEN=$(gh auth token)
+
+    if ! GITHUB_TOKEN=$(gh auth token); then
+        GITHUB_TOKEN=$(gh auth status -t 2>&1 | grep 'Token:' | awk '{print $3}') ||
+            (echo "Failed to get token." && exit 1)
+
+    fi
+
 fi
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
@@ -31,11 +37,11 @@ DATE=$(date '+%Y-%m-%d')
 CSV="${DEPENDABOT_DIR}/${DATE}.csv"
 JSON="${DEPENDABOT_DIR}/${DATE}.json"
 
-curl -o "${JSON}" -x "${HTTP_PROXY}" -L \
+curl -o "${JSON}" -L \
     -H "Accept: application/vnd.github+json" \
     -H "Authorization: Bearer ${GITHUB_TOKEN}" \
     -H "X-Github-Api-Version: 2022-11-28" \
-    https://api.github.com/repos/intel-innersource/applications.security.fuzzing.confuse/dependabot/alerts 2>/dev/null
+    https://api.github.com/repos/intel-innersource/applications.security.fuzzing.confuse/dependabot/alerts
 
 echo "CVE,Package Name,Severity,Manifest File,Status,CVSS,CVSS Vector,Vulnerable Versions,Fixed Versions,Triaged By,Triage Reason,Triage Comment" >"${CSV}"
 

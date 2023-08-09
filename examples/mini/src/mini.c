@@ -50,7 +50,7 @@ typedef struct EfiSystemTable {
 
 const char hex[] = {'0', '1', '2', '3', '4', '5', '6', '7',
                     '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
-const char *password = "f148{fuzz_m3}";
+const char *password = "fuzzing!";
 
 int Check(int16_t *buffer, EfiSystemTable *SystemTable) {
   if ((((char *)buffer)[0]) == password[0]) {
@@ -61,22 +61,11 @@ int Check(int16_t *buffer, EfiSystemTable *SystemTable) {
             if ((((char *)buffer)[5]) == password[5]) {
               if ((((char *)buffer)[6]) == password[6]) {
                 if ((((char *)buffer)[7]) == password[7]) {
-                  if ((((char *)buffer)[8]) == password[8]) {
-                    if ((((char *)buffer)[9]) == password[9]) {
-                      if ((((char *)buffer)[10]) == password[10]) {
-                        if ((((char *)buffer)[11]) == password[11]) {
-                          if ((((char *)buffer)[12]) == password[12]) {
-                            // Crash!
-                            SystemTable->conOut->output_string(
-                                SystemTable->conOut,
-                                (int16_t *)L"All characters were correct!\r\n");
-                            uint8_t *ptr = (uint8_t *)0xffffffffffffffff;
-                            *ptr = 0;
-                          }
-                        }
-                      }
-                    }
-                  }
+                  SystemTable->conOut->output_string(
+                      SystemTable->conOut,
+                      (int16_t *)L"All characters were correct!\r\n");
+                  uint8_t *ptr = (uint8_t *)0xffffffffffffffff;
+                  *ptr = 0;
                 }
               }
             }
@@ -91,9 +80,6 @@ int Check(int16_t *buffer, EfiSystemTable *SystemTable) {
 
 // The entrypoint of our EFI application
 int UefiMain(void *imageHandle, EfiSystemTable *SystemTable) {
-  // We will store the CPUID results we obtain here, they won't be used.
-  uint32_t _a, _b, _c, _d = 0;
-
   // We have a size and a buffer of that size. The address of the buffer and the
   // address of the size variable will be passed to the fuzzer. On the first
   // start harness, the fuzzer will save the initial value of the size and the
