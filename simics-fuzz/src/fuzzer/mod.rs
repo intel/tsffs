@@ -15,29 +15,27 @@ use libafl::{
         ondisk::OnDiskMetadataFormat,
         tui::{ui::TuiUI, TuiMonitor},
         AFLppCmpMap, AFLppForkserverCmpObserver, AFLppRedQueen, AflMapFeedback, BytesInput,
-        CachedOnDiskCorpus, CmpMap, CmpObserver, Corpus, CorpusId, CrashFeedback, EventConfig,
-        EventRestarter, ExitKind, HasTargetBytes, HitcountsMapObserver, InProcessExecutor,
-        Launcher, LlmpRestartingEventManager, MultiMonitor, Observer, OnDiskCorpus,
-        RandBytesGenerator, StdMapObserver, StdScheduledMutator, TimeFeedback, TimeObserver,
-        TimeoutExecutor, UsesInput,
+        CachedOnDiskCorpus, Corpus, CrashFeedback, EventConfig, EventRestarter, ExitKind,
+        HasTargetBytes, HitcountsMapObserver, InProcessExecutor, Launcher,
+        LlmpRestartingEventManager, MultiMonitor, OnDiskCorpus, RandBytesGenerator, StdMapObserver,
+        StdScheduledMutator, TimeFeedback, TimeObserver, TimeoutExecutor,
     },
     schedulers::{powersched::PowerSchedule, PowerQueueScheduler},
     stages::{
         mutational::MultiMutationalStage, tracing::AFLppCmplogTracingStage, CalibrationStage,
-        ColorizationStage, IfStage, StdPowerMutationalStage,
+        ColorizationStage, StdPowerMutationalStage,
     },
-    state::{HasCorpus, HasMetadata, StdState},
+    state::{HasCorpus, StdState},
     Fuzzer, StdFuzzer,
 };
 use libafl_bolts::{
     bolts_prelude::{ShMemProvider, StdRand, StdShMemProvider},
     core_affinity::Cores,
     current_nanos,
-    prelude::{OwnedMutSlice, OwnedRefMut},
+    prelude::OwnedMutSlice,
     tuples::tuple_list,
-    AsMutSlice, AsSlice, ErrorBacktrace, Named,
+    AsMutSlice, AsSlice, ErrorBacktrace,
 };
-use serde::{Deserialize, Serialize};
 use simics::{
     api::{
         alloc_attr_list, create_object, get_class, get_interface, load_module,
@@ -53,8 +51,6 @@ use std::{
     cell::RefCell,
     fs::{read, set_permissions, OpenOptions, Permissions},
     io::stdout,
-    marker::PhantomData,
-    mem::zeroed,
     net::TcpListener,
     os::unix::prelude::PermissionsExt,
     path::PathBuf,
@@ -77,142 +73,6 @@ use tsffs_module::{
 };
 
 const INITIAL_INPUTS: usize = 16;
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct AFLppInprocessesCmpObserver<'a, S>
-where
-    S: UsesInput + HasMetadata,
-{
-    cmp_map: OwnedRefMut<'a, AFLppCmpMap>,
-    size: Option<OwnedRefMut<'a, usize>>,
-    name: String,
-    add_meta: bool,
-    original: bool,
-    phantom: PhantomData<S>,
-}
-
-impl<'a, S> CmpObserver<AFLppCmpMap, S> for AFLppInprocessesCmpObserver<'a, S>
-where
-    S: UsesInput + core::fmt::Debug + HasMetadata,
-{
-    fn usable_count(&self) -> usize {
-        todo!()
-    }
-
-    fn cmp_map(&self) -> &AFLppCmpMap {
-        todo!()
-    }
-
-    fn cmp_map_mut(&mut self) -> &mut AFLppCmpMap {
-        todo!()
-    }
-
-    fn add_cmpvalues_meta(&mut self, state: &mut S)
-    where
-        S: HasMetadata,
-    {
-        #[allow(clippy::option_if_let_else)] // we can't mutate state in a closure
-        let meta = if let Some(meta) = state
-            .metadata_map_mut()
-            .get_mut::<libafl::prelude::CmpValuesMetadata>()
-        {
-            meta
-        } else {
-            state.add_metadata(libafl::prelude::CmpValuesMetadata::new());
-            state
-                .metadata_map_mut()
-                .get_mut::<libafl::prelude::CmpValuesMetadata>()
-                .expect("Couldn't get cmp values metadata")
-        };
-        meta.list.clear();
-        let count = self.usable_count();
-        for i in 0..count {
-            let execs = self.cmp_map().usable_executions_for(i);
-            if execs > 0 {
-                // Recongize loops and discard if needed
-                if execs > 4 {
-                    let mut increasing_v0 = 0;
-                    let mut increasing_v1 = 0;
-                    let mut decreasing_v0 = 0;
-                    let mut decreasing_v1 = 0;
-
-                    let mut last: Option<libafl::prelude::CmpValues> = None;
-                    for j in 0..execs {
-                        if let Some(val) = self.cmp_map().values_of(i, j) {
-                            if let Some(l) = last.and_then(|x| x.to_u64_tuple()) {
-                                if let Some(v) = val.to_u64_tuple() {
-                                    if l.0.wrapping_add(1) == v.0 {
-                                        increasing_v0 += 1;
-                                    }
-                                    if l.1.wrapping_add(1) == v.1 {
-                                        increasing_v1 += 1;
-                                    }
-                                    if l.0.wrapping_sub(1) == v.0 {
-                                        decreasing_v0 += 1;
-                                    }
-                                    if l.1.wrapping_sub(1) == v.1 {
-                                        decreasing_v1 += 1;
-                                    }
-                                }
-                            }
-                            last = Some(val);
-                        }
-                    }
-                    // We check for execs-2 because the logged execs may wrap and have something like
-                    // 8 9 10 3 4 5 6 7
-                    if increasing_v0 >= execs - 2
-                        || increasing_v1 >= execs - 2
-                        || decreasing_v0 >= execs - 2
-                        || decreasing_v1 >= execs - 2
-                    {
-                        continue;
-                    }
-                }
-                for j in 0..execs {
-                    if let Some(val) = self.cmp_map().values_of(i, j) {
-                        meta.list.push(val);
-                    }
-                }
-            }
-        }
-    }
-}
-
-impl<'a, S> Observer<S> for AFLppInprocessesCmpObserver<'a, S> where
-    S: UsesInput + core::fmt::Debug + HasMetadata
-{
-}
-
-impl<'a, S> Named for AFLppInprocessesCmpObserver<'a, S>
-where
-    S: UsesInput + HasMetadata,
-{
-    fn name(&self) -> &str {
-        &self.name
-    }
-}
-
-impl<'a, S> AFLppInprocessesCmpObserver<'a, S>
-where
-    S: UsesInput + HasMetadata,
-{
-    /// Creates a new [`ForkserverCmpObserver`] with the given name and map.
-    #[must_use]
-    pub fn new(name: &'static str, map: &'a mut AFLppCmpMap, add_meta: bool) -> Self {
-        Self {
-            name: name.to_string(),
-            size: None,
-            cmp_map: OwnedRefMut::Ref(map),
-            add_meta,
-            original: false,
-            phantom: PhantomData,
-        }
-    }
-    /// Setter for the flag if the executed input is a mutated one or the original one
-    pub fn set_original(&mut self, v: bool) {
-        self.original = v;
-    }
-}
 
 #[derive(Builder)]
 #[builder(
@@ -696,7 +556,7 @@ impl SimicsFuzzer {
                 let run_input = buf.to_vec();
                 let mut exit_kind = ExitKind::Ok;
 
-                debug!("Running with input '{:?}'", run_input);
+                debug!("Tracing cmps with input '{:?}'", run_input);
 
                 debug!("Sending run signal");
 
@@ -808,18 +668,7 @@ impl SimicsFuzzer {
                 }
             }
 
-            let cmp_cb = |_fuzzer: &mut _,
-                          _executor: &mut _,
-                          state: &mut StdState<_, CachedOnDiskCorpus<_>, _, _>,
-                          _event_manager: &mut _,
-                          corpus_id: CorpusId|
-             -> Result<bool, libafl::Error> {
-                let corpus = state.corpus().get(corpus_id)?.borrow();
-                Ok(corpus.scheduled_count() == 1)
-            };
-
-            let cmp_stages = IfStage::new(cmp_cb, tuple_list!(colorization, tracing, redqueen));
-            let mut stages = tuple_list!(calibration, cmp_stages, std_power);
+            let mut stages = tuple_list!(calibration, colorization, tracing, redqueen, std_power);
 
             if let Some(iterations) = self.iterations {
                 info!("Fuzzing for {} iterations", iterations);

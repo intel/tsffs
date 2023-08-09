@@ -21,7 +21,7 @@ use libafl::prelude::{
 use libafl_bolts::{bolts_prelude::OwnedMutSlice, prelude::OwnedRefMut, AsMutSlice, AsSlice};
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use tracing::{info, trace};
+use tracing::info;
 
 use simics_api::{
     attr_object_or_nil_from_ptr, get_processor_number, AttrValue, CachedInstructionHandle,

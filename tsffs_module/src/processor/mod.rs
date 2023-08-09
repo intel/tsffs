@@ -315,31 +315,393 @@ impl Processor {
             CmpExpr::Mul((l, r)) => {
                 let lv = self.reduce(l)?;
                 let rv = self.reduce(r)?;
+
                 match (lv, rv) {
-                    (CmpValue::U8(lu), CmpValue::U8(ru)) => Ok(CmpValue::U8(lu * ru)),
-                    (CmpValue::U16(lu), CmpValue::U16(ru)) => Ok(CmpValue::U16(lu * ru)),
-                    (CmpValue::U32(lu), CmpValue::U32(ru)) => Ok(CmpValue::U32(lu * ru)),
-                    (CmpValue::U64(lu), CmpValue::U64(ru)) => Ok(CmpValue::U64(lu * ru)),
-                    (CmpValue::I8(lu), CmpValue::I8(ru)) => Ok(CmpValue::I8(lu * ru)),
-                    (CmpValue::I16(lu), CmpValue::I16(ru)) => Ok(CmpValue::I16(lu * ru)),
-                    (CmpValue::I32(lu), CmpValue::I32(ru)) => Ok(CmpValue::I32(lu * ru)),
-                    (CmpValue::I64(lu), CmpValue::I64(ru)) => Ok(CmpValue::I64(lu * ru)),
-                    _ => bail!("Can't multiply non-values"),
+                    (CmpValue::U8(lu), CmpValue::U8(ru)) => Ok(CmpValue::U8(lu.wrapping_mul(ru))),
+                    (CmpValue::U8(lu), CmpValue::I8(ru)) => {
+                        Ok(CmpValue::U8((lu as i32).wrapping_mul(ru as i32) as u8))
+                    }
+                    (CmpValue::U8(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::U8((lu as u16).wrapping_mul(ru) as u8))
+                    }
+                    (CmpValue::U8(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::U8((lu as i32).wrapping_mul(ru as i32) as u8))
+                    }
+                    (CmpValue::U8(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::U8((lu as u32).wrapping_mul(ru) as u8))
+                    }
+                    (CmpValue::U8(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::U8((lu as i32).wrapping_mul(ru) as u8))
+                    }
+                    (CmpValue::U8(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::U8((lu as u64).wrapping_mul(ru) as u8))
+                    }
+                    (CmpValue::U8(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::U8((lu as i64).wrapping_mul(ru) as u8))
+                    }
+                    (CmpValue::I8(lu), CmpValue::U8(ru)) => {
+                        Ok(CmpValue::I8((lu as i16).wrapping_mul(ru as i16) as i8))
+                    }
+                    (CmpValue::I8(lu), CmpValue::I8(ru)) => Ok(CmpValue::I8(lu.wrapping_mul(ru))),
+                    (CmpValue::I8(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::I8((lu as i32).wrapping_mul(ru as i32) as i8))
+                    }
+                    (CmpValue::I8(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::I8((lu as i16).wrapping_mul(ru) as i8))
+                    }
+                    (CmpValue::I8(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::I8((lu as i64).wrapping_mul(ru as i64) as i8))
+                    }
+                    (CmpValue::I8(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::I8((lu as i64).wrapping_mul(ru as i64) as i8))
+                    }
+                    (CmpValue::I8(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::I8((lu as i64).wrapping_mul(ru as i64) as i8))
+                    }
+                    (CmpValue::I8(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::I8((lu as i64).wrapping_mul(ru) as i8))
+                    }
+                    (CmpValue::U16(lu), CmpValue::U8(ru)) => {
+                        Ok(CmpValue::U16(lu.wrapping_mul(ru as u16)))
+                    }
+                    (CmpValue::U16(lu), CmpValue::I8(ru)) => {
+                        Ok(CmpValue::U16((lu as i32).wrapping_mul(ru as i32) as u16))
+                    }
+                    (CmpValue::U16(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::U16(lu.wrapping_mul(ru)))
+                    }
+                    (CmpValue::U16(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::U16((lu as i32).wrapping_mul(ru as i32) as u16))
+                    }
+                    (CmpValue::U16(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::U16((lu as u32).wrapping_mul(ru) as u16))
+                    }
+                    (CmpValue::U16(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::U16((lu as i32).wrapping_mul(ru) as u16))
+                    }
+                    (CmpValue::U16(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::U16((lu as u64).wrapping_mul(ru) as u16))
+                    }
+                    (CmpValue::U16(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::U16((lu as i64).wrapping_mul(ru) as u16))
+                    }
+                    (CmpValue::I16(lu), CmpValue::U8(ru)) => {
+                        Ok(CmpValue::I16(lu.wrapping_mul(ru as i16)))
+                    }
+                    (CmpValue::I16(lu), CmpValue::I8(ru)) => {
+                        Ok(CmpValue::I16(lu.wrapping_mul(ru as i16)))
+                    }
+                    (CmpValue::I16(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::I16((lu as i32).wrapping_mul(ru as i32) as i16))
+                    }
+                    (CmpValue::I16(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::I16(lu.wrapping_mul(ru)))
+                    }
+                    (CmpValue::I16(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::I16((lu as i64).wrapping_mul(ru as i64) as i16))
+                    }
+                    (CmpValue::I16(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::I16((lu as i32).wrapping_mul(ru) as i16))
+                    }
+                    (CmpValue::I16(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::I16((lu as i64).wrapping_mul(ru as i64) as i16))
+                    }
+                    (CmpValue::I16(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::I16((lu as i64).wrapping_mul(ru) as i16))
+                    }
+                    (CmpValue::U32(lu), CmpValue::U8(ru)) => {
+                        Ok(CmpValue::U32(lu.wrapping_mul(ru as u32)))
+                    }
+                    (CmpValue::U32(lu), CmpValue::I8(ru)) => {
+                        Ok(CmpValue::U32((lu as i64).wrapping_mul(ru as i64) as u32))
+                    }
+                    (CmpValue::U32(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::U32(lu.wrapping_mul(ru as u32)))
+                    }
+                    (CmpValue::U32(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::U32((lu as i64).wrapping_mul(ru as i64) as u32))
+                    }
+                    (CmpValue::U32(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::U32(lu.wrapping_mul(ru)))
+                    }
+                    (CmpValue::U32(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::U32((lu as i64).wrapping_mul(ru as i64) as u32))
+                    }
+                    (CmpValue::U32(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::U32((lu as u64).wrapping_mul(ru) as u32))
+                    }
+                    (CmpValue::U32(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::U32((lu as i64).wrapping_mul(ru) as u32))
+                    }
+                    (CmpValue::I32(lu), CmpValue::U8(ru)) => {
+                        Ok(CmpValue::I32(lu.wrapping_mul(ru as i32)))
+                    }
+                    (CmpValue::I32(lu), CmpValue::I8(ru)) => {
+                        Ok(CmpValue::I32(lu.wrapping_mul(ru as i32)))
+                    }
+                    (CmpValue::I32(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::I32(lu.wrapping_mul(ru as i32)))
+                    }
+                    (CmpValue::I32(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::I32(lu.wrapping_mul(ru as i32)))
+                    }
+                    (CmpValue::I32(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::I32((lu as i64).wrapping_mul(ru as i64) as i32))
+                    }
+                    (CmpValue::I32(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::I32(lu.wrapping_mul(ru)))
+                    }
+                    (CmpValue::I32(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::I32((lu as i64).wrapping_mul(ru as i64) as i32))
+                    }
+                    (CmpValue::I32(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::I32((lu as i64).wrapping_mul(ru) as i32))
+                    }
+                    (CmpValue::U64(lu), CmpValue::U8(ru)) => {
+                        Ok(CmpValue::U64(lu.wrapping_mul(ru as u64)))
+                    }
+                    (CmpValue::U64(lu), CmpValue::I8(ru)) => {
+                        Ok(CmpValue::U64((lu as i64).wrapping_mul(ru as i64) as u64))
+                    }
+                    (CmpValue::U64(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::U64(lu.wrapping_mul(ru as u64)))
+                    }
+                    (CmpValue::U64(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::U64((lu as i64).wrapping_mul(ru as i64) as u64))
+                    }
+                    (CmpValue::U64(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::U64(lu.wrapping_mul(ru as u64)))
+                    }
+                    (CmpValue::U64(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::U64((lu as i64).wrapping_mul(ru as i64) as u64))
+                    }
+                    (CmpValue::U64(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::U64(lu.wrapping_mul(ru)))
+                    }
+                    (CmpValue::U64(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::U64((lu as i64).wrapping_mul(ru) as u64))
+                    }
+                    (CmpValue::I64(lu), CmpValue::U8(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_mul(ru as i64)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::I8(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_mul(ru as i64)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_mul(ru as i64)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_mul(ru as i64)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_mul(ru as i64)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_mul(ru as i64)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_mul(ru as i64)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_mul(ru)))
+                    }
+                    _ => bail!("Cannot multiply non-integral types"),
                 }
             }
             CmpExpr::Add((l, r)) => {
                 let lv = self.reduce(l)?;
                 let rv = self.reduce(r)?;
+
                 match (lv, rv) {
-                    (CmpValue::U8(lu), CmpValue::U8(ru)) => Ok(CmpValue::U8(lu + ru)),
-                    (CmpValue::U16(lu), CmpValue::U16(ru)) => Ok(CmpValue::U16(lu + ru)),
-                    (CmpValue::U32(lu), CmpValue::U32(ru)) => Ok(CmpValue::U32(lu + ru)),
-                    (CmpValue::U64(lu), CmpValue::U64(ru)) => Ok(CmpValue::U64(lu + ru)),
-                    (CmpValue::I8(lu), CmpValue::I8(ru)) => Ok(CmpValue::I8(lu + ru)),
-                    (CmpValue::I16(lu), CmpValue::I16(ru)) => Ok(CmpValue::I16(lu + ru)),
-                    (CmpValue::I32(lu), CmpValue::I32(ru)) => Ok(CmpValue::I32(lu + ru)),
-                    (CmpValue::I64(lu), CmpValue::I64(ru)) => Ok(CmpValue::I64(lu + ru)),
-                    _ => bail!("Can't multiply non-values"),
+                    (CmpValue::U8(lu), CmpValue::U8(ru)) => Ok(CmpValue::U8(lu.wrapping_add(ru))),
+                    (CmpValue::U8(lu), CmpValue::I8(ru)) => {
+                        Ok(CmpValue::U8(lu.wrapping_add_signed(ru)))
+                    }
+                    (CmpValue::U8(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::U8((lu as u16).wrapping_add(ru) as u8))
+                    }
+                    (CmpValue::U8(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::U8((lu as u16).wrapping_add_signed(ru) as u8))
+                    }
+                    (CmpValue::U8(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::U8((lu as u32).wrapping_add(ru) as u8))
+                    }
+                    (CmpValue::U8(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::U8((lu as u32).wrapping_add_signed(ru) as u8))
+                    }
+                    (CmpValue::U8(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::U8((lu as u64).wrapping_add(ru) as u8))
+                    }
+                    (CmpValue::U8(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::U8((lu as u64).wrapping_add_signed(ru) as u8))
+                    }
+                    (CmpValue::I8(lu), CmpValue::U8(ru)) => {
+                        Ok(CmpValue::I8(lu.wrapping_add_unsigned(ru)))
+                    }
+                    (CmpValue::I8(lu), CmpValue::I8(ru)) => Ok(CmpValue::I8(lu.wrapping_add(ru))),
+                    (CmpValue::I8(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::I8((lu as i16).wrapping_add_unsigned(ru) as i8))
+                    }
+                    (CmpValue::I8(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::I8((lu as i16).wrapping_add(ru) as i8))
+                    }
+                    (CmpValue::I8(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::I8((lu as i32).wrapping_add_unsigned(ru) as i8))
+                    }
+                    (CmpValue::I8(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::I8((lu as i32).wrapping_add(ru) as i8))
+                    }
+                    (CmpValue::I8(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::I8((lu as i64).wrapping_add_unsigned(ru) as i8))
+                    }
+                    (CmpValue::I8(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::I8((lu as i64).wrapping_add(ru) as i8))
+                    }
+                    (CmpValue::U16(lu), CmpValue::U8(ru)) => {
+                        Ok(CmpValue::U16(lu.wrapping_add(ru as u16)))
+                    }
+                    (CmpValue::U16(lu), CmpValue::I8(ru)) => {
+                        Ok(CmpValue::U16(lu.wrapping_add_signed(ru as i16)))
+                    }
+                    (CmpValue::U16(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::U16(lu.wrapping_add(ru)))
+                    }
+                    (CmpValue::U16(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::U16(lu.wrapping_add_signed(ru)))
+                    }
+                    (CmpValue::U16(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::U16((lu as u32).wrapping_add(ru) as u16))
+                    }
+                    (CmpValue::U16(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::U16((lu as u32).wrapping_add_signed(ru) as u16))
+                    }
+                    (CmpValue::U16(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::U16((lu as u64).wrapping_add(ru) as u16))
+                    }
+                    (CmpValue::U16(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::U16((lu as u64).wrapping_add_signed(ru) as u16))
+                    }
+                    (CmpValue::I16(lu), CmpValue::U8(ru)) => {
+                        Ok(CmpValue::I16(lu.wrapping_add_unsigned(ru as u16)))
+                    }
+                    (CmpValue::I16(lu), CmpValue::I8(ru)) => {
+                        Ok(CmpValue::I16(lu.wrapping_add(ru as i16)))
+                    }
+                    (CmpValue::I16(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::I16(lu.wrapping_add_unsigned(ru)))
+                    }
+                    (CmpValue::I16(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::I16(lu.wrapping_add(ru)))
+                    }
+                    (CmpValue::I16(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::I16((lu as i32).wrapping_add_unsigned(ru) as i16))
+                    }
+                    (CmpValue::I16(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::I16((lu as i32).wrapping_add(ru) as i16))
+                    }
+                    (CmpValue::I16(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::I16((lu as i64).wrapping_add_unsigned(ru) as i16))
+                    }
+                    (CmpValue::I16(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::I16((lu as i64).wrapping_add(ru) as i16))
+                    }
+                    (CmpValue::U32(lu), CmpValue::U8(ru)) => {
+                        Ok(CmpValue::U32(lu.wrapping_add(ru as u32)))
+                    }
+                    (CmpValue::U32(lu), CmpValue::I8(ru)) => {
+                        Ok(CmpValue::U32(lu.wrapping_add_signed(ru as i32)))
+                    }
+                    (CmpValue::U32(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::U32(lu.wrapping_add(ru as u32)))
+                    }
+                    (CmpValue::U32(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::U32(lu.wrapping_add_signed(ru as i32)))
+                    }
+                    (CmpValue::U32(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::U32(lu.wrapping_add(ru)))
+                    }
+                    (CmpValue::U32(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::U32(lu.wrapping_add_signed(ru)))
+                    }
+                    (CmpValue::U32(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::U32((lu as u64).wrapping_add(ru) as u32))
+                    }
+                    (CmpValue::U32(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::U32((lu as u64).wrapping_add_signed(ru) as u32))
+                    }
+                    (CmpValue::I32(lu), CmpValue::U8(ru)) => {
+                        Ok(CmpValue::I32(lu.wrapping_add_unsigned(ru as u32)))
+                    }
+                    (CmpValue::I32(lu), CmpValue::I8(ru)) => {
+                        Ok(CmpValue::I32(lu.wrapping_add(ru as i32)))
+                    }
+                    (CmpValue::I32(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::I32(lu.wrapping_add_unsigned(ru as u32)))
+                    }
+                    (CmpValue::I32(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::I32(lu.wrapping_add(ru as i32)))
+                    }
+                    (CmpValue::I32(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::I32(lu.wrapping_add_unsigned(ru)))
+                    }
+                    (CmpValue::I32(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::I32(lu.wrapping_add(ru)))
+                    }
+                    (CmpValue::I32(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::I32((lu as i64).wrapping_add_unsigned(ru) as i32))
+                    }
+                    (CmpValue::I32(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::I32((lu as i64).wrapping_add(ru) as i32))
+                    }
+                    (CmpValue::U64(lu), CmpValue::U8(ru)) => {
+                        Ok(CmpValue::U64(lu.wrapping_add(ru as u64)))
+                    }
+                    (CmpValue::U64(lu), CmpValue::I8(ru)) => {
+                        Ok(CmpValue::U64(lu.wrapping_add_signed(ru as i64)))
+                    }
+                    (CmpValue::U64(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::U64(lu.wrapping_add(ru as u64)))
+                    }
+                    (CmpValue::U64(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::U64(lu.wrapping_add_signed(ru as i64)))
+                    }
+                    (CmpValue::U64(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::U64(lu.wrapping_add(ru as u64)))
+                    }
+                    (CmpValue::U64(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::U64(lu.wrapping_add_signed(ru as i64)))
+                    }
+                    (CmpValue::U64(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::U64(lu.wrapping_add(ru)))
+                    }
+                    (CmpValue::U64(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::U64(lu.wrapping_add_signed(ru)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::U8(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_add_unsigned(ru as u64)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::I8(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_add(ru as i64)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_add_unsigned(ru as u64)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_add(ru as i64)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_add_unsigned(ru as u64)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_add(ru as i64)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_add_unsigned(ru)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_add(ru)))
+                    }
+                    _ => bail!("Cannot multiply non-integral types"),
                 }
             }
             CmpExpr::U8(_)

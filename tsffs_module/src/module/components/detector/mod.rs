@@ -141,14 +141,15 @@ impl State for Detector {
                     let clock = object_clock(processor.cpu())?;
 
                     if let Ok(remaining) = event_find_next_time(clock, timeout_event, module) {
-                        debug!(
+                        trace!(
                             "Remaining time on stop for processor {}: {} seconds, cancelling event",
-                            processor_number, remaining
+                            processor_number,
+                            remaining
                         );
 
                         event_cancel_time(clock, timeout_event, module);
                     } else {
-                        debug!("Stopped without timeout event, unable to cancel nonexistent event");
+                        trace!("Stopped without timeout event, unable to cancel nonexistent event");
                     }
                 }
             } else {

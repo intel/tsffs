@@ -28,7 +28,7 @@
 
 use anyhow::{bail, Result};
 use rust_fsm::*;
-use tracing::{debug, error};
+use tracing::{error, trace};
 
 use crate::messages::{client::ClientMessage, module::ModuleMessage};
 
@@ -111,9 +111,11 @@ impl ModuleStateMachine {
 
         match result {
             Ok(r) => {
-                debug!(
+                trace!(
                     "Consumed {:?}: Transitioned from {:?} -> {:?}",
-                    input, pre_state, post_state
+                    input,
+                    pre_state,
+                    post_state
                 );
                 Ok(r)
             }
