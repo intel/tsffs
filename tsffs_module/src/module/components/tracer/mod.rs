@@ -346,9 +346,8 @@ mod test_tracer_math {
 
     #[test]
     fn test_cmp_hash() {
-        const LEN: usize = 65536;
         // Sanity check that we'll get the right number of bytes needed to represent the map width
-        assert_eq!(byte_width(LEN as u64), 2);
+        assert_eq!(byte_width(65535), 2);
     }
 
     #[test]
