@@ -34,12 +34,15 @@ and takes advantage of several of the state of the art capabilities of both.
 - Parallel fuzzing (across cores, machines soon)
 - Easy to add to existing SIMICS projects
 - Triage mode to reproduce and debug crashes
+- Modern fuzzing methodologies:
+  - Redqueen/I2S taint-based mutation
+  - MOpt & Auto-token mutations
+  - More coming soon!
 
 ## Documentation
 
 Documentation for this project lives in the [docs](./docs/README.md) directory of this
 repository.
-
 
 ## Setup
 
