@@ -13,14 +13,18 @@ use libafl::{
     prelude::{
         havoc_mutations,
         ondisk::OnDiskMetadataFormat,
+        tokens_mutations,
         tui::{ui::TuiUI, TuiMonitor},
         AFLppCmpMap, AFLppForkserverCmpObserver, AFLppRedQueen, BytesInput, CachedOnDiskCorpus,
         Corpus, CorpusId, CrashFeedback, EventConfig, EventRestarter, ExitKind, HasTargetBytes,
         HitcountsMapObserver, I2SRandReplace, InProcessExecutor, Launcher,
         LlmpRestartingEventManager, MaxMapFeedback, MultiMonitor, OnDiskCorpus, RandBytesGenerator,
-        StdMapObserver, StdScheduledMutator, TimeFeedback, TimeObserver, TimeoutExecutor,
+        StdMOptMutator, StdMapObserver, StdScheduledMutator, TimeFeedback, TimeObserver,
+        TimeoutExecutor,
     },
-    schedulers::{powersched::PowerSchedule, PowerQueueScheduler},
+    schedulers::{
+        powersched::PowerSchedule, IndexesLenTimeMinimizerScheduler, StdWeightedScheduler,
+    },
     stages::{
         mutational::MultiMutationalStage, tracing::AFLppCmplogTracingStage, CalibrationStage,
         ColorizationStage, DumpToDiskStage, GeneralizationStage, IfStage, StdMutationalStage,
@@ -34,7 +38,7 @@ use libafl_bolts::{
     core_affinity::Cores,
     current_nanos,
     prelude::OwnedMutSlice,
-    tuples::tuple_list,
+    tuples::{tuple_list, Merge},
     AsMutSlice, AsSlice, ErrorBacktrace,
 };
 use simics::{
@@ -501,8 +505,22 @@ impl SimicsFuzzer {
             )));
             let std_mutator = StdScheduledMutator::new(havoc_mutations());
             let std_power = StdPowerMutationalStage::new(std_mutator);
+            let mopt_mutator = StdMOptMutator::new(
+                &mut state,
+                havoc_mutations().merge(tokens_mutations()),
+                7,
+                5,
+            )?;
+            let mopt = StdPowerMutationalStage::new(mopt_mutator);
+            // let scheduler =
+            //     PowerQueueScheduler::new(&mut state, &edges_observer, PowerSchedule::FAST);
             let scheduler =
-                PowerQueueScheduler::new(&mut state, &edges_observer, PowerSchedule::FAST);
+                IndexesLenTimeMinimizerScheduler::new(StdWeightedScheduler::with_schedule(
+                    &mut state,
+                    &edges_observer,
+                    Some(PowerSchedule::EXPLORE),
+                ));
+
             let mut fuzzer = StdFuzzer::new(scheduler, feedback, objective);
 
             let mut harness = |input: &BytesInput| {
@@ -555,7 +573,57 @@ impl SimicsFuzzer {
 
                 exit_kind
             };
-            let mut cmplog_harness = harness;
+
+            let mut cmplog_harness = |input: &BytesInput| {
+                let target = input.target_bytes();
+                let buf = target.as_slice();
+                let run_input = buf.to_vec();
+                let mut exit_kind = ExitKind::Ok;
+
+                debug!("Tracing input '{:?}'", run_input);
+
+                debug!("Sending run signal");
+
+                match client.borrow_mut().run(run_input) {
+                    Ok(reason) => match reason {
+                        StopReason::Magic((_magic, _p)) => {
+                            exit_kind = ExitKind::Ok;
+                        }
+                        StopReason::SimulationExit(_) => {
+                            exit_kind = ExitKind::Ok;
+                        }
+                        StopReason::Crash((fault, _p)) => {
+                            info!("Target crashed with fault {:?}", fault);
+                            exit_kind = ExitKind::Crash;
+                        }
+                        StopReason::TimeOut => {
+                            info!("Target timed out");
+                            exit_kind = ExitKind::Timeout;
+                        }
+                        StopReason::Breakpoint(breakpoint_number) => {
+                            info!("Target got a breakpoint #{}", breakpoint_number);
+                            exit_kind = ExitKind::Crash;
+                        }
+                        StopReason::Error((e, _p)) => {
+                            error!("An error occurred during execution: {:?}", e);
+                            exit_kind = ExitKind::Ok;
+                        }
+                    },
+                    Err(e) => {
+                        error!("Error running SIMICS: {}", e);
+                    }
+                }
+
+                debug!("Sending reset signal");
+
+                if let Err(e) = client.borrow_mut().reset() {
+                    error!("Error resetting SIMICS: {}", e);
+                }
+
+                debug!("Harness done");
+
+                exit_kind
+            };
 
             let mut executor = TimeoutExecutor::new(
                 InProcessExecutor::new(
@@ -636,11 +704,20 @@ impl SimicsFuzzer {
             let mut stages = tuple_list!(
                 calibration,
                 generalization,
-                colorization,
-                tracing,
-                redqueen,
+                IfStage::new(
+                    |_fuzzer: &mut _,
+                     _executor: &mut _,
+                     state: &mut StdState<_, CachedOnDiskCorpus<_>, _, _>,
+                     _event_manager: &mut _,
+                     corpus_id: CorpusId|
+                     -> Result<bool, libafl::Error> {
+                        Ok(state.corpus().get(corpus_id)?.borrow().scheduled_count() >= 1)
+                    },
+                    tuple_list!(colorization, tracing, redqueen),
+                ),
                 i2s,
                 std_power,
+                mopt,
                 // Sync to disk
                 IfStage::new(
                     |_fuzzer: &mut _,
