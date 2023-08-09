@@ -219,11 +219,11 @@ impl Processor {
     /// reduction recursively
     ///
     /// We don't implement this as try_from because we need to read mem and regs
-    pub fn reduce(&mut self, expr: &CmpExpr) -> Result<CmpValue> {
+    pub fn simplify(&mut self, expr: &CmpExpr) -> Result<CmpValue> {
         trace!("Reducing {:?}", expr);
         match expr {
             CmpExpr::Deref((expr, width)) => {
-                let v = self.reduce(expr)?;
+                let v = self.simplify(expr)?;
 
                 match v {
                     CmpValue::U64(a) => {
@@ -313,8 +313,8 @@ impl Processor {
                 Ok(casted)
             }
             CmpExpr::Mul((l, r)) => {
-                let lv = self.reduce(l)?;
-                let rv = self.reduce(r)?;
+                let lv = self.simplify(l)?;
+                let rv = self.simplify(r)?;
 
                 match (lv, rv) {
                     (CmpValue::U8(lu), CmpValue::U8(ru)) => Ok(CmpValue::U8(lu.wrapping_mul(ru))),
@@ -509,8 +509,8 @@ impl Processor {
                 }
             }
             CmpExpr::Add((l, r)) => {
-                let lv = self.reduce(l)?;
-                let rv = self.reduce(r)?;
+                let lv = self.simplify(l)?;
+                let rv = self.simplify(r)?;
 
                 match (lv, rv) {
                     (CmpValue::U8(lu), CmpValue::U8(ru)) => Ok(CmpValue::U8(lu.wrapping_add(ru))),
@@ -760,7 +760,7 @@ impl Processor {
 
                 if let Ok(cmp) = self.disassembler.cmp() {
                     for expr in &cmp {
-                        match self.reduce(expr) {
+                        match self.simplify(expr) {
                             Ok(value) => cmp_values.push(value),
                             Err(e) => {
                                 error!("Error reducing expression {:?}: {}", expr, e);
