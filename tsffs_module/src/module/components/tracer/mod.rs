@@ -234,6 +234,7 @@ pub struct Tracer {
     coverage_prev_loc: u64,
     processors: HashMap<i32, Processor>,
     mode: TraceMode,
+    cmplog: bool,
 }
 
 impl From<*mut std::ffi::c_void> for &mut Tracer {
@@ -255,6 +256,7 @@ impl Tracer {
             coverage_prev_loc: 0,
             processors: HashMap::new(),
             mode: TraceMode::Once,
+            cmplog: false,
         })
     }
 
@@ -405,6 +407,15 @@ impl State for Tracer {
         Ok(())
     }
 
+    fn on_run(
+        &mut self,
+        _module: *mut ConfObject,
+        run_config: &crate::config::RunConfig,
+    ) -> Result<()> {
+        self.cmplog = run_config.cmplog;
+        Ok(())
+    }
+
     // Uncomment to check map hash
     // fn on_stopped(&mut self, module: *mut ConfObject, reason: StopReason) -> Result<()> {
     //     let buf = self.coverage_writer.read_all()?;
@@ -450,8 +461,15 @@ impl Tracer {
                 if let Some(pc) = r.edge {
                     self.log_pc(pc)?;
                 }
-                if let Some((pc, cmp)) = r.cmp {
-                    self.log_cmp(pc, cmp)?;
+            }
+        }
+
+        if self.cmplog {
+            if let Some(processor) = self.processors.get_mut(&processor_number) {
+                if let Ok(r) = processor.trace_cmp(handle) {
+                    if let Some((pc, cmp)) = r.cmp {
+                        self.log_cmp(pc, cmp)?;
+                    }
                 }
             }
         }
@@ -475,9 +493,15 @@ impl Tracer {
                 if let Some(pc) = r.edge {
                     self.log_pc(pc)?;
                 }
+            }
+        }
 
-                if let Some((pc, cmp)) = r.cmp {
-                    self.log_cmp(pc, cmp)?;
+        if self.cmplog {
+            if let Some(processor) = self.processors.get_mut(&processor_number) {
+                if let Ok(r) = processor.trace_cmp(handle) {
+                    if let Some((pc, cmp)) = r.cmp {
+                        self.log_cmp(pc, cmp)?;
+                    }
                 }
             }
         }

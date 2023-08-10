@@ -748,7 +748,19 @@ impl Processor {
                 } else {
                     bail!("No ProcessorInfoV2 interface registered in processor. Try building with `try_with_processor_info_v2`");
                 }
-            } else if self.disassembler.last_was_cmp()? {
+            } else {
+                Ok(TraceResult::default())
+            }
+        } else {
+            bail!("No CpuInstructionQuery interface registered in processor. Try building with `try_with_cpu_instruction_query`");
+        }
+    }
+
+    pub fn trace_cmp(&mut self, instruction_query: *mut InstructionHandle) -> Result<TraceResult> {
+        if let Some(cpu_instruction_query) = self.cpu_instruction_query.as_mut() {
+            let bytes = cpu_instruction_query.get_instruction_bytes(self.cpu, instruction_query)?;
+            self.disassembler.disassemble(bytes)?;
+            if self.disassembler.last_was_cmp()? {
                 let pc = if let Some(processor_info_v2) = self.processor_info_v2.as_mut() {
                     processor_info_v2.get_program_counter(self.cpu)?
                 } else {

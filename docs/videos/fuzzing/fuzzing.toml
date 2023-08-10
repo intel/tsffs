@@ -18,7 +18,17 @@ docker build -q -t demo-training-harnessing-tsffs --build-context "applications.
 docker run --rm --name demo-training-harnessing-tsffs -it demo-training-harnessing-tsffs bash
 apt-get -y update
 apt-get -y install clang lld vim
-clear
+cargo build --release --features=6.0.168
+cargo run --release --bin simics-fuzz --features=6.0.168 -- \
+  -c /tmp/hello-world-corpus/ -s /tmp/hello-world-solution/ -l ERROR -t -C 1 \
+  --package 2096:6.0.69 \
+  --file examples/hello-world/rsrc/HelloWorld.efi:%simics%/targets/hello-world/HelloWorld.efi \
+  --file examples/hello-world/rsrc/app.py:%simics%/scripts/app.py \
+  --file examples/hello-world/rsrc/app.yml:%simics%/scripts/app.yml \
+  --file examples/hello-world/rsrc/minimal_boot_disk.craff:%simics%/targets/hello-world/minimal_boot_disk.craff \
+  --file examples/hello-world/rsrc/run_uefi_app.nsh:%simics%/targets/hello-world/run_uefi_app.nsh \
+  --file examples/hello-world/rsrc/run-uefi-app.simics:%simics%/targets/hello-world/run-uefi-app.simics \
+  --command CONFIG:%simics%/scripts/app.yml
 """
 prompt = true
 immediate = true
@@ -80,7 +90,7 @@ prompt = true
 
 [[command]]
 script_pre = """
-Let's close our SIMICS script and take a look at our UEFI application to extract some
+Let's close our SIMICS script and disassemble our UEFI application to extract some
 important information.
 """
 command = ":x\n"
@@ -120,7 +130,7 @@ prompt = true
 [[command]]
 script_pre = """
 This instruction is loading the address of the string into a register, so we need to
-disassemble a few instructions forward to find the actual call. We'll use the print
+disassemble a few instructions forward to find the actual call. We'll use the 'pd' or print
 disassembly command starting from the last instruction address.
 """
 command = "rizin -Aqqc 'e asm.var=false; e asm.lines=false; sf entry0; pd 3 @ 0x180001255' rsrc/target.efi\n"
@@ -180,7 +190,7 @@ not treated as solutions.
 Finally, we'll type in our UEFI application on the console along with a newline, and
 continue the simulation.
 """
-command = ''':37
+command = ''':40
 o    stop
     @conf.tsffs_module.iface.tsffs_module.init()
     @conf.tsffs_module.iface.tsffs_module.add_processor(SIM_get_object(simenv.system).mb.cpu0.core[0][0])
@@ -223,21 +233,15 @@ command = '''jjjoscript-branch "Set breakpoints" {
     local $MAGIC_START = 1
     bp.magic.wait-for $MAGIC_START
 
-    # Create a context for the CPU to set virtual address breakpoints. If you only need
-    # physical address breakpoints, you can just use `break`
     local $ctx = (new-context)
     board.mb.cpu0.core[0][0].set-context $ctx
 
-    # Get the value of the IP and the offset from the known address (in this case, it
-    # should be 0)
     local $rip = (board.mb.cpu0.core[0][0].read-reg rip)
     local $offset = $rip - $TARGET_HARNESS_ADDRESS
 
-    # Set a breakpoint on the bad instruction
     local $harness_break_addr = ($TARGET_INSTRUCTION_ADDRESS + $offset)
     $ctx.break -x $harness_break_addr
 
-    # Set a breakpoint on the data memory range
     local $data_break_addr = ($TARGET_DATA_ADDRESS + $offset)
     $ctx.break -r -w $data_break_addr 0x100
 }

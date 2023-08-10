@@ -117,3 +117,8 @@ impl InputConfig {
 pub struct OutputConfig {}
 
 impl OutputConfig {}
+
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
+pub struct RunConfig {
+    pub cmplog: bool,
+}

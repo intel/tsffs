@@ -3,7 +3,7 @@
 
 use self::components::{detector::Detector, tracer::Tracer};
 use crate::{
-    config::OutputConfig,
+    config::{OutputConfig, RunConfig},
     magic::{Magic, MAGIC_ARG0_REG_X86_64, MAGIC_ARG1_REG_X86_64},
     messages::{client::ClientMessage, module::ModuleMessage},
     processor::Processor,
@@ -53,6 +53,7 @@ pub struct Module {
     /// Set to true when running in repro mode once we have reached the stop harness. This is
     /// used to disable the normal fuzzing procedures when reproducing issues.
     repro_started: bool,
+    run_config: RunConfig,
 }
 
 impl SimicsModule for Module {
@@ -78,6 +79,7 @@ impl SimicsModule for Module {
             -1,
             false,
             false,
+            RunConfig::default(),
         ))
     }
 }
@@ -185,7 +187,7 @@ impl Module {
 
         self.send_msg(ModuleMessage::Ready)?;
 
-        let mut input = if let ClientMessage::Run(input) = self.recv_msg()? {
+        let (mut input, config) = if let ClientMessage::Run(input) = self.recv_msg()? {
             input
         } else {
             bail!("Unexpected message. Expected Run.");
@@ -203,6 +205,8 @@ impl Module {
             // Write the testcase size back to rdi
             processor.set_reg_value(MAGIC_ARG1_REG_X86_64, input.len() as u64)?;
         }
+
+        self.run_config = config;
 
         // Run the simulation until the magic start instruction, where we will receive a stop
         // callback
@@ -304,8 +308,10 @@ impl Module {
                         } else {
                             self.iterations += 1;
 
-                            self.detector.on_run(self_ptr)?;
-                            self.tracer.on_run(self_ptr)?;
+                            let run_config = &self.run_config;
+
+                            self.detector.on_run(self_ptr, run_config)?;
+                            self.tracer.on_run(self_ptr, run_config)?;
 
                             self.stop_reason = None;
                             self.last_start_processor_number = processor_number;

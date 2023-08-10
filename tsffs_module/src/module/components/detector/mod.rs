@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
-    config::OutputConfig,
+    config::{OutputConfig, RunConfig},
     faults::{x86_64::X86_64Fault, Fault},
     module::Module,
     processor::Processor,
@@ -100,7 +100,7 @@ impl State for Detector {
         Ok(())
     }
 
-    fn on_run(&mut self, module: *mut ConfObject) -> Result<()> {
+    fn on_run(&mut self, module: *mut ConfObject, _run_config: &RunConfig) -> Result<()> {
         trace!("Setting up Detector before run");
 
         self.stop_reason = None;

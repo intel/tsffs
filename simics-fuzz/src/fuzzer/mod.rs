@@ -71,7 +71,7 @@ use tracing::{trace, Level};
 use tracing_subscriber::{filter::filter_fn, fmt, prelude::*, registry, Layer};
 use tsffs_module::{
     client::Client,
-    config::{InputConfigBuilder, TraceMode},
+    config::{InputConfigBuilder, RunConfig, TraceMode},
     messages::{client::ClientMessage, module::ModuleMessage},
     stops::StopReason,
     traits::ThreadClient,
@@ -397,7 +397,7 @@ impl SimicsFuzzer {
                 .ok_or_else(|| anyhow!("Repro file disappeared"))?,
         )?;
 
-        client.run(run_input)?;
+        client.run(run_input, RunConfig::default())?;
 
         Ok(())
     }
@@ -533,7 +533,7 @@ impl SimicsFuzzer {
 
                 debug!("Sending run signal");
 
-                match client.borrow_mut().run(run_input) {
+                match client.borrow_mut().run(run_input, RunConfig::default()) {
                     Ok(reason) => match reason {
                         StopReason::Magic((_magic, _p)) => {
                             exit_kind = ExitKind::Ok;
@@ -584,7 +584,10 @@ impl SimicsFuzzer {
 
                 debug!("Sending run signal");
 
-                match client.borrow_mut().run(run_input) {
+                match client
+                    .borrow_mut()
+                    .run(run_input, RunConfig { cmplog: true })
+                {
                     Ok(reason) => match reason {
                         StopReason::Magic((_magic, _p)) => {
                             exit_kind = ExitKind::Ok;
@@ -711,7 +714,7 @@ impl SimicsFuzzer {
                      _event_manager: &mut _,
                      corpus_id: CorpusId|
                      -> Result<bool, libafl::Error> {
-                        Ok(state.corpus().get(corpus_id)?.borrow().scheduled_count() >= 1)
+                        Ok(state.corpus().get(corpus_id)?.borrow().scheduled_count() == 1)
                     },
                     tuple_list!(colorization, tracing, redqueen),
                 ),

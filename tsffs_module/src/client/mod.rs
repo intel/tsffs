@@ -10,7 +10,7 @@
 //!
 
 use crate::{
-    config::{InputConfig, OutputConfig},
+    config::{InputConfig, OutputConfig, RunConfig},
     messages::{client::ClientMessage, module::ModuleMessage},
     state::ModuleStateMachine,
     stops::StopReason,
@@ -86,9 +86,9 @@ impl ThreadClient for Client {
     /// from `Running` to `Stopped`. This function blocks until the target software stops and the
     /// module detects it, so it may take a long time or if there is an unexpected bug it may
     /// hang.
-    fn run(&mut self, input: Vec<u8>) -> Result<StopReason> {
+    fn run(&mut self, input: Vec<u8>, config: RunConfig) -> Result<StopReason> {
         trace!("Sending run message");
-        self.send_msg(ClientMessage::Run(input))?;
+        self.send_msg(ClientMessage::Run((input, config)))?;
 
         trace!("Waiting for stopped message");
         if let ModuleMessage::Stopped(reason) = self.recv_msg()? {

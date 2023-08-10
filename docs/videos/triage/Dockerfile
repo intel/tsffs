@@ -9,6 +9,7 @@ ARG GH_TOKEN
 RUN apt-get -y update && \
     apt-get -y install --no-install-recommends \
     krb5-user=1.19.2-2ubuntu0.2 \
+    ca-certificates=20230311ubuntu0.22.04.1 \
     smbclient=2:4.15.13+dfsg-0ubuntu1.2 \
     curl=7.81.0-1ubuntu1.13 \
     git=1:2.34.1-1ubuntu1.9 \
@@ -39,7 +40,7 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
     | tee /etc/apt/sources.list.d/github-cli.list >/dev/null && \
     apt-get -y update && \
-    apt-get -y --no-install-recommends install gh=1.43.0-1build3 && \
+    apt-get -y --no-install-recommends install gh=2.32.1 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

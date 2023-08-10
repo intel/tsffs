@@ -4,7 +4,7 @@
 //! Traits for common functionality used throughout the module
 
 use crate::{
-    config::{InputConfig, OutputConfig},
+    config::{InputConfig, OutputConfig, RunConfig},
     messages::{client::ClientMessage, module::ModuleMessage},
     processor::disassembler::CmpExpr,
     state::ModuleStateMachine,
@@ -46,7 +46,7 @@ pub trait State {
     /// Callback when the module is about to run, just before the simulation is continued. Any
     /// setup that needs to be done before every run should be done here (for example, resetting
     /// the timeout duration).
-    fn on_run(&mut self, _module: *mut ConfObject) -> Result<()> {
+    fn on_run(&mut self, _module: *mut ConfObject, _run_config: &RunConfig) -> Result<()> {
         Ok(())
     }
 
@@ -115,7 +115,7 @@ pub trait ThreadClient {
     /// from `Running` to `Stopped`. This function blocks until the target software stops and the
     /// module detects it, so it may take a long time or if there is an unexpected bug it may
     /// hang.
-    fn run(&mut self, input: Vec<u8>) -> Result<StopReason>;
+    fn run(&mut self, input: Vec<u8>, config: RunConfig) -> Result<StopReason>;
 
     /// Signal the module to exit SIMICS, stopping the fuzzing process. Changes the internal state
     /// from any state to `Done`.
