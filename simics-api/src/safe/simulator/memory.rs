@@ -4,13 +4,24 @@
 use anyhow::{bail, Result};
 use simics_api_sys::{SIM_read_byte, SIM_write_byte};
 
-use crate::{get_pending_exception, last_error, ConfObject, SimException};
+use crate::{clear_exception, get_pending_exception, last_error, ConfObject, SimException};
 
 /// Write a byte to a physical address
 pub fn write_byte(physical_memory: *mut ConfObject, physical_addr: u64, byte: u8) -> Result<()> {
     unsafe { SIM_write_byte(physical_memory.into(), physical_addr, byte) };
 
-    Ok(())
+    match get_pending_exception()? {
+        SimException::NoException => Ok(()),
+        exception => {
+            clear_exception()?;
+            bail!(
+                "Exception reading byte from {:#x}: {:?}({})",
+                physical_addr,
+                exception,
+                last_error()
+            );
+        }
+    }
 }
 
 /// Read a byte from a physical address
@@ -19,11 +30,14 @@ pub fn read_byte(physical_memory: *mut ConfObject, physical_addr: u64) -> Result
 
     match get_pending_exception()? {
         SimException::NoException => Ok(byte),
-        exception => bail!(
-            "Exception reading byte from {:#x}: {:?}({})",
-            physical_addr,
-            exception,
-            last_error()
-        ),
+        exception => {
+            clear_exception()?;
+            bail!(
+                "Exception reading byte from {:#x}: {:?}({})",
+                physical_addr,
+                exception,
+                last_error()
+            );
+        }
     }
 }
