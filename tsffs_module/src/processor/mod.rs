@@ -880,7 +880,7 @@ impl Processor {
             let logical_address = logical_address_start + i as u64;
             let physical_address =
                 processor_info_v2.logical_to_physical(self.cpu, logical_address)?;
-            write_byte(physical_memory, physical_address.address, *byte);
+            write_byte(physical_memory, physical_address.address, *byte)?;
             // let written = read_byte(physical_memory, physical_address);
             // ensure!(written == *byte, "Did not read back same written byte");
         }
@@ -903,7 +903,7 @@ impl Processor {
             let logical_address = logical_address_start + i as u64;
             let physical_address =
                 processor_info_v2.logical_to_physical(self.cpu, logical_address)?;
-            bytes.push(read_byte(physical_memory, physical_address.address));
+            bytes.push(read_byte(physical_memory, physical_address.address)?);
             // let written = read_byte(physical_memory, physical_address);
             // ensure!(written == *byte, "Did not read back same written byte");
         }

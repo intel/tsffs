@@ -48,6 +48,8 @@ script-branch "UEFI Shell Enter Branch" {
     @conf.tsffs_module.iface.tsffs_module.add_fault(14)
     # Invalid opcode
     @conf.tsffs_module.iface.tsffs_module.add_fault(6)
+    # Invalid opcode
+    @conf.tsffs_module.iface.tsffs_module.add_fault(13)
 
     $con.input "target.efi\n"
     continue

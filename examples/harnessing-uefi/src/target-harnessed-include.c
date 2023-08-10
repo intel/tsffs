@@ -52,8 +52,6 @@ const char hex[] = {'0', '1', '2', '3', '4', '5', '6', '7',
                     '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
 int UefiMain(void *imageHandle, EfiSystemTable *SystemTable) {
-  uint32_t _a, _b, _c, _d = 0;
-
   int16_t buffer[0x20];
   int16_t *buffer_ptr = &buffer[0];
   size_t size = sizeof(buffer) - 1;
