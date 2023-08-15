@@ -24,13 +24,13 @@ clap = { version = "4.3.0", features = ["derive", "string"] }
 tsffs_module.workspace = true
 derive_builder = "0.12.0"
 libafl.workspace = true
-num = "0.4.0"
-num-derive = "0.3.3"
+num = "0.4.1"
+num-derive = "0.4.0"
 num-traits = "0.2.15"
 serde = { workspace = true, features = ["derive"] }
 simics.workspace = true
-strum = { version = "0.24.1", features = ["strum_macros", "derive"] }
-strum_macros = "0.24.3"
+strum = { version = "0.25.0", features = ["strum_macros", "derive"] }
+strum_macros = "0.25.2"
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.17", features = [
     "ansi",

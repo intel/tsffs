@@ -512,7 +512,14 @@ jobs:
               run: |
                   [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
                   apt-get -y update && \
-                  apt-get -y install git curl jq wget
+                  apt-get -y install git curl jq wget build-essential cmake openssl libssl-dev pkg-config
+            - name: Install Rust Toolchain
+              shell: bash
+              run: |
+                  curl https://sh.rustup.rs -sSf \
+                  | sh -s -- -y --default-toolchain nightly --no-modify-path
+                  "${HOME}/.cargo/bin/cargo" install cargo-audit
+                  "${HOME}/.cargo/bin/cargo" install cargo-outdated
             - uses: actions/checkout@v3
             - name: CT256 (N/C) - Include security.md file in open source repos
               run: |
@@ -618,3 +625,24 @@ jobs:
                       exit 1
                   fi
                   echo "✅ [CT247/CT200] No dependabot vulnerabilities found"
+            - name: (CT72/CT98) (N/C) - Secure Configuration Guidance
+              run: |
+                  echo "✅ [CT72/CT98] Manual secure configuration check:"
+                  echo "    - No 3rd party software/services distributed/deployed"
+                  echo "    - Dependencies configuration:"
+                  echo "        - LibAFL configured to *not* bind publicly by default"
+                  echo "    - Rust software builds with ASLR by default"
+                  echo "    - Features not used other than SIMICS version"
+                  echo "    - Compatibility settings used for SIMICS version"
+                  echo "    - No legacy features"
+            - name: (T186) (N/C) - Use recommended settings and latest patches for third party libraries and software 
+              run: |
+                  "${HOME}/.cargo/bin/cargo" audit
+
+                  if ! "${HOME}/.cargo/bin/cargo" outdated --exit-code 1; then
+                      echo "❗ [T186] Out of date third party dependencies found"
+                      exit 1
+                  fi
+
+                  echo "✅ [T186] No outdated or vulnerable third party dependencies found"
+
