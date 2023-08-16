@@ -3,7 +3,7 @@
 
 use self::components::{detector::Detector, tracer::Tracer};
 use crate::{
-    config::{OutputConfig, RunConfig},
+    config::OutputConfig,
     magic::{Magic, MAGIC_ARG0_REG_X86_64, MAGIC_ARG1_REG_X86_64},
     messages::{client::ClientMessage, module::ModuleMessage},
     processor::Processor,
@@ -12,9 +12,9 @@ use crate::{
     traits::{Interface, State},
     CLASS_NAME,
 };
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{bail, Context, Result};
 use ffi_macro::{callback_wrappers, params};
-use tracing::{debug, error, info, trace};
+use tracing::{debug, error, info, trace, Level};
 
 use simics_api::{
     attr_data, attr_object_or_nil_from_ptr, break_simulation, clear_exception,
@@ -28,9 +28,10 @@ use simics_api_macro::module;
 use std::{
     collections::HashMap,
     ffi::c_void,
+    io::stdout,
     sync::mpsc::{channel, Receiver, Sender},
 };
-use tracing_subscriber::fmt;
+use tracing_subscriber::{filter::filter_fn, fmt, prelude::*, registry, Layer};
 
 pub mod components;
 
@@ -53,7 +54,6 @@ pub struct Module {
     /// Set to true when running in repro mode once we have reached the stop harness. This is
     /// used to disable the normal fuzzing procedures when reproducing issues.
     repro_started: bool,
-    run_config: RunConfig,
 }
 
 impl SimicsModule for Module {
@@ -79,7 +79,6 @@ impl SimicsModule for Module {
             -1,
             false,
             false,
-            RunConfig::default(),
         ))
     }
 }
@@ -112,11 +111,26 @@ impl Module {
             _ => bail!("Expected initialize command"),
         };
 
-        fmt::fmt()
-            .pretty()
-            .with_max_level(input_config.log_level)
-            .try_init()
-            .map_err(|e| anyhow!("Couldn't initialize tracing subscriber: {}", e))?;
+        let reg = registry().with({
+            fmt::layer()
+                .compact()
+                .with_thread_ids(true)
+                .with_thread_names(true)
+                .with_writer(stdout)
+                .with_filter(input_config.log_level)
+                .with_filter(filter_fn(|metadata| {
+                    // LLMP absolutely spams the log when tracing
+                    !(metadata.target() == "libafl_bolts::llmp"
+                        && matches!(metadata.level(), &Level::TRACE))
+                }))
+        });
+
+        reg.try_init()
+            .map_err(|e| {
+                error!("Could not install tracing subscriber: {}", e);
+                e
+            })
+            .ok();
 
         info!("SIMICS logger initialized");
 
@@ -206,8 +220,6 @@ impl Module {
             processor.set_reg_value(MAGIC_ARG1_REG_X86_64, input.len() as u64)?;
         }
 
-        self.run_config = config;
-
         // Run the simulation until the magic start instruction, where we will receive a stop
         // callback
         self.stop_reason = None;
@@ -216,6 +228,11 @@ impl Module {
         if self.repro_mode {
             free_attribute(run_command("set-bookmark start")?);
         }
+
+        self.detector.on_run(self_ptr, &config)?;
+        self.tracer.on_run(self_ptr, &config)?;
+
+        trace!("Running with input {:?} and config {:?}", input, config);
 
         continue_simulation_alone();
 
@@ -306,12 +323,8 @@ impl Module {
                             self.tracer.pre_first_run(self_ptr)?;
                             self.reset_and_run(processor_number)?;
                         } else {
+                            // Every run, we stop at the start harness, then continue
                             self.iterations += 1;
-
-                            let run_config = &self.run_config;
-
-                            self.detector.on_run(self_ptr, run_config)?;
-                            self.tracer.on_run(self_ptr, run_config)?;
 
                             self.stop_reason = None;
                             self.last_start_processor_number = processor_number;

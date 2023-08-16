@@ -9,18 +9,18 @@ use anyhow::{anyhow, bail, Error, Result};
 use artifact_dependency::{ArtifactDependencyBuilder, CrateType};
 use derive_builder::Builder;
 use libafl::{
-    feedback_and_fast, feedback_not, feedback_or_fast,
+    feedback_and_fast, feedback_or, feedback_or_fast,
     prelude::{
         havoc_mutations,
         ondisk::OnDiskMetadataFormat,
         tokens_mutations,
         tui::{ui::TuiUI, TuiMonitor},
         AFLppCmpMap, AFLppForkserverCmpObserver, AFLppRedQueen, BytesInput, CachedOnDiskCorpus,
-        Corpus, CorpusId, CrashFeedback, EventConfig, EventRestarter, ExitKind, HasTargetBytes,
-        HitcountsMapObserver, I2SRandReplace, InProcessExecutor, Launcher,
-        LlmpRestartingEventManager, MaxMapFeedback, MultiMonitor, OnDiskCorpus, RandBytesGenerator,
-        StdMOptMutator, StdMapObserver, StdScheduledMutator, TimeFeedback, TimeObserver,
-        TimeoutExecutor,
+        Corpus, CorpusId, CrashFeedback, EventConfig, EventRestarter, ExitKind,
+        ForkserverCmpObserver, HasTargetBytes, HitcountsMapObserver, I2SRandReplace,
+        InProcessExecutor, Launcher, LlmpRestartingEventManager, MaxMapFeedback, MultiMonitor,
+        OnDiskCorpus, RandBytesGenerator, StdMOptMutator, StdMapObserver, StdScheduledMutator,
+        TimeFeedback, TimeObserver, TimeoutExecutor,
     },
     schedulers::{
         powersched::PowerSchedule, IndexesLenTimeMinimizerScheduler, StdWeightedScheduler,
@@ -28,7 +28,7 @@ use libafl::{
     stages::{
         mutational::MultiMutationalStage, tracing::AFLppCmplogTracingStage, CalibrationStage,
         ColorizationStage, DumpToDiskStage, GeneralizationStage, IfStage, StdMutationalStage,
-        StdPowerMutationalStage, SyncFromDiskStage,
+        StdPowerMutationalStage, SyncFromDiskStage, TracingStage,
     },
     state::{HasCorpus, StdState},
     Fuzzer, StdFuzzer,
@@ -54,15 +54,11 @@ use simics::{
 use std::{
     alloc::{alloc_zeroed, Layout},
     cell::RefCell,
-    fs::{read, set_permissions, OpenOptions, Permissions},
+    fs::read,
     io::stdout,
     net::TcpListener,
-    os::unix::prelude::PermissionsExt,
     path::PathBuf,
-    sync::{
-        mpsc::{channel, Receiver, Sender},
-        Mutex,
-    },
+    sync::mpsc::{channel, Receiver, Sender},
     thread::{spawn, JoinHandle},
     time::Duration,
 };
@@ -100,6 +96,8 @@ pub struct SimicsFuzzer {
     _dedup: bool,
     #[builder(default)]
     _grimoire: bool,
+    #[builder(default)]
+    redqueen: bool,
     timeout: f64,
     executor_timeout: u64,
     cores: Cores,
@@ -148,7 +146,7 @@ impl SimicsFuzzer {
     pub fn cli_main(args: Args) -> Result<()> {
         let reg = registry().with({
             fmt::layer()
-                .pretty()
+                .compact()
                 .with_thread_ids(true)
                 .with_thread_names(true)
                 .with_writer(stdout)
@@ -159,41 +157,12 @@ impl SimicsFuzzer {
                         && matches!(metadata.level(), &Level::TRACE))
                 }))
         });
-        if let Some(log_file) = &args.log_file {
-            let file = Box::new({
-                let f = OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .write(true)
-                    .open(log_file)?;
-                set_permissions(log_file, Permissions::from_mode(0o700))?;
-                f
-            });
-            reg.with({
-                fmt::layer()
-                    .compact()
-                    .with_writer(Mutex::new(file))
-                    .with_filter(args.log_level)
-                    .with_filter(filter_fn(|metadata| {
-                        // LLMP absolutely spams the log when tracing
-                        !(metadata.target() == "libafl::bolts::llmp"
-                            && matches!(metadata.level(), &Level::TRACE))
-                    }))
-            })
-            .try_init()
+        reg.try_init()
             .map_err(|e| {
                 error!("Could not install tracing subscriber: {}", e);
                 e
             })
             .ok();
-        } else {
-            reg.try_init()
-                .map_err(|e| {
-                    error!("Could not install tracing subscriber: {}", e);
-                    e
-                })
-                .ok();
-        }
 
         trace!("Setting up project with args: {:?}", args);
 
@@ -258,7 +227,8 @@ impl SimicsFuzzer {
             .corpus(args.corpus)
             .solutions(args.solutions)
             .tui(args.tui)
-            ._grimoire(args.grimoire)
+            ._grimoire(!args.disable_grimoire)
+            .redqueen(!args.disable_redqueen)
             .cores(Cores::from((0..args.cores).collect::<Vec<_>>()))
             .command(args.command)
             .timeout(args.timeout)
@@ -375,7 +345,10 @@ impl SimicsFuzzer {
             .log_level(self.log_level)
             .repro(true)
             .build()
-            .map_err(|e| libafl::Error::Unknown(e.to_string(), ErrorBacktrace::new()))?;
+            .map_err(|e| {
+                error!("Error building input configuration: {}", e);
+                libafl::Error::Unknown(e.to_string(), ErrorBacktrace::new())
+            })?;
 
         let (tx, orx) = channel::<ClientMessage>();
         let (otx, rx) = channel::<ModuleMessage>();
@@ -420,13 +393,12 @@ impl SimicsFuzzer {
                               cpu_id|
          -> Result<(), libafl::Error> {
             debug!("Running on CPU {:?}", cpu_id);
-
-            let mut afl_cmp_map: Box<AFLppCmpMap> = unsafe {
+            let afl_cmp_map_ptr = unsafe {
                 let layout = Layout::new::<AFLppCmpMap>();
-                let ptr = alloc_zeroed(layout) as *mut AFLppCmpMap;
-
-                Box::from_raw(ptr)
+                alloc_zeroed(layout) as *mut AFLppCmpMap
             };
+
+            let mut afl_cmp_map: Box<AFLppCmpMap> = unsafe { Box::from_raw(afl_cmp_map_ptr) };
             let mut coverage_map = OwnedMutSlice::from(vec![0; SimicsFuzzer::MAP_SIZE]);
 
             let config = InputConfigBuilder::default()
@@ -460,9 +432,19 @@ impl SimicsFuzzer {
             let edges_observer =
                 HitcountsMapObserver::new(StdMapObserver::from_mut_slice("coverage", coverage_map));
 
-            const CMP_OBSERVER_NAME: &str = "cmplog";
-            let cmplog_observer =
-                AFLppForkserverCmpObserver::new(CMP_OBSERVER_NAME, &mut afl_cmp_map, true);
+            const AFLPP_CMP_OBSERVER_NAME: &str = "aflpp_cmplog";
+            const CMPLOG_OBSERVER_NAME: &str = "cmplog";
+
+            // NOTE: These are called "Forkserver" but they aren't really restricted to forkserver
+            // executors
+            let aflpp_cmplog_observer =
+                AFLppForkserverCmpObserver::new(AFLPP_CMP_OBSERVER_NAME, &mut afl_cmp_map, true);
+
+            let cmplog_observer = ForkserverCmpObserver::new(
+                CMPLOG_OBSERVER_NAME,
+                unsafe { &mut *afl_cmp_map_ptr },
+                true,
+            );
 
             let map_feedback = MaxMapFeedback::tracking(&edges_observer, true, true);
 
@@ -473,7 +455,9 @@ impl SimicsFuzzer {
             let calibration = CalibrationStage::new(&map_feedback);
 
             let mut feedback =
-                feedback_and_fast!(feedback_not!(CrashFeedback::new()), map_feedback);
+                feedback_or!(map_feedback, TimeFeedback::with_observer(&time_observer));
+
+            // feedback_and_fast!(map_feedback, feedback_not!(CrashFeedback::new()));
 
             let mut objective = feedback_or_fast!(
                 feedback_and_fast!(CrashFeedback::new()),
@@ -574,7 +558,7 @@ impl SimicsFuzzer {
                 exit_kind
             };
 
-            let mut cmplog_harness = |input: &BytesInput| {
+            let mut aflpp_cmplog_harness = |input: &BytesInput| {
                 let target = input.target_bytes();
                 let buf = target.as_slice();
                 let run_input = buf.to_vec();
@@ -628,6 +612,8 @@ impl SimicsFuzzer {
                 exit_kind
             };
 
+            let mut tracing_harness = aflpp_cmplog_harness;
+
             let mut executor = TimeoutExecutor::new(
                 InProcessExecutor::new(
                     &mut harness,
@@ -642,7 +628,19 @@ impl SimicsFuzzer {
 
             let cmplog_executor = TimeoutExecutor::new(
                 InProcessExecutor::new(
-                    &mut cmplog_harness,
+                    &mut aflpp_cmplog_harness,
+                    tuple_list!(aflpp_cmplog_observer),
+                    &mut fuzzer,
+                    &mut state,
+                    &mut mgr,
+                )?,
+                // The executor's timeout can be quite long
+                Duration::from_secs(self.executor_timeout),
+            );
+
+            let tracing_executor = TimeoutExecutor::new(
+                InProcessExecutor::new(
+                    &mut tracing_harness,
                     tuple_list!(cmplog_observer),
                     &mut fuzzer,
                     &mut state,
@@ -652,10 +650,12 @@ impl SimicsFuzzer {
                 Duration::from_secs(self.executor_timeout),
             );
 
-            let tracing = AFLppCmplogTracingStage::with_cmplog_observer_name(
+            let aflpp_tracing = AFLppCmplogTracingStage::with_cmplog_observer_name(
                 cmplog_executor,
-                CMP_OBSERVER_NAME,
+                AFLPP_CMP_OBSERVER_NAME,
             );
+
+            let tracing = TracingStage::new(tracing_executor);
 
             let redqueen =
                 MultiMutationalStage::new(AFLppRedQueen::with_cmplog_options(true, true));
@@ -707,18 +707,16 @@ impl SimicsFuzzer {
             let mut stages = tuple_list!(
                 calibration,
                 generalization,
+                // Run cmplog/redqueen if enabled (or rather, not disabled)
                 IfStage::new(
                     |_fuzzer: &mut _,
                      _executor: &mut _,
-                     state: &mut StdState<_, CachedOnDiskCorpus<_>, _, _>,
+                     _state: &mut StdState<_, CachedOnDiskCorpus<_>, _, _>,
                      _event_manager: &mut _,
-                     corpus_id: CorpusId|
-                     -> Result<bool, libafl::Error> {
-                        Ok(state.corpus().get(corpus_id)?.borrow().scheduled_count() == 1)
-                    },
-                    tuple_list!(colorization, tracing, redqueen),
+                     _corpus_id: CorpusId|
+                     -> Result<bool, libafl::Error> { Ok(self.redqueen) },
+                    tuple_list!(colorization, aflpp_tracing, redqueen, tracing, i2s),
                 ),
-                i2s,
                 std_power,
                 mopt,
                 // Sync to disk

@@ -21,6 +21,18 @@ use crate::traits::TracerDisassembler;
 
 use self::disassembler::CmpExpr;
 
+#[derive(Clone, Copy, Debug)]
+#[repr(u8)]
+pub enum CmpType {
+    Equal = 1,
+    Greater = 2,
+    Lesser = 4,
+    Fp = 8,
+    FpMod = 16,
+    IntMod = 32,
+    Transform = 64,
+}
+
 #[derive(Debug)]
 pub enum CmpValue {
     U8(u8),
@@ -54,7 +66,7 @@ impl TryFrom<&CmpExpr> for CmpValue {
 #[derive(Default, Debug)]
 pub struct TraceResult {
     pub edge: Option<u64>,
-    pub cmp: Option<(u64, CmpValues)>,
+    pub cmp: Option<(u64, Vec<CmpType>, CmpValues)>,
 }
 
 impl TraceResult {
@@ -65,10 +77,10 @@ impl TraceResult {
         }
     }
 
-    fn from_pc_and_cmp_value(pc: u64, value: CmpValues) -> Self {
+    fn from_pc_and_cmp_type_value(pc: u64, types: Vec<CmpType>, value: CmpValues) -> Self {
         Self {
             edge: None,
-            cmp: Some((pc, value)),
+            cmp: Some((pc, types, value)),
         }
     }
 }
@@ -811,8 +823,15 @@ impl Processor {
                     None
                 };
 
-                Ok(TraceResult::from_pc_and_cmp_value(
+                let cmp_types = if let Ok(types) = self.disassembler.cmp_type() {
+                    Some(types)
+                } else {
+                    None
+                };
+
+                Ok(TraceResult::from_pc_and_cmp_type_value(
                     pc,
+                    cmp_types.ok_or_else(|| anyhow!("No cmp type available"))?,
                     cmp_value.ok_or_else(|| anyhow!("No cmp value available"))?,
                 ))
             } else {

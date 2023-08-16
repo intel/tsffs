@@ -5,6 +5,7 @@
 //! callbacks into struct methods
 
 #![deny(clippy::unwrap_used)]
+#![forbid(unsafe_code)]
 
 use proc_macro::TokenStream;
 use proc_macro_error::{abort, proc_macro_error};

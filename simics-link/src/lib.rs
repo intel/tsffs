@@ -5,6 +5,7 @@
 //! if the linking strategy there changes.
 
 #![deny(clippy::unwrap_used)]
+#![forbid(unsafe_code)]
 
 extern crate num_traits;
 #[macro_use]

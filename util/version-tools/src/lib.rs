@@ -19,6 +19,7 @@
 //! ```
 
 #![deny(clippy::unwrap_used)]
+#![forbid(unsafe_code)]
 
 use anyhow::{bail, Context, Error, Result};
 use std::str::FromStr;

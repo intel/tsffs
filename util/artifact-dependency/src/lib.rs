@@ -7,6 +7,7 @@
 //! - Binaries
 
 #![deny(clippy::unwrap_used)]
+#![forbid(unsafe_code)]
 
 use anyhow::{anyhow, bail, ensure, Error, Result};
 use cargo_metadata::{camino::Utf8PathBuf, MetadataCommand, Package};

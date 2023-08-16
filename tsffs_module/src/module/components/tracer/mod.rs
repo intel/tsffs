@@ -8,7 +8,7 @@ use std::{collections::HashMap, ffi::c_void, fmt::Debug, num::Wrapping, ptr::nul
 use crate::{
     config::{InputConfig, OutputConfig, TraceMode},
     module::Module,
-    processor::Processor,
+    processor::{CmpType, Processor},
     traits::{Interface, State},
 };
 use anyhow::{anyhow, bail, Result};
@@ -21,7 +21,7 @@ use libafl::prelude::{
 use libafl_bolts::{bolts_prelude::OwnedMutSlice, prelude::OwnedRefMut, AsMutSlice, AsSlice};
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use tracing::info;
+use tracing::{info, trace};
 
 use simics_api::{
     attr_object_or_nil_from_ptr, get_processor_number, AttrValue, CachedInstructionHandle,
@@ -270,7 +270,7 @@ impl Tracer {
         Ok(())
     }
 
-    fn log_cmp(&mut self, pc: u64, cmp: CmpValues) -> Result<()> {
+    fn log_cmp(&mut self, pc: u64, types: Vec<CmpType>, cmp: CmpValues) -> Result<()> {
         // Consistently hash pc to the same header index
         let shape = cmp_shape(&cmp)?;
         let operands = cmp
@@ -282,6 +282,15 @@ impl Tracer {
         self.cmp.as_mut().headers[pc_index as usize].set_hits(hits + 1);
         self.cmp.as_mut().headers[pc_index as usize].set_shape(shape);
         self.cmp.as_mut().headers[pc_index as usize].set__type(AFL_CMP_TYPE_INS);
+        let attribute = types
+            .iter()
+            .map(|t| *t as u32)
+            .reduce(|acc, t| acc | t)
+            .ok_or_else(|| anyhow!("Could not reduce types"))?;
+        self.cmp.as_mut().headers[pc_index as usize].set_attribute(attribute);
+        // NOTE: overflow isn't used by aflppredqueen
+
+        trace!("Logging cmp with types {:?} and values {:?}", types, cmp);
 
         unsafe {
             self.cmp.as_mut().vals.operands[pc_index as usize][hits as usize % AFL_CMP_MAP_H] =
@@ -413,6 +422,9 @@ impl State for Tracer {
         run_config: &crate::config::RunConfig,
     ) -> Result<()> {
         self.cmplog = run_config.cmplog;
+
+        trace!("Running with cmplog mode: {}", self.cmplog);
+
         Ok(())
     }
 
@@ -467,8 +479,8 @@ impl Tracer {
         if self.cmplog {
             if let Some(processor) = self.processors.get_mut(&processor_number) {
                 if let Ok(r) = processor.trace_cmp(handle) {
-                    if let Some((pc, cmp)) = r.cmp {
-                        self.log_cmp(pc, cmp)?;
+                    if let Some((pc, types, cmp)) = r.cmp {
+                        self.log_cmp(pc, types, cmp)?;
                     }
                 }
             }
@@ -499,8 +511,8 @@ impl Tracer {
         if self.cmplog {
             if let Some(processor) = self.processors.get_mut(&processor_number) {
                 if let Ok(r) = processor.trace_cmp(handle) {
-                    if let Some((pc, cmp)) = r.cmp {
-                        self.log_cmp(pc, cmp)?;
+                    if let Some((pc, types, cmp)) = r.cmp {
+                        self.log_cmp(pc, types, cmp)?;
                     }
                 }
             }

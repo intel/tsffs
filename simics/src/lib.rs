@@ -1,6 +1,7 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+#![forbid(unsafe_code)]
 #![deny(clippy::unwrap_used)]
 
 extern crate num_traits;

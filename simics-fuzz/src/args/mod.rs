@@ -42,9 +42,6 @@ pub struct Args {
     #[arg(short, long, default_value_t = LevelFilter::ERROR)]
     /// Logging level
     pub log_level: LevelFilter,
-    #[arg(short = 'L', long)]
-    /// Log file path to use. Logger will only log to stdout if not specified
-    pub log_file: Option<PathBuf>,
     #[arg(short = 'T', long, default_value_t = TraceMode::HitCount)]
     /// Mode to trace executions with
     pub trace_mode: TraceMode,
@@ -72,9 +69,12 @@ pub struct Args {
     /// traced with the log macros). If you only need to capture logs to a file, you should use
     /// the `--log-file` argument instead.
     pub tui_stdout_file: PathBuf,
-    #[arg(short, long, default_value_t = true)]
-    /// Whether grimoire should be used
-    pub grimoire: bool,
+    #[arg(long, default_value_t = false)]
+    /// Whether grimoire should be disabled
+    pub disable_grimoire: bool,
+    #[arg(long, default_value_t = false)]
+    /// Whether grimoire should be disabled
+    pub disable_redqueen: bool,
     #[arg(long)]
     // TODO: This should have an effect with existing projects
     /// Packages to add to the project. This has no effect unless a new project is being

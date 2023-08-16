@@ -3,9 +3,9 @@
 
 use anyhow::{bail, Error, Result};
 use tracing::trace;
-use yaxpeax_x86::amd64::{InstDecoder, Instruction, Opcode, Operand};
+use yaxpeax_x86::amd64::{ConditionCode, InstDecoder, Instruction, Opcode, Operand};
 
-use crate::traits::TracerDisassembler;
+use crate::{processor::CmpType, traits::TracerDisassembler};
 
 use super::CmpExpr;
 
@@ -267,5 +267,50 @@ impl TracerDisassembler for Disassembler {
             bail!("Last was not a compare");
         }
         Ok(cmp_exprs)
+    }
+
+    fn cmp_type(&self) -> Result<Vec<CmpType>> {
+        if self.last_was_cmp()? {
+            if let Some(last) = self.last {
+                if let Some(condition) = last.opcode().condition() {
+                    return match condition {
+                        // Overflow
+                        ConditionCode::O => Ok(vec![]),
+                        // No Overflow
+                        ConditionCode::NO => Ok(vec![]),
+                        // Below
+                        ConditionCode::B => Ok(vec![CmpType::Lesser]),
+                        // Above or Equal
+                        ConditionCode::AE => Ok(vec![CmpType::Greater, CmpType::Equal]),
+                        // Zero
+                        ConditionCode::Z => Ok(vec![]),
+                        // Not Zero
+                        ConditionCode::NZ => Ok(vec![]),
+                        // Above
+                        ConditionCode::A => Ok(vec![CmpType::Greater]),
+                        // Below or Equal
+                        ConditionCode::BE => Ok(vec![CmpType::Lesser, CmpType::Equal]),
+                        // Signed
+                        ConditionCode::S => Ok(vec![]),
+                        // Not Signed
+                        ConditionCode::NS => Ok(vec![]),
+                        // Parity
+                        ConditionCode::P => Ok(vec![]),
+                        // No Parity
+                        ConditionCode::NP => Ok(vec![]),
+                        // Less
+                        ConditionCode::L => Ok(vec![CmpType::Lesser]),
+                        // Greater or Equal
+                        ConditionCode::GE => Ok(vec![CmpType::Greater, CmpType::Equal]),
+                        // Greater
+                        ConditionCode::G => Ok(vec![CmpType::Greater]),
+                        // Less or Equal
+                        ConditionCode::LE => Ok(vec![CmpType::Lesser, CmpType::Equal]),
+                    };
+                }
+            }
+        }
+
+        bail!("Last instruction was not a compare");
     }
 }
