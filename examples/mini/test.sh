@@ -13,7 +13,7 @@ ninja
 
 popd || exit 1
 
-cargo run --release --bin simics-fuzz --features=6.0.168 -- \
+cargo run --release --bin simics-fuzz --features=6.0.170 -- \
     -p test-project -i corpus -c corpus -s solution -l INFO -L log.txt -C 1 \
     --package 2096:6.0.69 \
     --file "${SCRIPT_DIR}/rsrc/mini.efi:%simics%/mini.efi" \

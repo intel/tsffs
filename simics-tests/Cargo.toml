@@ -42,3 +42,5 @@ simics-fuzz = { workspace = true }
 "6.0.166" = ["simics/6.0.166", "simics-fuzz/6.0.166"]
 "6.0.167" = ["simics/6.0.167", "simics-fuzz/6.0.167"]
 "6.0.168" = ["simics/6.0.168", "simics-fuzz/6.0.168"]
+"6.0.169" = ["simics/6.0.169", "simics-fuzz/6.0.169"]
+"6.0.170" = ["simics/6.0.170", "simics-fuzz/6.0.170"]

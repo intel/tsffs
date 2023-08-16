@@ -17,6 +17,8 @@
     feature = "6.0.166",
     feature = "6.0.167",
     feature = "6.0.168",
+    feature = "6.0.169",
+    feature = "6.0.170"
 )))]
 compile_error!("Must enable a feature to specify a SIMICS API version");
 
