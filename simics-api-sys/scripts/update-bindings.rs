@@ -24,6 +24,7 @@
 // bindings file for each one. It will output the bindings to the `src/bindings` directory of
 // this crate, where they will be included by feature flag with the `src/bindings/mod.rs` file.
 
+
 use anyhow::{anyhow, bail, ensure, Context, Result};
 use bindgen::{
     callbacks::{MacroParsingBehavior, ParseCallbacks},
@@ -105,6 +106,7 @@ where
 {
     let response = get(url.as_ref())?;
 
+    println!("{:?}",response);
     let mut dest = if path.as_ref().is_dir() {
         bail!("Can't download into directory. Provide a file path");
     } else {
@@ -259,7 +261,7 @@ fn get_existing_versions(args: &Args) -> Result<Vec<String>> {
         .collect::<Vec<_>>();
 
     versions.sort();
-
+    
     Ok(versions.iter().map(|v| format!("{}", v)).collect())
 }
 
@@ -555,6 +557,12 @@ fn generate_bindings(args: &Args) -> Result<()> {
 
 fn install_packages(args: &Args) -> Result<()> {
     let fake_simics_home = args.packages_dir.clone();
+
+    if !fake_simics_home.exists() {
+        create_dir_all(&fake_simics_home)?;
+    }
+
+
     let base_versions = if !args.base_versions.is_empty() {
         args.base_versions.clone()
     } else {
@@ -562,7 +570,6 @@ fn install_packages(args: &Args) -> Result<()> {
     };
 
     let existing_versions = get_existing_versions(args)?;
-
     let base_versions_needed = base_versions
         .iter()
         .filter(|v| {
@@ -675,7 +682,6 @@ fn install_packages(args: &Args) -> Result<()> {
     } else {
         println!("Skipping package install, all requested versions already exist");
     }
-
     Ok(())
 }
 
@@ -741,6 +747,7 @@ fn main() -> Result<()> {
     let args = Args::parse();
 
     // Download and install all the requested base versions into the packages directory
+
     install_packages(&args)?;
     /// Generate Rust bindings for all the downloaded versions
     generate_bindings(&args)?;
