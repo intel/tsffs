@@ -711,11 +711,23 @@ impl SimicsFuzzer {
                 IfStage::new(
                     |_fuzzer: &mut _,
                      _executor: &mut _,
+                     state: &mut StdState<_, CachedOnDiskCorpus<_>, _, _>,
+                     _event_manager: &mut _,
+                     corpus_id: CorpusId|
+                     -> Result<bool, libafl::Error> {
+                        Ok(self.redqueen
+                            && state.corpus().get(corpus_id)?.borrow().scheduled_count() == 1)
+                    },
+                    tuple_list!(colorization, aflpp_tracing, redqueen,),
+                ),
+                IfStage::new(
+                    |_fuzzer: &mut _,
+                     _executor: &mut _,
                      _state: &mut StdState<_, CachedOnDiskCorpus<_>, _, _>,
                      _event_manager: &mut _,
                      _corpus_id: CorpusId|
                      -> Result<bool, libafl::Error> { Ok(self.redqueen) },
-                    tuple_list!(colorization, aflpp_tracing, redqueen, tracing, i2s),
+                    tuple_list!(tracing, i2s),
                 ),
                 std_power,
                 mopt,
