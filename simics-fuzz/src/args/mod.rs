@@ -74,15 +74,6 @@ pub struct Args {
     /// fuzzer executions. 'once' mode traces only the first execution of each instruction, which
     /// is much faster but less precise, particularly when fuzzing code with loops.
     pub trace_mode: TraceMode,
-    #[arg(short = 'g', long, default_value_t = false)]
-    /// Enable the SIMICS GUI
-    ///
-    /// Enabling the SIMICS GUI during fuzzing is useful for debugging and demonstration
-    /// purposes, but is strongly discouraged for real testing and reduces the speed of
-    /// the fuzzer significantly. The SIMICS GUI may be also useful for configuring
-    /// startup scripts, particularly when pseudo-graphical GUI interaction is needed
-    /// such as virtual keyboard inputs.
-    pub enable_simics_gui: bool,
     #[arg(short = 'S', long, default_value_t = 3.0)]
     /// Simulator-time timeout, in seconds, for timed out test cases
     ///
@@ -202,7 +193,20 @@ pub struct Args {
     /// location with a reverse execution recording from the start harness. Typically,
     /// the same command used to run the fuzzer should be used to run repro mode, with
     /// the addition of this flag.
+    ///
+    /// For example, --repro 'solutions/008e7aaa8871b4a8' after finding the solution with the
+    /// fuzzer will drop into a SIMICS REPL session at the point of the fault. See the
+    /// documentation for details.
     pub repro: Option<PathBuf>,
+    #[arg(short = 'g', long, default_value_t = false)]
+    /// Enable the SIMICS GUI
+    ///
+    /// Enabling the SIMICS GUI during fuzzing is useful for debugging and demonstration
+    /// purposes, but is strongly discouraged for real testing and reduces the speed of
+    /// the fuzzer significantly. The SIMICS GUI may be also useful for configuring
+    /// startup scripts, particularly when pseudo-graphical GUI interaction is needed
+    /// such as virtual keyboard inputs.
+    pub enable_simics_gui: bool,
     #[arg(short = 'I', long)]
     /// Number of iterations to fuzz for, should only be used for testing or demonstration
     ///
