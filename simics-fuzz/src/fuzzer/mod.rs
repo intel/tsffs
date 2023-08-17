@@ -4,6 +4,7 @@
 use crate::{
     args::{command::Command, Args},
     modules::tsffs::{ModuleInterface, TSFFS_MODULE_CRATE_NAME, TSFFS_WORKSPACE_PATH},
+    tokenize::tokenize_executable,
 };
 use anyhow::{anyhow, bail, Error, Result};
 use artifact_dependency::{ArtifactDependencyBuilder, CrateType};
@@ -20,7 +21,7 @@ use libafl::{
         ForkserverCmpObserver, HasTargetBytes, HitcountsMapObserver, I2SRandReplace,
         InProcessExecutor, Launcher, LlmpRestartingEventManager, MaxMapFeedback, MultiMonitor,
         OnDiskCorpus, RandBytesGenerator, StdMOptMutator, StdMapObserver, StdScheduledMutator,
-        TimeFeedback, TimeObserver, TimeoutExecutor,
+        TimeFeedback, TimeObserver, TimeoutExecutor, Tokens,
     },
     schedulers::{
         powersched::PowerSchedule, IndexesLenTimeMinimizerScheduler, StdWeightedScheduler,
@@ -30,7 +31,7 @@ use libafl::{
         ColorizationStage, DumpToDiskStage, GeneralizationStage, IfStage, StdMutationalStage,
         StdPowerMutationalStage, SyncFromDiskStage, TracingStage,
     },
-    state::{HasCorpus, StdState},
+    state::{HasCorpus, HasMetadata, StdState},
     Fuzzer, StdFuzzer,
 };
 use libafl_bolts::{
@@ -98,6 +99,10 @@ pub struct SimicsFuzzer {
     _grimoire: bool,
     #[builder(default)]
     redqueen: bool,
+    #[builder(default)]
+    tokens_file: Option<PathBuf>,
+    #[builder(default)]
+    executable: Option<PathBuf>,
     timeout: f64,
     executor_timeout: u64,
     cores: Cores,
@@ -189,15 +194,15 @@ impl SimicsFuzzer {
         for p in args.package {
             builder = builder.package(p.package);
         }
-        for m in args.module {
-            builder = builder.module(m.module);
-        }
+
         for d in args.directory {
             builder = builder.directory((d.src, d.dst));
         }
+
         for f in args.file {
             builder = builder.file((f.src, f.dst));
         }
+
         for s in args.path_symlink {
             builder = builder.path_symlink((s.src, s.dst));
         }
@@ -229,6 +234,8 @@ impl SimicsFuzzer {
             .tui(args.tui)
             ._grimoire(!args.disable_grimoire)
             .redqueen(!args.disable_redqueen)
+            .tokens_file(args.tokens_file)
+            .executable(args.executable)
             .cores(Cores::from((0..args.cores).collect::<Vec<_>>()))
             .command(args.command)
             .timeout(args.timeout)
@@ -376,10 +383,6 @@ impl SimicsFuzzer {
     }
 
     pub fn launch(&mut self) -> Result<()> {
-        if self.tui {
-            self.log_level = LevelFilter::ERROR;
-        }
-
         if self.repro.is_some() {
             return self.repro();
         }
@@ -484,10 +487,36 @@ impl SimicsFuzzer {
                 .expect("Couldn't initialize state")
             });
 
+            if !state.has_metadata::<Tokens>() {
+                let mut toks = Tokens::default();
+
+                if let Some(tokens_file) = self.tokens_file.as_ref() {
+                    // NOTE: This adds from a file of the format below, containing tokens extracted
+                    // from the fuzz target
+                    //
+                    // x = "hello"
+                    // y = "foo\x41bar"
+                    toks.add_from_file(tokens_file)?;
+                };
+
+                if let Some(executable) = self.executable.as_ref() {
+                    toks.add_tokens(tokenize_executable(executable).map_err(|e| {
+                        error!(
+                            "Error tokenizing executable {}: {}",
+                            executable.display(),
+                            e
+                        );
+                        libafl::Error::Unknown(e.to_string(), ErrorBacktrace::default())
+                    })?);
+                }
+
+                state.add_metadata(toks);
+            }
+
             let i2s = StdMutationalStage::new(StdScheduledMutator::new(tuple_list!(
                 I2SRandReplace::new()
             )));
-            let std_mutator = StdScheduledMutator::new(havoc_mutations());
+            let std_mutator = StdScheduledMutator::new(havoc_mutations().merge(tokens_mutations()));
             let std_power = StdPowerMutationalStage::new(std_mutator);
             let mopt_mutator = StdMOptMutator::new(
                 &mut state,

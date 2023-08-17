@@ -67,7 +67,7 @@ cargo run --release --bin simics-fuzz --features=6.0.170 -- \
 ```
 
 If you want to see the visualizer above, you can enable the SIMICS GUI during fuzzing
-by adding `--enable-simics-gui` and if you want a fancy TUI output, add the `-t` flag!
+by adding `-g/--enable-simics-gui` and if you want a fancy TUI output, add the `-t` flag!
 
 ## Running an EDK2 Sample Target
 
@@ -76,28 +76,28 @@ in the basic configuration with the commands below, respectively.
 
 ```sh
 cargo run --release --bin simics-fuzz --features=6.0.170 -- \
-  -c /tmp/hello-world-corpus/ -s /tmp/hello-world-solution/ -l ERROR -t -C 1 \
-  --package 2096:6.0.69 \
-  --file examples/hello-world/rsrc/HelloWorld.efi:%simics%/targets/hello-world/HelloWorld.efi \
-  --file examples/hello-world/rsrc/app.py:%simics%/scripts/app.py \
-  --file examples/hello-world/rsrc/app.yml:%simics%/scripts/app.yml \
-  --file examples/hello-world/rsrc/minimal_boot_disk.craff:%simics%/targets/hello-world/minimal_boot_disk.craff \
-  --file examples/hello-world/rsrc/run_uefi_app.nsh:%simics%/targets/hello-world/run_uefi_app.nsh \
-  --file examples/hello-world/rsrc/run-uefi-app.simics:%simics%/targets/hello-world/run-uefi-app.simics \
-  --command CONFIG:%simics%/scripts/app.yml
+  -c /tmp/hello-world-corpus/ -o /tmp/hello-world-solution/ -l ERROR -t -C 1 \
+  -P 2096:6.0.69 \
+  -f examples/hello-world/rsrc/HelloWorld.efi:%simics%/targets/hello-world/HelloWorld.efi \
+  -f examples/hello-world/rsrc/app.py:%simics%/scripts/app.py \
+  -f examples/hello-world/rsrc/app.yml:%simics%/scripts/app.yml \
+  -f examples/hello-world/rsrc/minimal_boot_disk.craff:%simics%/targets/hello-world/minimal_boot_disk.craff \
+  -f examples/hello-world/rsrc/run_uefi_app.nsh:%simics%/targets/hello-world/run_uefi_app.nsh \
+  -f examples/hello-world/rsrc/run-uefi-app.simics:%simics%/targets/hello-world/run-uefi-app.simics \
+  -x CONFIG:%simics%/scripts/app.yml
 ```
 
 ```sh
 cargo run --release --bin simics-fuzz --features=6.0.170 -- \
-  -c /tmp/x509-parse-corpus/ -s /tmp/x509-parse-solution/ -l ERROR -t -C 1 \
-  --package 2096:6.0.69 \
-  --file examples/x509-parse/rsrc/X509Parse.efi:%simics%/targets/x509-parse/X509Parse.efi \
-  --file examples/x509-parse/rsrc/app.py:%simics%/scripts/app.py \
-  --file examples/x509-parse/rsrc/app.yml:%simics%/scripts/app.yml \
-  --file examples/x509-parse/rsrc/minimal_boot_disk.craff:%simics%/targets/x509-parse/minimal_boot_disk.craff \
-  --file examples/x509-parse/rsrc/run_uefi_app.nsh:%simics%/targets/x509-parse/run_uefi_app.nsh \
-  --file examples/x509-parse/rsrc/run-uefi-app.simics:%simics%/targets/x509-parse/run-uefi-app.simics \
-  --command CONFIG:%simics%/scripts/app.yml
+  -c /tmp/x509-parse-corpus/ -o /tmp/x509-parse-solution/ -l ERROR -t -C 1 \
+  -P 2096:6.0.69 \
+  -f examples/x509-parse/rsrc/X509Parse.efi:%simics%/targets/x509-parse/X509Parse.efi \
+  -f examples/x509-parse/rsrc/app.py:%simics%/scripts/app.py \
+  -f examples/x509-parse/rsrc/app.yml:%simics%/scripts/app.yml \
+  -f examples/x509-parse/rsrc/minimal_boot_disk.craff:%simics%/targets/x509-parse/minimal_boot_disk.craff \
+  -f examples/x509-parse/rsrc/run_uefi_app.nsh:%simics%/targets/x509-parse/run_uefi_app.nsh \
+  -f examples/x509-parse/rsrc/run-uefi-app.simics:%simics%/targets/x509-parse/run-uefi-app.simics \
+  -x CONFIG:%simics%/scripts/app.yml
 ```
 
 ## Contact

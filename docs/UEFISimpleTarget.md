@@ -603,7 +603,8 @@ Your current directory should contain:
 - `fuzz.simics`
 
 Before we run the fuzzer, let's take a look at its help output (replace
-`/path/to/this/repository` with the actual path to this repo's root).
+`/path/to/this/repository` with the actual path to this repo's root). Note that running
+with the short `-h` flag will produce a shorter help message for quick reference.
 
 ```sh
 cargo run --manifest-path /path/to/this/repository/Cargo.toml --release \

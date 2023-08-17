@@ -20,7 +20,7 @@ apt-get -y update
 apt-get -y install clang lld vim
 cargo build --release --features=6.0.168
 cargo run --release --bin simics-fuzz --features=6.0.168 -- \
-  -c /tmp/hello-world-corpus/ -s /tmp/hello-world-solution/ -l ERROR -t -C 1 \
+  -c /tmp/hello-world-corpus/ -o /tmp/hello-world-solution/ -l ERROR -t -C 1 \
   --package 2096:6.0.69 \
   --file examples/hello-world/rsrc/HelloWorld.efi:%simics%/targets/hello-world/HelloWorld.efi \
   --file examples/hello-world/rsrc/app.py:%simics%/scripts/app.py \

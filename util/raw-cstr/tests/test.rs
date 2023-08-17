@@ -41,6 +41,10 @@ fn test_strings_reused() -> Result<()> {
         .expect("Couldn't get CStr")
         .to_owned();
 
+    assert_ne!(rust_str.as_ptr(), c_str as *const u8);
+    assert_ne!(o_rust_str.as_ptr(), c_str as *const u8);
+    assert_ne!(rust_str.as_ptr(), o_rust_str.as_ptr());
+
     assert_eq!(rust_str, ORIG_STR, "Raw C String doesn't match rust string");
     assert_eq!(
         o_rust_str, ORIG_STR,

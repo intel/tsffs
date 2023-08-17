@@ -20,7 +20,7 @@ version.workspace = true
 [dependencies]
 anyhow.workspace = true
 artifact-dependency.workspace = true
-clap = { version = "4.3.0", features = ["derive", "string"] }
+clap = { version = "4.3.0", features = ["derive", "string", "wrap_help"] }
 tsffs_module.workspace = true
 derive_builder = "0.12.0"
 libafl.workspace = true
@@ -42,6 +42,7 @@ tracing-subscriber = { version = "0.3.17", features = [
 version-tools.workspace = true
 versions = "5.0.0"
 libafl_bolts.workspace = true
+goblin = "0.7.1"
 
 [build-dependencies]
 anyhow.workspace = true
