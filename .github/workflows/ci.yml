@@ -387,7 +387,8 @@ jobs:
                     --destination=image
             - name: (T1187, T1186) (N/C) - Test if secrets are stored in Dockerfiles (X509Parse Image)
               run: |
-                  /kaniko/trivy image --input /x509-parse.tar
+                  if ! /kaniko/trivy image --input /x509-parse.tar; then
+                    # Trivy has a rate limit
                     sleep 120
                     /kaniko/trivy image --input /x509-parse.tar
                   fi
