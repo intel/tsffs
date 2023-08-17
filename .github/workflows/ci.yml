@@ -29,7 +29,7 @@ env:
     CARGO_TERM_COLOR: always
 
     # Simics base
-    SIMICS_PUBLIC_PACKAGE_VERSION_1000: 6.0.168
+    SIMICS_PUBLIC_PACKAGE_VERSION_1000: 6.0.170
     # QSP X86
     SIMICS_PUBLIC_PACKAGE_VERSION_2096: 6.0.69
     # QSP CPU
@@ -47,6 +47,8 @@ jobs:
                         "6.0.166",
                         "6.0.167",
                         "6.0.168",
+                        "6.0.169",
+                        "6.0.170"
                     ]
         container: cache-registry.caas.intel.com/cache/library/ubuntu
         runs-on: [self-hosted, gasp]
@@ -356,7 +358,11 @@ jobs:
                     --destination=image
             - name: (T1187, T1186) (N/C) - Test if secrets are stored in Dockerfiles (Hello World Image)
               run: |
-                  /kaniko/trivy image --input /hello-world.tar
+                  if ! /kaniko/trivy image --input /hello-world.tar; then
+                    # Trivy has a rate limit :/ we'll sleep if we have a problem
+                    sleep 120
+                    /kaniko/trivy image --input /hello-world.tar
+                  fi
 
     scan_x509_parse:
         name: Scan X509Parse EFI Builder Container
@@ -383,7 +389,11 @@ jobs:
                     --destination=image
             - name: (T1187, T1186) (N/C) - Test if secrets are stored in Dockerfiles (X509Parse Image)
               run: |
-                  /kaniko/trivy image --input /x509-parse.tar
+                  if ! /kaniko/trivy image --input /x509-parse.tar; then
+                    # Trivy has a rate limit
+                    sleep 120
+                    /kaniko/trivy image --input /x509-parse.tar
+                  fi
 
     additional_sdl_checks:
         name: Perform Additional SDL Checks
