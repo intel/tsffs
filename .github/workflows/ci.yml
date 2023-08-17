@@ -356,7 +356,11 @@ jobs:
                     --destination=image
             - name: (T1187, T1186) (N/C) - Test if secrets are stored in Dockerfiles (Hello World Image)
               run: |
-                  /kaniko/trivy image --input /hello-world.tar
+                  if ! /kaniko/trivy image --input /hello-world.tar; then
+                    # Trivy has a rate limit :/ we'll sleep if we have a problem
+                    sleep 120
+                    /kaniko/trivy image --input /hello-world.tar
+                  fi
 
     scan_x509_parse:
         name: Scan X509Parse EFI Builder Container
@@ -383,7 +387,11 @@ jobs:
                     --destination=image
             - name: (T1187, T1186) (N/C) - Test if secrets are stored in Dockerfiles (X509Parse Image)
               run: |
-                  /kaniko/trivy image --input /x509-parse.tar
+                  if ! /kaniko/trivy image --input /x509-parse.tar; then
+                    # Trivy has a rate limit
+                    sleep 120
+                    /kaniko/trivy image --input /x509-parse.tar
+                  fi
 
     additional_sdl_checks:
         name: Perform Additional SDL Checks
