@@ -12,11 +12,6 @@ if ! command -v rargs &>/dev/null; then
     exit 1
 fi
 
-LICENSE_REQUIRED_EXTS=(
-    "c" "dml" "dsc" "h" ".inf" "ini" "ninja" "nsh" "py" "rs" "sh" "simics" "toml"
-    "yaml" "yml"
-)
-
 fd -t f -0 '.*\.rs$' "${SCRIPT_DIR}/../" | rargs -0 bash -c \
     "if ! grep -q 'SPDX-License-Identifier: Apache-2.0' {}; then
         if grep -qzE '^#!/' {}; then
