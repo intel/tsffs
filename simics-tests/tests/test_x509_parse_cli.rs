@@ -84,12 +84,6 @@ fn test_harnessing_x509_parse_cli() -> Result<()> {
 
     SimicsFuzzer::cli_main(args)?;
 
-    // NOTE: We enable this after cli main runs because otherwise they are dropped multiple times,
-    // in the fuzzer children *and* in this thread
-    tmp_input_dir.remove_on_drop(true);
-    tmp_corpus_dir.remove_on_drop(true);
-    tmp_solution_dir.remove_on_drop(true);
-
     let corpus_entries = read_dir(tmp_corpus_dir.path())
         .map_err(|e| {
             eprintln!(
@@ -100,6 +94,12 @@ fn test_harnessing_x509_parse_cli() -> Result<()> {
             e
         })?
         .count();
+
+    // NOTE: We enable this after cli main runs because otherwise they are dropped multiple times,
+    // in the fuzzer children *and* in this thread
+    tmp_input_dir.remove_on_drop(true);
+    tmp_corpus_dir.remove_on_drop(true);
+    tmp_solution_dir.remove_on_drop(true);
 
     assert!(corpus_entries > 0, "No corpus in {} iterations", ITERATIONS);
     Ok(())
