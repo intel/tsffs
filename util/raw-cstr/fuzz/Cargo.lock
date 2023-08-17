@@ -4,9 +4,9 @@ version = 3
 
 [[package]]
 name = "anyhow"
-version = "1.0.71"
+version = "1.0.74"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c7d0618f0e0b7e8ff11427422b64564d5fb0be1940354bfe2e0529b18a9d9b8"
+checksum = "8c6f84b74db2535ebae81eede2f39b947dcbf01d093ae5f791e5dd414a1bf289"
 
 [[package]]
 name = "arbitrary"
@@ -19,22 +19,22 @@ dependencies = [
 
 [[package]]
 name = "byte-strings"
-version = "0.2.2"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "963ceed6e0041e1f4cdd9e2fae3b384f5613a22119b5bb04ccc14fc815e87ae3"
+checksum = "002ee5531feb8450e59862fefa550eeac39b726d60b186071672751045ebc29a"
 dependencies = [
  "byte-strings-proc_macros",
 ]
 
 [[package]]
 name = "byte-strings-proc_macros"
-version = "0.2.2"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e78e8673d97234c7a07636474b02c92fad06a0f26f70581aa46aee124c508e5"
+checksum = "62f7e0e71f98d6c71bfe42b0a7a47d0f870ad808401fad2d44fa156ed5b0ae03"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn",
 ]
 
 [[package]]
@@ -54,7 +54,7 @@ checksum = "53e0efad4403bfc52dc201159c4b842a246a14b98c64b55dfd0f2d89729dfeb8"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.25",
+ "syn",
 ]
 
 [[package]]
@@ -122,17 +122,6 @@ dependencies = [
  "arbitrary",
  "libfuzzer-sys",
  "raw-cstr",
-]
-
-[[package]]
-name = "syn"
-version = "1.0.109"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72b64191b275b66ffe2469e8af2c1cfe3bafa67b529ead792a6d0160888b4237"
-dependencies = [
- "proc-macro2",
- "quote",
- "unicode-ident",
 ]
 
 [[package]]

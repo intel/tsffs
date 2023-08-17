@@ -5,6 +5,7 @@
 //! and correct temporary directory permissions (user-only r-x)
 
 #![deny(clippy::unwrap_used)]
+#![forbid(unsafe_code)]
 
 use anyhow::{anyhow, bail, ensure, Result};
 use derive_builder::Builder;

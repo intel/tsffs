@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #![deny(clippy::unwrap_used)]
+#![forbid(unsafe_code)]
 
 use anyhow::{anyhow, Error, Result};
 use clap::{Parser, ValueEnum};

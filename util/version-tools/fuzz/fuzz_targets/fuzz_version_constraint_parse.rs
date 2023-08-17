@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #![no_main]
+#![forbid(unsafe_code)]
 
 use libfuzzer_sys::fuzz_target;
 use std::str::FromStr;
