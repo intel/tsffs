@@ -56,3 +56,5 @@ simics-link.workspace = true
 "6.0.166" = ["simics/6.0.166", "simics-api/6.0.166", "tsffs_module/6.0.166"]
 "6.0.167" = ["simics/6.0.167", "simics-api/6.0.167", "tsffs_module/6.0.167"]
 "6.0.168" = ["simics/6.0.168", "simics-api/6.0.168", "tsffs_module/6.0.168"]
+"6.0.169" = ["simics/6.0.169", "simics-api/6.0.169", "tsffs_module/6.0.169"]
+"6.0.170" = ["simics/6.0.170", "simics-api/6.0.170", "tsffs_module/6.0.170"]

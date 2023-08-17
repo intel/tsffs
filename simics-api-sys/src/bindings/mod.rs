@@ -1,6 +1,3 @@
-// Copyright (C) 2023 Intel Corporation
-// SPDX-License-Identifier: Apache-2.0
-
 //! Raw bindings to the SIMICS API
 
 #![allow(non_upper_case_globals)]
@@ -285,3 +282,7 @@ include!("bindings-6.0.166.rs");
 include!("bindings-6.0.167.rs");
 #[cfg(feature = "6.0.168")]
 include!("bindings-6.0.168.rs");
+#[cfg(feature = "6.0.169")]
+include!("bindings-6.0.169.rs");
+#[cfg(feature = "6.0.170")]
+include!("bindings-6.0.170.rs");
