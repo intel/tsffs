@@ -21,17 +21,17 @@ fn test_harnessing_x509_parse_cli() -> Result<()> {
 
     let mut tmp_input_dir = TmpDirBuilder::default()
         .prefix("test_x509_parse_cli_input")
-        .permissions(0o40700u32)
+        .permissions(0o40755u32)
         .remove_on_drop(false)
         .build()?;
     let mut tmp_corpus_dir = TmpDirBuilder::default()
         .prefix("test_x509_parse_cli_corpus")
-        .permissions(0o40700u32)
+        .permissions(0o40755u32)
         .remove_on_drop(false)
         .build()?;
     let mut tmp_solution_dir = TmpDirBuilder::default()
         .prefix("test_x509_parse_cli_solution")
-        .permissions(0o40700u32)
+        .permissions(0o40755u32)
         .remove_on_drop(false)
         .build()?;
 
