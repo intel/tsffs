@@ -49,7 +49,7 @@ fn test_hello_world_cli() -> Result<()> {
         &tmp_input_dir.path().to_string_lossy(),
         "-c",
         &tmp_corpus_dir.path().to_string_lossy(),
-        "-s",
+        "-o",
         &tmp_solution_dir.path().to_string_lossy(),
         "-l",
         "INFO",
