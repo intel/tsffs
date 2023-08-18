@@ -14,6 +14,7 @@ resolutions.
         - [Install Simics (External)](#install-simics-external)
         - [Set up SIMICS\_HOME (External)](#set-up-simics_home-external)
       - [Internal Instructions](#internal-instructions)
+        - [Install SIMICS Dependencies (Internal)](#install-simics-dependencies-internal)
         - [Download Simics (Internal)](#download-simics-internal)
         - [Check kinit (Internal)](#check-kinit-internal)
         - [Install Simics (Internal, CLI)](#install-simics-internal-cli)
@@ -133,6 +134,53 @@ SIMICS_HOME=/home/YOUR_USERNAME/install/simics/
 ```
 
 #### Internal Instructions
+
+##### Install SIMICS Dependencies (Internal)
+
+Internal SIMICS utilizes Kerberos for authentication and SMB to download SIMICS
+packages. We recommend using the
+[intelize](https://github.com/intel-innersource/applications.provisioning.linux-at-intel.intelize/)
+script to set this up automatically, but for temporary machines or VMs a lighter weight
+solution may be desired.
+
+First, install Kerberos and SMB Client for your distribution.
+
+Ubuntu:
+
+```sh
+sudo apt-get install -y krb5-user smbclient
+```
+
+If installing interactively, you will be prompted for your *default realm* during
+installation via a prompt like the one below.
+
+```text
+Configuring Kerberos Authentication
+-----------------------------------
+
+When users attempt to use Kerberos and specify a principal or user name without
+specifying what administrative Kerberos realm that principal belongs to, the system
+appends the default realm.  The default realm may also be used as the realm of a
+Kerberos service running on the local machine.  Often, the default realm is the
+uppercase version of the local DNS domain.
+
+Default Kerberos version 5 realm:
+```
+
+At the prompt, enter your authentication domain. For North America Intel users, this is
+`AMR.CORP.INTEL.COM`. You can find your domain in Workday if you don't know it.
+
+If installing non-interactively, set the contents of `/etc/krb5.conf` to the text below,
+replacing the realm with yours if it is different.
+
+```text
+[libdefaults]
+default_realm = AMR.CORP.INTEL.COM
+
+[realms]
+
+[domain_realm]
+```
 
 ##### Download Simics (Internal)
 
