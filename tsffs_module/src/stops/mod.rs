@@ -21,7 +21,7 @@ pub enum StopError {
 /// a snapshot will be reverted to, but we need this information to inform the fuzzer objectives
 pub enum StopReason {
     /// A magic instruction happened, save the magic type and the cpu number that hit the magic
-    /// instruction
+    /// instruction. The second value is the processor number the instruction was raised on.
     Magic((Magic, i32)),
     /// A (possibly) normal stop due to the simulation exiting
     SimulationExit(i32),

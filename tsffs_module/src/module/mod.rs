@@ -4,7 +4,11 @@
 use self::components::{detector::Detector, tracer::Tracer};
 use crate::{
     config::OutputConfig,
-    magic::{Magic, MAGIC_ARG0_REG_X86_64, MAGIC_ARG1_REG_X86_64},
+    magic::{
+        Magic, MAGIC_ARG0_REG_X86_64, MAGIC_ARG0_REG_X86_64_WININTRIN, MAGIC_ARG1_REG_X86_64,
+        MAGIC_OUT0_REG_X86_64_WININTRIN, MAGIC_OUT1_REG_X86_64_WININTRIN,
+        MAGIC_OUT2_REG_X86_64_WININTRIN, MAGIC_OUT3_REG_X86_64_WININTRIN,
+    },
     messages::{client::ClientMessage, module::ModuleMessage},
     processor::Processor,
     state::ModuleStateMachine,
@@ -12,7 +16,7 @@ use crate::{
     traits::{Interface, State},
     CLASS_NAME,
 };
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use ffi_macro::{callback_wrappers, params};
 use tracing::{debug, error, info, trace, Level};
 
@@ -35,6 +39,11 @@ use tracing_subscriber::{filter::filter_fn, fmt, prelude::*, registry, Layer};
 
 pub mod components;
 
+enum TestcaseWriteType {
+    Standard,
+    WinIntrin,
+}
+
 #[module(class_name = CLASS_NAME)]
 pub struct Module {
     state: ModuleStateMachine,
@@ -54,6 +63,9 @@ pub struct Module {
     /// Set to true when running in repro mode once we have reached the stop harness. This is
     /// used to disable the normal fuzzing procedures when reproducing issues.
     repro_started: bool,
+    /// Values received from cpuid start winintrin calls to __cpuidex
+    winintrin_values: Vec<u32>,
+    testcase_write_type: TestcaseWriteType,
 }
 
 impl SimicsModule for Module {
@@ -79,6 +91,8 @@ impl SimicsModule for Module {
             -1,
             false,
             false,
+            Vec::new(),
+            TestcaseWriteType::Standard,
         ))
     }
 }
@@ -209,15 +223,44 @@ impl Module {
 
         input.truncate(self.buffer_size as usize);
 
-        {
-            let processor = self
-                .processors
-                .get_mut(&processor_number)
-                .with_context(|| format!("No processor number {}", processor_number))?;
-            // Write the testcase to the guest's memory
-            processor.write_bytes(self.buffer_address, &input)?;
-            // Write the testcase size back to rdi
-            processor.set_reg_value(MAGIC_ARG1_REG_X86_64, input.len() as u64)?;
+        match self.testcase_write_type {
+            TestcaseWriteType::Standard => {
+                // Normal mode, write bytes to the buffer and write the size back to the arg1 register
+                let processor = self
+                    .processors
+                    .get_mut(&processor_number)
+                    .with_context(|| format!("No processor number {}", processor_number))?;
+                // Write the testcase to the guest's memory
+                processor.write_bytes(self.buffer_address, &input)?;
+                // Write the testcase size back to rdi
+                processor.set_reg_value(MAGIC_ARG1_REG_X86_64, input.len() as u64)?;
+            }
+            TestcaseWriteType::WinIntrin => {
+                // WinIntrin mode, write bytes to the buffer and write the buffer pointer and size
+                // back to the cpuid output variables eax, ebx, ecx, edx so they can be grabbed
+                let processor = self
+                    .processors
+                    .get_mut(&processor_number)
+                    .with_context(|| format!("No processor number {}", processor_number))?;
+
+                // Write the testcase to the guest's memory
+                processor.write_bytes(self.buffer_address, &input)?;
+
+                // Write the buffer address and buffer size to the cpuid output
+                processor.set_reg_value(
+                    MAGIC_OUT0_REG_X86_64_WININTRIN,
+                    self.buffer_address & 0xffffffff,
+                )?;
+                processor
+                    .set_reg_value(MAGIC_OUT1_REG_X86_64_WININTRIN, self.buffer_address >> 32)?;
+
+                processor.set_reg_value(
+                    MAGIC_OUT2_REG_X86_64_WININTRIN,
+                    input.len() as u64 & 0xffffffff,
+                )?;
+                processor
+                    .set_reg_value(MAGIC_OUT3_REG_X86_64_WININTRIN, input.len() as u64 >> 32)?;
+            }
         }
 
         // Run the simulation until the magic start instruction, where we will receive a stop
@@ -301,6 +344,7 @@ impl Module {
                     Magic::Start(_) => {
                         if self.iterations == 0 {
                             self.iterations += 1;
+                            self.testcase_write_type = TestcaseWriteType::Standard;
                             // Tasks to do before first run
                             {
                                 let processor =
@@ -344,6 +388,82 @@ impl Module {
                             processor_number,
                         ))))?;
                         self.reset_and_run(processor_number)?;
+                    }
+                    Magic::StartWinIntrin64(_) => {
+                        if self.iterations == 0 {
+                            let processor = self
+                                .processors
+                                .get_mut(&processor_number)
+                                .with_context(|| {
+                                    format!("No processor number {}", processor_number)
+                                })?;
+                            let value =
+                                processor.get_reg_value(MAGIC_ARG0_REG_X86_64_WININTRIN)? as u32;
+
+                            debug!(
+                                "Got startup windows intrinsic value #{}: {:#x}",
+                                self.winintrin_values.len(),
+                                value
+                            );
+
+                            self.winintrin_values.push(value);
+
+                            if self.winintrin_values.len() == 4 {
+                                let mut addr = 0;
+
+                                addr |= *self.winintrin_values.first().ok_or_else(|| {
+                                    anyhow!("No windows intrinsic value at index 0")
+                                })? as u64;
+
+                                addr |= (*self.winintrin_values.get(1).ok_or_else(|| {
+                                    anyhow!("No windows intrinsic value at index 1")
+                                })? as u64)
+                                    << 32;
+
+                                let mut size = 0;
+
+                                size |= *self.winintrin_values.get(2).ok_or_else(|| {
+                                    anyhow!("No windows intrinsic value at index 2")
+                                })? as u64;
+
+                                size |= (*self.winintrin_values.get(3).ok_or_else(|| {
+                                    anyhow!("No windows intrinsic value at index 3")
+                                })? as u64)
+                                    << 32;
+
+                                debug!("Got startup windows intrinsic values buffer_addr={:#x} size_addr={:#x}", addr, size);
+
+                                self.testcase_write_type = TestcaseWriteType::WinIntrin;
+                                self.buffer_address = addr;
+                                self.buffer_size = size;
+                                self.winintrin_values.clear();
+                                self.iterations += 1;
+                                save_micro_checkpoint(
+                                    "origin",
+                                    &[
+                                        MicroCheckpointFlags::IdUser,
+                                        MicroCheckpointFlags::Persistent,
+                                    ],
+                                )?;
+
+                                self.detector.pre_first_run(self_ptr)?;
+                                self.tracer.pre_first_run(self_ptr)?;
+
+                                self.reset_and_run(processor_number)?;
+                            } else {
+                                continue_simulation_alone();
+                            }
+                        } else {
+                            // TODO: This isn't used for anything, so we just accept this is 4x
+                            // the actual number of iterations when running with this type of
+                            // start harness
+                            self.iterations += 1;
+
+                            self.stop_reason = None;
+                            self.last_start_processor_number = processor_number;
+
+                            continue_simulation_alone();
+                        }
                     }
                 }
             }

@@ -236,8 +236,6 @@ pub mod x86_64_unix {
 #[cfg(all(target_arch = "x86_64", target_family = "windows"))]
 pub mod x86_64_windows {
     #[no_mangle]
-    /// X86_64:
-    /// cbindgen:prefix= \
     pub extern "C" fn __marker_x86_64_windows() {}
 }
 #[cfg(target_arch = "powerpc")]
