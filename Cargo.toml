@@ -79,8 +79,8 @@ tmp-dir = { path = "./util/tmp-dir" }
 raw-cstr = { path = "./util/raw-cstr" }
 version-tools = { path = "./util/version-tools" }
 ffi-macro = { path = "./util/ffi-macro" }
-libafl = { git = "https://github.com/novafacing/LibAFL", branch = "fix-aflcmpmap-crash" }
-libafl_bolts = { git = "https://github.com/novafacing/LibAFL", branch = "fix-aflcmpmap-crash" }
+libafl = { git = "https://github.com/AFLplusplus/LibAFL", rev = "1922cb0a650aaaed7cffa65008019564ea5f43ba" }
+libafl_bolts = { git = "https://github.com/AFLplusplus/LibAFL", rev = "1922cb0a650aaaed7cffa65008019564ea5f43ba" }
 anyhow = "1.0.74"
 # Match these versions to cargo_metadata -- it breaks on current versions
 serde = "1.0.183"
