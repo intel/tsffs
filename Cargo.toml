@@ -42,9 +42,27 @@ members = [
     "util/artifact-dependency",
     "util/tmp-dir",
 ]
-# Specifying only simics-fuzz allows `cargo run` without specifying `--bin` to run `simics-fuzz`
 default-members = [
+    # Include file for harnessing
+    "include",
+    # Provide simics 
+    # Provide real simics APIs
+    "simics-api-sys",
+    "simics-api",
+    "simics-api-macro",
+    "simics",
+    "simics-cli",
+    "simics-tests",
+    "simics-link",
     "simics-fuzz",
+    # Modules
+    "tsffs_module",
+    # Utilities
+    "util/raw-cstr",
+    "util/version-tools",
+    "util/ffi-macro",
+    "util/artifact-dependency",
+    "util/tmp-dir",
 ]
 exclude = ["docs/videos/adv", "tests/userland-examples", "tests/cc"]
 
