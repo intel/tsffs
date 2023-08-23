@@ -242,7 +242,7 @@ pub struct ProjectPath {
 }
 
 impl ProjectPath {
-    const PREFIX: &str = "project";
+    const PREFIX: &'static str = "project";
 
     fn default() -> Result<Self> {
         // By default, remove_on_drop is false, because if it is set to true before the launcher
@@ -285,7 +285,7 @@ pub struct PropertiesMd5Entry {
 }
 
 impl PropertiesMd5Entry {
-    pub const SEPARATOR: &str = "MD5";
+    pub const SEPARATOR: &'static str = "MD5";
 }
 
 impl FromStr for PropertiesMd5Entry {

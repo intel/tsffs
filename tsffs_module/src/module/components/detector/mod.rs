@@ -38,7 +38,7 @@ pub struct Detector {
 }
 
 impl Detector {
-    const TIMEOUT_EVENT_NAME: &str = "detector_timeout_event";
+    const TIMEOUT_EVENT_NAME: &'static str = "detector_timeout_event";
 
     pub fn try_new() -> Result<Self> {
         Ok(Detector::default())

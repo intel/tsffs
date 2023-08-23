@@ -57,8 +57,8 @@ impl TmpDir {
     const DEFAULT_TRIES: usize = 32;
     const DEFAULT_RANDOM_LEN: usize = 8;
     const DEFAULT_PERMISSIONS: u32 = 0o40700;
-    const DEFAULT_PREFIX: &str = "";
-    const DEFAULT_SUFFIX: &str = "";
+    const DEFAULT_PREFIX: &'static str = "";
+    const DEFAULT_SUFFIX: &'static str = "";
     const DEFAULT_PANIC_ON_DROP_FAILURE: bool = false;
 
     pub fn path(&self) -> &Path {

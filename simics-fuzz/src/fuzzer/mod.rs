@@ -142,11 +142,11 @@ impl SimicsFuzzerBuilder {
 }
 
 impl SimicsFuzzer {
-    pub const NAME: &str = "Fuzzer";
+    pub const NAME: &'static str = "Fuzzer";
     pub const MAP_SIZE: usize = 128 * 1024;
     pub const CACHE_LEN: usize = 4096;
-    pub const DEFAULT_CORPUS_DIRECTORY: &str = "corpus";
-    pub const DEFAULT_SOLUTIONS_DIRECTORY: &str = "solutions";
+    pub const DEFAULT_CORPUS_DIRECTORY: &'static str = "corpus";
+    pub const DEFAULT_SOLUTIONS_DIRECTORY: &'static str = "solutions";
 
     pub fn cli_main(args: Args) -> Result<()> {
         let reg = registry().with({
