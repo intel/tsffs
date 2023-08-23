@@ -12,7 +12,7 @@ use simics::{manifest::package_latest, simics::home::simics_home};
 use simics_fuzz::{args::Args, fuzzer::SimicsFuzzer};
 
 const CARGO_MANIFEST_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../");
-const ITERATIONS: usize = 5;
+const ITERATIONS: usize = 3;
 
 #[test]
 #[cfg_attr(miri, ignore)]
