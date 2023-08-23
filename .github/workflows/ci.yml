@@ -335,7 +335,7 @@ jobs:
 
     scan_hello_world:
         name: Scan Hello World EFI Builder Container
-        container: cache-registry.caas.intel.com/cache/novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.18.3-0.0.1
+        container: cache-registry.caas.intel.com/cache/novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.1
         runs-on: [self-hosted, gasp]
         steps:
             - uses: actions/checkout@v3
@@ -366,7 +366,7 @@ jobs:
 
     scan_x509_parse:
         name: Scan X509Parse EFI Builder Container
-        container: cache-registry.caas.intel.com/cache/novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.18.3-0.0.1
+        container: cache-registry.caas.intel.com/cache/novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.1
         runs-on: [self-hosted, gasp]
         steps:
             - uses: actions/checkout@v3
