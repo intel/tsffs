@@ -56,8 +56,8 @@ usize_is_size_t = true
 "target_arch = aarch64" = "__aarch64__"
 "target_arch = arm" = "__arm__"
 "target_arch = armv7" = "__arm__"
-"target_family = windows" = "_WIN32"
-"target_family = unix" = "__unix__"
+"feature = windows" = "_WIN32"
+"feature = unix" = "__unix__"
 
 
 [export]
@@ -136,5 +136,5 @@ extra_bindings = ["tsffs_module"]
 [parse.expand]
 crates = ["include"]
 all_features = false
-default_features = false
-features = ["6.0.168"]
+default_features = true
+features = ["6.0.170"]
