@@ -30,6 +30,8 @@ pub extern "C" fn __version_marker_patch() {}
 pub mod i386 {
     pub const MAGIC: u16 = 0x4711;
 
+    use tsffs_module::magic::{MAGIC_START, MAGIC_STOP};
+
     pub fn harness_start(buffer: &mut *mut u8, size: &mut u32) {
         let magic: u32 = (MAGIC_START as u32) << 16 | MAGIC as u32;
         unsafe {
@@ -43,7 +45,7 @@ pub mod i386 {
     }
 
     pub fn harness_stop_extended(value: u32) {
-        let magic: u32 = (MAGIC_START as u32) << 16 | MAGIC as u32;
+        let magic: u32 = (MAGIC_STOP as u32) << 16 | MAGIC as u32;
         unsafe {
             asm! (
                 "cpuid",
@@ -54,7 +56,7 @@ pub mod i386 {
     }
 
     pub fn harness_stop() {
-        let magic: u32 = (MAGIC_START as u32) << 16 | MAGIC as u32;
+        let magic: u32 = (MAGIC_STOP as u32) << 16 | MAGIC as u32;
         unsafe {
             asm! (
                 "cpuid",
@@ -142,7 +144,7 @@ pub mod x86_64 {
 
     use std::arch::asm;
 
-    use tsffs_module::magic::MAGIC_START;
+    use tsffs_module::magic::{MAGIC_START, MAGIC_STOP};
 
     pub fn harness_start(buffer: &mut *mut u8, size: &mut u64) {
         let magic: u64 = (MAGIC_START as u64) << 16 | MAGIC as u64;
@@ -157,7 +159,7 @@ pub mod x86_64 {
     }
 
     pub fn harness_stop_extended(value: u64) {
-        let magic: u64 = (MAGIC_START as u64) << 16 | MAGIC as u64;
+        let magic: u64 = (MAGIC_STOP as u64) << 16 | MAGIC as u64;
         unsafe {
             asm! (
                 "cpuid",
@@ -168,7 +170,7 @@ pub mod x86_64 {
     }
 
     pub fn harness_stop() {
-        let magic: u64 = (MAGIC_START as u64) << 16 | MAGIC as u64;
+        let magic: u64 = (MAGIC_STOP as u64) << 16 | MAGIC as u64;
         unsafe {
             asm! (
                 "cpuid",
