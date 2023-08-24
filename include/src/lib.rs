@@ -4,7 +4,7 @@
 #![deny(clippy::unwrap_used)]
 #![allow(unused)]
 
-use tsffs_module::magic::{MAGIC_START, MAGIC_STOP};
+use tsffs_module::magic::{MAGIC_START, MAGIC_START_WININTRIN, MAGIC_STOP};
 
 #[no_mangle]
 #[doc = concat!(r#"cbindgen:prefix=#define TSFFS_INCLUDE_VERSION ""#, env!("CARGO_PKG_VERSION"), r#"""#, "\\")]
@@ -68,7 +68,7 @@ pub mod i386 {
 
 #[cfg(all(
     any(target_arch = "i386", target_arch = "i586", target_arch = "i686"),
-    target_family = "unix"
+    feature = "unix"
 ))]
 pub mod i386_unix {
     #[no_mangle]
@@ -129,13 +129,11 @@ pub mod i386_unix {
 
 #[cfg(all(
     any(target_arch = "i386", target_arch = "i586", target_arch = "i686"),
-    target_family = "windows"
+    feature = "windows"
 ))]
 pub mod i386_windows {
     #[no_mangle]
-    /// X86 32 Windows:
-    /// cbindgen:prefix= \
-    pub extern "C" fn __marker_i386_unix() {}
+    pub extern "C" fn __marker_i386_windows() {}
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -180,7 +178,7 @@ pub mod x86_64 {
     }
 }
 
-#[cfg(all(target_arch = "x86_64", target_family = "unix"))]
+#[cfg(all(target_arch = "x86_64", feature = "unix"))]
 pub mod x86_64_unix {
     #[no_mangle]
     /// X86_64:
@@ -235,11 +233,41 @@ pub mod x86_64_unix {
     pub extern "C" fn __marker_x86_64_unix() {}
 }
 
-#[cfg(all(target_arch = "x86_64", target_family = "windows"))]
+#[cfg(all(target_arch = "x86_64", feature = "windows"))]
 pub mod x86_64_windows {
     #[no_mangle]
-    /// X86_64:
+    /// X86 32 Windows:
     /// cbindgen:prefix= \
+    /// #define __arch_harness_start(addr_ptr, size_ptr) \ \
+    ///     do { \ \
+    ///         int cpuInfo[4] = {0}; \ \
+    ///         int function_id_start = (MAGIC_START_WININTRIN << 16U) | MAGIC; \ \
+    ///         int subfunction_id_addr_low = (int)(((long long)*addr_ptr) & 0xffffffff); \ \
+    ///         int subfunction_id_addr_hi  = (int)(((long long)*addr_ptr) >> 32U); \ \
+    ///         int subfunction_id_size_low = (int)(((long long)*size_ptr) & 0xffffffff); \ \
+    ///         int subfunction_id_size_hi  = (int)(((long long)*size_ptr) >> 32U); \ \
+    ///         __cpuidex(cpuInfo, function_id_start, subfunction_id_addr_low); \ \
+    ///         __cpuidex(cpuInfo, function_id_start, subfunction_id_addr_hi); \ \
+    ///         __cpuidex(cpuInfo, function_id_start, subfunction_id_size_low); \ \
+    ///         __cpuidex(cpuInfo, function_id_start, subfunction_id_size_hi); \ \
+    ///         *(long long *)addr_ptr = 0; \ \
+    ///         *(long long *)addr_ptr |= (long long)cpuInfo[0]; \ \
+    ///         *(long long *)addr_ptr |= ((long long)cpuInfo[1]) << 32U; \ \
+    ///         *(long long *)size_ptr = 0; \ \
+    ///         *(long long *)size_ptr |= (long long)cpuInfo[2]; \ \
+    ///         *(long long *)size_ptr |= ((long long)cpuInfo[3]) << 32U; \ \
+    ///     } while (0) \
+    /// \
+    /// #define __arch_harness_stop() \ \
+    ///     do { \ \
+    ///         int cpuInfo[4] = {0}; \ \
+    ///         uint32_t function_id_stop = (MAGIC_STOP << 16U) | MAGIC; \ \
+    ///         __cpuid(cpuInfo, function_id_stop); \ \
+    ///     } while (0) \
+    /// \
+    /// #define __arch_harness_stop_extended(val_ptr) \ \
+    ///     __arch_harness_stop() \
+    ///
     pub extern "C" fn __marker_x86_64_windows() {}
 }
 #[cfg(target_arch = "powerpc")]
