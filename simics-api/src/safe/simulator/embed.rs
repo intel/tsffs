@@ -73,8 +73,8 @@ macro_rules! impl_bool_arg {
     ($struct_name:ident, $name:expr) => {
         paste! {
             impl $struct_name {
-                pub fn [< $name:snake:lower >]() -> Result<Self> {
-                    Self::boolean($name, true)
+                pub fn [< $name:snake:lower >](value: bool) -> Result<Self> {
+                    Self::boolean($name, value)
                 }
             }
         }

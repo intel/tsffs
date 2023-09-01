@@ -270,8 +270,9 @@ impl SimicsFuzzer {
         spawn(move || -> Result<()> {
             // TODO: Take these args from CLI, we should let users override anything including GUI
             // mode if they really want to
-            let mut simics_args =
-                InitArgs::default().arg(InitArg::deprecation_level(DeprecationLevel::NoWarnings)?);
+            let mut simics_args = InitArgs::default()
+                .arg(InitArg::deprecation_level(DeprecationLevel::NoWarnings)?)
+                .arg(InitArg::fail_on_warnings(false)?);
 
             if simics_gui {
                 debug!("Enabling SIMICS GUI");
@@ -279,10 +280,10 @@ impl SimicsFuzzer {
             } else {
                 // By default, don't enable the GUI
                 simics_args = simics_args
-                    .arg(InitArg::batch_mode()?)
+                    .arg(InitArg::batch_mode(true)?)
                     .arg(InitArg::gui_mode(GuiMode::None)?)
                     // TODO: Maybe disable this if we can output logs through tracing?
-                    .arg(InitArg::no_windows()?);
+                    .arg(InitArg::no_windows(true)?);
             }
 
             simics_args = simics_args.arg(InitArg::project(path.to_string_lossy().to_string())?);
