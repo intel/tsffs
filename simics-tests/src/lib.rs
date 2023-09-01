@@ -12,11 +12,11 @@ use simics::{
 
 pub fn test_init() -> Result<()> {
     let args = InitArgs::default()
-        .arg(InitArg::batch_mode()?)
+        .arg(InitArg::batch_mode(true)?)
         .arg(InitArg::gui_mode(GuiMode::None.to_string())?)
-        .arg(InitArg::quiet()?)
-        .arg(InitArg::no_windows()?)
-        .arg(InitArg::no_settings()?);
+        .arg(InitArg::quiet(true)?)
+        .arg(InitArg::no_windows(true)?)
+        .arg(InitArg::no_settings(true)?);
 
     Simics::try_init(args)?;
     Ok(())

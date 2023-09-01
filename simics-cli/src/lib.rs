@@ -82,7 +82,7 @@ impl Args {
         let mut simics_args = InitArgs::default();
 
         if args.batch_mode {
-            simics_args = simics_args.arg(InitArg::batch_mode()?);
+            simics_args = simics_args.arg(InitArg::batch_mode(true)?);
         }
 
         if let Some(level) = args.deprecation_level {
@@ -96,7 +96,7 @@ impl Args {
         simics_args = simics_args.arg(InitArg::gui_mode(args.gui_mode.to_string())?);
 
         if args.fail_on_warnings {
-            simics_args = simics_args.arg(InitArg::fail_on_warnings()?);
+            simics_args = simics_args.arg(InitArg::fail_on_warnings(true)?);
         }
 
         if let Some(license_file) = args.license_file {
@@ -106,7 +106,7 @@ impl Args {
         }
 
         if args.log_enable {
-            simics_args = simics_args.arg(InitArg::log_enable()?);
+            simics_args = simics_args.arg(InitArg::log_enable(true)?);
         }
 
         if let Some(log_file) = args.log_file {
@@ -116,15 +116,15 @@ impl Args {
         }
 
         if args.no_settings {
-            simics_args = simics_args.arg(InitArg::no_settings()?);
+            simics_args = simics_args.arg(InitArg::no_settings(true)?);
         }
 
         if args.no_windows {
-            simics_args = simics_args.arg(InitArg::no_windows()?);
+            simics_args = simics_args.arg(InitArg::no_windows(true)?);
         }
 
         if args.python_verbose {
-            simics_args = simics_args.arg(InitArg::python_verbose()?);
+            simics_args = simics_args.arg(InitArg::python_verbose(true)?);
         }
 
         if let Some(project) = args.project {
@@ -134,15 +134,15 @@ impl Args {
         }
 
         if args.quiet {
-            simics_args = simics_args.arg(InitArg::quiet()?);
+            simics_args = simics_args.arg(InitArg::quiet(true)?);
         }
 
         if args.script_trace {
-            simics_args = simics_args.arg(InitArg::script_trace()?);
+            simics_args = simics_args.arg(InitArg::script_trace(true)?);
         }
 
         if args.verbose {
-            simics_args = simics_args.arg(InitArg::verbose()?);
+            simics_args = simics_args.arg(InitArg::verbose(true)?);
         }
 
         Ok(simics_args)
