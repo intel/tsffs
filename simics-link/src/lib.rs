@@ -612,16 +612,16 @@ where
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "6.0.170")]
+    #[cfg(feature = "6.0.172")]
     use anyhow::Result;
 
-    #[cfg(feature = "6.0.170")]
+    #[cfg(feature = "6.0.172")]
     use crate::link_simics_linux;
 
-    #[cfg(feature = "6.0.170")]
+    #[cfg(feature = "6.0.172")]
     #[test]
     #[cfg_attr(miri, ignore)]
     fn test_link_simics_linux() -> Result<()> {
-        link_simics_linux("6.0.170")
+        link_simics_linux("6.0.172")
     }
 }

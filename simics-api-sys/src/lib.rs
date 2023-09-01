@@ -32,3 +32,7 @@ pub const SIMICS_VERSION: &str = "6.0.168";
 pub const SIMICS_VERSION: &str = "6.0.169";
 #[cfg(feature = "6.0.170")]
 pub const SIMICS_VERSION: &str = "6.0.170";
+#[cfg(feature = "6.0.171")]
+pub const SIMICS_VERSION: &str = "6.0.171";
+#[cfg(feature = "6.0.172")]
+pub const SIMICS_VERSION: &str = "6.0.172";

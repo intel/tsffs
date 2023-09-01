@@ -57,7 +57,7 @@ you have set up the fuzzer by following the directions [above](#setup), you can 
 with (from the root of this repo):
 
 ```sh
-cargo run --release --bin simics-fuzz --features=6.0.170 -- \
+cargo run --release --bin simics-fuzz --features=6.0.172 -- \
     --corpus /tmp/corpus --solutions solution --log-level INFO --cores 1  \
     --file examples/harnessing-uefi/rsrc/target.efi:%simics%/target.efi \
     --file examples/harnessing-uefi/rsrc/fuzz.simics:%simics%/fuzz.simics \
@@ -75,7 +75,7 @@ There are two provided sample targets, `hello-world` and `x509-parse`. You can r
 in the basic configuration with the commands below, respectively.
 
 ```sh
-cargo run --release --bin simics-fuzz --features=6.0.170 -- \
+cargo run --release --bin simics-fuzz --features=6.0.172 -- \
   -c /tmp/hello-world-corpus/ -o /tmp/hello-world-solution/ -l ERROR -t -C 1 \
   -P 2096:6.0.69 \
   -f examples/hello-world/rsrc/HelloWorld.efi:%simics%/targets/hello-world/HelloWorld.efi \
@@ -88,7 +88,7 @@ cargo run --release --bin simics-fuzz --features=6.0.170 -- \
 ```
 
 ```sh
-cargo run --release --bin simics-fuzz --features=6.0.170 -- \
+cargo run --release --bin simics-fuzz --features=6.0.172 -- \
   -c /tmp/x509-parse-corpus/ -o /tmp/x509-parse-solution/ -l ERROR -t -C 1 \
   -P 2096:6.0.69 \
   -f examples/x509-parse/rsrc/X509Parse.efi:%simics%/targets/x509-parse/X509Parse.efi \

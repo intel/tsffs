@@ -286,3 +286,7 @@ include!("bindings-6.0.168.rs");
 include!("bindings-6.0.169.rs");
 #[cfg(feature = "6.0.170")]
 include!("bindings-6.0.170.rs");
+#[cfg(feature = "6.0.171")]
+include!("bindings-6.0.171.rs");
+#[cfg(feature = "6.0.172")]
+include!("bindings-6.0.172.rs");
