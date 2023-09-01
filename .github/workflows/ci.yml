@@ -29,7 +29,7 @@ env:
     CARGO_TERM_COLOR: always
 
     # Simics base
-    SIMICS_PUBLIC_PACKAGE_VERSION_1000: 6.0.170
+    SIMICS_PUBLIC_PACKAGE_VERSION_1000: 6.0.172
     # QSP X86
     SIMICS_PUBLIC_PACKAGE_VERSION_2096: 6.0.69
     # QSP CPU
@@ -48,7 +48,7 @@ jobs:
                         "6.0.167",
                         "6.0.168",
                         "6.0.169",
-                        "6.0.170"
+                        "6.0.172"
                     ]
         container: cache-registry.caas.intel.com/cache/library/ubuntu
         runs-on: [self-hosted, gasp]
