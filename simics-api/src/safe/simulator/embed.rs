@@ -11,7 +11,7 @@ use simics_api_sys::{
     gui_mode_t_GUI_Mode_Only, init_arg_t, init_arg_t__bindgen_ty_1, SIM_init_command_line,
     SIM_init_environment, SIM_init_simulator2, SIM_main_loop,
 };
-use std::ptr::null;
+use std::{mem::forget, ptr::null};
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
 #[repr(u32)]
@@ -194,11 +194,18 @@ where
     I: IntoIterator<Item = S>,
     S: AsRef<str>,
 {
-    let mut args = argv
-        .into_iter()
-        .filter_map(|s| raw_cstr(s).ok())
-        .collect::<Vec<_>>();
-    unsafe { SIM_init_environment(args.as_mut_ptr(), handle_signals, allow_core_dumps) };
+    let mut args = Vec::new();
+
+    for arg in argv {
+        args.push(raw_cstr(arg)?);
+    }
+
+    let args_ptr = args.as_mut_ptr();
+
+    forget(args);
+
+    unsafe { SIM_init_environment(args_ptr, handle_signals, allow_core_dumps) };
+
     Ok(())
 }
 
