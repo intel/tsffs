@@ -3,7 +3,7 @@
 
 use std::{
     env::var,
-    fs::{read, read_dir, write},
+    fs::{read_dir, write},
     process::Command,
 };
 

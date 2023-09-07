@@ -3,7 +3,7 @@
 
 //! Utility functionality to assist managing SIMICS projects
 
-use anyhow::{bail, ensure, Context, Error, Result};
+use anyhow::{anyhow, bail, ensure, Error, Result};
 use regex::Regex;
 use std::{
     fs::{copy, create_dir_all},
@@ -105,11 +105,13 @@ where
                 false
             }
         })
-        .context(format!(
-            "Could not find {} in {}",
-            file_name_pattern.as_ref(),
-            simics_base_dir.as_ref().display()
-        ))?
+        .ok_or_else(|| {
+            anyhow!(
+                "Could not find {} in {}",
+                file_name_pattern.as_ref(),
+                simics_base_dir.as_ref().display()
+            )
+        })?
         .path()
         .to_path_buf();
 

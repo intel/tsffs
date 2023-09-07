@@ -8,7 +8,7 @@
 //! types like `bool`, `String`, etc.
 
 use crate::ConfObject;
-use anyhow::{ensure, Context, Error, Result};
+use anyhow::{anyhow, ensure, Error, Result};
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{FromPrimitive as ConvertFromPrimitive, ToPrimitive as ConvertToPrimitive};
 use raw_cstr::raw_cstr;
@@ -43,7 +43,9 @@ impl TryFrom<AttrKind> for u32 {
     type Error = Error;
 
     fn try_from(value: AttrKind) -> Result<Self> {
-        value.to_u32().context(format!("Invalid value {:?}", value))
+        value
+            .to_u32()
+            .ok_or_else(|| anyhow!("Invalid value {:?}", value))
     }
 }
 
@@ -51,7 +53,7 @@ impl TryFrom<u32> for AttrKind {
     type Error = Error;
 
     fn try_from(value: u32) -> Result<Self> {
-        ConvertFromPrimitive::from_u32(value).context(format!("Invalid value {}", value))
+        ConvertFromPrimitive::from_u32(value).ok_or_else(|| anyhow!("Invalid value {}", value))
     }
 }
 
@@ -108,6 +110,7 @@ where
     S: AsRef<str>,
 {
     let string = raw_cstr(s)?;
+
     Ok(AttrValue {
         private_kind: if string.is_null() {
             AttrKind::Nil.try_into()?
@@ -142,7 +145,7 @@ pub fn make_attr_object(obj: *mut ConfObject) -> Result<AttrValue> {
 }
 
 /// Create a new data [`AttrValue`], which is effectively a fat pointer to the data, with a given
-/// size
+/// size. The data will be moved into a [`Box`], which will be converted to a raw pointer.
 pub fn make_attr_data_adopt<T>(data: T) -> Result<AttrValue> {
     let data = Box::new(data);
     let data_ptr = Box::into_raw(data);

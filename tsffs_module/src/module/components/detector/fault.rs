@@ -11,7 +11,7 @@
 //! as negative numbers, although this may not be supported on all platforms
 
 extern crate num_traits;
-use anyhow::{Context, Error, Result};
+use anyhow::{anyhow, Error, Result};
 use num_derive::FromPrimitive;
 use serde::{Deserialize, Serialize};
 
@@ -56,7 +56,7 @@ impl TryFrom<i64> for X86_64Fault {
 
     /// Try to convert an i64 to a fault and fail if the number is unknown
     fn try_from(value: i64) -> Result<Self> {
-        num::FromPrimitive::from_i64(value).context("Could not convert to Fault")
+        num::FromPrimitive::from_i64(value).ok_or_else(|| anyhow!("Could not convert to Fault"))
     }
 }
 

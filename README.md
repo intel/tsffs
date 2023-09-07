@@ -13,11 +13,13 @@ the [requirements](./docs/Requirements.md) to find out if TSSFS can fuzz your co
 - [TSFFS: Target Software Fuzzer For SIMICS](#tsffs-target-software-fuzzer-for-simics)
   - [Capabilities](#capabilities)
   - [Documentation](#documentation)
+  - [Use Cases](#use-cases)
   - [Setup](#setup)
   - [Running a Simple Sample Target](#running-a-simple-sample-target)
   - [Running an EDK2 Sample Target](#running-an-edk2-sample-target)
   - [Contact](#contact)
   - [Help Wanted / Roadmap](#help-wanted--roadmap)
+  - [Why CONFUSE](#why-confuse)
   - [Authors](#authors)
 
 
@@ -43,6 +45,15 @@ and takes advantage of several of the state of the art capabilities of both.
 
 Documentation for this project lives in the [docs](./docs/README.md) directory of this
 repository.
+
+## Use Cases
+
+CONFUSE is focused on several primary use cases:
+
+- UEFI and BIOS code, particulary based on [EDKII](https://github.com/tianocore/edk2)
+- Pre- and early-silicon firmware and device drivers
+- Hardware-dependent kernel and firmware code
+- Fuzzing for complex error conditions
 
 ## Setup
 
@@ -121,6 +132,35 @@ See the
 for a roadmap of planned features and enhancements. Help is welcome for any features
 listed here. If someone is assigned an issue you'd like to work on, please ping them to
 avoid duplicating effort!
+
+## Why CONFUSE
+
+There are several tools capable of fuzzing firmware and UEFI code. Notably, the
+[HBFA](https://github.com/intel-innersource/applications.security.fuzzing.uefi.hbfa-ccc)
+project and the [kAFL](https://github.com/IntelLabs/kAFL) project enable system software
+fuzzing with various tradeoffs.
+
+HBFA is very fast, and enables fuzzing with sanitizers in Linux userspace. However, it
+requires stubs for any hardware interactions as well as the ability to compile code with
+instrumentation. For teams with resources to create a working HBFA configuration, it
+should be used alongside CONFUSE to enable additional error condition detection.
+
+kAFL is also extremely fast, and is hypervisor based which allows deterministic
+snapshotting of systems under test. This also makes it ideal for very complex systems
+and system-of-systems fuzzing, where interactions between components or the use of real
+hardware is necessary. kAFL suffers from a similar limitation as HBFA in that it
+requires working device stubs or simulation to be implemented in QEMU, and additionally
+requires a patched kernel to run the required KVM modifications.
+
+Both of these tools should be used where possible to take advantage of their unique
+capabilities, but CONFUSE aims to reduce the barrier to fuzzing low-level systems
+software. It is slower (though not unacceptably so) than HBFA or kAFL, and is not (yet)
+capable of leveraging sanitizers. In exchange, using it is as simple as adding a few
+lines of code to a SIMICS script and ten or less lines of code to your firmware source
+code. In addition, because it is based on SIMICS, the tool of choice of firmware
+developers, the models and configurations for the code under test can be used as they
+are, and developers can continue to use familiar tools to reduce the lift of enabling
+fuzzing.
 
 ## Authors
 

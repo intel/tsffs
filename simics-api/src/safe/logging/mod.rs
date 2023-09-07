@@ -6,26 +6,28 @@ use anyhow::Result;
 use simics_api_sys::{SIM_log_error, SIM_log_info, SIM_log_level, SIM_set_log_level};
 use std::ffi::CString;
 
+const LOG_GROUP: i32 = 0;
+
 /// Log an info-level message through the SIMICS logging functions
-pub fn log_info<S>(level: i32, device: *mut ConfObject, group: i32, msg: S) -> Result<()>
+pub fn log_info<S>(level: i32, device: *mut ConfObject, msg: S) -> Result<()>
 where
     S: AsRef<str>,
 {
     let msg_cstring = CString::new(msg.as_ref())?;
 
     unsafe {
-        SIM_log_info(level, device.into(), group, msg_cstring.as_ptr());
+        SIM_log_info(level, device.into(), LOG_GROUP, msg_cstring.as_ptr());
     };
 
     Ok(())
 }
 
 /// Log an error-level message through the SIMICS logging functions
-pub fn log_error(device: *mut ConfObject, group: i32, msg: String) -> Result<()> {
+pub fn log_error(device: *mut ConfObject, msg: String) -> Result<()> {
     let msg_cstring = CString::new(msg)?;
 
     unsafe {
-        SIM_log_error(device.into(), group, msg_cstring.as_ptr());
+        SIM_log_error(device.into(), LOG_GROUP, msg_cstring.as_ptr());
     };
 
     Ok(())

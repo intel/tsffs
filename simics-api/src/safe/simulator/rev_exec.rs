@@ -3,7 +3,7 @@
 
 //! Implements simulator reverse execution and micro checkpointing functions
 
-use anyhow::{Context, Error, Result};
+use anyhow::{anyhow, Error, Result};
 use num::ToPrimitive as _;
 use num_derive::{FromPrimitive, ToPrimitive};
 use raw_cstr::raw_cstr;
@@ -34,7 +34,7 @@ impl TryFrom<MicroCheckpointFlags> for u32 {
     fn try_from(value: MicroCheckpointFlags) -> Result<Self> {
         value
             .to_u32()
-            .context("Invalid value for MicroCheckpointFlags")
+            .ok_or_else(|| anyhow!("Invalid value for MicroCheckpointFlags"))
     }
 }
 

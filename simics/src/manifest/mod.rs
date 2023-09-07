@@ -4,7 +4,7 @@
 //! Parse package manifest files and extract package specifications containing information about
 //! files in the package, package version, etc.
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use std::path::Path;
 use version_tools::VersionConstraint;
 use versions::Versioning;
@@ -22,7 +22,7 @@ where
     let max_base = infos
         .into_iter()
         .max_by_key(|k| Versioning::new(&k.0).expect("Invalid version string"))
-        .context("No versions for base")?;
+        .ok_or_else(|| anyhow!("No versions for base"))?;
 
     Ok(max_base.1)
 }

@@ -17,8 +17,7 @@ use simics_api_sys::{
     class_data_t, class_info_t, class_kind_t_Sim_Class_Kind_Extension,
     class_kind_t_Sim_Class_Kind_Pseudo, class_kind_t_Sim_Class_Kind_Session,
     class_kind_t_Sim_Class_Kind_Vanilla, conf_class_t, conf_object_t, SIM_c_get_interface,
-    SIM_create_class, SIM_create_object, SIM_get_class, SIM_get_object, SIM_register_class,
-    SIM_register_interface,
+    SIM_create_class, SIM_create_object, SIM_get_class, SIM_get_object, SIM_register_interface,
 };
 
 pub type ConfObject = conf_object_t;
@@ -34,24 +33,6 @@ pub enum ClassKind {
     Session = class_kind_t_Sim_Class_Kind_Session,
     Pseudo = class_kind_t_Sim_Class_Kind_Pseudo,
     Extension = class_kind_t_Sim_Class_Kind_Extension,
-}
-
-/// Register a class with a given name
-pub fn register_class<S>(name: S, class_data: ClassData) -> Result<*mut ConfClass>
-where
-    S: AsRef<str>,
-{
-    let name_raw = raw_cstr(name.as_ref())?;
-
-    // The reference can be dropped after the `SIM_register_class` function returns,
-    // so this is safe to call this way
-    let cls = unsafe { SIM_register_class(name_raw, &class_data as *const ClassData) };
-
-    if cls.is_null() {
-        bail!("Failed to register class: {}", last_error());
-    } else {
-        Ok(cls)
-    }
 }
 
 /// Create a class instance
