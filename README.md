@@ -143,14 +143,14 @@ fuzzing with various tradeoffs.
 HBFA is very fast, and enables fuzzing with sanitizers in Linux userspace. However, it
 requires stubs for any hardware interactions as well as the ability to compile code with
 instrumentation. For teams with resources to create a working HBFA configuration, it
-should be used alongside CONFUSE to enable additional error condition detection. 
+should be used alongside CONFUSE to enable additional error condition detection.
 
 kAFL is also extremely fast, and is hypervisor based which allows deterministic
 snapshotting of systems under test. This also makes it ideal for very complex systems
 and system-of-systems fuzzing, where interactions between components or the use of real
 hardware is necessary. kAFL suffers from a similar limitation as HBFA in that it
 requires working device stubs or simulation to be implemented in QEMU, and additionally
-requires a patched kernel to run the required KVM modifications. 
+requires a patched kernel to run the required KVM modifications.
 
 Both of these tools should be used where possible to take advantage of their unique
 capabilities, but CONFUSE aims to reduce the barrier to fuzzing low-level systems
