@@ -110,6 +110,7 @@ where
     S: AsRef<str>,
 {
     let string = raw_cstr(s)?;
+
     Ok(AttrValue {
         private_kind: if string.is_null() {
             AttrKind::Nil.try_into()?
@@ -144,7 +145,7 @@ pub fn make_attr_object(obj: *mut ConfObject) -> Result<AttrValue> {
 }
 
 /// Create a new data [`AttrValue`], which is effectively a fat pointer to the data, with a given
-/// size
+/// size. The data will be moved into a [`Box`], which will be converted to a raw pointer.
 pub fn make_attr_data_adopt<T>(data: T) -> Result<AttrValue> {
     let data = Box::new(data);
     let data_ptr = Box::into_raw(data);

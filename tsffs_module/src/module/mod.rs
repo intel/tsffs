@@ -172,9 +172,9 @@ impl Module {
     /// Send a message to the client
     fn send_msg(&mut self, msg: ModuleMessage) -> Result<()> {
         trace!("Sending module message {:?}", msg);
-        self.state
-            .consume(&msg)?
-            .ok_or_else(|| anyhow!("Error consuming sent message {:?}", msg))?;
+        // NOTE: consume returns an Option<()>, and it's ok (not an error) if this option is
+        // None.
+        self.state.consume(&msg)?;
         self.tx.send(msg)?;
         Ok(())
     }
@@ -193,9 +193,9 @@ impl Module {
             quit(0);
         }
 
-        self.state
-            .consume(&msg)?
-            .ok_or_else(|| anyhow!("Error consuming received message {:?}", msg))?;
+        // NOTE: consume returns an Option<()>, and it's ok (not an error) if this option is
+        // None.
+        self.state.consume(&msg)?;
 
         Ok(msg)
     }

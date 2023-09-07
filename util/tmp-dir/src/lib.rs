@@ -92,7 +92,6 @@ impl TmpDir {
 
 impl Drop for TmpDir {
     fn drop(&mut self) {
-        println!("Dropping tmpdir {}", self.path.display());
         if self.remove_on_drop {
             if let Err(e) = remove_dir_all(&self.path) {
                 if self.panic_on_drop_failure {
