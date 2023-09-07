@@ -3,7 +3,6 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
-
 //! ```cargo
 //! [dependencies]
 //! clap = { version = "*", features = ["derive"] }
@@ -24,8 +23,7 @@
 // bindings file for each one. It will output the bindings to the `src/bindings` directory of
 // this crate, where they will be included by feature flag with the `src/bindings/mod.rs` file.
 
-
-use anyhow::{anyhow, bail, ensure, Context, Result};
+use anyhow::{anyhow, bail, ensure, Result};
 use bindgen::{
     callbacks::{MacroParsingBehavior, ParseCallbacks},
     Builder, FieldVisibilityKind,
@@ -106,7 +104,7 @@ where
 {
     let response = get(url.as_ref())?;
 
-    println!("{:?}",response);
+    println!("{:?}", response);
     let mut dest = if path.as_ref().is_dir() {
         bail!("Can't download into directory. Provide a file path");
     } else {
@@ -261,7 +259,7 @@ fn get_existing_versions(args: &Args) -> Result<Vec<String>> {
         .collect::<Vec<_>>();
 
     versions.sort();
-    
+
     Ok(versions.iter().map(|v| format!("{}", v)).collect())
 }
 
@@ -329,7 +327,7 @@ fn generate_bindings(args: &Args) -> Result<()> {
             "python{}",
             python_include_versions
                 .last()
-                .context("No python versions found")?
+                .ok_or_else(|| anyhow!("No python versions found"))?
         ));
 
         println!("Generating bindings file {} with simics include path {} and simics python include path {}", bindings_file.display(), simics_include_path.display(), simics_python_include_path.display());
@@ -562,7 +560,6 @@ fn install_packages(args: &Args) -> Result<()> {
         create_dir_all(&fake_simics_home)?;
     }
 
-
     let base_versions = if !args.base_versions.is_empty() {
         args.base_versions.clone()
     } else {
@@ -622,8 +619,14 @@ fn install_packages(args: &Args) -> Result<()> {
             .stderr(Stdio::piped())
             .spawn()?;
 
-        let stdout = ispm_command.stdout.take().context("No stdout to take")?;
-        let stderr = ispm_command.stderr.take().context("No stderr to take")?;
+        let stdout = ispm_command
+            .stdout
+            .take()
+            .ok_or_else(|| anyhow!("No stdout to take"))?;
+        let stderr = ispm_command
+            .stderr
+            .take()
+            .ok_or_else(|| anyhow!("No stderr to take"))?;
 
         let stdout_reader = spawn(|| {
             let mut line = String::new();

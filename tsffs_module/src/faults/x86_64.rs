@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 extern crate num_traits;
-use anyhow::{Context, Error, Result};
+use anyhow::{anyhow, Error, Result};
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
@@ -52,21 +52,23 @@ impl TryFrom<i64> for X86_64Fault {
 
     /// Try to convert an i64 to a fault and fail if the number is unknown
     fn try_from(value: i64) -> Result<Self> {
-        num::FromPrimitive::from_i64(value).context("Could not convert to Fault")
+        num::FromPrimitive::from_i64(value).ok_or_else(|| anyhow!("Could not convert to Fault"))
     }
 }
 
 impl TryInto<i64> for X86_64Fault {
     type Error = Error;
     fn try_into(self) -> Result<i64> {
-        self.to_i64().context("Could not convert self to i64")
+        self.to_i64()
+            .ok_or_else(|| anyhow!("Could not convert self to i64"))
     }
 }
 
 impl TryInto<i64> for &X86_64Fault {
     type Error = Error;
     fn try_into(self) -> Result<i64> {
-        self.to_i64().context("Could not convert self to i64")
+        self.to_i64()
+            .ok_or_else(|| anyhow!("Could not convert self to i64"))
     }
 }
 

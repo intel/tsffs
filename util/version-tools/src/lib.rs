@@ -21,7 +21,7 @@
 #![deny(clippy::unwrap_used)]
 #![forbid(unsafe_code)]
 
-use anyhow::{bail, Context, Error, Result};
+use anyhow::{anyhow, bail, Error, Result};
 use std::str::FromStr;
 use versions::{Chunk, Versioning};
 
@@ -91,7 +91,7 @@ impl FromStr for VersionConstraint {
             } else {
                 Some(
                     Versioning::new(rest)
-                        .context(format!("Invalid constraint string: {}", rest))?,
+                        .ok_or_else(|| anyhow!("Invalid constraint string: {}", rest))?,
                 )
             },
         })

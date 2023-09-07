@@ -3,7 +3,7 @@
 
 //! Configuration data for the module, passed to it when it starts up
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Result};
 use ipc_shm::IpcShm;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -93,7 +93,7 @@ impl OutputConfig {
             self.maps
                 .iter()
                 .position(|m| matches!(m, MapType::Coverage(_)))
-                .context("No coverage map found")?,
+                .ok_or_else(|| anyhow!("No coverage map found"))?,
         ) {
             MapType::Coverage(coverage) => Ok(coverage),
         }

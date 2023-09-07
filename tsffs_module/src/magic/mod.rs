@@ -4,7 +4,7 @@
 //! Magic instructions raised by guest software
 
 extern crate num_traits;
-use anyhow::{Context, Error, Result};
+use anyhow::{anyhow, Error, Result};
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::ToPrimitive as _;
 use serde::{Deserialize, Serialize};
@@ -87,14 +87,16 @@ impl TryFrom<i64> for MagicCode {
     /// Try to convert a u16 value to a known `Magic` value
     fn try_from(value: i64) -> Result<Self> {
         num::FromPrimitive::from_u16(value as u16)
-            .context(format!("Could not convert value {} to MagicCode", value))
+            .ok_or_else(|| anyhow!("Could not convert value {} to MagicCode", value))
     }
 }
 
 impl TryInto<i64> for MagicCode {
     type Error = Error;
     fn try_into(self) -> Result<i64> {
-        Ok(self.to_u16().context("Could not convert self to i64")? as i64)
+        Ok(self
+            .to_u16()
+            .ok_or_else(|| anyhow!("Could not convert self to i64"))? as i64)
     }
 }
 

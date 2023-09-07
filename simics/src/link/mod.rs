@@ -8,7 +8,7 @@ use crate::{
     manifest::package_version, package::PublicPackageNumber, simics::home::simics_home,
     util::find_file_in_dir,
 };
-use anyhow::{anyhow, ensure, Context, Result};
+use anyhow::{anyhow, ensure, Result};
 use regex::Regex;
 use std::{
     collections::HashSet,
@@ -109,7 +109,9 @@ where
     for lib_name in notfound_libs {
         if let Ok(found_lib) = find_file_in_dir(&simics_base_dir, &lib_name) {
             // If we are running a build script right now, we will copy the library
-            let found_lib_parent = found_lib.parent().context("No parent path found")?;
+            let found_lib_parent = found_lib
+                .parent()
+                .ok_or_else(|| anyhow!("No parent path found"))?;
             lib_search_dirs.insert(found_lib_parent.to_path_buf().canonicalize().map_err(|e| {
                 anyhow!(
                     "Failed to canonicalize found library parent path {}: {}",

@@ -16,7 +16,7 @@ use crate::{
     traits::{Interface, State},
     CLASS_NAME,
 };
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, bail, Result};
 use ffi_macro::{callback_wrappers, params};
 use tracing::{debug, error, info, trace, Level};
 
@@ -173,8 +173,8 @@ impl Module {
     fn send_msg(&mut self, msg: ModuleMessage) -> Result<()> {
         trace!("Sending module message {:?}", msg);
         self.state
-            .consume(&msg)
-            .context(format!("Error consuming sent message {:?}", msg))?;
+            .consume(&msg)?
+            .ok_or_else(|| anyhow!("Error consuming sent message {:?}", msg))?;
         self.tx.send(msg)?;
         Ok(())
     }
@@ -194,8 +194,8 @@ impl Module {
         }
 
         self.state
-            .consume(&msg)
-            .context(format!("Error consuming received message {:?}", msg))?;
+            .consume(&msg)?
+            .ok_or_else(|| anyhow!("Error consuming received message {:?}", msg))?;
 
         Ok(msg)
     }
@@ -229,7 +229,7 @@ impl Module {
                 let processor = self
                     .processors
                     .get_mut(&processor_number)
-                    .with_context(|| format!("No processor number {}", processor_number))?;
+                    .ok_or_else(|| anyhow!("No processor number {}", processor_number))?;
                 // Write the testcase to the guest's memory
                 processor.write_bytes(self.buffer_address, &input)?;
                 // Write the testcase size back to rdi
@@ -241,7 +241,7 @@ impl Module {
                 let processor = self
                     .processors
                     .get_mut(&processor_number)
-                    .with_context(|| format!("No processor number {}", processor_number))?;
+                    .ok_or_else(|| anyhow!("No processor number {}", processor_number))?;
 
                 // Write the testcase to the guest's memory
                 processor.write_bytes(self.buffer_address, &input)?;
@@ -348,8 +348,8 @@ impl Module {
                             // Tasks to do before first run
                             {
                                 let processor =
-                                    self.processors.get_mut(&processor_number).with_context(
-                                        || format!("No processor number {}", processor_number),
+                                    self.processors.get_mut(&processor_number).ok_or_else(
+                                        || anyhow!("No processor number {}", processor_number),
                                     )?;
                                 self.buffer_address =
                                     processor.get_reg_value(MAGIC_ARG0_REG_X86_64)?;
@@ -380,7 +380,7 @@ impl Module {
                         let processor = self
                             .processors
                             .get_mut(&processor_number)
-                            .with_context(|| format!("No processor number {}", processor_number))?;
+                            .ok_or_else(|| anyhow!("No processor number {}", processor_number))?;
                         let stop_value = processor.get_reg_value(MAGIC_ARG0_REG_X86_64)?;
                         let magic = Magic::Stop((code, Some(stop_value)));
                         self.send_msg(ModuleMessage::Stopped(StopReason::Magic((
@@ -391,11 +391,9 @@ impl Module {
                     }
                     Magic::StartWinIntrin64(_) => {
                         if self.iterations == 0 {
-                            let processor = self
-                                .processors
-                                .get_mut(&processor_number)
-                                .with_context(|| {
-                                    format!("No processor number {}", processor_number)
+                            let processor =
+                                self.processors.get_mut(&processor_number).ok_or_else(|| {
+                                    anyhow!("No processor number {}", processor_number)
                                 })?;
                             let value =
                                 processor.get_reg_value(MAGIC_ARG0_REG_X86_64_WININTRIN)? as u32;
