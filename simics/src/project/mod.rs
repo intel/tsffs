@@ -433,6 +433,40 @@ pub struct Project {
     path_symlinks: HashMap<PathBuf, SimicsPath>,
 }
 
+impl Project {
+    pub fn base(&self) -> &Package {
+        &self.base
+    }
+
+    pub fn home(&self) -> &Path {
+        &self.home
+    }
+
+    pub fn packages(&self) -> &HashSet<Package> {
+        &self.packages
+    }
+
+    pub fn modules(&self) -> &HashSet<Module> {
+        &self.modules
+    }
+
+    pub fn directories(&self) -> &HashMap<PathBuf, SimicsPath> {
+        &self.directories
+    }
+
+    pub fn files(&self) -> &HashMap<PathBuf, SimicsPath> {
+        &self.files
+    }
+
+    pub fn file_contents(&self) -> &HashMap<Vec<u8>, SimicsPath> {
+        &self.file_contents
+    }
+
+    pub fn path_symlinks(&self) -> &HashMap<PathBuf, SimicsPath> {
+        &self.path_symlinks
+    }
+}
+
 impl TryFrom<PathBuf> for Project {
     type Error = Error;
 

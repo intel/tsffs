@@ -33,6 +33,7 @@ anyhow.workspace = true
 tracing = "0.1.37"
 tracing-test = "0.2.4"
 simics-fuzz = { workspace = true }
+version-tools.workspace = true
 
 
 [features]

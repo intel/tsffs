@@ -48,6 +48,8 @@ jobs:
                         "6.0.167",
                         "6.0.168",
                         "6.0.169",
+                        "6.0.172",
+                        "6.0.171",
                         "6.0.172"
                     ]
         container: cache-registry.caas.intel.com/cache/library/ubuntu
