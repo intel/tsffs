@@ -67,7 +67,6 @@ where
     P: AsRef<Path>,
 {
     let package_path = package_path.as_ref().to_path_buf();
-    eprintln!("Parsing package info from {}", package_path.display());
 
     if !package_path.is_dir() {
         bail!(
@@ -141,11 +140,6 @@ pub fn packages<P>(home: P) -> Result<HashMap<PackageNumber, HashMap<PackageVers
 where
     P: AsRef<Path>,
 {
-    eprintln!(
-        "Parsing packages from home directory {}",
-        home.as_ref().display()
-    );
-
     let mut infos: Vec<Package> = read_dir(&home)?
         .filter_map(|home_dir_entry| {
             home_dir_entry
@@ -168,15 +162,12 @@ where
 
     infos.sort_unstable_by(|a, b| a.package_number.cmp(&b.package_number));
 
-    eprintln!("all infos {:#?}", infos);
-
     Ok(infos
         .iter()
         .group_by(|p| p.package_number)
         .into_iter()
         .map(|(k, g)| {
             let g: Vec<_> = g.collect();
-            eprintln!("group for key {}: {:#?}", k, g);
             (
                 k,
                 g.iter()
@@ -380,8 +371,6 @@ impl FromStr for Package {
             }
         });
 
-        eprintln!("Parsed package manifest: {:?}", package);
-
         Ok(package)
     }
 }
@@ -414,7 +403,6 @@ where
     P: AsRef<Path>,
 {
     let infos = packages(simics_home.as_ref())?[&package_number].clone();
-    eprintln!("{:#?}", infos);
     let version = infos
         .keys()
         .filter_map(|k| Versioning::new(k))
