@@ -131,7 +131,7 @@ pub fn packages<P>(home: P) -> Result<HashMap<PackageNumber, HashMap<PackageVers
 where
     P: AsRef<Path>,
 {
-    let infos: Vec<Package> = read_dir(&home)?
+    let mut infos: Vec<Package> = read_dir(&home)?
         .filter_map(|home_dir_entry| {
             home_dir_entry
                 .map_err(|e| error!("Could not read directory entry: {}", e))
@@ -150,6 +150,8 @@ where
                 .ok()
         })
         .collect();
+
+    infos.sort_unstable_by(|a, b| a.package_number.cmp(&b.package_number));
 
     Ok(infos
         .iter()

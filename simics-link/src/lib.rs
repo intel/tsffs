@@ -146,7 +146,7 @@ where
         home.as_ref().display()
     );
 
-    let infos: Vec<Package> = read_dir(&home)?
+    let mut infos: Vec<Package> = read_dir(&home)?
         .filter_map(|home_dir_entry| {
             home_dir_entry
                 .map_err(|e| eprintln!("Could not read directory entry: {}", e))
@@ -166,12 +166,17 @@ where
         })
         .collect();
 
+    infos.sort_unstable_by(|a, b| a.package_number.cmp(&b.package_number));
+
+    eprintln!("all infos {:#?}", infos);
+
     Ok(infos
         .iter()
         .group_by(|p| p.package_number)
         .into_iter()
         .map(|(k, g)| {
             let g: Vec<_> = g.collect();
+            eprintln!("group for key {}: {:#?}", k, g);
             (
                 k,
                 g.iter()
@@ -409,6 +414,7 @@ where
     P: AsRef<Path>,
 {
     let infos = packages(simics_home.as_ref())?[&package_number].clone();
+    eprintln!("{:#?}", infos);
     let version = infos
         .keys()
         .filter_map(|k| Versioning::new(k))
