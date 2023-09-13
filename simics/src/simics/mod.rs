@@ -10,7 +10,7 @@ use simics_api::{
     source_python, InitArgs, SimException,
 };
 use std::{env::current_exe, path::Path};
-use tracing::info;
+use tracing::{error, info};
 
 pub mod home;
 
@@ -27,12 +27,14 @@ impl Simics {
 
     pub fn run() -> ! {
         continue_simulation_alone();
-        main_loop()
+        main_loop();
+        error!("Main loop exited while running simulation. This indicates a problem.");
     }
 
     pub fn interactive() -> ! {
         init_command_line();
-        main_loop()
+        main_loop();
+        error!("Main loop exited while running simulation. This indicates a problem.");
     }
 
     pub fn command<S>(command: S) -> Result<()>

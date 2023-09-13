@@ -272,7 +272,7 @@ impl ArtifactDependency {
 
         let artifact_path = if (self.build_missing && !artifact_path.exists()) || self.build_always
         {
-            let cargo = var("CARGO")?;
+            let cargo = var("CARGO").unwrap_or("cargo".to_string());
             let mut cargo_command = Command::new(cargo);
             cargo_command
                 .arg("build")

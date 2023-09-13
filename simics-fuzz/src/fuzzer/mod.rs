@@ -583,7 +583,7 @@ impl SimicsFuzzer {
                     error!("Error resetting SIMICS: {}", e);
                 }
 
-                debug!("Harness done");
+                debug!("Harness done with kind {:?}", exit_kind);
 
                 exit_kind
             };
@@ -828,7 +828,7 @@ impl SimicsFuzzer {
             {
                 Ok(()) => {}
                 Err(libafl::Error::ShuttingDown) => {
-                    info!("Fuzzer stopped by user. shutting down.");
+                    info!("Fuzzer shutting down.");
                 }
                 res @ Err(_) => {
                     return res.map_err(|e| anyhow!("Failed to run launcher: {}", e));
@@ -850,7 +850,7 @@ impl SimicsFuzzer {
             {
                 Ok(()) => (),
                 Err(libafl::Error::ShuttingDown) => {
-                    info!("Fuzzer stopped by user. shutting down.");
+                    info!("Fuzzer shutting down.");
                 }
                 res @ Err(_) => return res.map_err(|e| anyhow!("Failed to run launcher: {}", e)),
             }
