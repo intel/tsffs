@@ -90,10 +90,8 @@ impl Tracer {
 
         trace!("Logging cmp with types {:?} and values {:?}", types, cmp);
 
-        unsafe {
-            self.cmp.as_mut().values_mut().operands_mut()[pc_index as usize]
-                [hits as usize % AFL_CMP_MAP_H] = AFLppCmpOperands::new(operands.0, operands.1);
-        }
+        self.cmp.as_mut().values_mut().operands_mut()[pc_index as usize]
+            [hits as usize % AFL_CMP_MAP_H] = AFLppCmpOperands::new(operands.0, operands.1);
 
         Ok(())
     }
