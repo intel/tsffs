@@ -25,12 +25,14 @@ impl Simics {
         Ok(())
     }
 
+    #[allow(unreachable_code)]
     pub fn run() -> ! {
         continue_simulation_alone();
         main_loop();
         error!("Main loop exited while running simulation. This indicates a problem.");
     }
 
+    #[allow(unreachable_code)]
     pub fn interactive() -> ! {
         init_command_line();
         main_loop();
