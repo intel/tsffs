@@ -16,12 +16,12 @@ use libafl::{
         ondisk::OnDiskMetadataFormat,
         tokens_mutations,
         tui::{ui::TuiUI, TuiMonitor},
-        AFLppCmpMap, AFLppForkserverCmpObserver, AFLppRedQueen, BytesInput, CachedOnDiskCorpus,
-        Corpus, CorpusId, CrashFeedback, EventConfig, EventRestarter, ExitKind,
-        ForkserverCmpObserver, HasTargetBytes, HitcountsMapObserver, I2SRandReplace,
-        InProcessExecutor, Launcher, LlmpRestartingEventManager, MaxMapFeedback, MultiMonitor,
-        OnDiskCorpus, RandBytesGenerator, StdMOptMutator, StdMapObserver, StdScheduledMutator,
-        TimeFeedback, TimeObserver, TimeoutExecutor, Tokens,
+        AFLppCmpMap, AFLppCmpObserver, AFLppRedQueen, BytesInput, CachedOnDiskCorpus, Corpus,
+        CorpusId, CrashFeedback, EventConfig, EventRestarter, ExitKind, HasTargetBytes,
+        HitcountsMapObserver, I2SRandReplace, InProcessExecutor, Launcher,
+        LlmpRestartingEventManager, MaxMapFeedback, MultiMonitor, OnDiskCorpus, RandBytesGenerator,
+        StdCmpValuesObserver, StdMOptMutator, StdMapObserver, StdScheduledMutator, TimeFeedback,
+        TimeObserver, TimeoutExecutor, Tokens,
     },
     schedulers::{
         powersched::PowerSchedule, IndexesLenTimeMinimizerScheduler, StdWeightedScheduler,
@@ -442,9 +442,9 @@ impl SimicsFuzzer {
             // NOTE: These are called "Forkserver" but they aren't really restricted to forkserver
             // executors
             let aflpp_cmplog_observer =
-                AFLppForkserverCmpObserver::new(AFLPP_CMP_OBSERVER_NAME, &mut afl_cmp_map, true);
+                AFLppCmpObserver::new(AFLPP_CMP_OBSERVER_NAME, &mut afl_cmp_map, true);
 
-            let cmplog_observer = ForkserverCmpObserver::new(
+            let cmplog_observer = StdCmpValuesObserver::new(
                 CMPLOG_OBSERVER_NAME,
                 unsafe { &mut *afl_cmp_map_ptr },
                 true,
@@ -474,7 +474,7 @@ impl SimicsFuzzer {
             let corpus = CachedOnDiskCorpus::with_meta_format(
                 &self.corpus,
                 SimicsFuzzer::CACHE_LEN,
-                OnDiskMetadataFormat::Json,
+                Some(OnDiskMetadataFormat::Json),
             )?;
 
             let mut state = state.unwrap_or_else(|| {

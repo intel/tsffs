@@ -3,7 +3,7 @@
 
 #![allow(non_snake_case)]
 
-use std::{collections::HashMap, ffi::c_void, fmt::Debug, num::Wrapping, ptr::null_mut};
+use std::{collections::HashMap, ffi::c_void, num::Wrapping, ptr::null_mut};
 
 use crate::{
     config::{InputConfig, OutputConfig, TraceMode},
@@ -13,14 +13,12 @@ use crate::{
 };
 use anyhow::{anyhow, bail, Result};
 
-use c2rust_bitfields_derive::BitfieldStruct;
 use ffi_macro::{callback_wrappers, params};
 use libafl::prelude::{
-    CmpMap, CmpValues, AFL_CMP_MAP_H, AFL_CMP_MAP_RTN_H, AFL_CMP_MAP_W, AFL_CMP_TYPE_INS,
+    AFLppCmpMap, AFLppCmpOperands, CmpMap, CmpValues, AFL_CMP_MAP_H, AFL_CMP_TYPE_INS,
 };
 use libafl_bolts::{bolts_prelude::OwnedMutSlice, prelude::OwnedRefMut, AsMutSlice, AsSlice};
 use rand::{thread_rng, Rng};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use tracing::{info, trace};
 
 use simics_api::{
@@ -28,209 +26,9 @@ use simics_api::{
     ConfObject, InstructionHandle,
 };
 
-/// The AFL++ `cmp_operands` struct
-#[derive(Default, Debug, Clone, Copy)]
-#[repr(C, packed)]
-pub struct AFLppCmpOperandsWritable {
-    pub v0: u64,
-    pub v1: u64,
-    pub v0_128: u64,
-    pub v1_128: u64,
-}
-
-impl AFLppCmpOperandsWritable {
-    #[must_use]
-    /// 64bit first cmp operand
-    pub fn v0(&self) -> u64 {
-        self.v0
-    }
-
-    #[must_use]
-    /// 64bit second cmp operand
-    pub fn v1(&self) -> u64 {
-        self.v1
-    }
-
-    #[must_use]
-    /// 128bit first cmp operand
-    pub fn v0_128(&self) -> u64 {
-        self.v0_128
-    }
-
-    #[must_use]
-    /// 128bit second cmp operand
-    pub fn v1_128(&self) -> u64 {
-        self.v1_128
-    }
-}
-
-/// The AFL++ `cmpfn_operands` struct
-#[derive(Default, Debug, Clone, Copy)]
-#[repr(C, packed)]
-pub struct AFLppCmpFnOperandsWritable {
-    pub v0: [u8; 31],
-    pub v0_len: u8,
-    pub v1: [u8; 31],
-    pub v1_len: u8,
-}
-
-impl AFLppCmpFnOperandsWritable {
-    #[must_use]
-    /// first rtn operand
-    pub fn v0(&self) -> &[u8; 31] {
-        &self.v0
-    }
-
-    #[must_use]
-    /// second rtn operand
-    pub fn v0_len(&self) -> u8 {
-        self.v0_len
-    }
-
-    #[must_use]
-    /// first rtn operand len
-    pub fn v1(&self) -> &[u8; 31] {
-        &self.v1
-    }
-
-    #[must_use]
-    /// second rtn operand len
-    pub fn v1_len(&self) -> u8 {
-        self.v1_len
-    }
-}
-
-#[derive(Debug, Copy, Clone, BitfieldStruct)]
-#[repr(C, packed)]
-pub struct AFLppCmpHeaderWritable {
-    #[bitfield(name = "hits", ty = "u32", bits = "0..=23")]
-    #[bitfield(name = "id", ty = "u32", bits = "24..=47")]
-    #[bitfield(name = "shape", ty = "u32", bits = "48..=52")]
-    #[bitfield(name = "_type", ty = "u32", bits = "53..=54")]
-    #[bitfield(name = "attribute", ty = "u32", bits = "55..=58")]
-    #[bitfield(name = "overflow", ty = "u32", bits = "59..=59")]
-    #[bitfield(name = "reserved", ty = "u32", bits = "60..=63")]
-    data: [u8; 8],
-}
-
-/// A proxy union to avoid casting operands as in AFL++
-#[derive(Clone, Copy)]
-#[repr(C, packed)]
-pub union AFLppCmpValsWritable {
-    operands: [[AFLppCmpOperandsWritable; AFL_CMP_MAP_H]; AFL_CMP_MAP_W],
-    fn_operands: [[AFLppCmpFnOperandsWritable; AFL_CMP_MAP_RTN_H]; AFL_CMP_MAP_W],
-}
-
-impl Debug for AFLppCmpValsWritable {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("AFLppCmpVals").finish_non_exhaustive()
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-#[repr(C, packed)]
-pub struct AFLppCmpMapWritable {
-    headers: [AFLppCmpHeaderWritable; AFL_CMP_MAP_W],
-    vals: AFLppCmpValsWritable,
-}
-
-impl Serialize for AFLppCmpMapWritable {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let slice = unsafe {
-            core::slice::from_raw_parts(
-                (self as *const Self) as *const u8,
-                core::mem::size_of::<Self>(),
-            )
-        };
-        serializer.serialize_bytes(slice)
-    }
-}
-
-impl<'de> Deserialize<'de> for AFLppCmpMapWritable {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let bytes = Vec::<u8>::deserialize(deserializer)?;
-        let map: Self = unsafe { core::ptr::read(bytes.as_ptr() as *const _) };
-        Ok(map)
-    }
-}
-
-impl CmpMap for AFLppCmpMapWritable {
-    fn len(&self) -> usize {
-        AFL_CMP_MAP_W
-    }
-
-    fn executions_for(&self, idx: usize) -> usize {
-        self.headers[idx].hits() as usize
-    }
-
-    fn usable_executions_for(&self, idx: usize) -> usize {
-        if self.headers[idx]._type() == AFL_CMP_TYPE_INS {
-            if self.executions_for(idx) < AFL_CMP_MAP_H {
-                self.executions_for(idx)
-            } else {
-                AFL_CMP_MAP_H
-            }
-        } else if self.executions_for(idx) < AFL_CMP_MAP_RTN_H {
-            self.executions_for(idx)
-        } else {
-            AFL_CMP_MAP_RTN_H
-        }
-    }
-
-    fn values_of(&self, idx: usize, execution: usize) -> Option<CmpValues> {
-        if self.headers[idx]._type() == AFL_CMP_TYPE_INS {
-            unsafe {
-                match self.headers[idx].shape() {
-                    0 => Some(CmpValues::U8((
-                        self.vals.operands[idx][execution].v0 as u8,
-                        self.vals.operands[idx][execution].v1 as u8,
-                    ))),
-                    1 => Some(CmpValues::U16((
-                        self.vals.operands[idx][execution].v0 as u16,
-                        self.vals.operands[idx][execution].v1 as u16,
-                    ))),
-                    3 => Some(CmpValues::U32((
-                        self.vals.operands[idx][execution].v0 as u32,
-                        self.vals.operands[idx][execution].v1 as u32,
-                    ))),
-                    7 => Some(CmpValues::U64((
-                        self.vals.operands[idx][execution].v0,
-                        self.vals.operands[idx][execution].v1,
-                    ))),
-                    // TODO handle 128 bits cmps
-                    // other => panic!("Invalid CmpLog shape {}", other),
-                    _ => None,
-                }
-            }
-        } else {
-            unsafe {
-                let v0_len = self.vals.fn_operands[idx][execution].v0_len & (0x80 - 1);
-                let v1_len = self.vals.fn_operands[idx][execution].v1_len & (0x80 - 1);
-                Some(CmpValues::Bytes((
-                    self.vals.fn_operands[idx][execution].v0[..(v0_len as usize)].to_vec(),
-                    self.vals.fn_operands[idx][execution].v1[..(v1_len as usize)].to_vec(),
-                )))
-            }
-        }
-    }
-
-    fn reset(&mut self) -> Result<(), libafl::Error> {
-        // For performance, we reset just the headers
-        self.headers = unsafe { core::mem::zeroed() };
-        // self.vals.operands = unsafe { core::mem::zeroed() };
-        Ok(())
-    }
-}
-
 pub struct Tracer {
     coverage: OwnedMutSlice<'static, u8>,
-    cmp: OwnedRefMut<'static, AFLppCmpMapWritable>,
+    cmp: OwnedRefMut<'static, AFLppCmpMap>,
     coverage_prev_loc: u64,
     processors: HashMap<i32, Processor>,
     mode: TraceMode,
@@ -278,28 +76,23 @@ impl Tracer {
             .ok_or_else(|| anyhow!("Conversion to tuple of non-integral operands not supported"))?;
         let pc_index = hash_index(pc, self.cmp.as_ref().len() as u64);
 
-        let hits = self.cmp.as_ref().headers[pc_index as usize].hits();
-        self.cmp.as_mut().headers[pc_index as usize].set_hits(hits + 1);
-        self.cmp.as_mut().headers[pc_index as usize].set_shape(shape);
-        self.cmp.as_mut().headers[pc_index as usize].set__type(AFL_CMP_TYPE_INS);
+        let hits = self.cmp.as_mut().headers_mut()[pc_index as usize].hits();
+        self.cmp.as_mut().headers_mut()[pc_index as usize].set_hits(hits + 1);
+        self.cmp.as_mut().headers_mut()[pc_index as usize].set_shape(shape);
+        self.cmp.as_mut().headers_mut()[pc_index as usize].set__type(AFL_CMP_TYPE_INS);
         let attribute = types
             .iter()
             .map(|t| *t as u32)
             .reduce(|acc, t| acc | t)
             .ok_or_else(|| anyhow!("Could not reduce types"))?;
-        self.cmp.as_mut().headers[pc_index as usize].set_attribute(attribute);
+        self.cmp.as_mut().headers_mut()[pc_index as usize].set_attribute(attribute);
         // NOTE: overflow isn't used by aflppredqueen
 
         trace!("Logging cmp with types {:?} and values {:?}", types, cmp);
 
         unsafe {
-            self.cmp.as_mut().vals.operands[pc_index as usize][hits as usize % AFL_CMP_MAP_H] =
-                AFLppCmpOperandsWritable {
-                    v0: operands.0,
-                    v1: operands.1,
-                    v0_128: 0,
-                    v1_128: 0,
-                };
+            self.cmp.as_mut().values_mut().operands_mut()[pc_index as usize]
+                [hits as usize % AFL_CMP_MAP_H] = AFLppCmpOperands::new(operands.0, operands.1);
         }
 
         Ok(())
@@ -386,11 +179,7 @@ impl State for Tracer {
                 input_config.coverage_map.1,
             )
         };
-        self.cmp = unsafe {
-            OwnedRefMut::Owned(Box::from_raw(
-                input_config.cmp_map as *mut AFLppCmpMapWritable,
-            ))
-        };
+        self.cmp = unsafe { OwnedRefMut::Owned(Box::from_raw(input_config.cmp_map)) };
         self.coverage_prev_loc = thread_rng().gen_range(0..self.coverage.as_slice().len()) as u64;
         info!("Initialized Tracer");
         Ok(output_config)
