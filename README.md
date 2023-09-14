@@ -22,7 +22,9 @@ the [requirements](./docs/Requirements.md) to find out if TSSFS can fuzz your co
   - [Why TSFFS](#why-tsffs)
   - [Authors](#authors)
 
+## UEFI Fuzzing Demo
 
+<https://github.com/intel/tsffs/assets/30083762/60882856-b2a6-4956-9bde-cd133fa5cc15>
 
 ## Capabilities
 
