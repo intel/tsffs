@@ -204,7 +204,8 @@ below in the root of this repository.
 cargo build --features=6.0.169
 ```
  If the SIMICS 6 packages version you installed
-differs from the version shown above, replace the feature version number you see here with the version of SIMICS base you installed. You can figure out what version
+differs from the version shown above, replace the feature version number you see here
+with the version of SIMICS base you installed. You can figure out what version
 that is with `ls "${HOME}/simics" | grep -E 'simics-[0-9]+(\.[0-9]+){2}'`
 
 ## Troubleshooting
