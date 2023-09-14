@@ -23,12 +23,12 @@ The include file [tsffs.h](../include/tsffs.h) is in the [include](../include/)
 directory of this repository. To include it, you can use any of the below approaches, in
 rough order of best to worst.
 
-- Add the `-I /path/to/applications.security.fuzzing.confuse/include/` flag to your
+- Add the `-I /path/to/tsffs/include/` flag to your
   compile command and add the line `#include "tsffs.h"` to your target
 - Copy `tsffs.h` into your source code next to the target file you are harnessing
   and add the line `#include "tsffs.h"`
 - Add the line
-  `#include "/path/to/applications.security.fuzzing.confuse/include/tsffs.h"` to your
+  `#include "/path/to/tsffs/include/tsffs.h"` to your
   source code in the target file.
 - Copy and paste the contents of `tsffs.h` into your source file.
 
@@ -123,7 +123,7 @@ preferably should match the version you will use when fuzzing.
 
 ```toml
 [dependencies]
-include = { path = "/path/to/applications.security.fuzzing.confuse/include/", features = ["6.0.169" ]}
+include = { path = "/path/to/tsffs/include/", features = ["6.0.169" ]}
 ```
 
 Then, you can call the harness functions:

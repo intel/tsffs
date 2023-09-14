@@ -23,8 +23,6 @@ the [requirements](./docs/Requirements.md) to find out if TSSFS can fuzz your co
   - [Authors](#authors)
 
 
-<https://github.com/intel-innersource/applications.security.fuzzing.confuse/assets/30083762/004ba56e-561c-470a-baf4-427014b43362>
-
 
 ## Capabilities
 
@@ -114,7 +112,7 @@ cargo run --release --bin simics-fuzz --features=6.0.169 -- \
 ## Contact
 
 If you discover a non-security issue or problem, please file an
-[issue](https://github.com/intel-innersource/applications.security.fuzzing.confuse/issues)!
+[issue](https://github.com/intel/tsffs/issues)!
 
 The best place to ask questions about and get help using TSFFS is in the [Awesome
 Fuzzing](https://discord.gg/gCraWct) Discord server. If you prefer, you can email the
@@ -128,7 +126,7 @@ guidelines.
 ## Help Wanted / Roadmap
 
 See the
-[issues](https://github.com/intel-innersource/applications.security.fuzzing.confuse/issues?q=is%3Aopen+is%3Aissue+label%3Afeature)
+[issues](https://github.com/intel/tsffs/issues?q=is%3Aopen+is%3Aissue+label%3Afeature)
 for a roadmap of planned features and enhancements. Help is welcome for any features
 listed here. If someone is assigned an issue you'd like to work on, please ping them to
 avoid duplicating effort!
@@ -136,7 +134,7 @@ avoid duplicating effort!
 ## Why CONFUSE
 
 There are several tools capable of fuzzing firmware and UEFI code. Notably, the
-[HBFA](https://github.com/intel-innersource/applications.security.fuzzing.uefi.hbfa-ccc)
+[HBFA](https://github.com/tianocore/edk2-staging/tree/HBFA)
 project and the [kAFL](https://github.com/IntelLabs/kAFL) project enable system software
 fuzzing with various tradeoffs.
 
