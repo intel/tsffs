@@ -19,7 +19,7 @@ the [requirements](./docs/Requirements.md) to find out if TSSFS can fuzz your co
   - [Running an EDK2 Sample Target](#running-an-edk2-sample-target)
   - [Contact](#contact)
   - [Help Wanted / Roadmap](#help-wanted--roadmap)
-  - [Why CONFUSE](#why-confuse)
+  - [Why TSFFS](#why-tsffs)
   - [Authors](#authors)
 
 
@@ -131,7 +131,7 @@ for a roadmap of planned features and enhancements. Help is welcome for any feat
 listed here. If someone is assigned an issue you'd like to work on, please ping them to
 avoid duplicating effort!
 
-## Why CONFUSE
+## Why TSFFS
 
 There are several tools capable of fuzzing firmware and UEFI code. Notably, the
 [HBFA](https://github.com/tianocore/edk2-staging/tree/HBFA)
