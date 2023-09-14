@@ -32,6 +32,7 @@ pub extern "C" fn __version_marker_patch() {}
     target_arch = "i686",
     all(feature = "win32", not(feature = "win64"))
 ))]
+/// Architecture-independent i386 (x86) definitions.
 pub mod i386 {
     pub const MAGIC: u16 = 0x4711;
 
