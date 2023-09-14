@@ -13,8 +13,8 @@ ninja
 
 popd || exit 1
 
-cargo run --release --bin simics-fuzz --features=6.0.168 -- \
-    -g -p test-project -i corpus -c corpus -o solution -l TRACE -C 1 -P 2096:6.0.69 -S 8 -E 120 \
+cargo run --release --bin simics-fuzz --features=6.0.169 -- \
+    -g -p test-project -i corpus -c corpus -o solution -l TRACE -C 1 -P 2096:6.0.70 -S 8 -E 120 \
     -e "${SCRIPT_DIR}/rsrc/winintrin.efi" \
     -f "${SCRIPT_DIR}/rsrc/winintrin.efi:%simics%/winintrin.efi" \
     -f "${SCRIPT_DIR}/rsrc/minimal_boot_disk.craff:%simics%/minimal_boot_disk.craff" \

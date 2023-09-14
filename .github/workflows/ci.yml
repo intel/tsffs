@@ -27,11 +27,11 @@ on:
 
 env:
     CARGO_TERM_COLOR: always
-
+    SIMICS_PUBLIC_ISPM_VERSION: 1.7.5
     # Simics base
-    SIMICS_PUBLIC_PACKAGE_VERSION_1000: 6.0.172
+    SIMICS_PUBLIC_PACKAGE_VERSION_1000: 6.0.169
     # QSP X86
-    SIMICS_PUBLIC_PACKAGE_VERSION_2096: 6.0.69
+    SIMICS_PUBLIC_PACKAGE_VERSION_2096: 6.0.70
     # QSP CPU
     SIMICS_PUBLIC_PACKAGE_VERSION_8112: 6.0.17
 
@@ -41,19 +41,11 @@ jobs:
         strategy:
             matrix:
                 simics_version: [
-                        "6.0.163",
-                        "6.0.164",
-                        "6.0.165",
-                        "6.0.166",
-                        "6.0.167",
-                        "6.0.168",
+                        # Public package tests only check latest SIMICS release
                         "6.0.169",
-                        "6.0.170",
-                        "6.0.171",
-                        "6.0.172"
                     ]
-        container: cache-registry.caas.intel.com/cache/library/ubuntu
-        runs-on: [self-hosted, gasp]
+        container: ubuntu:22.04
+        runs-on: ubuntu-latest
         steps:
             - name: Install Dependencies
               shell: bash
@@ -65,61 +57,43 @@ jobs:
                     build-essential \
                     cmake
             - uses: actions/checkout@v3
-            - name: Install Rust Toolchain
+              with:
+                lfs: true
+            - uses: dtolnay/rust-toolchain@nightly
+              with:
+                toolchain: nightly
+                components: rustfmt,clippy,miri
+            - name: Install SIMICS (External)
               shell: bash
               run: |
-                  curl https://sh.rustup.rs -sSf \
-                  | sh -s -- -y --default-toolchain nightly --component rustfmt \
-                    --component clippy --component miri --no-modify-path
-            - name: Install SIMICS (Internal)
-              shell: bash
-              run: |
-                  mkdir -p "${HOME}/simics"
-                  cd "${HOME}/simics"
-                  curl -o intel-simics-package-manager-1.7.4-linux64.tar.gz \
-                    https://af02p-or.devtools.intel.com/artifactory/simics-local/pub/simics-installer/external/1.7.4/intel-simics-package-manager-1.7.4-linux64.tar.gz
-                  tar -xvf intel-simics-package-manager-1.7.4-linux64.tar.gz
-                  {
-                    echo "1000 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}";
-                    echo "2096 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}";
-                    echo "8112 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}";
-                  } > /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
-                  cat /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
-                  ./intel-simics-package-manager-1.7.4/ispm settings \
-                    --config-file /ispm.conf decryption-key-files \
-                    --add /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
-                  cat /ispm.conf
-                  ./intel-simics-package-manager-1.7.4/ispm \
-                    --config-file /ispm.conf \
+                  mkdir -p "${HOME}/simics/ispm"
+                  tar --strip-components=1 -C "${HOME}/simics/ispm" \
+                    -xvf .github/simics/intel-simics-package-manager-${{ env.SIMICS_PUBLIC_ISPM_VERSION }}-linux64.tar.gz
+                  "${HOME}/simics/ispm/ispm" \
+                    packages \
                     --non-interactive \
                     --verbose \
-                    --package-repo https://af02p-or.devtools.intel.com/ui/native/simics-repos/pub/simics-6/linux64/ \
                     --install-dir "${HOME}/simics" \
-                    install \
-                    1000-${{ matrix.simics_version }} \
-                    2096-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_2096 }} \
-                    8112-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_8112 }}
+                    --install .github/simics/simics-pkg-1000-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }}-linux64.ispm \
+                    --install .github/simics/simics-pkg-2096-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_2096 }}-linux64.ispm \
+                    --install .github/simics/simics-pkg-8112-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_8112 }}-linux64.ispm
             - name: Set up .env
               shell: bash
               run: |
                   echo "SIMICS_HOME=${HOME}/simics" > .env
             - name: Build Project
               run: |
-                  [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  "${HOME}/.cargo/bin/cargo" build --features=${{ matrix.simics_version }}
+                  cargo build --features=${{ matrix.simics_version }}
             - name: Check Project
               run: |
-                  [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  "${HOME}/.cargo/bin/cargo" clippy --features=${{ matrix.simics_version}}
+                  cargo clippy --features=${{ matrix.simics_version}}
             - name: Test Project
               run: |
-                  [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  "${HOME}/.cargo/bin/cargo" test --features=${{ matrix.simics_version }} || ( echo "❗ Tests failed for SIMICS version ${{ matrix.simics_version }}" && exit 1 )
+                  cargo test --features=${{ matrix.simics_version }} || ( echo "❗ Tests failed for SIMICS version ${{ matrix.simics_version }}" && exit 1 )
                   echo "✅ Tests passed for SIMICS version ${{ matrix.simics_version }}"
             - name: (T157, T375, T300) (N/C) - Temporary files must be cleaned up after the resource is used, Release resources when no longer needed, Test that temporary files are cleaned up after the resource is used
               run: |
-                  [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  "${HOME}/.cargo/bin/cargo" test --manifest-path util/tmp-dir/Cargo.toml \
+                  cargo test --manifest-path util/tmp-dir/Cargo.toml \
                     || ( echo "❗ [T157] tmp-dir tests failed" && exit 1 )
                   echo "✅ [T157] tmp-dir tests pass"
                   echo "✅ [T375] Temporary file/directory resources are released, see T157 test results"
@@ -127,8 +101,7 @@ jobs:
                   echo "✅ [T300] Temporary files are cleaned up. See T157."
             - name: (T297, T162, T572, T595)  (N/C) - Verify that target pathname is validated before retrieving local resources, Validate pathname before retrieving local resources, Check for symlinks before opening files, Test that your application checks for symlinks before opening files
               run: |
-                  [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  "${HOME}/.cargo/bin/cargo" test --features=${{ matrix.simics_version }} --manifest-path simics-tests/Cargo.toml path \
+                  cargo test --features=${{ matrix.simics_version }} --manifest-path simics-tests/Cargo.toml path \
                     || ( echo "❗ [T297] Simics path tests failed" && exit 1 )
                   echo "✅ [T297] Simics path tests passed (tests check pathname validation)"
                   echo "✅ [T162] Simics path tests passed (tests check pathname validation)"
@@ -136,17 +109,15 @@ jobs:
                   echo "✅ [T595] Symlinks are checked before using files. See T297."
             - name: Build Docs
               run: |
-                  [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  "${HOME}/.cargo/bin/cargo" doc --features=${{ matrix.simics_version }}
+                  cargo doc --features=${{ matrix.simics_version }}
             - name: Test Docs
               run: |
-                  [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  "${HOME}/.cargo/bin/cargo" test --doc --features=${{ matrix.simics_version }}
+                  cargo test --doc --features=${{ matrix.simics_version }}
 
     static_analysis:
         name: Run Static Analysis
-        container: cache-registry.caas.intel.com/cache/library/ubuntu
-        runs-on: [self-hosted, gasp]
+        container: ubuntu:22.04
+        runs-on: ubuntu-latest
         steps:
             - name: Install Dependencies
               shell: bash
@@ -158,63 +129,47 @@ jobs:
                     build-essential \
                     cmake
             - uses: actions/checkout@v3
-            - name: Install Rust Toolchain
+              with:
+                lfs: true
+            - uses: dtolnay/rust-toolchain@nightly
+              with:
+                toolchain: nightly
+                components: rustfmt,clippy,miri
+            - name: Install SIMICS (External)
               shell: bash
               run: |
-                  curl https://sh.rustup.rs -sSf \
-                  | sh -s -- -y --default-toolchain nightly --component rustfmt \
-                    --component clippy --component miri --no-modify-path
-            - name: Install SIMICS (Internal)
-              shell: bash
-              run: |
-                  mkdir -p "${HOME}/simics"
-                  cd "${HOME}/simics"
-                  curl -o intel-simics-package-manager-1.7.4-linux64.tar.gz \
-                    https://af02p-or.devtools.intel.com/artifactory/simics-local/pub/simics-installer/external/1.7.4/intel-simics-package-manager-1.7.4-linux64.tar.gz
-                  tar -xvf intel-simics-package-manager-1.7.4-linux64.tar.gz
-                  {
-                    echo "1000 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}";
-                    echo "2096 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}";
-                    echo "8112 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}";
-                  } > /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
-                  cat /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
-                  ./intel-simics-package-manager-1.7.4/ispm settings \
-                    --config-file /ispm.conf decryption-key-files \
-                    --add /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
-                  cat /ispm.conf
-                  ./intel-simics-package-manager-1.7.4/ispm \
-                    --config-file /ispm.conf \
+                  mkdir -p "${HOME}/simics/ispm"
+                  tar --strip-components=1 -C "${HOME}/simics/ispm" \
+                    -xvf .github/simics/intel-simics-package-manager-${{ env.SIMICS_PUBLIC_ISPM_VERSION }}-linux64.tar.gz
+                  "${HOME}/simics/ispm/ispm" \
+                    packages \
                     --non-interactive \
                     --verbose \
-                    --package-repo https://af02p-or.devtools.intel.com/ui/native/simics-repos/pub/simics-6/linux64/ \
                     --install-dir "${HOME}/simics" \
-                    install \
-                    1000-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }} \
-                    2096-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_2096 }} \
-                    8112-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_8112 }}
+                    --install .github/simics/simics-pkg-1000-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }}-linux64.ispm \
+                    --install .github/simics/simics-pkg-2096-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_2096 }}-linux64.ispm \
+                    --install .github/simics/simics-pkg-8112-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_8112 }}-linux64.ispm
             - name: Set up .env
               shell: bash
               run: |
                   echo "SIMICS_HOME=${HOME}/simics" > .env
             - name: CT39 - Clippy Check Project
               run: |
-                  [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  "${HOME}/.cargo/bin/cargo" clippy --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }} \
+                  cargo clippy --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }} \
                     || ( echo "❗ [CT39 (1/2)] Failed clippy static analysis checks" && exit 1 )
                   echo "✅ [CT39 (1/2)] Passed clippy static analysis checks"
             - name: CT39 - MIRI Check Project
               run: |
-                  [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  "${HOME}/.cargo/bin/cargo" clippy --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }}
-                  MIRIFLAGS="-Zmiri-backtrace=full -Zmiri-disable-isolation -Zmiri-panic-on-unsupported" "${HOME}/.cargo/bin/cargo" \
+                  cargo clippy --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }}
+                  MIRIFLAGS="-Zmiri-backtrace=full -Zmiri-disable-isolation -Zmiri-panic-on-unsupported" cargo \
                     miri test --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }} \
                     || ( echo "❗ [CT39 (2/2)] Failed MIRI static analysis checks" && exit 1 )
                   echo "✅ [CT39 (2/2)] Passed MIRI static analysis checks"
 
     fuzz_tests:
         name: Run Fuzz Tests
-        container: cache-registry.caas.intel.com/cache/library/ubuntu
-        runs-on: [self-hosted, gasp]
+        container: ubuntu:22.04
+        runs-on: ubuntu-latest
         steps:
             - name: Install Dependencies
               shell: bash
@@ -226,56 +181,40 @@ jobs:
                     build-essential \
                     cmake
             - uses: actions/checkout@v3
-            - name: Install Rust Toolchain
+              with:
+                lfs: true
+            - uses: dtolnay/rust-toolchain@nightly
+              with:
+                toolchain: nightly
+                components: rustfmt,clippy,miri
+            - name: Install SIMICS (External)
               shell: bash
               run: |
-                  curl https://sh.rustup.rs -sSf \
-                  | sh -s -- -y --default-toolchain nightly --component rustfmt \
-                    --component clippy --component miri --no-modify-path
-            - name: Install SIMICS (Internal)
-              shell: bash
-              run: |
-                  mkdir -p "${HOME}/simics"
-                  cd "${HOME}/simics"
-                  curl -o intel-simics-package-manager-1.7.4-linux64.tar.gz \
-                    https://af02p-or.devtools.intel.com/artifactory/simics-local/pub/simics-installer/external/1.7.4/intel-simics-package-manager-1.7.4-linux64.tar.gz
-                  tar -xvf intel-simics-package-manager-1.7.4-linux64.tar.gz
-                  {
-                    echo "1000 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_1000 }}";
-                    echo "2096 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_2096 }}";
-                    echo "8112 ${{ secrets.SIMICS_PUBLIC_PACKAGE_KEY_8112 }}";
-                  } > /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
-                  cat /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
-                  ./intel-simics-package-manager-1.7.4/ispm settings \
-                    --config-file /ispm.conf decryption-key-files \
-                    --add /SIMICS-PUBLIC-PACKAGE-DECRYPTION-KEY-FILE
-                  cat /ispm.conf
-                  ./intel-simics-package-manager-1.7.4/ispm \
-                    --config-file /ispm.conf \
+                  mkdir -p "${HOME}/simics/ispm"
+                  tar --strip-components=1 -C "${HOME}/simics/ispm" \
+                    -xvf .github/simics/intel-simics-package-manager-${{ env.SIMICS_PUBLIC_ISPM_VERSION }}-linux64.tar.gz
+                  "${HOME}/simics/ispm/ispm" \
+                    packages \
                     --non-interactive \
                     --verbose \
-                    --package-repo https://af02p-or.devtools.intel.com/ui/native/simics-repos/pub/simics-6/linux64/ \
                     --install-dir "${HOME}/simics" \
-                    install \
-                    1000-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }} \
-                    2096-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_2096 }} \
-                    8112-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_8112 }}
+                    --install .github/simics/simics-pkg-1000-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }}-linux64.ispm \
+                    --install .github/simics/simics-pkg-2096-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_2096 }}-linux64.ispm \
+                    --install .github/simics/simics-pkg-8112-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_8112 }}-linux64.ispm
             - name: Set up .env
               shell: bash
               run: |
                   echo "SIMICS_HOME=${HOME}/simics" > .env
             - name: Install Cargo-Fuzz
               run: |
-                  [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
-                  "${HOME}/.cargo/bin/cargo" install cargo-fuzz
+                  cargo install cargo-fuzz
             - name: CT632 (E/C) - Perform fuzz testing
               run: |
-                  [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
                   cd util/version-tools
 
-                  "${HOME}/.cargo/bin/cargo" fuzz build
+                  cargo fuzz build
 
-                  timeout --preserve-status 600 "${HOME}/.cargo/bin/cargo" fuzz run \
+                  timeout --preserve-status 600 cargo fuzz run \
                     fuzz_version_constraint_parse || exit 0
 
                   echo "Done fuzzing!"
@@ -290,9 +229,9 @@ jobs:
 
                   cd util/raw-cstr
 
-                  "${HOME}/.cargo/bin/cargo" fuzz build
+                  cargo fuzz build
 
-                  timeout --preserve-status 600 "${HOME}/.cargo/bin/cargo" fuzz run \
+                  timeout --preserve-status 600 cargo fuzz run \
                     fuzz_raw_cstr || exit 0
 
                   echo "Done fuzzing!"
@@ -309,12 +248,13 @@ jobs:
 
     super_lint:
         name: Run Super Linter
-        container: cache-registry.caas.intel.com/cache/github/super-linter
-        runs-on: [self-hosted, gasp]
+        container: github/super-linter
+        runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v3
               with:
                   fetch-depth: 0
+                  lfs: false
             - name: (CT222) (E/C) - Use hadolint to evaluate Dockerfile configuration
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -323,24 +263,25 @@ jobs:
                   VALIDATE_RUST_2018: false
                   VALIDATE_RUST_2021: false
                   VALIDATE_RUST_CLIPPY: false
-                  # We have no CPP in the codebase, clang-format is ok but we don't want to
-                  # run cpplint
+                  # We have no non-example CPP in the codebase
                   VALIDATE_CPP: false
                   VALIDATE_CLANG_FORMAT: false
                   VALIDATE_JSCPD: false
                   # This is way too pedantic
                   VALIDATE_NATURAL_LANGUAGE: false
               run: |
-                  [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
                   /action/lib/linter.sh || ( echo "❗ [CT222] Super linter found an issue (possibly Hadolint)" && exit 1 )
                   echo "✅ [CT222] Hadolint Dockerfile check passed"
 
     scan_hello_world:
         name: Scan Hello World EFI Builder Container
-        container: cache-registry.caas.intel.com/cache/novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.2
-        runs-on: [self-hosted, gasp]
+        container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.2
+        runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v3
+              with:
+                fetch-depth: 0
+                lfs: false
             - name: Build Hello World Image
               run: |
                   /kaniko/executor \
@@ -360,18 +301,17 @@ jobs:
                     --destination=image
             - name: (T1187, T1186) (N/C) - Test if secrets are stored in Dockerfiles (Hello World Image)
               run: |
-                  if ! /kaniko/trivy image --input /hello-world.tar; then
-                    # Trivy has a rate limit :/ we'll sleep if we have a problem
-                    sleep 120
-                    /kaniko/trivy image --input /hello-world.tar
-                  fi
+                  /kaniko/trivy image --input /hello-world.tar
 
     scan_x509_parse:
         name: Scan X509Parse EFI Builder Container
-        container: cache-registry.caas.intel.com/cache/novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.2
-        runs-on: [self-hosted, gasp]
+        container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.2
+        runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v3
+              with:
+                fetch-depth: 0
+                lfs: false
             - name: Build X509Parse Image
               run: |
                   /kaniko/executor \
@@ -391,30 +331,27 @@ jobs:
                     --destination=image
             - name: (T1187, T1186) (N/C) - Test if secrets are stored in Dockerfiles (X509Parse Image)
               run: |
-                  if ! /kaniko/trivy image --input /x509-parse.tar; then
-                    # Trivy has a rate limit
-                    sleep 120
-                    /kaniko/trivy image --input /x509-parse.tar
-                  fi
+                  /kaniko/trivy image --input /x509-parse.tar
 
     additional_sdl_checks:
         name: Perform Additional SDL Checks
-        container: cache-registry.caas.intel.com/cache/library/ubuntu
-        runs-on: [self-hosted, gasp]
+        container: ubuntu:22.04
+        runs-on: ubuntu-latest
         steps:
             - name: Install Dependencies
               run: |
-                  [ -f "/__w/_temp/_github_workflow/event.json" ] && export GITHUB_EVENT_PATH=/__w/_temp/_github_workflow/event.json
                   apt-get -y update && \
                   apt-get -y install git curl jq wget build-essential cmake openssl libssl-dev pkg-config
-            - name: Install Rust Toolchain
-              shell: bash
-              run: |
-                  curl https://sh.rustup.rs -sSf \
-                  | sh -s -- -y --default-toolchain nightly --no-modify-path
-                  "${HOME}/.cargo/bin/cargo" install cargo-audit
-                  "${HOME}/.cargo/bin/cargo" install cargo-outdated
             - uses: actions/checkout@v3
+              with:
+                lfs: false
+            - uses: dtolnay/rust-toolchain@nightly
+              with:
+                toolchain: nightly
+                components: rustfmt,clippy,miri
+            - name: Install Cargo Plugins
+              run: |
+                  cargo install cargo-audit cargo-outdated
             - name: CT256 (N/C) - Include security.md file in open source repos
               run: |
                   [ -f SECURITY.md ] \
@@ -531,9 +468,9 @@ jobs:
                   echo "    - No legacy features"
             - name: (T186) (N/C) - Use recommended settings and latest patches for third party libraries and software 
               run: |
-                  "${HOME}/.cargo/bin/cargo" audit
+                  cargo audit
 
-                  if ! "${HOME}/.cargo/bin/cargo" outdated --exit-code 1; then
+                  if ! cargo outdated --exit-code 1; then
                       echo "❗ [T186] Out of date third party dependencies found"
                       exit 1
                   fi

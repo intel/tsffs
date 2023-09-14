@@ -11,11 +11,7 @@ SECRETS_FILE="${SCRIPT_DIR}/../.secrets"
 
 if [ ! -f "${SECRETS_FILE}" ]; then
     echo "No file '${SECRETS_FILE}' found. Please create one. It must have the following keys:
-            SIMICS_PUBLIC_PACKAGE_KEY_1000
-            SIMICS_PUBLIC_PACKAGE_KEY_2096
-            SIMICS_PUBLIC_PACKAGE_KEY_8112
             GITHUB_TOKEN" \
-        "If you are an Intel employee, you can find decryption keys at https://wiki.ith.intel.com/display/Simics/Simics+6." \
         "You can find your GitHub token with 'gh auth token'"
     exit 1
 fi
@@ -81,10 +77,8 @@ populate_env_file() {
 ENV_FILE=$(mktemp)
 ARTIFACT_DIR=$(mktemp -d)
 populate_env_file "${ENV_FILE}"
-docker pull amr-registry.caas.intel.com/1source/github-actions-runner:v2.304.0-ubuntu-20.04
+mkdir -p "${SCRIPT_DIR}/../.github/logs/"
 unbuffer act -W "${WORKFLOW_FILE}" --env-file="${ENV_FILE}" --secret-file="${SECRETS_FILE}" \
-    -P gasp=github-actions-runner:v2.304.0-ubuntu-20.04 \
-    -P self-hosted=github-actions-runner:v2.304.0-ubuntu-20.04 \
     --artifact-server-path "${ARTIFACT_DIR}" \
     "$@" | tee "${SCRIPT_DIR}/../.github/logs/$(date '+%F-%T').log"
 rm "${ENV_FILE}"

@@ -19,11 +19,9 @@ the [requirements](./docs/Requirements.md) to find out if TSSFS can fuzz your co
   - [Running an EDK2 Sample Target](#running-an-edk2-sample-target)
   - [Contact](#contact)
   - [Help Wanted / Roadmap](#help-wanted--roadmap)
-  - [Why CONFUSE](#why-confuse)
+  - [Why TSFFS](#why-tsffs)
   - [Authors](#authors)
 
-
-<https://github.com/intel-innersource/applications.security.fuzzing.confuse/assets/30083762/004ba56e-561c-470a-baf4-427014b43362>
 
 
 ## Capabilities
@@ -68,12 +66,12 @@ you have set up the fuzzer by following the directions [above](#setup), you can 
 with (from the root of this repo):
 
 ```sh
-cargo run --release --bin simics-fuzz --features=6.0.172 -- \
+cargo run --release --bin simics-fuzz --features=6.0.169 -- \
     --corpus /tmp/corpus --solutions solution --log-level INFO --cores 1  \
     --file examples/harnessing-uefi/rsrc/target.efi:%simics%/target.efi \
     --file examples/harnessing-uefi/rsrc/fuzz.simics:%simics%/fuzz.simics \
     --file examples/harnessing-uefi/rsrc/minimal_boot_disk.craff:%simics%/minimal_boot_disk.craff \
-    --package 2096:6.0.69 \
+    --package 2096:6.0.70 \
     --command 'COMMAND:run-script "%simics%/fuzz.simics"'
 ```
 
@@ -86,9 +84,9 @@ There are two provided sample targets, `hello-world` and `x509-parse`. You can r
 in the basic configuration with the commands below, respectively.
 
 ```sh
-cargo run --release --bin simics-fuzz --features=6.0.172 -- \
+cargo run --release --bin simics-fuzz --features=6.0.169 -- \
   -c /tmp/hello-world-corpus/ -o /tmp/hello-world-solution/ -l ERROR -t -C 1 \
-  -P 2096:6.0.69 \
+  -P 2096:6.0.70 \
   -f examples/hello-world/rsrc/HelloWorld.efi:%simics%/targets/hello-world/HelloWorld.efi \
   -f examples/hello-world/rsrc/app.py:%simics%/scripts/app.py \
   -f examples/hello-world/rsrc/app.yml:%simics%/scripts/app.yml \
@@ -99,9 +97,9 @@ cargo run --release --bin simics-fuzz --features=6.0.172 -- \
 ```
 
 ```sh
-cargo run --release --bin simics-fuzz --features=6.0.172 -- \
+cargo run --release --bin simics-fuzz --features=6.0.169 -- \
   -c /tmp/x509-parse-corpus/ -o /tmp/x509-parse-solution/ -l ERROR -t -C 1 \
-  -P 2096:6.0.69 \
+  -P 2096:6.0.70 \
   -f examples/x509-parse/rsrc/X509Parse.efi:%simics%/targets/x509-parse/X509Parse.efi \
   -f examples/x509-parse/rsrc/app.py:%simics%/scripts/app.py \
   -f examples/x509-parse/rsrc/app.yml:%simics%/scripts/app.yml \
@@ -114,7 +112,7 @@ cargo run --release --bin simics-fuzz --features=6.0.172 -- \
 ## Contact
 
 If you discover a non-security issue or problem, please file an
-[issue](https://github.com/intel-innersource/applications.security.fuzzing.confuse/issues)!
+[issue](https://github.com/intel/tsffs/issues)!
 
 The best place to ask questions about and get help using TSFFS is in the [Awesome
 Fuzzing](https://discord.gg/gCraWct) Discord server. If you prefer, you can email the
@@ -128,15 +126,15 @@ guidelines.
 ## Help Wanted / Roadmap
 
 See the
-[issues](https://github.com/intel-innersource/applications.security.fuzzing.confuse/issues?q=is%3Aopen+is%3Aissue+label%3Afeature)
+[issues](https://github.com/intel/tsffs/issues?q=is%3Aopen+is%3Aissue+label%3Afeature)
 for a roadmap of planned features and enhancements. Help is welcome for any features
 listed here. If someone is assigned an issue you'd like to work on, please ping them to
 avoid duplicating effort!
 
-## Why CONFUSE
+## Why TSFFS
 
 There are several tools capable of fuzzing firmware and UEFI code. Notably, the
-[HBFA](https://github.com/intel-innersource/applications.security.fuzzing.uefi.hbfa-ccc)
+[HBFA](https://github.com/tianocore/edk2-staging/tree/HBFA)
 project and the [kAFL](https://github.com/IntelLabs/kAFL) project enable system software
 fuzzing with various tradeoffs.
 

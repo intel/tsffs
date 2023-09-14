@@ -12,4 +12,4 @@ fi
 
 pushd "${SCRIPT_DIR}" || exit 1
 
-cargo llvm-cov --features=6.0.168
+cargo llvm-cov --features=6.0.169

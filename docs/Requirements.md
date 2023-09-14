@@ -16,12 +16,11 @@ it can use this fuzzer for fuzz testing!
 
 Supported Architectures:
 
-- x86
 - x86_64
 
-For now, this fuzzer only supports target software running on Intel x86 and x86_64
-architectures. This is a temporary limitation dependent on testing and enabling tracing
-and fault detection on other architectures.
+For now, this fuzzer only supports target software running on Intel x86_64 architecture.
+This is a temporary limitation dependent on testing and enabling tracing and fault
+detection on other architectures. More architectures will be enabled in the future.
 
 ## Micro Checkpoints
 
@@ -54,20 +53,20 @@ target software follows the basic flow:
 #### Set Up The Project
 
 In this case, to test micro checkpoints manually from the SIMICS command line, we can
-create a new project:
+create a new project (replace `6.0.169` with your installed SIMICS base version):
 
 ```sh
-$ "${SIMICS_HOME}/simics-6.0.172/bin/project-setup" ./test-micro-checkpoints
+$ "${SIMICS_HOME}/simics-6.0.169/bin/project-setup" ./test-micro-checkpoints
 Project created successfully
 $ cd test-micro-checkpoints
 ```
 
 This Hello World example project needs the `2096` package, which is for the SIMICS QSP
-platform model.  Add the package to the project by running (assuming you have version
-`6.0.69` installed):
+platform model.  Add the package to the project by running (replace `6.0.70` with your
+installed SIMICS QSP package version):
 
 ```sh
-$ echo "${SIMICS_HOME}/simics-qsp-x86-6.0.69/" >> ".package-list"
+$ echo "${SIMICS_HOME}/simics-qsp-x86-6.0.70/" >> ".package-list"
 $ ./bin/project-setup
 Project updated successfully
 ```

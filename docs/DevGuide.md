@@ -8,7 +8,7 @@ convenience and as requirements for PR.
 
 ## Scripts
 
-There are several scripts for developers
+There are several scripts for developers:
 
 - [./scripts/fmt.sh](../scripts/fmt.sh): Auto-format files. Run this before committing
   or submitting a PR.
