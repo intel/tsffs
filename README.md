@@ -11,6 +11,7 @@ device firmware. TSSFS can even fuzz user-space applications on Linux and Window
 the [requirements](./docs/Requirements.md) to find out if TSSFS can fuzz your code.
 
 - [TSFFS: Target Software Fuzzer For SIMICS](#tsffs-target-software-fuzzer-for-simics)
+  - [UEFI Fuzzing Demo](#uefi-fuzzing-demo)
   - [Capabilities](#capabilities)
   - [Documentation](#documentation)
   - [Use Cases](#use-cases)
@@ -48,7 +49,7 @@ repository.
 
 ## Use Cases
 
-CONFUSE is focused on several primary use cases:
+TSFFS is focused on several primary use cases:
 
 - UEFI and BIOS code, particulary based on [EDKII](https://github.com/tianocore/edk2)
 - Pre- and early-silicon firmware and device drivers
@@ -143,7 +144,7 @@ fuzzing with various tradeoffs.
 HBFA is very fast, and enables fuzzing with sanitizers in Linux userspace. However, it
 requires stubs for any hardware interactions as well as the ability to compile code with
 instrumentation. For teams with resources to create a working HBFA configuration, it
-should be used alongside CONFUSE to enable additional error condition detection.
+should be used alongside TSFFS to enable additional error condition detection.
 
 kAFL is also extremely fast, and is hypervisor based which allows deterministic
 snapshotting of systems under test. This also makes it ideal for very complex systems
@@ -153,7 +154,7 @@ requires working device stubs or simulation to be implemented in QEMU, and addit
 requires a patched kernel to run the required KVM modifications.
 
 Both of these tools should be used where possible to take advantage of their unique
-capabilities, but CONFUSE aims to reduce the barrier to fuzzing low-level systems
+capabilities, but TSFFS aims to reduce the barrier to fuzzing low-level systems
 software. It is slower (though not unacceptably so) than HBFA or kAFL, and is not (yet)
 capable of leveraging sanitizers. In exchange, using it is as simple as adding a few
 lines of code to a SIMICS script and ten or less lines of code to your firmware source
