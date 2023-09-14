@@ -27,7 +27,7 @@ that looks something like this:
             "request": "launch",
             "name": "Debug simics-fuzz",
             "cargo": {
-                "args": ["build", "--bin", "simics-fuzz", "--features=6.0.168"]
+                "args": ["build", "--bin", "simics-fuzz", "--features=6.0.169"]
             },
             "args": [
                 "-c",
@@ -39,7 +39,7 @@ that looks something like this:
                 "-C",
                 "1",
                 "--package",
-                "2096:6.0.69",
+                "2096:6.0.70",
                 "--file",
                 "examples/hello-world/rsrc/HelloWorld.efi:%simics%/targets/hello-world/HelloWorld.efi",
                 "--file",
