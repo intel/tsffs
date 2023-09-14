@@ -38,20 +38,20 @@ so that it looks like this:
 
 ```c
 if (*(char *)buffer == 'a') {
-// Invalid opcode
-__asm__(".byte 0x06");
+  // Invalid opcode
+  __asm__(".byte 0x06");
 } else if (*(char *)buffer == 'b') {
-// Crash
-uint8_t *bad_ptr = (uint8_t *)0xffffffffffffffff;
-*bad_ptr = 0;
+  // Crash
+  uint8_t *bad_ptr = (uint8_t *)0xffffffffffffffff;
+  *bad_ptr = 0;
 } else if (*(char *)buffer == 'c') {
-// Breakpoint-defined fault location (instruction BP)
-SystemTable->conOut->output_string(SystemTable->conOut,
-                                    (int16_t *)L"Uh oh!\r\n");
+  // Breakpoint-defined fault location (instruction BP)
+  SystemTable->conOut->output_string(SystemTable->conOut,
+                                      (int16_t *)L"Uh oh!\r\n");
 } else if (*(char *)buffer == 'd') {
-for (size_t i = 0; i < sizeof(off_limits); i++) {
-    off_limits[i] = 'X';
-}
+  for (size_t i = 0; i < sizeof(off_limits); i++) {
+      off_limits[i] = 'X';
+  }
 }
 ```
 
@@ -219,14 +219,15 @@ script-branch "Set breakpoints" {
 ## Fuzz for Breakpoints
 
 Now, if we run the fuzzer (assuming you are in the
-[examples/breakpoints](../examples/breakpoints/) directory):
+[examples/breakpoints](../examples/breakpoints/) directory, replace `6.0.169` with your
+installed SIMICS base version and `6.0.70` with your installed SIMICS QSP version):
 
 ```sh
 cargo run --manifest-path ../../Cargo.toml --release \
-    --bin simics-fuzz --features=6.0.168 -- \
+    --features=6.0.169 -- \
     --project ./project --input ./input --solutions ./solutions --corpus ./corpus \
     --log-level INFO --trace-mode once --executor-timeout 60 --timeout 3 --cores 1 \
-    --package 2096:6.0.69 \
+    --package 2096:6.0.70 \
     --file "./src/target.efi:%simics%/target.efi" \
     --file "./rsrc/fuzz.simics:%simics%/fuzz.simics" \
     --file "./rsrc/minimal_boot_disk.craff:%simics%/minimal_boot_disk.craff" \

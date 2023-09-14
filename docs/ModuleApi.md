@@ -14,13 +14,13 @@ That API looks like this in Rust:
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 /// This is the rust definition for the tffs_module_interface_t declaration in the stubs, which
 /// are used to generate the interface module. This struct definition must match that one exactly
-/// 
+///
 /// # Examples
-/// 
+///
 /// Assuming your model is configured, and by resuming the simulation the target The
 /// following SIMICS code (either in a SIMICS script, or in an equivalent Python script)
 /// is typically sufficient to start the fuzzer immediately.
-/// 
+///
 /// ```simics
 /// stop
 /// @conf.tsffs_module.iface.tsffs_module.init()
@@ -30,7 +30,8 @@ That API looks like this in Rust:
 /// # Add general protection fault (interrupt #13)
 /// @conf.tsffs_module.iface.tsffs_module.add_fault(13)
 /// $con.input "target.efi\n"
-/// # This continue is optional, the fuzzer will resume execution for you if you do not
+/// # This continue is optional, the fuzzer will resume execution for you if you do not resume
+/// # it at the end of your script
 /// continue
 /// ```
 pub struct ModuleInterface {
@@ -48,8 +49,10 @@ pub struct ModuleInterface {
     /// Add channels to the module. This API should not be called by users from Python and is
     /// instead used by the fuzzer frontend to initiate communication with the module.
     pub add_channels: extern "C" fn(obj: *mut ConfObject, tx: *mut AttrValue, rx: *mut AttrValue),
+    /// Set whether breakpoints are treated as faults
+    pub set_breakpoints_are_faults:
+        extern "C" fn(obj: *mut ConfObject, breakpoints_are_faults: bool),
 }
-
 ```
 
 The primary way of interacting with this API as a user is through Python code running
@@ -58,6 +61,7 @@ being fuzzed uses. The documentation on the interface structure above should giv
 a good idea of how to use this API. You can also take a look at the example scripts,
 each of which use a slightly different pattern from each other:
 
+- [breakpoints](../examples/breakpoints/rsrc/fuzz.simics)
 - [hello-world](../examples/hello-world/rsrc/app.py)
 - [x509-parse](../examples/x509-parse/rsrc/app.py)
 - [mini](../examples/mini/rsrc/fuzz.simics)

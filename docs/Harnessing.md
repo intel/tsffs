@@ -7,6 +7,7 @@ satisfied by any of the approaches outlined here.
 
 - [Harnessing](#harnessing)
   - [Harnessing With Provided Include File](#harnessing-with-provided-include-file)
+  - [Harnessing in Constrained UEFI Environments](#harnessing-in-constrained-uefi-environments)
   - [Harnessing In Non-C Languages](#harnessing-in-non-c-languages)
 
 
@@ -43,7 +44,7 @@ __asm__ __volatile__(
 Becomes simply:
 
 ```c
-HARNESS_START(&buffer[0], &size);
+HARNESS_START(&buffer_ptr, &size);
 ```
 
 And the stop harness:
@@ -61,6 +62,56 @@ Becomes:
 HARNESS_STOP();
 ```
 
+## Harnessing in Constrained UEFI Environments
+
+Some UEFI build environments will not support GNU inline assembly or the `__cpuid` and
+`__cpuidex` macros used with the MSVC compiler. In these instances, you can write your
+own harness functions if you have another method of causing a `cpuid` instruction. For
+example, if you have functions defined by your build environment:
+
+```c
+void CpuId(UINT32 CpuInfo[4], UINT32 FunctionId);
+void CpuIdEx(UINT32 CpuInfo[4], UINT32 FunctionId, UINT32 SubFunctionId);
+```
+
+You can create your own harness code like the below:
+
+```c
+#define MAGIC_START 1
+#define MAGIC_STOP 2
+#define MAGIC_START_WININTRIN 3
+#define MAGIC 18193
+
+void harness_start(unsigned char **addr_ptr, unsigned long long *size_ptr) {
+  unsigned int cpuInfo[4] = {0};
+  unsigned int function_id_start = (MAGIC_START_WININTRIN << 16U) | MAGIC;
+  unsigned int subfunction_id_addr_low =
+      (unsigned int)(((unsigned long long)*addr_ptr) & 0xffffffff);
+  unsigned int subfunction_id_addr_hi =
+      (unsigned int)(((unsigned long long)*addr_ptr) >> 32U);
+  unsigned int subfunction_id_size_low =
+      (unsigned int)(((unsigned long long)*size_ptr) & 0xffffffff);
+  unsigned int subfunction_id_size_hi =
+      (unsigned int)(((unsigned long long)*size_ptr) >> 32U);
+  CpuIdEx(cpuInfo, function_id_start, subfunction_id_addr_low);
+  CpuIdEx(cpuInfo, function_id_start, subfunction_id_addr_hi);
+  CpuIdEx(cpuInfo, function_id_start, subfunction_id_size_low);
+  CpuIdEx(cpuInfo, function_id_start, subfunction_id_size_hi);
+  *(long long *)addr_ptr = 0;
+  *(long long *)addr_ptr |= (long long)cpuInfo[0];
+  *(long long *)addr_ptr |= ((long long)cpuInfo[1]) << 32U;
+  *(long long *)size_ptr = 0;
+  *(long long *)size_ptr |= (long long)cpuInfo[2];
+  *(long long *)size_ptr |= ((long long)cpuInfo[3]) << 32U;
+}
+
+void harness_stop(void) {
+  unsigned int cpuInfo[4] = {0};
+  unsigned int function_id_stop = (MAGIC_STOP << 16U) | MAGIC;
+  CpuId(cpuInfo, function_id_stop);
+}
+```
+
 ## Harnessing In Non-C Languages
 
 If your target is written in Rust, you can depend on the `include` crate in this
@@ -72,7 +123,7 @@ preferably should match the version you will use when fuzzing.
 
 ```toml
 [dependencies]
-include = { path = "/path/to/applications.security.fuzzing.confuse/include/", features = ["6.0.168" ]}
+include = { path = "/path/to/applications.security.fuzzing.confuse/include/", features = ["6.0.169" ]}
 ```
 
 Then, you can call the harness functions:

@@ -26,8 +26,9 @@ version.workspace = true
 "6.0.170" = ["tsffs_module/6.0.170"]
 "6.0.171" = ["tsffs_module/6.0.171"]
 "6.0.172" = ["tsffs_module/6.0.172"]
-default = ["windows", "unix"]
-windows = []
+default = ["win32", "win64", "unix"]
+win32 = []
+win64 = []
 unix = []
 
 

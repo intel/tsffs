@@ -1,10 +1,11 @@
 #ifndef TSFFS_H
 #define TSFFS_H
 
-#include <stdint.h>
+// Copyright (C) 2023 Intel Corporaton
+// SPDX-License-Identifier: Apache-2.0
 
 
-#if defined(__x86_64__)
+#if (defined(__x86_64__) || defined(_WIN64))
 #define MAGIC 18193
 #endif
 
@@ -72,10 +73,10 @@
 
 #if (defined(__x86_64__) && defined(__unix__))
 /**
- * X86_64:
  *
  */
 
+#include <stdint.h>
 #define __cpuid_extended2(leaf, a, b, c, d, inout_ptr_0, inout_ptr_1) \
     __asm__ __volatile__("cpuid\n\t" \
                        : "=a"(a), "=b"(b), "=c"(c), "=d"(d), \
@@ -126,9 +127,8 @@
 void __marker_x86_64_unix(void);
 #endif
 
-#if (defined(__x86_64__) && defined(_WIN32))
+#if defined(_WIN64)
 /**
- * X86 32 Windows:
  *
  */
 
@@ -155,7 +155,7 @@ void __marker_x86_64_unix(void);
 #define __arch_harness_stop() \
     do { \
         int cpuInfo[4] = {0}; \
-        uint32_t function_id_stop = (MAGIC_STOP << 16U) | MAGIC; \
+        int function_id_stop = (MAGIC_STOP << 16U) | MAGIC; \
         __cpuid(cpuInfo, function_id_stop); \
     } while (0)
 
@@ -166,8 +166,6 @@ void __marker_x86_64_windows(void);
 #endif
 
 /**
- * Architecture-independent harness macros:
- *
  *
  */
 

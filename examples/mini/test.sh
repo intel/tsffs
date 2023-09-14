@@ -13,8 +13,8 @@ ninja
 
 popd || exit 1
 
-cargo run --release --bin simics-fuzz --features=6.0.168 -- \
-    -p test-project -i corpus -c corpus -o solution -l INFO -C 1 -P 2096:6.0.69 \
+cargo run --release --bin simics-fuzz --features=6.0.169 -- \
+    -p test-project -i corpus -c corpus -o solution -l INFO -C 1 -P 2096:6.0.70 \
     -e "${SCRIPT_DIR}/rsrc/mini.efi" \
     -f "${SCRIPT_DIR}/rsrc/mini.efi:%simics%/mini.efi" \
     -f "${SCRIPT_DIR}/rsrc/minimal_boot_disk.craff:%simics%/minimal_boot_disk.craff" \

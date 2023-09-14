@@ -68,12 +68,12 @@ you have set up the fuzzer by following the directions [above](#setup), you can 
 with (from the root of this repo):
 
 ```sh
-cargo run --release --bin simics-fuzz --features=6.0.172 -- \
+cargo run --release --bin simics-fuzz --features=6.0.169 -- \
     --corpus /tmp/corpus --solutions solution --log-level INFO --cores 1  \
     --file examples/harnessing-uefi/rsrc/target.efi:%simics%/target.efi \
     --file examples/harnessing-uefi/rsrc/fuzz.simics:%simics%/fuzz.simics \
     --file examples/harnessing-uefi/rsrc/minimal_boot_disk.craff:%simics%/minimal_boot_disk.craff \
-    --package 2096:6.0.69 \
+    --package 2096:6.0.70 \
     --command 'COMMAND:run-script "%simics%/fuzz.simics"'
 ```
 
@@ -86,9 +86,9 @@ There are two provided sample targets, `hello-world` and `x509-parse`. You can r
 in the basic configuration with the commands below, respectively.
 
 ```sh
-cargo run --release --bin simics-fuzz --features=6.0.172 -- \
+cargo run --release --bin simics-fuzz --features=6.0.169 -- \
   -c /tmp/hello-world-corpus/ -o /tmp/hello-world-solution/ -l ERROR -t -C 1 \
-  -P 2096:6.0.69 \
+  -P 2096:6.0.70 \
   -f examples/hello-world/rsrc/HelloWorld.efi:%simics%/targets/hello-world/HelloWorld.efi \
   -f examples/hello-world/rsrc/app.py:%simics%/scripts/app.py \
   -f examples/hello-world/rsrc/app.yml:%simics%/scripts/app.yml \
@@ -99,9 +99,9 @@ cargo run --release --bin simics-fuzz --features=6.0.172 -- \
 ```
 
 ```sh
-cargo run --release --bin simics-fuzz --features=6.0.172 -- \
+cargo run --release --bin simics-fuzz --features=6.0.169 -- \
   -c /tmp/x509-parse-corpus/ -o /tmp/x509-parse-solution/ -l ERROR -t -C 1 \
-  -P 2096:6.0.69 \
+  -P 2096:6.0.70 \
   -f examples/x509-parse/rsrc/X509Parse.efi:%simics%/targets/x509-parse/X509Parse.efi \
   -f examples/x509-parse/rsrc/app.py:%simics%/scripts/app.py \
   -f examples/x509-parse/rsrc/app.yml:%simics%/scripts/app.yml \

@@ -26,7 +26,12 @@ pub extern "C" fn __version_marker_minor() {}
 #[doc = ""]
 pub extern "C" fn __version_marker_patch() {}
 
-#[cfg(any(target_arch = "i386", target_arch = "i586", target_arch = "i686"))]
+#[cfg(any(
+    target_arch = "i386",
+    target_arch = "i586",
+    target_arch = "i686",
+    all(feature = "win32", not(feature = "win64"))
+))]
 pub mod i386 {
     pub const MAGIC: u16 = 0x4711;
 
@@ -72,8 +77,8 @@ pub mod i386 {
 ))]
 pub mod i386_unix {
     #[no_mangle]
-    /// X86 32 Unix:
     /// cbindgen:prefix= \
+    /// #include <stdint.h> \
     /// #define __cpuid_extended2(leaf, a, b, c, d, inout_ptr_0, inout_ptr_1) \ \
     ///     __asm__ __volatile__("push %%ebx; cpuid; pop %%ebx\n\t" \ \
     ///                        : "=a"(a), "=b"(b), "=c"(c), "=d"(d), \ \
@@ -127,16 +132,13 @@ pub mod i386_unix {
     pub extern "C" fn __marker_i386_unix() {}
 }
 
-#[cfg(all(
-    any(target_arch = "i386", target_arch = "i586", target_arch = "i686"),
-    feature = "windows"
-))]
+#[cfg(all(feature = "win32", not(feature = "win64")))]
 pub mod i386_windows {
     #[no_mangle]
     pub extern "C" fn __marker_i386_windows() {}
 }
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(any(target_arch = "x86_64", feature = "win64"))]
 pub mod x86_64 {
     pub const MAGIC: u16 = 0x4711;
 
@@ -181,8 +183,8 @@ pub mod x86_64 {
 #[cfg(all(target_arch = "x86_64", feature = "unix"))]
 pub mod x86_64_unix {
     #[no_mangle]
-    /// X86_64:
     /// cbindgen:prefix= \
+    /// #include <stdint.h> \
     /// #define __cpuid_extended2(leaf, a, b, c, d, inout_ptr_0, inout_ptr_1) \ \
     ///     __asm__ __volatile__("cpuid\n\t" \ \
     ///                        : "=a"(a), "=b"(b), "=c"(c), "=d"(d), \ \
@@ -233,10 +235,9 @@ pub mod x86_64_unix {
     pub extern "C" fn __marker_x86_64_unix() {}
 }
 
-#[cfg(all(target_arch = "x86_64", feature = "windows"))]
+#[cfg(feature = "win64")]
 pub mod x86_64_windows {
     #[no_mangle]
-    /// X86 32 Windows:
     /// cbindgen:prefix= \
     /// #define __arch_harness_start(addr_ptr, size_ptr) \ \
     ///     do { \ \
@@ -261,7 +262,7 @@ pub mod x86_64_windows {
     /// #define __arch_harness_stop() \ \
     ///     do { \ \
     ///         int cpuInfo[4] = {0}; \ \
-    ///         uint32_t function_id_stop = (MAGIC_STOP << 16U) | MAGIC; \ \
+    ///         int function_id_stop = (MAGIC_STOP << 16U) | MAGIC; \ \
     ///         __cpuid(cpuInfo, function_id_stop); \ \
     ///     } while (0) \
     /// \
@@ -313,8 +314,6 @@ pub mod riscv {}
 
 pub mod harness {
     #[no_mangle]
-    /// Architecture-independent harness macros:
-    ///
     /// cbindgen:prefix= \
     /// #define HARNESS_START(addr_ptr, size_ptr) \ \
     ///     do { \ \

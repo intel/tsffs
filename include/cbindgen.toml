@@ -20,10 +20,10 @@ include_version = false
 # namespace = "my_namespace"
 namespaces = []
 using_namespaces = []
-sys_includes = ["stdint.h"]
+sys_includes = []
 includes = []
 no_includes = true
-after_includes = ""
+after_includes = "// Copyright (C) 2023 Intel Corporaton\n// SPDX-License-Identifier: Apache-2.0\n"
 
 
 ############################ Code Style Options ################################
@@ -56,7 +56,8 @@ usize_is_size_t = true
 "target_arch = aarch64" = "__aarch64__"
 "target_arch = arm" = "__arm__"
 "target_arch = armv7" = "__arm__"
-"feature = windows" = "_WIN32"
+"feature = win32" = "_WIN32"
+"feature = win64" = "_WIN64"
 "feature = unix" = "__unix__"
 
 
@@ -137,4 +138,4 @@ extra_bindings = ["tsffs_module"]
 crates = ["include"]
 all_features = false
 default_features = true
-features = ["6.0.172"]
+features = ["6.0.169"]
