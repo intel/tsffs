@@ -1,6 +1,8 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+//! X86_64 specific fault information
+
 extern crate num_traits;
 use anyhow::{anyhow, Error, Result};
 use num_derive::{FromPrimitive, ToPrimitive};

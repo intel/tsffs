@@ -16,12 +16,11 @@ it can use this fuzzer for fuzz testing!
 
 Supported Architectures:
 
-- x86
 - x86_64
 
-For now, this fuzzer only supports target software running on Intel x86 and x86_64
-architectures. This is a temporary limitation dependent on testing and enabling tracing
-and fault detection on other architectures.
+For now, this fuzzer only supports target software running on Intel x86_64 architecture.
+This is a temporary limitation dependent on testing and enabling tracing and fault
+detection on other architectures. More architectures will be enabled in the future.
 
 ## Micro Checkpoints
 
