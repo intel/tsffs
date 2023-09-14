@@ -612,7 +612,7 @@ with the short `-h` flag will produce a shorter help message for quick reference
 
 ```sh
 cargo run --manifest-path /path/to/this/repository/Cargo.toml --release \
-  --bin simics-fuzz --features=6.0.169 -- \
+  --features=6.0.169 -- \
   --help
 ```
 
@@ -624,7 +624,7 @@ installed SIMICS base version, and `6.0.70` with your installed SIMICS QSP versi
 
 ```sh
 cargo run --manifest-path /path/to/this/repository/Cargo.toml --release \
-  --bin simics-fuzz --features=6.0.169 -- \
+  --features=6.0.169 -- \
   --project ./project --input ./input --solutions ./solutions --corpus ./corpus \
   --log-level INFO --trace-mode once --executor-timeout 60 --timeout 3 --cores 1 \
   --package 2096:6.0.70 \
@@ -712,7 +712,7 @@ installed SIMICS QSP version).
 
 ```sh
 cargo run --manifest-path /path/to/this/repository/Cargo.toml --release \
-  --bin simics-fuzz --features=6.0.169 -- \
+  --features=6.0.169 -- \
   --project ./project --input ./input --solutions ./solutions --corpus ./corpus \
   --log-level INFO --trace-mode once --executor-timeout 60 --timeout 3 --cores 1 \
   --package 2096:6.0.69 \
