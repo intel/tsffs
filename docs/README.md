@@ -15,7 +15,7 @@ new to using the fuzzer or evaluating whether you can use it for your project.
 
 ## Tutorials
 
-- [Tutorial 1: Harnessing, Fuzzing, and Triaging A Simple UEFI Application](./HarnessingUEFISimple.md)
+- [Tutorial 1: Harnessing, Fuzzing, and Triaging A Simple UEFI Application](./UEFISimpleTarget.md)
 
 ## Developer Documentation
 
