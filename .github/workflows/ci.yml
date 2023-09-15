@@ -55,7 +55,8 @@ jobs:
                     git \
                     curl \
                     build-essential \
-                    cmake
+                    cmake \
+                    git-lfs
             - uses: actions/checkout@v3
               with:
                 lfs: true
@@ -127,7 +128,8 @@ jobs:
                     git \
                     curl \
                     build-essential \
-                    cmake
+                    cmake \
+                    git-lfs
             - uses: actions/checkout@v3
               with:
                 lfs: true
@@ -179,7 +181,8 @@ jobs:
                     git \
                     curl \
                     build-essential \
-                    cmake
+                    cmake \
+                    git-lfs
             - uses: actions/checkout@v3
               with:
                 lfs: true
@@ -341,7 +344,17 @@ jobs:
             - name: Install Dependencies
               run: |
                   apt-get -y update && \
-                  apt-get -y install git curl jq wget build-essential cmake openssl libssl-dev pkg-config
+                  apt-get -y install \
+                    git \
+                    curl \
+                    jq \
+                    wget \
+                    build-essential \
+                    cmake \
+                    openssl \
+                    libssl-dev \
+                    pkg-config \
+                    git-lfs
             - uses: actions/checkout@v3
               with:
                 lfs: false

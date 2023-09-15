@@ -12,7 +12,6 @@
         "*.in": "cpp"
     },
     "mesonbuild.configureOnOpen": false,
-    // Set the feature to the latest public SIMICS version
     "rust-analyzer.cargo.features": ["6.0.169"],
     "git.ignoreLimitWarning": true
 }
