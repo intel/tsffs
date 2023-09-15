@@ -104,7 +104,7 @@ the public Simics packages, you can download Simics from the external intel site
 You will need to download both files (for this section, replace the version with the
 version you see on the download page):
 
-- `intel-simics-package-manager-1.7.3-linux64.tar.gz`
+- `intel-simics-package-manager-1.7.5-linux64.tar.gz`
 - `simics-6-packages-2023-31-linux64.ispm`
 
 In this case, we'll assume you have downloaded both files to the `${HOME}/Downloads`
@@ -112,7 +112,7 @@ directory, which you can do by running:
 
 ```sh
 mkdir -p "${HOME}/Downloads"
-curl -L -o "${HOME}/Downloads/intel-simics-package-manager-1.7.3-linux64.tar.gz" \
+curl -L -o "${HOME}/Downloads/intel-simics-package-manager-1.7.5-linux64.tar.gz" \
   https://registrationcenter-download.intel.com/akdlm/IRC_NAS/881ee76a-c24d-41c0-af13-5d89b2a857ff/intel-simics-package-manager-1.7.5-linux64.tar.gz
 curl -L -o "${HOME}/Downloads/simics-6-packages-2023-31-linux64.ipsm" \
   https://registrationcenter-download.intel.com/akdlm/IRC_NAS/881ee76a-c24d-41c0-af13-5d89b2a857ff/simics-6-packages-2023-31-linux64.ispm \
