@@ -110,10 +110,12 @@ jobs:
                   echo "✅ [T595] Symlinks are checked before using files. See T297."
             - name: Build Docs
               run: |
-                  cargo doc --features=${{ matrix.simics_version }}
+                  cargo doc --features=${{ matrix.simics_version }} --workspace \
+                    --no-deps
             - name: Test Docs
               run: |
-                  cargo test --doc --features=${{ matrix.simics_version }}
+                  cargo test --doc --features=${{ matrix.simics_version }} --workspace \
+                    --no-deps
 
     static_analysis:
         name: Run Static Analysis
