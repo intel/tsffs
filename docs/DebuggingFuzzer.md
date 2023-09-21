@@ -12,7 +12,7 @@ extension for VSCode, with lldb installed.
 ## Configuration
 
 We'll debug the `simics-fuzz` binary, although you may need to debug a test in
-`simics-tests` or the CLI from `simics-cli`.
+`simics-tests`.
 
 Create a CodeLLDB
 [configuration](https://github.com/vadimcn/codelldb/blob/master/MANUAL.md#starting-a-new-debug-session)
