@@ -53,7 +53,9 @@ target software follows the basic flow:
 #### Set Up The Project
 
 In this case, to test micro checkpoints manually from the SIMICS command line, we can
-create a new project (replace `6.0.169` with your installed SIMICS base version):
+create a new project (replace `6.0.169` with your installed SIMICS base version and
+`${SIMICS_HOME}` with the directory you passed to the `--install-dir` flag of `ispm`
+during [setup](./Setup.md)):
 
 ```sh
 $ "${SIMICS_HOME}/simics-6.0.169/bin/project-setup" ./test-micro-checkpoints

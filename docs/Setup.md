@@ -12,8 +12,8 @@ resolutions.
       - [(Optional) Install Simics GUI Dependencies](#optional-install-simics-gui-dependencies)
       - [Download Simics](#download-simics)
       - [Install Simics](#install-simics)
-      - [Set up SIMICS\_HOME](#set-up-simics_home)
-    - [Docker](#docker)
+      - [Add ISPM to PATH](#add-ispm-to-path)
+    - [(Optional) Docker](#optional-docker)
   - [Build the Fuzzer](#build-the-fuzzer)
   - [Troubleshooting](#troubleshooting)
     - [Troubleshooting Docker Installations](#troubleshooting-docker-installations)
@@ -75,7 +75,9 @@ If you see the `Hello, world!` message, your Rust installation is complete!
 
 When building this software, you will need a working SIMICS installation. This document
 will walk you through this installation and configuration of this software to utilize
-the SIMICS installation.
+the SIMICS installation. You may also want to bookmark or refer to the [official
+documentation](https://www.intel.com/content/www/us/en/developer/articles/guide/simics-simulator-installation.html)
+for installing the SIMICS simulator.
 
 #### (Optional) Install Simics GUI Dependencies
 
@@ -120,35 +122,73 @@ curl -L -o "${HOME}/Downloads/simics-6-packages-2023-31-linux64.ipsm" \
 
 #### Install Simics
 
-Assuming the two download locations above, we will install Simics to `${HOME}/simics`.
+Assuming the two download locations above, we will install ISPM (Intel SIMICS Package
+Manager) to `${HOME}/simics/ispm` by extracting it there.
 
 ```sh
 mkdir -p "${HOME}/simics/ispm"
 tar -C "${HOME}/simics/ispm" --strip-components=1 \
   -xvf ~/Downloads/intel-simics-package-manager-1.7.5-linux64.tar.gz
+``` 
+
+Then, we will configure ISPM's `install-dir` setting as the `${HOME}/simics/` directory.
+This is the path packages will be installed to by default.
+
+```sh
+"${HOME}/simics/ispm/ispm" settings install-dir "${HOME}/install/simics"
+```
+
+Finally, we will install the SIMICS 6 packages bundle we downloaded in the previous
+step.
+
+```sh
 "${HOME}/simics/ispm/ispm" packages \
-    --install-dir "${HOME}/simics" \
-    --install-bundle ~/Downloads/simics-6-packages-2023-31-linux64.ispm \
+    --install-bundle "${HOME}/Downloads/simics-6-packages-2023-31-linux64.ispm" \
     --non-interactive
 ```
 
-#### Set up SIMICS_HOME
+#### Add ISPM to PATH
 
-In the root of this project, create a file `.env` containing a line like the below that
-points to your `SIMICS_HOME` directory (the `--install-dir` argument you passed to
-`ispm` in the last step).
+TSFFS uses `ispm` for several build and environment discovery steps, for example to
+find the SIMICS `install-dir`. You will need to ensure `ispm` is in your `PATH`. You can
+do so by running the appropriate line below depending on your shell.
 
-```sh
-SIMICS_HOME=/home/YOUR_USERNAME/simics/
-```
-
-You can create the `.env` file with:
+For BASH shell users:
 
 ```sh
-echo "SIMICS_HOME=${HOME}/simics/" > .env
+echo 'export PATH=${PATH}:${HOME}/simics/ispm/' >> "${HOME}/.profile"
 ```
 
-### Docker
+For ZSH shell users:
+
+```sh
+echo 'export PATH=${PATH}:${HOME}/simics/ispm/' >> "${HOME}/.zshenv"
+```
+
+After adding ISPM to your path, you will need to end your shell session and open a new
+one or simply spawn a new shell by running:
+
+```sh
+"${SHELL}"
+```
+
+To test that `ispm` is in your path, run:
+
+```sh
+ispm settings install-dir
+```
+
+You should see output like the below, where the displayed *Path* is the directory you
+passed earlier.
+
+```text
+ispm settings install-dir
+Installation Directory:
+ Path                        Enabled 
+ /home/rhart/install/simics  true    
+```
+
+### (Optional) Docker
 
 Docker installation is completely optional, and is only needed to manually build the
 example EFI applications. Pre-built applications are provided in this repository, so you
