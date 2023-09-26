@@ -35,3 +35,7 @@ strum = { version = "0.25.0", features = ["strum_macros", "derive"] }
 version-tools.workspace = true
 versions = "5.0.0"
 walkdir = "2.3.3"
+
+[build-dependencies]
+anyhow.workspace = true
+command-ext.workspace = true

@@ -23,6 +23,7 @@ resolver = "2"
 members = [
     # Include file for harnessing
     "include",
+    "ispm-wrapper",
     # Provide simics 
     # Provide real simics APIs
     "simics-api-sys",
@@ -35,15 +36,17 @@ members = [
     # Modules
     "tsffs_module",
     # Utilities
-    "util/raw-cstr",
-    "util/version-tools",
-    "util/ffi-macro",
     "util/artifact-dependency",
+    "util/command-ext",
+    "util/ffi-macro",
+    "util/raw-cstr",
     "util/tmp-dir",
+    "util/version-tools",
 ]
 default-members = [
     # Include file for harnessing
     "include",
+    "ispm-wrapper",
     # Provide simics 
     # Provide real simics APIs
     "simics-api-sys",
@@ -56,16 +59,18 @@ default-members = [
     # Modules
     "tsffs_module",
     # Utilities
-    "util/raw-cstr",
-    "util/version-tools",
-    "util/ffi-macro",
     "util/artifact-dependency",
+    "util/command-ext",
+    "util/ffi-macro",
+    "util/raw-cstr",
     "util/tmp-dir",
+    "util/version-tools",
 ]
 exclude = ["docs/videos/adv", "tests/userland-examples", "tests/cc"]
 
 [workspace.dependencies]
 artifact-dependency = { path = "./util/artifact-dependency" }
+command-ext = { path = "./util/command-ext" }
 simics-link = { path = "./simics-link" }
 simics = { path = "./simics" }
 simics-fuzz = { path = "./simics-fuzz" }

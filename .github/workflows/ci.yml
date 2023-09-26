@@ -70,18 +70,14 @@ jobs:
                   mkdir -p "${HOME}/simics/ispm"
                   tar --strip-components=1 -C "${HOME}/simics/ispm" \
                     -xvf .github/simics/intel-simics-package-manager-${{ env.SIMICS_PUBLIC_ISPM_VERSION }}-linux64.tar.gz
+                  "${HOME}/simics/ispm/ispm" settings install-dir "${HOME}/simics/"
                   "${HOME}/simics/ispm/ispm" \
                     packages \
                     --non-interactive \
                     --verbose \
-                    --install-dir "${HOME}/simics" \
                     --install .github/simics/simics-pkg-1000-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }}-linux64.ispm \
                     --install .github/simics/simics-pkg-2096-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_2096 }}-linux64.ispm \
                     --install .github/simics/simics-pkg-8112-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_8112 }}-linux64.ispm
-            - name: Set up .env
-              shell: bash
-              run: |
-                  echo "SIMICS_HOME=${HOME}/simics" > .env
             - name: Build Project
               run: |
                   cargo build --features=${{ matrix.simics_version }}
@@ -144,18 +140,14 @@ jobs:
                   mkdir -p "${HOME}/simics/ispm"
                   tar --strip-components=1 -C "${HOME}/simics/ispm" \
                     -xvf .github/simics/intel-simics-package-manager-${{ env.SIMICS_PUBLIC_ISPM_VERSION }}-linux64.tar.gz
+                  "${HOME}/simics/ispm/ispm" settings install-dir "${HOME}/simics/"
                   "${HOME}/simics/ispm/ispm" \
                     packages \
                     --non-interactive \
                     --verbose \
-                    --install-dir "${HOME}/simics" \
                     --install .github/simics/simics-pkg-1000-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }}-linux64.ispm \
                     --install .github/simics/simics-pkg-2096-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_2096 }}-linux64.ispm \
                     --install .github/simics/simics-pkg-8112-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_8112 }}-linux64.ispm
-            - name: Set up .env
-              shell: bash
-              run: |
-                  echo "SIMICS_HOME=${HOME}/simics" > .env
             - name: CT39 - Clippy Check Project
               run: |
                   cargo clippy --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }} \
@@ -197,18 +189,14 @@ jobs:
                   mkdir -p "${HOME}/simics/ispm"
                   tar --strip-components=1 -C "${HOME}/simics/ispm" \
                     -xvf .github/simics/intel-simics-package-manager-${{ env.SIMICS_PUBLIC_ISPM_VERSION }}-linux64.tar.gz
+                  "${HOME}/simics/ispm/ispm" settings install-dir "${HOME}/simics/"
                   "${HOME}/simics/ispm/ispm" \
                     packages \
                     --non-interactive \
                     --verbose \
-                    --install-dir "${HOME}/simics" \
                     --install .github/simics/simics-pkg-1000-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }}-linux64.ispm \
                     --install .github/simics/simics-pkg-2096-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_2096 }}-linux64.ispm \
                     --install .github/simics/simics-pkg-8112-${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_8112 }}-linux64.ispm
-            - name: Set up .env
-              shell: bash
-              run: |
-                  echo "SIMICS_HOME=${HOME}/simics" > .env
             - name: Install Cargo-Fuzz
               run: |
                   cargo install cargo-fuzz

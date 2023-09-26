@@ -375,23 +375,10 @@ impl FromStr for Package {
     }
 }
 
-const SIMICS_HOME: &str = dotenv!("SIMICS_HOME");
-
 /// Return the SIMICS_HOME directory as a PathBuf. This depends on the SIMICS_HOME environment
 /// variable being defined at compile time, and runtime changes to this variable will have no
 /// effect.
-fn simics_home() -> Result<PathBuf> {
-    let simics_home = PathBuf::from(SIMICS_HOME);
-    match simics_home.exists() {
-        true => Ok(simics_home),
-        false => {
-            bail!(
-                "SIMICS_HOME is defined, but {} does not exist.",
-                SIMICS_HOME
-            )
-        }
-    }
-}
+fn simics_home() -> Result<PathBuf> {}
 
 /// Find the latest version of the Simics Base package with a particular constraint.
 pub fn package_version<P>(

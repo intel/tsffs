@@ -211,10 +211,8 @@ Set up the project by creating a new SIMICS project as shown below (replace `6.0
 with your installed SIMICS version and `6.0.70` with your installed SIMICS QSP version):
 
 ```sh
-${SIMICS_HOME}/simics-6.0.169/bin/project-setup ./target-test
+ispm projects ./target-test --create 1000-6.0.169 2096-6.0.70
 cd ./target-test
-echo "${SIMICS_HOME}/simics-qsp-x86-6.0.70/" > .package-list
-./bin/project-setup
 ```
 
 Now, copy the EFI application you just built into the project.
