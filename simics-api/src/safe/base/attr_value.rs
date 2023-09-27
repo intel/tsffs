@@ -148,11 +148,17 @@ pub fn make_attr_object(obj: *mut ConfObject) -> Result<AttrValue> {
 /// size. The data will be moved into a [`Box`], which will be converted to a raw pointer.
 pub fn make_attr_data_adopt<T>(data: T) -> Result<AttrValue> {
     let data = Box::new(data);
-    let data_ptr = Box::into_raw(data);
+    let data_raw = Box::into_raw(data);
+
+    debug_assert!(
+        std::mem::size_of_val(&data_raw) == std::mem::size_of::<*mut std::ffi::c_void>(),
+        "Pointer is not convertible to *mut c_void"
+    );
+
     let data_size = u32::try_from(size_of::<*mut T>())?;
 
     ensure!(
-        !(data_ptr.is_null() && data_size == 0),
+        !(data_raw.is_null() && data_size == 0),
         "NULL data requires zero size"
     );
 
@@ -160,7 +166,7 @@ pub fn make_attr_data_adopt<T>(data: T) -> Result<AttrValue> {
         private_kind: AttrKind::Data.try_into()?,
         private_size: u32::try_from(data_size)?,
         private_u: attr_value__bindgen_ty_1 {
-            data: data_ptr as *mut u8,
+            data: data_raw as *mut u8,
         },
     })
 }

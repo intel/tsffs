@@ -309,12 +309,22 @@ impl SimicsFuzzer {
 
             let tx = Box::new(make_attr_data_adopt(tx)?);
             let rx = Box::new(make_attr_data_adopt(rx)?);
-            let tx = Box::into_raw(tx);
-            let rx = Box::into_raw(rx);
+            let tx_raw = Box::into_raw(tx);
+            let rx_raw = Box::into_raw(rx);
+
+            debug_assert!(
+                std::mem::size_of_val(&tx_raw) == std::mem::size_of::<*mut std::ffi::c_void>(),
+                "Pointer is not convertible to *mut c_void"
+            );
+
+            debug_assert!(
+                std::mem::size_of_val(&rx_raw) == std::mem::size_of::<*mut std::ffi::c_void>(),
+                "Pointer is not convertible to *mut c_void"
+            );
 
             info!("Setting up channels");
 
-            (unsafe { *tsffs_interface }.add_channels)(tsffs, tx, rx);
+            (unsafe { *tsffs_interface }.add_channels)(tsffs, tx_raw, rx_raw);
 
             info!("Set channel for object");
 
