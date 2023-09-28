@@ -68,6 +68,12 @@ where
     // Note: This allocates and never frees. This is *required* by SIMICS and it is an error to
     // free this pointer
     let iface_raw = Box::into_raw(iface_box);
+
+    debug_assert!(
+        std::mem::size_of_val(&iface_raw) == std::mem::size_of::<*mut std::ffi::c_void>(),
+        "Pointer is not convertible to *mut c_void"
+    );
+
     let status = unsafe { SIM_register_interface(cls.into(), name_raw, iface_raw as *mut _) };
 
     if status != 0 {
