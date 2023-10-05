@@ -22,6 +22,7 @@
 #![forbid(unsafe_code)]
 
 use anyhow::{anyhow, bail, Error, Result};
+use serde::{de::Error as _, Deserialize, Deserializer};
 use std::str::FromStr;
 use versions::{Chunk, Versioning};
 
@@ -211,6 +212,17 @@ impl Default for VersionConstraint {
             version: None,
         }
     }
+}
+
+pub fn from_string<'de, D>(deserializer: D) -> Result<Versioning, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s: String = Deserialize::deserialize(deserializer)?;
+
+    Versioning::new(&s)
+        .ok_or_else(|| anyhow!("Unable to deserialize {} as versioning", s))
+        .map_err(D::Error::custom)
 }
 
 #[cfg(test)]
