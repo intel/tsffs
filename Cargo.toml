@@ -1,4 +1,4 @@
-# Copyright (C) 2023 Intel Corporation
+#  Copyright (C) 2023 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 
 [workspace.package]
@@ -21,73 +21,59 @@ version = "0.1.0"
 [workspace]
 resolver = "2"
 members = [
-    # Include file for harnessing
-    "include",
-    "ispm-wrapper",
-    # Provide simics 
-    # Provide real simics APIs
-    "simics-api-sys",
-    "simics-api",
-    "simics-api-macro",
-    "simics",
-    "simics-tests",
-    "simics-link",
-    "simics-fuzz",
-    # Modules
-    "tsffs_module",
-    # Utilities
-    "util/artifact-dependency",
-    "util/command-ext",
-    "util/ffi-macro",
-    "util/raw-cstr",
-    "util/tmp-dir",
-    "util/version-tools",
+    "src/fuzzer",
+    "src/module",
+
+    "src/simics/ispm-wrapper",
+    "src/simics/simics-api-sys",
+    "src/simics/simics-api-macro",
+    "src/simics/simics",
+
+    "src/util/command-ext",
+    "src/util/ffi-macro",
+    "src/util/raw-cstr",
+    "src/util/tmp-dir",
+    "src/util/version-tools",
 ]
 default-members = [
-    # Include file for harnessing
-    "include",
-    "ispm-wrapper",
-    # Provide simics 
-    # Provide real simics APIs
-    "simics-api-sys",
-    "simics-api",
-    "simics-api-macro",
-    "simics",
-    "simics-tests",
-    "simics-link",
-    "simics-fuzz",
-    # Modules
-    "tsffs_module",
-    # Utilities
-    "util/artifact-dependency",
-    "util/command-ext",
-    "util/ffi-macro",
-    "util/raw-cstr",
-    "util/tmp-dir",
-    "util/version-tools",
+    "src/fuzzer",
+    "src/tsffs",
+
+    "src/simics/ispm-wrapper",
+    "src/simics/simics-api-sys",
+    "src/simics/simics-api-macro",
+    "src/simics/simics",
+
+    "src/util/command-ext",
+    "src/util/ffi-macro",
+    "src/util/raw-cstr",
+    "src/util/tmp-dir",
+    "src/util/version-tools",
 ]
-exclude = ["docs/videos/adv", "tests/userland-examples", "tests/cc"]
+exclude = []
 
 [workspace.dependencies]
-artifact-dependency = { path = "./util/artifact-dependency" }
-command-ext = { path = "./util/command-ext" }
-simics-link = { path = "./simics-link" }
-simics = { path = "./simics" }
-simics-fuzz = { path = "./simics-fuzz" }
-tsffs_module = { path = "./tsffs_module" }
-simics-api-sys = { path = "./simics-api-sys" }
-simics-api = { path = "./simics-api" }
-simics-api-macro = { path = "./simics-api-macro" }
-tmp-dir = { path = "./util/tmp-dir" }
-raw-cstr = { path = "./util/raw-cstr" }
-version-tools = { path = "./util/version-tools" }
-ffi-macro = { path = "./util/ffi-macro" }
-libafl = { git = "https://github.com/AFLplusplus/LibAFL", rev = "defe9084aed5a80ac32fe9a1f3ff00baf97738c6" }
-libafl_bolts = { git = "https://github.com/AFLplusplus/LibAFL", rev = "defe9084aed5a80ac32fe9a1f3ff00baf97738c6" }
-anyhow = "1.0.74"
-# Match these versions to cargo_metadata -- it breaks on current versions
-serde = "1.0.183"
-serde_json = "1.0.104"
+tsffs = { path = "src/module" }
+fuzzer = { path = "src/fuzzer" }
+
+ispm-wrapper = { path = "src/simics/ispm-wrapper" }
+simics-api-sys = { path = "src/simics/simics-api-sys" }
+simics-api-macro = { path = "src/simics/simics-api-macro" }
+simics = { path = "src/simics/simics" }
+
+command-ext = { path = "src/util/command-ext" }
+ffi-macro = { path = "src/util/ffi-macro" }
+raw-cstr = { path = "src/util/raw-cstr" }
+tmp-dir = { path = "src/util/tmp-dir" }
+version-tools = { path = "src/util/version-tools" }
+
+anyhow = { version = "1.0.75" }
+libafl = { version = "0.11.1" }
+libafl_bolts = { version = "0.11.1" }
+serde = { version = "1.0.188", features = ["derive"] }
+serde_json = { version = "1.0.107" }
+versions = { version = "5.0.1", features = ["serde"] }
+
 
 [profile.dev]
 rpath = true

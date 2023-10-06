@@ -1,0 +1,45 @@
+# Copyright (C) 2023 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "simics"
+categories.workspace = true
+description = "Tools for embedding SIMICS in Rust applications"
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+publish.workspace = true
+readme.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+raw-cstr = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+simics-api-macro = { workspace = true, optional = true }
+simics-api-sys = { workspace = true }
+tmp-dir.workspace = true
+version-tools.workspace = true
+
+cargo_metadata = "0.18.0"
+clap = { version = "4.3.0", features = ["derive"] }
+derive_builder = "0.12.0"
+dotenvy_macro = "0.15.7"
+itertools = "0.11.0"
+num = "0.4.0"
+num-derive = "0.4.0"
+num-traits = "0.2.15"
+paste = "1.0.12"
+rand = "0.8.5"
+regex = "1.8.3"
+strum = { version = "0.25.0", features = ["strum_macros", "derive"] }
+tracing = "0.1.37"
+versions = "5.0.0"
+walkdir = "2.3.3"
+
+[features]
+default = ["derive"]
+derive = ["simics-api-macro"]
