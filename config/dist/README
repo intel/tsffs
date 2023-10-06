@@ -1,0 +1,442 @@
+Note
+______________________________________________________________________
+
+Starting with the 4.8 release the way source files are distributed
+changed. The background for this is to make it easier for both us and
+customers. From Simics 6, source and binary files are treated the same without
+any special key for extracting source files. At the same time it should be
+easy for Simics Engineers to see who can get access to a particular
+group of files, hence each group will have to specify an access label
+('Require-tokens').
+
+Each group that contains files should provide the 'Require-tokens' to
+state the access restriction to that particular group. This is not
+needed for groups only including other groups, neither for macro
+groups (as they are expanded to files in the group where they are
+used). Supported values for the 'Require-tokens' should be added and
+documented to a tokens file, such as config/dist/tokens.
+
+Groups can be defined in .list files. And it is possible to define and use
+groups in MODULEINFO files as well, for example one group for source files
+and one for binary files. MODULEINFO files are located in the same folder as
+modules, extensions, etc., such as src/devices/{name}/MODULEINFO. Such a
+file should just include files required by that module.
+
+In order to convert a group to the new format you may have to create a new
+group for the source code if the source code should not be as public as the
+binaries.
+
+During a transition period it will be possible to break some rules.
+Groups only including binary files (that is files not located under
+%simics%/src or specially tagged as binary) can be white listed in the
+'whitelist.txt' file in this directory. It will then pass the policy checker
+even if it does not provide a 'Require-tokens' property. This is not possible
+for packages containing source code. The reason for that is to prevent source
+files to be accidentally provided to a customer with access to the package and
+a model builder license, but not the former source package. Such source code
+must instead be commented out, manually checked before being distributed, and
+added to groups which require appropriate tokens.
+
+Format
+----------------------------------------------------------------------
+
+The input to the dist scripts consists of a series of records, in one
+or more text files. The scripts are given one or more directories as
+command-line arguments, and will parse all *.list files in them.
+
+Order among the records does not matter. Horisontal space does not
+matter, except (1) where needed to separate words and (2) in the
+beginning of data lines. Records are separated by blank lines.
+Everything following a "#" is ignored.
+
+Each record starts with a Dist or Group header, followed by
+zero or more additional headers, followed by zero or more data lines.
+Data lines _must_ begin with whitespace.
+
+A header line ending with a comma is continued on the next line:
+
+  Foo-header: foo-value-1, foo-value-2, # ends in comma
+              foo-value-3               # this belongs to Foo-header too
+
+
+Structure
+----------------------------------------------------------------------
+
+A group record defines a set of files or groups. It is used to group
+files that should be distributed together. For example, one could
+define a group for all the files that make up a device, and a group
+for all the files that make up a target machine. The group for the
+target machine should list the groups for the devices it uses, rather
+than listing all their files directly.
+
+A dist record consists of a set of groups (and some metadata). For
+each dist, the build system will make one package per host, containing
+the files specified by the groups.
+
+
+Access-label record
+----------------------------------------------------------------------
+
+Headers:
+
+  Access-label: identifier
+
+  Comment: 
+
+    Free text comment describing the label and its uses
+
+  Includes: (optional)
+
+    List of access-label identifiers that are included when setting this label
+
+  Provide-tokens: (optional)
+
+    Comma-separated list of security tokens that this label provides.
+    See Require-tokens
+
+Group record
+----------------------------------------------------------------------
+
+Headers:
+
+  Group: identifier
+
+  Hosts: (optional)
+
+    Space-separated platform list. See the "Platform specifications" section.
+
+  Make: (optional)
+
+    Comma-separated list of make targets sufficient to build the files
+    specified by this group.
+
+  Doc-make: (optional)
+
+    Comma-separated list of documentation make targets sufficient to
+    build the documentation files specified by this group.
+
+  Doc-formats: (optional)
+
+    Comma-separated list of documentation formats to build the documentation
+    specified in Doc-make. Defaults to "text,neu".
+
+  Require-tokens: (optional)
+
+    Comma-separated list of security tokens a dist must provide
+    (via its access labels) in order to be allowed to include this group.
+    If the provided tokens don't match the required tokens exactly, the system
+    will cry bloody murder and refuse to continue.
+
+    Required tokens should be the most restrictive that applies to that
+    group; including groups are tainted by their child groups.
+
+    Tokens are required if the group includes any kind of files, or if the
+    group includes any macros. However, a macro cannot set the 'Require-tokens'
+    since the actual content will likely depend on how the macro is
+    used. Groups that only include other groups do not require any tokens.
+
+  Directory: (optional)
+
+    A directory that contains files to distribute.
+    You have to specify both the directory and the file in the directory that
+    lists the file to distribute on the form `<directory>/[<filelist>]`. The
+    file list file should be a json file containing a list with directory
+    relative paths to the files in the directory to package. This is used by
+    documentation in html format, where the set of files generated during build
+    is not known in advance.
+
+Data:
+
+  @group-identifier
+
+    A group identifier prefixed by an @ sign means that the current
+    group pulls in all files specified by the named group.
+
+  filename
+
+    A filename simply names a file to be included by the group. The
+    filename may contain variable names inside $(), such as "$(SO)";
+    these will be expanded according to the platform they are packaged
+    for.
+
+    The filename may contain a bracketed prefix, such as
+    "[linux64/]lib/foo".  This means that the file is interpreted as
+    "linux64/lib/foo" in the source tree, but appears as "lib/foo" in
+    the package. The bracketed prefix may recursively contain a
+    bracketed prefix.
+
+    Absolute paths and .. path components may only appear within a
+    bracketed prefix.
+
+  Each group or filename may be prefixed by a comma-separated tag
+  list, enclosed in parentheses. See the "Tags" section.
+
+
+Link record
+----------------------------------------------------------------------
+
+Headers:
+
+  Link: identifier
+  Link-name: name shown in the start menu (or equivalent)
+  Link-args: arguments passed when executing the link
+  Link-wdir: working directory used to execute the link
+  Link-target: file pointed at by the link
+
+  See also group, as Link behaves as a group otherwise.
+
+Data:
+  See also group, as Link behaves as a group otherwise.
+
+Note that Link should normally not be used directly. You can use the template
+shortcut-and-file(file, name, args, wdir) that will include the file that is
+pointed at and the link definition.
+
+If you use Link directly, be aware that the file that is pointed at is expected
+to be included in the data part of the link, either directly or in a sub-group.
+
+Link is currently implemented only for Windows shortcuts, and as such exposes
+some of the internal behind our Windows packaging. For example, the name of the
+file will be used as-is, so it may include Wix specific templates such as
+[SimicsMenuFolder] or others.
+
+Dist record
+----------------------------------------------------------------------
+
+Headers:
+
+  Dist: identifier
+  Name: pretty name
+  Package-number: integer (optional)
+  Disabled: Yes|No (optional, defaults to No)
+
+  Description:
+
+    A description of the package.
+
+  Bin-encryption-key: (optional)
+
+    The 64-digit hexadecimal key used to encrypt and decrypt packages
+    based on this dist.
+
+  Owners:
+
+    Comma-separated list of the person(s) responsible for this dist.
+
+  Access-labels:
+
+    Comma-separated list of access-label identifiers that apply for this
+    distribution.
+
+  Hosts: (optional)
+
+    Same as for group records.
+
+  Make: (optional)
+
+    Same as for group records.
+
+  Doc-title: (optional)
+
+    The human-readable name of this dist in the documentation.
+    May include spaces.
+
+  Refman-localfiles: (optional)
+
+    List of extra source files to scan for documentation to include in
+    this dist's reference manual.
+
+  Comment: (optional)
+
+    Free text comment describing the package.
+
+  Include-refmanual: Yes|No (optional, defaults to No)
+
+    Says if the package includes the Reference manual.
+
+  Include-release-notes: Yes|No (optional, defaults to No)
+
+    Says if the package includes the Release Notes.
+
+  Confidentiality: Public|Intel-Confidential|Top-Secret
+
+    Defines the confidentiality level for this dist. This determines
+    which access labels can be used with this dist, as well as which
+    groups are allowed to be included, based on their required tokens.
+    See the tests in t361 for more details.
+
+  IP-plans: (optional for internal packages)
+
+    Comma-separated list of Protex project identifiers that map to the
+    IP plans for this distribution. An IP plan is required if the package
+    has an Access-Label that marks it as being uploaded externally.
+    The Protex project identifiers must be included in the list
+    in config/protex/projects.
+
+Data:
+
+  Same as for group records. However, a dist cannot include files or
+  macros since the dist cannot both provide and require tokens at the
+  same time. The simplest way is to make the dist include a single
+  group, e.g. @Foo-Bar-package-content.
+
+
+Common-release-notes
+----------------------------------------------------------------------
+
+The Common-release-notes record is used to add release notes source
+files to all Dist groups. You can specify this record multiple
+times. The set of common release notes will be the union of the
+release notes from all Common-release-notes records.
+
+Headers:
+
+  Common-release-notes:
+    Set of common release note files to include in every Dist. Same
+    format as Release-notes headers in Groups and Dists.
+
+Data:
+  No data.
+
+
+Macro groups
+----------------------------------------------------------------------
+
+A group name may end with a comma-separated list of parameter names
+enclosed in parentheses, like this: "foo(x,y)". In the rest of the
+group definition, parameter names enclosed in curly braces will be
+replaced by the corresponding parameter values. If the parameter name
+is followed by a colon and an underscore, dashes in the value are
+replaced by underscores. For example, a macro group for processors
+could be defined like this:
+
+  Group: cpu(name)
+  Make: {name}
+    $(HOST)/lib/{name}$(SO)
+    @module_load({name})
+
+In other groups, you would include instances of the macro group like
+this:
+
+    @cpu(ppc750)
+
+Note: When calling or defining a macro with more than one parameter,
+make sure to not have any separating whitespace:
+
+    @foo(47,11)
+
+
+Platform specifications
+----------------------------------------------------------------------
+
+Platform specifications can occur in Group and Dist declarations after
+the Hosts: keyword, and in brackets before each included file or group:
+
+  Group: somegroup
+  Hosts: <platform-spec>
+    (<platform-spec>) file.txt
+    (<platform-spec>) @some_other_group
+
+Allowed platform values:
+   linux64, win64 (concrete values)
+   windows (win64), linux (linux64)
+
+Multiple platforms are space-separated, meaning the union of the platforms.
+Example:
+
+  Group: group1
+                      file1
+    (win64)           file2
+    (linux64 win64)   file3
+    (linux)           file4
+
+which results in the inclusion of the files on the following platforms:
+
+  file1 on all platforms (linux64 win64)
+  file2 on win64
+  file3 on linux64 and win64
+  file4 on linux64
+
+If each platform is prefixed with a minus sign, it means its complement:
+
+  Group: group2
+    (-win64)          file5
+    (-linux)          file6
+
+which results in:
+
+  file5 on linux64
+  file6 on win64
+
+Platform specifications on containing Group and Dist declarations
+will each constrain the contained files:
+
+  Dist: dist1
+  Hosts: -linux64
+  ...
+    (-win64) @group3
+
+  Group: group3
+  Hosts: linux64 win64
+            file7
+    (linux) file8
+
+which results in these files being included in dist1:
+
+  file7 on win64 only
+  file8 not at all
+
+
+Writing guidelines
+----------------------------------------------------------------------
+
+Try to put each file in at most one group. (This may be enforced in a
+later version of the parser.)
+
+The general idea of groups is that related files, such as devices and target
+machines, should have their own groups, and depend on all the other necessary
+groups. Each group that includes files or macros should be written in a way
+that it only contains files with the same (legal) classification. In this ideal
+world, extending a package with the group for a target machine will
+automatically pull in all devices and such that are needed to run the target
+machine, but it will also make it easy to track what can and cannot be shipped
+to a specific customer.
+
+
+Cool tools
+----------------------------------------------------------------------
+
+To get a nice list of our packages, with package numbers, encryption
+keys, and version, simply run
+
+  $ python scripts/dist/list_distributions.py config/dist
+
+If you want to do more than just watch, export.py is for you. It will
+copy the files specified in one or more dists or groups from your
+build tree to a new directory. This is very useful when changing a
+package, since you can simply export the updated version and test it
+for completeness etc. right away, without having to wait for the
+nightly build.
+
+This example will export the contents of the Simics-Base-linux64 package
+to the directory foo:
+
+  $ python scripts/dist/export.py --host=linux64 --destination=foo \
+      --export=Simics-Base config/dist
+
+You will get a warning if not all files were available in your build
+tree; the script will also helpfully print the set of maketargets
+Moneypenny would use to build the stuff in this package.
+
+If you are feeling ambitious in your package testing, you might even
+start from a clean tree, build only the stuff specified in this list,
+and see if the export script still complained about missing files.
+
+So much for testing a single package. If you want to see what a change
+in config/dist/*.list does to all packages, just say
+
+  $ python scripts/dist/package_contents.py config/dist
+
+which will give you a complete content list of all packages. Diffing
+this list from before and after your change will show you what would
+happen.
