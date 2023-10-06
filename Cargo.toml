@@ -22,8 +22,7 @@ version = "0.1.0"
 resolver = "2"
 members = [
     "src/fuzzer",
-    "src/module",
-
+    "src/tsffs",
     "src/simics/ispm-wrapper",
     "src/simics/simics-api-sys",
     "src/simics/simics-api-macro",
@@ -38,7 +37,6 @@ members = [
 default-members = [
     "src/fuzzer",
     "src/tsffs",
-
     "src/simics/ispm-wrapper",
     "src/simics/simics-api-sys",
     "src/simics/simics-api-macro",
@@ -53,9 +51,7 @@ default-members = [
 exclude = []
 
 [workspace.dependencies]
-tsffs = { path = "src/module" }
-fuzzer = { path = "src/fuzzer" }
-
+tsffs = { path = "src/tsffs" }
 ispm-wrapper = { path = "src/simics/ispm-wrapper" }
 simics-api-sys = { path = "src/simics/simics-api-sys" }
 simics-api-macro = { path = "src/simics/simics-api-macro" }

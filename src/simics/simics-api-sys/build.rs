@@ -42,7 +42,8 @@ use walkdir::WalkDir;
 // INCLUDE_PATHS: The path to the SIMICS base include directory
 
 /// Name for the environment variable set by the SIMICS build system to the path to the
-/// simics base package
+/// simics base package. We actually use SIMICS_MODEL_BUILDER here, because we are indeed
+/// building a model.
 const SIMICS_BASE_ENV: &str = "SIMICS_BASE";
 /// Name for the environment variable set by the SIMICS build system to the flag to
 /// include e.g.  -I SIMICS_BASE/linux64/include/python3.9/
@@ -505,7 +506,7 @@ fn main() -> Result<()> {
                     .ok_or_else(|| anyhow!("Could not convert path {} to string", p.display()))
             })
             .collect::<Result<Vec<_>>>()?
-            .join(";");
+            .join(":");
 
         // NOTE: This enables running binaries linked with this one when running with `cargo run`
         println!("cargo:rustc-env=LD_LIBRARY_PATH={}", library_search_paths);

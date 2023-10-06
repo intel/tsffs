@@ -2,19 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 pub mod command;
-pub mod project;
 
 use clap::Parser;
 use command::Command;
-use project::{DirectoryArg, FileArg, PackageArg, PathSymlinkArg};
 use std::path::PathBuf;
 use tracing_subscriber::filter::LevelFilter;
-use tsffs_module::config::TraceMode;
+use tsffs::config::TraceMode;
 
 #[derive(Debug, Parser)]
 #[command(author, version, about)]
 pub struct Args {
-    #[arg(short = 'p', long)]
+    #[arg(short = 'p', long, default_value = ".")]
     /// Optional SIMICS project path to use for fuzzing
     ///
     /// If -p/--project is specified and the path already exists, the existing project
@@ -28,23 +26,7 @@ pub struct Args {
     /// project, a new temporary directory will be created and a new project will be
     /// initialized in it. In this case, --no-keep-temp-projects may be used to
     /// automatically clean up the temporary project.
-    pub project: Option<PathBuf>,
-    #[arg(short = 'N', long, default_value_t = false)]
-    /// Delete temporary SIMICS projects on exit
-    ///
-    /// If specified, temporary projects will be deleted from disk after the fuzzer
-    /// exists. This option only applies if -p/--project is not specified and the
-    /// current working directory is not a SIMICS project causing a temporary SIMICS
-    /// project to be created. By default, temporary projects are kept for debugging and
-    /// triage purposes, but keeping them may not be desired in testing or CI scenarios.
-    pub no_keep_temp_projects: bool,
-    #[arg(short = 'i', long)]
-    /// Optional input corpus path
-    ///
-    /// If not provided, a random input corpus of printable characters will be
-    /// generated. This is very inefficient and not recommended for real fuzzing, but is
-    /// useful for testing and demonstration purposes.
-    pub input: Option<PathBuf>,
+    pub project: PathBuf,
     #[arg(short = 'o', long)]
     /// Optional output solution/objective path
     ///
@@ -54,12 +36,12 @@ pub struct Args {
     /// existing project is used.
     pub solutions: Option<PathBuf>,
     #[arg(short = 'c', long)]
-    /// Optional in-progress corpus path
+    /// Optional corpus path
     ///
     /// The working corpus will be stored in this directory as new interesting inputs
     /// are found by the fuzzer. If not provided, a directory 'corpus' will be created
-    /// in the current working directory. The given path may be inside the project, if
-    /// an existing project is used.
+    /// in the current working directory. Input test cases and crafted corpus entries
+    /// should be placed in the directory passed using this option.
     pub corpus: Option<PathBuf>,
     #[arg(short = 'l', long, default_value_t = LevelFilter::ERROR)]
     /// Output log level
@@ -137,44 +119,9 @@ pub struct Args {
     /// will be used automatically when they are possible and the executable path is
     /// given.
     pub executable: Option<PathBuf>,
-    #[arg(short = 'P', long)]
-    /// Add a package to the working project
-    ///
-    /// This option can be specified multiple times. This has no effect unless a new
-    /// project is being Packages are specified in the form NUMBER:VERSION_CONSTRAINT
-    /// (e.g. 1000:6.0.167, 1000:>=6.0.163)
-    pub package: Vec<PackageArg>,
-    #[arg(short = 'd', long)]
-    /// Copy a directory into the project
-    ///
-    /// Recursively (as in cp -a) copies a directory into the SIMICS project in use.
-    /// This argument is specified in the form SRC_PATH:DST_PATH. For example,
-    /// --directory '/your/package/subdirectory:%simics%/subdirectory/', where
-    /// '/your/package/subdirectory' will be copied to the 'subdirectory' subdirectory
-    /// of the SIMICS project in use. If intermediate subdirectories do not yet exist,
-    /// they will be created. This argument can be specified multiple times.
-    pub directory: Vec<DirectoryArg>,
-    #[arg(short = 'f', long)]
-    /// Copy a file into the project
-    ///
-    /// Recursively (as in cp -a) copies a file into the SIMICS project in use. This
-    /// argument is specified in the form SRC_PATH:DST_PATH. For example, --file
-    /// '/your/package/file:%simics%/subdirectory/thefile', where '/your/package/file'
-    /// will be copied to the 'subdirectory' subdirectory of the SIMICS project in use.
-    /// If intermediate subdirectories do not yet exist, they will be created. This
-    /// argument can be specified multiple times.
-    pub file: Vec<FileArg>,
-    #[arg(short = 's', long)]
-    /// Symbolically link a file or directory into the project
-    ///
-    /// Symbolically a file or directory into the SIMICS project in use. This argument
-    /// is specified in the form SRC_PATH:DST_PATH. For example, --path-symlink
-    /// '/your/package/file:%simics%/subdirectory/thefile', where '/your/package/file'
-    /// will be linked into to the 'subdirectory' subdirectory of the SIMICS project in
-    /// use.  If intermediate subdirectories do not yet exist, they will be created.
-    pub path_symlink: Vec<PathSymlinkArg>,
     #[arg(short = 'x', long)]
-    /// Python script, command, or startup configuration to execute on startup
+    /// Python script, command, or startup configuration to execute on startup. If none provided,
+    /// the command line will be initialized.
     ///
     /// Command or file of the form `'TYPE:VALUE'` where `TYPE` is one of `PYTHON`,
     /// `COMMAND`, or `CONFIG` and `VALUE` is a path to a file when `TYPE` is `PYTHON`

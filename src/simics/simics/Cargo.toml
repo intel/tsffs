@@ -41,5 +41,7 @@ versions = "5.0.0"
 walkdir = "2.3.3"
 
 [features]
-default = ["derive"]
+default = ["derive", "link", "auto"]
 derive = ["simics-api-macro"]
+link = ["simics-api-sys/link"]
+auto = ["simics-api-sys/auto"]

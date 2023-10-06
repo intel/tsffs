@@ -60,6 +60,16 @@ pub struct VersionConstraint {
     version: Option<Versioning>,
 }
 
+impl VersionConstraint {
+    pub fn op(&self) -> &Op {
+        &self.op
+    }
+
+    pub fn version(&self) -> Option<&Versioning> {
+        self.version.as_ref()
+    }
+}
+
 impl FromStr for VersionConstraint {
     type Err = Error;
 

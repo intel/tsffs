@@ -21,16 +21,10 @@ bindgen = "0.68.1"
 walkdir = "2.4.0"
 
 [features]
-default = ["link", "auto"]
+default = []
 link = []
 auto = []
 
 [dev-dependencies]
 anyhow.workspace = true
 raw-cstr.workspace = true
-
-[profile.dev]
-rpath = true
-
-[profile.release]
-rpath = true

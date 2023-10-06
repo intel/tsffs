@@ -12,3 +12,6 @@ pub mod simics;
 
 #[forbid(unsafe_code)]
 pub mod util;
+
+#[forbid(unsafe_code)]
+pub mod project;

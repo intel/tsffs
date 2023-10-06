@@ -3,11 +3,9 @@
 
 use crate::{
     args::{command::Command, Args},
-    modules::tsffs::{ModuleInterface, TSFFS_MODULE_CRATE_NAME, TSFFS_WORKSPACE_PATH},
     tokenize::tokenize_executable,
 };
 use anyhow::{anyhow, bail, Error, Result};
-use artifact_dependency::{ArtifactDependencyBuilder, CrateType};
 use derive_builder::Builder;
 use libafl::{
     feedback_and_fast, feedback_or, feedback_or_fast,
@@ -45,11 +43,9 @@ use libafl_bolts::{
 use simics::{
     api::{
         alloc_attr_list, create_object, get_class, get_interface, load_module,
-        make_attr_data_adopt, sys::SIMICS_VERSION, DeprecationLevel, GuiMode, InitArg, InitArgs,
-        Interface,
+        make_attr_data_adopt, DeprecationLevel, GuiMode, InitArg, InitArgs, Interface,
     },
-    module::ModuleBuilder,
-    project::{Project, ProjectBuilder},
+    project::Project,
     simics::Simics,
 };
 use std::{
@@ -66,12 +62,13 @@ use std::{
 use tracing::{debug, error, info, metadata::LevelFilter};
 use tracing::{trace, Level};
 use tracing_subscriber::{filter::filter_fn, fmt, prelude::*, registry, Layer};
-use tsffs_module::{
+use tsffs::{
     client::Client,
     config::{InputConfigBuilder, RunConfig, TraceMode},
     messages::{client::ClientMessage, module::ModuleMessage},
     stops::StopReason,
     traits::ThreadClient,
+    ModuleInterface, CLASS_NAME,
 };
 
 const INITIAL_INPUTS: usize = 16;
@@ -171,64 +168,11 @@ impl SimicsFuzzer {
 
         trace!("Setting up project with args: {:?}", args);
 
-        let mut builder: ProjectBuilder = if let Some(project_path) = args.project {
-            if let Ok(project) = Project::try_from(project_path.clone()) {
-                info!("Setting up from existing project");
-                project.into()
-            } else {
-                info!("Setting up new project");
-                // TODO: Merge with else branch, they are practically the same code.
-                let mut builder = ProjectBuilder::default();
-
-                builder = builder.path(project_path);
-                builder
-            }
-        } else if let Ok(project) = Project::try_from(PathBuf::from(".")) {
-            info!("Setting up new project in current directory");
-            project.into()
-        } else {
-            info!("Setting up new project in default location");
-            ProjectBuilder::default()
-        };
-
-        for p in args.package {
-            builder = builder.package(p.package);
-        }
-
-        for d in args.directory {
-            builder = builder.directory((d.src, d.dst));
-        }
-
-        for f in args.file {
-            builder = builder.file((f.src, f.dst));
-        }
-
-        for s in args.path_symlink {
-            builder = builder.path_symlink((s.src, s.dst));
-        }
-
-        let project = builder
-            .module(
-                ModuleBuilder::default()
-                    .artifact(
-                        ArtifactDependencyBuilder::default()
-                            .crate_name(TSFFS_MODULE_CRATE_NAME)
-                            .workspace_root(PathBuf::from(TSFFS_WORKSPACE_PATH))
-                            .build_missing(true)
-                            .artifact_type(CrateType::CDynamicLibrary)
-                            .feature(SIMICS_VERSION)
-                            .target_name("simics-fuzz")
-                            .build()?
-                            .build()?,
-                    )
-                    .build()?,
-            )
-            .build()?
-            .setup()?;
+        let project = Project::try_from(args.project)?;
 
         SimicsFuzzerBuilder::default()
             .project(project)
-            .input(args.input)
+            .input(args.corpus.clone())
             .corpus(args.corpus)
             .solutions(args.solutions)
             .tui(args.tui)
@@ -292,20 +236,14 @@ impl SimicsFuzzer {
 
             // Doesn't matter if the script has a `@SIM_load_module` in it, as long as it isn't
             // asserting that it returns not-None
-            load_module(TSFFS_MODULE_CRATE_NAME)?;
+            load_module(CLASS_NAME)?;
 
             info!("Loaded SIMICS module");
 
-            let tsffs = create_object(
-                get_class(TSFFS_MODULE_CRATE_NAME)?,
-                TSFFS_MODULE_CRATE_NAME,
-                alloc_attr_list(0),
-            )?;
+            let tsffs = create_object(get_class(CLASS_NAME)?, CLASS_NAME, alloc_attr_list(0))?;
 
-            let tsffs_interface = get_interface::<ModuleInterface>(
-                tsffs,
-                Interface::Other(TSFFS_MODULE_CRATE_NAME.to_string()),
-            )?;
+            let tsffs_interface =
+                get_interface::<ModuleInterface>(tsffs, Interface::Other(CLASS_NAME.to_string()))?;
 
             let tx = Box::new(make_attr_data_adopt(tx)?);
             let rx = Box::new(make_attr_data_adopt(rx)?);
@@ -339,7 +277,7 @@ impl SimicsFuzzer {
             // If the command we just ran includes `@SIM_main_loop`, the below code will be unreachable, but that is OK. The callbacks will eventually call `@SIM_quit` for us
             // and this will never be called. If the command doesn't include, `@SIM_main_loop`, then we need to enter it now.
 
-            Simics::run();
+            Simics::interactive();
         })
     }
 
