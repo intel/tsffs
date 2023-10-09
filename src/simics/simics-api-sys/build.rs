@@ -1,13 +1,43 @@
+//! Build script for the low-level sys bindings crate to the SIMCS API implemented in:
+//!
+//! - libsimics-common.so
+//! - libvtutils.so
+//!
+//! This build script requires the following environment variables to be set:
+//!
+//! - `SIMICS_BASE`
+//! - `PYTHON3_INCLUDE`
+//! - `INCLUDE_PATHS`
+//! - `PYTHON3_LDFLAGS`
+//! - `LDFLAGS`
+//! - `LIBS`
+//!
+//! For test and development builds (e.g. under rust-analyzer), these values can be manually set
+//! in the build environment, e.g. through the workspace's `.vscode/settings.json` file.
+//!
+//! Given a SIMICS installation directory /home/user/simics/ and a latest SIMICS base
+//! version of 6.0.174, the variables would be set like so:
+//!
+//! - `SIMICS_BASE=/home/user/simics/simics-6.0.174`
+//! - `PYTHON3_INCLUDE=-I/home/user/simics/simics-6.0.174/linux64/include/python3.9`
+//! - `INCLUDE_PATHS=/home/user/simics/simics-6.0.174/src/include`
+//! - `PYTHON3_LDFLAGS=/home/user/simics/simics-6.0.174/linux64/sys/lib/libpython3.so`
+//!     - NOTE: This is *not* actually the shared object that needs to be linked against, we must
+//!       link against the versioned shared object in the same directory e.g. libpython3.9.so.1.0.
+//! - `LDFLAGS=-L/home/user/simics/simics-6.0.174/linux64/bin -z noexecstack -z relro -z now`
+//! - `LIBS=-lsimics-common -lvtutils`
+
 use anyhow::{anyhow, ensure, Result};
 use bindgen::{
     callbacks::{MacroParsingBehavior, ParseCallbacks},
-    Builder, FieldVisibilityKind,
+    AliasVariation, Builder, EnumVariation, FieldVisibilityKind, MacroTypeVariation,
+    NonCopyUnionStyle,
 };
 use std::{
     collections::HashSet,
     env::var,
     ffi::OsStr,
-    fs::write,
+    fs::{read_dir, write},
     iter::once,
     path::{Path, PathBuf},
 };
@@ -70,6 +100,11 @@ const AUTO_BINDINGS_FILENAME: &str = "bindings-auto.rs";
 /// The name of the file generated including the automatic simics version declaration when
 /// generating bindings in auto (package-time) mode.
 const AUTO_BINDINGS_VERSION_FILENAME: &str = "version-auto.rs";
+
+/// The name of the binary/library/object subdirectory on linux systems
+const LINUX64_DIRNAME: &str = "linux64";
+/// The name of the binary/library/object subdirectory on windows systems
+const WIN64_DIRNAME: &str = "win64";
 
 // https://github.com/rust-lang/rust-bindgen/issues/687#issuecomment-1312298570
 const IGNORE_MACROS: [&str; 20] = [
@@ -144,7 +179,7 @@ where
                             Ok(p) => p.strip_prefix(simics_include_path).map_or_else(
                                 |e| {
                                     eprintln!(
-                                        "Failed to strip prefix {} from {}: {}",
+                                        "cargo:warning=Failed to strip prefix {} from {}: {}",
                                         simics_include_path.as_ref().display(),
                                         p.display(),
                                         e
@@ -155,7 +190,7 @@ where
                             ),
                             Err(e) => {
                                 eprintln!(
-                                    "Failed to canonicalize path {}: {}",
+                                    "cargo:warning=Failed to canonicalize path {}: {}",
                                     p.path().display(),
                                     e
                                 );
@@ -163,12 +198,18 @@ where
                             }
                         }
                     } else {
-                        eprintln!("Ignoring path {}, no '.h' extension", p.path().display());
+                        eprintln!(
+                            "cargo:warning=Ignoring path {}, no '.h' extension",
+                            p.path().display()
+                        );
                         None
                     }
                 }
                 None => {
-                    eprintln!("Ignoring path {}, no extension", p.path().display());
+                    eprintln!(
+                        "cargo:warning=Ignoring path {}, no extension",
+                        p.path().display()
+                    );
                     None
                 }
             }
@@ -201,6 +242,30 @@ where
     Ok(wrapper)
 }
 
+/// Get the only subdirectory of a directory, if only one exists. If zero or more than one subdirectories
+/// exist, returns an error
+fn subdir<P>(dir: P) -> Result<PathBuf>
+where
+    P: AsRef<Path>,
+{
+    let subdirs = read_dir(dir)?
+        .into_iter()
+        .filter_map(|p| p.ok())
+        .map(|p| p.path())
+        .filter(|p| p.is_dir())
+        .collect::<Vec<_>>();
+    ensure!(
+        subdirs.len() == 1,
+        "Expected exactly 1 sub-directory, found {}",
+        subdirs.len()
+    );
+
+    subdirs
+        .first()
+        .cloned()
+        .ok_or_else(|| anyhow!("No sub-directories found"))
+}
+
 fn main() -> Result<()> {
     println!("cargo:rerun-if-changed=build.rs");
 
@@ -216,8 +281,7 @@ fn main() -> Result<()> {
             base_dir_path.display()
         );
 
-        let simics_base_version = PathBuf::from(var(SIMICS_BASE_ENV)
-                .map_err(|e| anyhow!("No environment variable {SIMICS_BASE_ENV} found: {e}"))?)
+        let simics_base_version = base_dir_path
                 .file_name()
                 .ok_or_else(|| anyhow!("No file name found in SIMICS base path"))?
                 .to_str()
@@ -242,16 +306,45 @@ fn main() -> Result<()> {
 
         write(version_file_path, simics_base_version_const_declaration)?;
 
-        let include_paths_env = var(INCLUDE_PATHS_ENV)
-            .map_err(|e| anyhow!("No environment variable {INCLUDE_PATHS_ENV} found: {e}"))?;
+        let include_paths_env = var(INCLUDE_PATHS_ENV).or_else(|e| {
+            println!("cargo:warning=No environment variable {INCLUDE_PATHS_ENV} set. Using default include paths: {e}");
+            base_dir_path
+                .join("src")
+                .join("include")
+                .to_str()
+                .map(|s| s.to_string())
+                .ok_or_else(|| anyhow!("Could not convert path to string"))
+        })?;
+
         let include_paths = PathBuf::from(&include_paths_env);
 
         let wrapper_contents = generate_include_wrapper(include_paths)?;
 
         let bindings =
             Builder::default()
-                .clang_arg(var(PYTHON3_INCLUDE_ENV).map_err(|e| {
-                    anyhow!("No environment variable {PYTHON3_INCLUDE_ENV} found: {e}")
+                .clang_arg(var(PYTHON3_INCLUDE_ENV).or_else(|e| {
+                    println!("cargo:warning=No environment variable {PYTHON3_INCLUDE_ENV} set. Using default include paths: {e}");
+                    if base_dir_path.join(LINUX64_DIRNAME).is_dir() {
+                        subdir(base_dir_path
+                            .join(LINUX64_DIRNAME)
+                            .join("include"))
+                            .and_then(|p| {
+                                p.to_str()
+                                .map(|s| format!("-I{}", s))
+                                .ok_or_else(|| anyhow!("Could not convert path to string"))
+                            })
+                    } else if base_dir_path.join(WIN64_DIRNAME).is_dir() {
+                        subdir(base_dir_path
+                            .join(WIN64_DIRNAME)
+                            .join("include"))
+                            .and_then(|p| {
+                                p.to_str()
+                                .map(|s| format!("-I{}", s))
+                                .ok_or_else(|| anyhow!("Could not convert path to string"))
+                            })
+                    } else {
+                        Err(anyhow!("No {LINUX64_DIRNAME} or {WIN64_DIRNAME} found in base path. It is likely invalid."))
+                    }
                 })?)
                 .clang_arg(format!("-I{}", include_paths_env,))
                 .clang_arg("-fretain-comments-from-system-headers")
@@ -259,6 +352,12 @@ fn main() -> Result<()> {
                 // We don't care at all what warnings simics has if they aren't errors :)
                 .clang_arg("-Wno-everything")
                 .default_visibility(FieldVisibilityKind::Public)
+                .default_alias_style(AliasVariation::TypeAlias)
+                .default_enum_style(EnumVariation::Rust {
+                    non_exhaustive: true,
+                })
+                .default_macro_constant_type(MacroTypeVariation::Unsigned)
+                .default_non_copy_union_style(NonCopyUnionStyle::BindgenWrapper)
                 .derive_default(true)
                 .derive_hash(true)
                 .derive_partialord(true)
@@ -453,14 +552,51 @@ fn main() -> Result<()> {
                 .blocklist_item("Py_MATH_TAU")
                 // Blocklisted because the doc comments cause doc tests to fail
                 .blocklist_function("_PyErr_TrySetFromCause")
+                .bitfield_enum("event_class_flag_t")
+                .bitfield_enum("micro_checkpoint_flags_t")
+                .bitfield_enum("access_t")
                 .generate()?;
-        bindings.write_to_file(&bindings_file_path)?;
+        bindings.write_to_file(bindings_file_path)?;
     }
 
     if cfg!(feature = "link") {
+        let base_dir_path = PathBuf::from(
+            var(SIMICS_BASE_ENV)
+                .map_err(|e| anyhow!("No environment variable {SIMICS_BASE_ENV} found: {e}"))?,
+        );
+
+        ensure!(
+            base_dir_path.is_dir(),
+            "{} is not a directory",
+            base_dir_path.display()
+        );
+
         let libpython_path =
             PathBuf::from(var(PYTHON3_LDFLAGS_ENV).map_err(|e| {
                 anyhow!("No environment variable {PYTHON3_LDFLAGS_ENV} found: {e}")
+            }).or_else(|e| {
+                println!("cargo:warning=No environment variable {INCLUDE_PATHS_ENV} set. Using default include paths: {e}");
+                if base_dir_path.join(LINUX64_DIRNAME).is_dir() {
+                    base_dir_path
+                    .join(LINUX64_DIRNAME)
+                    .join("sys")
+                    .join("lib")
+                    .join("libpython3.so")
+                    .to_str()
+                    .map(|s| s.to_string())
+                    .ok_or_else(|| anyhow!("Could not convert path to string"))
+                } else if base_dir_path.join(WIN64_DIRNAME).is_dir() {
+                    base_dir_path
+                    .join(WIN64_DIRNAME)
+                    .join("sys")
+                    .join("lib")
+                    .join("libpython3.dll")
+                    .to_str()
+                    .map(|s| s.to_string())
+                    .ok_or_else(|| anyhow!("Could not convert path to string"))
+                } else {
+                        Err(anyhow!("No {LINUX64_DIRNAME} or {WIN64_DIRNAME} found in base path. It is likely invalid."))
+                }
             })?);
 
         let libpython_dir = libpython_path
@@ -469,15 +605,37 @@ fn main() -> Result<()> {
             .to_path_buf();
 
         let link_search_paths = var(LDFLAGS_ENV)
-            .map_err(|e| anyhow!("No environment variable {LDFLAGS_ENV} found: {e}"))?
+            .or_else(|e| {
+                println!("cargo:warning=No environment variable {LDFLAGS_ENV} set. Using default include paths: {e}");
+                if base_dir_path.join(LINUX64_DIRNAME).is_dir() {
+                    base_dir_path
+                    .join(LINUX64_DIRNAME)
+                    .join("bin")
+                    .to_str()
+                    .map(|s| format!("-L{}", s))
+                    .ok_or_else(|| anyhow!("Could not convert path to string"))
+                } else if base_dir_path.join(WIN64_DIRNAME).is_dir() {
+                    base_dir_path
+                    .join(WIN64_DIRNAME)
+                    .join("bin")
+                    .to_str()
+                    .map(|s| format!("-L{}", s))
+                    .ok_or_else(|| anyhow!("Could not convert path to string"))
+                } else {
+                        Err(anyhow!("No {LINUX64_DIRNAME} or {WIN64_DIRNAME} found in base path. It is likely invalid."))
+                }
+            })?
             .split_whitespace()
             .filter_map(|s| s.starts_with("-L").then_some(s.replace("-L", "")))
-            .map(|p| PathBuf::from(p))
+            .map(PathBuf::from)
             .chain(once(libpython_dir))
             .collect::<Vec<_>>();
 
         let libs = var(LIBS_ENV)
-            .map_err(|e| anyhow!("No environment variable {LIBS_ENV} found: {e}"))?
+            .unwrap_or_else(|e| {
+                println!("cargo:warning=No environment variable {LIBS_ENV} set. Using default include paths: {e}");
+                "-lsimics-common -lvtutils".to_string()
+            })
             .split_whitespace()
             .filter_map(|s| s.starts_with("-l").then_some(s.replace("-l", "")))
             .collect::<Vec<_>>();

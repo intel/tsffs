@@ -158,7 +158,6 @@ Group: tsffs-interface-src
   modules/tsffs-interface/tsffs-interface.dml
   modules/tsffs-interface/tsffs-interface.h
 
-
 Group: fuzzer
 Make: $(HOST)/obj/release/fuzzer
   $(HOST)/bin/fuzzer

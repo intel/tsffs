@@ -67,8 +67,8 @@ impl Simics {
             file.as_ref().to_string_lossy()
         ))?;
 
-        match clear_exception()? {
-            SimException::NoException => Ok(()),
+        match clear_exception() {
+            SimException::SimExc_No_Exception => Ok(()),
             exception => {
                 bail!(
                     "Error running simics config: {:?}: {}",

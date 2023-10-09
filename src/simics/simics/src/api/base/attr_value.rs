@@ -7,60 +7,24 @@
 //! functions convert the objects back and forth between anonymous `attr_value_t` and actual data
 //! types like `bool`, `String`, etc.
 
-use crate::api::ConfObject;
-use anyhow::{anyhow, ensure, Error, Result};
-use num_derive::{FromPrimitive, ToPrimitive};
-use num_traits::{FromPrimitive as ConvertFromPrimitive, ToPrimitive as ConvertToPrimitive};
-use raw_cstr::raw_cstr;
-use simics_api_sys::{
-    attr_kind_t_Sim_Val_Boolean, attr_kind_t_Sim_Val_Data, attr_kind_t_Sim_Val_Dict,
-    attr_kind_t_Sim_Val_Floating, attr_kind_t_Sim_Val_Integer, attr_kind_t_Sim_Val_Invalid,
-    attr_kind_t_Sim_Val_List, attr_kind_t_Sim_Val_Nil, attr_kind_t_Sim_Val_Object,
-    attr_kind_t_Sim_Val_String, attr_value__bindgen_ty_1, attr_value_t, SIM_alloc_attr_list,
-    SIM_attr_free, SIM_free_attribute, SIM_get_attribute,
+use crate::api::sys::{
+    attr_value__bindgen_ty_1, attr_value_t, SIM_alloc_attr_list, SIM_attr_free, SIM_free_attribute,
+    SIM_get_attribute,
 };
+use crate::api::ConfObject;
+use anyhow::{ensure, Result};
+use raw_cstr::raw_cstr;
+use simics_api_sys::attr_kind_t;
 use std::{ffi::CStr, mem::size_of, ptr::null_mut};
 
 pub type AttrValue = attr_value_t;
 
-#[derive(Debug, FromPrimitive, ToPrimitive)]
-#[repr(u32)]
-/// The possible types of an `AttrValue`
-pub enum AttrKind {
-    Boolean = attr_kind_t_Sim_Val_Boolean,
-    Data = attr_kind_t_Sim_Val_Data,
-    Dict = attr_kind_t_Sim_Val_Dict,
-    Floating = attr_kind_t_Sim_Val_Floating,
-    Integer = attr_kind_t_Sim_Val_Integer,
-    Invalid = attr_kind_t_Sim_Val_Invalid,
-    List = attr_kind_t_Sim_Val_List,
-    Nil = attr_kind_t_Sim_Val_Nil,
-    Object = attr_kind_t_Sim_Val_Object,
-    String = attr_kind_t_Sim_Val_String,
-}
-
-impl TryFrom<AttrKind> for u32 {
-    type Error = Error;
-
-    fn try_from(value: AttrKind) -> Result<Self> {
-        value
-            .to_u32()
-            .ok_or_else(|| anyhow!("Invalid value {:?}", value))
-    }
-}
-
-impl TryFrom<u32> for AttrKind {
-    type Error = Error;
-
-    fn try_from(value: u32) -> Result<Self> {
-        ConvertFromPrimitive::from_u32(value).ok_or_else(|| anyhow!("Invalid value {}", value))
-    }
-}
+pub type AttrKind = attr_kind_t;
 
 /// Create a new invalid [`AttrValue`]
 pub fn make_attr_invalid() -> Result<AttrValue> {
     Ok(AttrValue {
-        private_kind: AttrKind::Invalid.try_into()?,
+        private_kind: AttrKind::Sim_Val_Invalid.try_into()?,
         private_size: 0,
         private_u: attr_value__bindgen_ty_1 { integer: 0 },
     })
@@ -69,7 +33,7 @@ pub fn make_attr_invalid() -> Result<AttrValue> {
 /// Create a new nil [`AttrValue`]
 pub fn make_attr_nil() -> Result<AttrValue> {
     Ok(AttrValue {
-        private_kind: AttrKind::Nil.try_into()?,
+        private_kind: AttrKind::Sim_Val_Nil.try_into()?,
         private_size: 0,
         private_u: attr_value__bindgen_ty_1 { integer: 0 },
     })
@@ -78,7 +42,7 @@ pub fn make_attr_nil() -> Result<AttrValue> {
 /// Create a new uint64 [`AttrValue`] with a value of `i`
 pub fn make_attr_uint64(i: u64) -> Result<AttrValue> {
     Ok(AttrValue {
-        private_kind: AttrKind::Integer.try_into()?,
+        private_kind: AttrKind::Sim_Val_Integer.try_into()?,
         private_size: 0, /* unsigned */
         private_u: attr_value__bindgen_ty_1 {
             integer: i64::try_from(i)?,
@@ -89,7 +53,7 @@ pub fn make_attr_uint64(i: u64) -> Result<AttrValue> {
 /// Create a new int64 [`AttrValue`] with a value of `i`
 pub fn make_attr_int64(i: i64) -> Result<AttrValue> {
     Ok(AttrValue {
-        private_kind: AttrKind::Integer.try_into()?,
+        private_kind: AttrKind::Sim_Val_Integer.try_into()?,
         private_size: 1, /* signed */
         private_u: attr_value__bindgen_ty_1 { integer: i },
     })
@@ -98,7 +62,7 @@ pub fn make_attr_int64(i: i64) -> Result<AttrValue> {
 /// Create a new boolean [`AttrValue`] with a value of `b`
 pub fn make_attr_boolean(b: bool) -> Result<AttrValue> {
     Ok(AttrValue {
-        private_kind: AttrKind::Boolean.try_into()?,
+        private_kind: AttrKind::Sim_Val_Boolean.try_into()?,
         private_size: 0,
         private_u: attr_value__bindgen_ty_1 { boolean: b },
     })
@@ -113,9 +77,9 @@ where
 
     Ok(AttrValue {
         private_kind: if string.is_null() {
-            AttrKind::Nil.try_into()?
+            AttrKind::Sim_Val_Nil.try_into()?
         } else {
-            AttrKind::String.try_into()?
+            AttrKind::Sim_Val_String.try_into()?
         },
         private_size: 0,
         private_u: attr_value__bindgen_ty_1 { string },
@@ -125,7 +89,7 @@ where
 /// Create a new floating point [`AttrValue`] with a value of `d`
 pub fn make_attr_floating(d: f64) -> Result<AttrValue> {
     Ok(AttrValue {
-        private_kind: AttrKind::Floating.try_into()?,
+        private_kind: AttrKind::Sim_Val_Floating.try_into()?,
         private_size: 0,
         private_u: attr_value__bindgen_ty_1 { floating: d },
     })
@@ -135,9 +99,9 @@ pub fn make_attr_floating(d: f64) -> Result<AttrValue> {
 pub fn make_attr_object(obj: *mut ConfObject) -> Result<AttrValue> {
     Ok(AttrValue {
         private_kind: if (obj as *const ConfObject).is_null() {
-            AttrKind::Nil.try_into()?
+            AttrKind::Sim_Val_Nil.try_into()?
         } else {
-            AttrKind::Object.try_into()?
+            AttrKind::Sim_Val_Object.try_into()?
         },
         private_size: 0,
         private_u: attr_value__bindgen_ty_1 { object: obj.into() },
@@ -163,7 +127,7 @@ pub fn make_attr_data_adopt<T>(data: T) -> Result<AttrValue> {
     );
 
     Ok(attr_value_t {
-        private_kind: AttrKind::Data.try_into()?,
+        private_kind: AttrKind::Sim_Val_Data.try_into()?,
         private_size: u32::try_from(data_size)?,
         private_u: attr_value__bindgen_ty_1 {
             data: data_raw as *mut u8,
@@ -173,24 +137,24 @@ pub fn make_attr_data_adopt<T>(data: T) -> Result<AttrValue> {
 
 /// Check whether an [`AttrValue`] is nil
 pub fn attr_is_nil(attr: AttrValue) -> Result<bool> {
-    Ok(attr.private_kind == AttrKind::Nil.try_into()?)
+    Ok(attr.private_kind == AttrKind::Sim_Val_Nil.try_into()?)
 }
 
 /// Check whether an [`AttrValue`] is int64
 pub fn attr_is_int64(attr: AttrValue) -> Result<bool> {
-    Ok(attr.private_kind == AttrKind::Integer.try_into()?
+    Ok(attr.private_kind == AttrKind::Sim_Val_Integer.try_into()?
         && (attr.private_size == 0 || unsafe { attr.private_u.integer } >= 0))
 }
 
 /// Check whether an [`AttrValue`] is uint64
 pub fn attr_is_uint64(attr: AttrValue) -> Result<bool> {
-    Ok(attr.private_kind == AttrKind::Integer.try_into()?
+    Ok(attr.private_kind == AttrKind::Sim_Val_Integer.try_into()?
         && (attr.private_size != 0 || unsafe { attr.private_u.integer } >= 0))
 }
 
 /// Check whether an [`AttrValue`] is an integer
 pub fn attr_is_integer(attr: AttrValue) -> Result<bool> {
-    Ok(attr.private_kind == AttrKind::Integer.try_into()?)
+    Ok(attr.private_kind == AttrKind::Sim_Val_Integer.try_into()?)
 }
 
 /// Get an [`AttrValue`] as an integer
@@ -201,7 +165,7 @@ pub fn attr_integer(attr: AttrValue) -> Result<i64> {
 
 /// Check whether an [`AttrValue`] is a boolean
 pub fn attr_is_boolean(attr: AttrValue) -> Result<bool> {
-    Ok(attr.private_kind == AttrKind::Boolean.try_into()?)
+    Ok(attr.private_kind == AttrKind::Sim_Val_Boolean.try_into()?)
 }
 
 /// Get an [`AttrValue`] as a boolean
@@ -212,7 +176,7 @@ pub fn attr_boolean(attr: AttrValue) -> Result<bool> {
 
 /// Check whether an [`AttrValue`] is a String
 pub fn attr_is_string(attr: AttrValue) -> Result<bool> {
-    Ok(attr.private_kind == AttrKind::String.try_into()?)
+    Ok(attr.private_kind == AttrKind::Sim_Val_String.try_into()?)
 }
 
 /// Get an [`AttrValue`] as a String
@@ -239,7 +203,7 @@ pub fn attr_string(attr: AttrValue) -> Result<String> {
 
 /// Check whether an [`AttrValue`] is a String
 pub fn attr_is_floating(attr: AttrValue) -> Result<bool> {
-    Ok(attr.private_kind == AttrKind::Floating.try_into()?)
+    Ok(attr.private_kind == AttrKind::Sim_Val_Floating.try_into()?)
 }
 
 /// Get an [`AttrValue`] as a f64
@@ -250,7 +214,7 @@ pub fn attr_floating(attr: AttrValue) -> Result<f64> {
 
 /// Check whether an [`AttrValue`] is a String
 pub fn attr_is_object(attr: AttrValue) -> Result<bool> {
-    Ok(attr.private_kind == AttrKind::Object.try_into()?)
+    Ok(attr.private_kind == AttrKind::Sim_Val_Object.try_into()?)
 }
 
 /// Get an [`AttrValue`] as an object
@@ -282,12 +246,12 @@ pub fn attr_object_or_nil_from_ptr(attr: *mut AttrValue) -> Result<*mut ConfObje
 
 /// Check whether an [`AttrValue`] is invalid
 pub fn attr_is_invalid(attr: AttrValue) -> Result<bool> {
-    Ok(attr.private_kind == AttrKind::Invalid.try_into()?)
+    Ok(attr.private_kind == AttrKind::Sim_Val_Invalid.try_into()?)
 }
 
 /// Check whether an [`AttrValue`] is data
 pub fn attr_is_data(attr: AttrValue) -> Result<bool> {
-    Ok(attr.private_kind == AttrKind::Data.try_into()?)
+    Ok(attr.private_kind == AttrKind::Sim_Val_Data.try_into()?)
 }
 
 /// Get the size of an [`AttrValue`]'s data
@@ -304,7 +268,7 @@ pub fn attr_data<T>(attr: AttrValue) -> Result<T> {
 
 /// Check whether an [`AttrValue`] is a list
 pub fn attr_is_list(attr: AttrValue) -> Result<bool> {
-    Ok(attr.private_kind == AttrKind::List.try_into()?)
+    Ok(attr.private_kind == AttrKind::Sim_Val_List.try_into()?)
 }
 
 /// Get the size of an [`AttrValue`]'s list
@@ -333,7 +297,7 @@ pub fn attr_list(attr: AttrValue) -> Result<*mut AttrValue> {
 
 /// Check whether an [`AttrValue`] is a dict
 pub fn attr_is_dict(attr: AttrValue) -> bool {
-    attr.private_kind == attr_kind_t_Sim_Val_Dict
+    matches!(attr.private_kind, AttrKind::Sim_Val_Dict)
 }
 
 /// Get the size of an an [`AttrValue`]'s dict

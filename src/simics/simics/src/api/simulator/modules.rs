@@ -1,19 +1,17 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::{anyhow, bail, ensure, Error, Result};
-use raw_cstr::raw_cstr;
-use std::path::Path;
-
-use simics_api_sys::{
+use crate::api::sys::{
     SIM_add_module_dir, SIM_get_all_failed_modules, SIM_get_all_modules, SIM_load_module,
     SIM_module_list_refresh,
 };
-
 use crate::api::{
     attr_boolean, attr_integer, attr_is_list, attr_list_item, attr_list_size, attr_string,
     get_pending_exception, last_error, AttrValue, SimException,
 };
+use anyhow::{bail, ensure, Error, Result};
+use raw_cstr::raw_cstr;
+use std::path::Path;
 
 pub struct ModuleInfo {
     pub name: String,
@@ -102,8 +100,7 @@ where
 {
     unsafe { SIM_load_module(raw_cstr(module)?) }
     match get_pending_exception() {
-        Ok(SimException::NoException) => Ok(()),
-        Ok(err) => bail!("Failed to load module: {:?}: {}", err, last_error()),
-        Err(e) => Err(anyhow!("Error getting pending exception: {}", e)),
+        SimException::SimExc_No_Exception => Ok(()),
+        err => bail!("Failed to load module: {:?}: {}", err, last_error()),
     }
 }

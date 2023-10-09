@@ -14,9 +14,7 @@ use crate::api::{last_error, AttrValue, Interface};
 use anyhow::{bail, Result};
 use raw_cstr::raw_cstr;
 use simics_api_sys::{
-    class_data_t, class_info_t, class_kind_t_Sim_Class_Kind_Extension,
-    class_kind_t_Sim_Class_Kind_Pseudo, class_kind_t_Sim_Class_Kind_Session,
-    class_kind_t_Sim_Class_Kind_Vanilla, conf_class_t, conf_object_t, SIM_c_get_interface,
+    class_data_t, class_info_t, class_kind_t, conf_class_t, conf_object_t, SIM_c_get_interface,
     SIM_create_class, SIM_create_object, SIM_get_class, SIM_get_object, SIM_register_interface,
 };
 
@@ -25,15 +23,7 @@ pub type ConfClass = conf_class_t;
 pub type ClassData = class_data_t;
 pub type ClassInfo = class_info_t;
 
-#[derive(Debug, Eq, PartialEq)]
-#[repr(u32)]
-/// Kinds of classes
-pub enum ClassKind {
-    Vanilla = class_kind_t_Sim_Class_Kind_Vanilla,
-    Session = class_kind_t_Sim_Class_Kind_Session,
-    Pseudo = class_kind_t_Sim_Class_Kind_Pseudo,
-    Extension = class_kind_t_Sim_Class_Kind_Extension,
-}
+pub type ClassKind = class_kind_t;
 
 /// Create a class instance
 pub fn create_class<S>(name: S, class_info: ClassInfo) -> Result<*mut ConfClass>

@@ -22,4 +22,4 @@ include $(TARGET_DIR)/../obj/release/lib$(TARGET).d
 
 # Set the user-init-local flag to make module_id.c invoke init_local instead of providing an
 # empty one
-_INIT_LOCAL_CLAG = --user-init-local
+_INIT_LOCAL_FLAG = --user-init-local

@@ -420,7 +420,7 @@ where
 
     let kind = match args.class_kind() {
         Some(kind) => quote! { #kind as u32 },
-        None => quote! { simics::api::ClassKind::Vanilla as u32 },
+        None => quote! { simics::api::ClassKind::Sim_Class_Kind_Vanilla },
     };
 
     quote! {

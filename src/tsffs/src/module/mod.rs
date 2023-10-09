@@ -358,8 +358,8 @@ impl Module {
                             save_micro_checkpoint(
                                 "origin",
                                 &[
-                                    MicroCheckpointFlags::IdUser,
-                                    MicroCheckpointFlags::Persistent,
+                                    MicroCheckpointFlags::Sim_MC_ID_User,
+                                    MicroCheckpointFlags::Sim_MC_Persistent,
                                 ],
                             )?;
                             self.detector.pre_first_run(self_ptr)?;
@@ -438,8 +438,8 @@ impl Module {
                                 save_micro_checkpoint(
                                     "origin",
                                     &[
-                                        MicroCheckpointFlags::IdUser,
-                                        MicroCheckpointFlags::Persistent,
+                                        MicroCheckpointFlags::Sim_MC_ID_User,
+                                        MicroCheckpointFlags::Sim_MC_Persistent,
                                     ],
                                 )?;
 
@@ -599,8 +599,8 @@ impl Module {
         })?;
         info!("Set up channels");
 
-        match clear_exception()? {
-            SimException::NoException => Ok(()),
+        match clear_exception() {
+            SimException::SimExc_No_Exception => Ok(()),
             exception => {
                 bail!(
                     "Error running simics config: {:?}: {}",

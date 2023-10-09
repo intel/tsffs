@@ -21,7 +21,6 @@ version = "0.1.0"
 [workspace]
 resolver = "2"
 members = [
-    "src/fuzzer",
     "src/tsffs",
     "src/simics/ispm-wrapper",
     "src/simics/simics-api-sys",
@@ -35,7 +34,6 @@ members = [
     "src/util/version-tools",
 ]
 default-members = [
-    "src/fuzzer",
     "src/tsffs",
     "src/simics/ispm-wrapper",
     "src/simics/simics-api-sys",

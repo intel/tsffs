@@ -6,40 +6,30 @@ use clap::ValueEnum;
 use paste::paste;
 use raw_cstr::raw_cstr;
 use simics_api_sys::{
-    cpu_variant_t_Cpu_Any, cpu_variant_t_Cpu_Fast, cpu_variant_t_Cpu_None, cpu_variant_t_Cpu_Stall,
-    gui_mode_t_GUI_Mode_Default, gui_mode_t_GUI_Mode_Mixed, gui_mode_t_GUI_Mode_None,
-    gui_mode_t_GUI_Mode_Only, init_arg_t, init_arg_t__bindgen_ty_1, SIM_init_command_line,
+    cpu_variant_t, gui_mode_t, init_arg_t, init_arg_t__bindgen_ty_1, SIM_init_command_line,
     SIM_init_environment, SIM_init_simulator2, SIM_main_loop,
 };
 use std::{mem::forget, ptr::null};
 
-#[derive(Copy, Clone, Debug, ValueEnum)]
-#[repr(u32)]
-pub enum GuiMode {
-    None = gui_mode_t_GUI_Mode_None,
-    Mixed = gui_mode_t_GUI_Mode_Mixed,
-    Only = gui_mode_t_GUI_Mode_Only,
-    Default = gui_mode_t_GUI_Mode_Default,
-}
+#[derive(Debug, Clone)]
+pub struct GuiMode(gui_mode_t);
+
+#[derive(Debug, Clone)]
+pub struct CpuVariant(cpu_variant_t);
 
 impl ToString for GuiMode {
     fn to_string(&self) -> String {
-        match self {
-            GuiMode::None => "no-gui",
-            GuiMode::Mixed => "mixed",
-            GuiMode::Only => "gui",
-            GuiMode::Default => "default",
+        match self.0 {
+            gui_mode_t::GUI_Mode_None => "no-gui",
+            gui_mode_t::GUI_Mode_Mixed => "mixed",
+            gui_mode_t::GUI_Mode_Only => "gui",
+            gui_mode_t::GUI_Mode_Default => "default",
+            _ => {
+                panic!("Unmatched GUI mode {self:?}");
+            }
         }
         .to_string()
     }
-}
-
-#[repr(u32)]
-pub enum CpuVariant {
-    None = cpu_variant_t_Cpu_None,
-    Any = cpu_variant_t_Cpu_Any,
-    Fast = cpu_variant_t_Cpu_Fast,
-    Stall = cpu_variant_t_Cpu_Stall,
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]

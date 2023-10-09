@@ -1,8 +1,8 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::api::sys::{SIM_get_processor, SIM_get_processor_number};
 use crate::api::ConfObject;
-use simics_api_sys::{SIM_get_processor, SIM_get_processor_number};
 
 /// Get the number of a particular processor
 pub fn get_processor_number(cpu: *mut ConfObject) -> i32 {

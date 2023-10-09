@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::api::{
-    attr_object_or_nil, get_interface, AccessType, AttrValue, ConfObject, Interface, PhysicalBlock,
+    attr_object_or_nil, get_interface, AttrValue, ConfObject, Interface, PhysicalBlock,
 };
 use anyhow::{bail, ensure, Result};
 use raw_cstr::raw_cstr;
 use simics_api_sys::{
-    cached_instruction_handle_t, cpu_bytes_t, cpu_cached_instruction_interface_t,
+    access_t, cached_instruction_handle_t, cpu_bytes_t, cpu_cached_instruction_interface_t,
     cpu_instruction_query_interface_t, cpu_instrumentation_subscribe_interface_t,
     cycle_interface_t, instruction_handle_t, int_register_interface_t,
     processor_info_v2_interface_t,
@@ -212,7 +212,13 @@ impl ProcessorInfoV2 {
     ) -> Result<PhysicalBlock> {
         if let Some(logical_to_physical) = unsafe { *self.iface }.logical_to_physical {
             let addr = unsafe {
-                logical_to_physical(cpu.into(), logical_address, AccessType::X86Vanilla as u32)
+                logical_to_physical(
+                    cpu.into(),
+                    logical_address,
+                    access_t::Sim_Access_Execute
+                        | access_t::Sim_Access_Read
+                        | access_t::Sim_Access_Write,
+                )
             };
             ensure!(addr.valid != 0, "Physical address is invalid");
             Ok(addr)

@@ -5,10 +5,8 @@ use crate::api::{last_error, ConfClass, ConfObject};
 use anyhow::{bail, ensure, Result};
 use raw_cstr::raw_cstr;
 use simics_api_sys::{
-    event_class_flag_t_Sim_EC_Machine_Sync, event_class_flag_t_Sim_EC_No_Flags,
-    event_class_flag_t_Sim_EC_No_Serialize, event_class_flag_t_Sim_EC_Notsaved,
-    event_class_flag_t_Sim_EC_Slot_Early, event_class_flag_t_Sim_EC_Slot_Late, event_class_t,
-    SIM_event_cancel_time, SIM_event_find_next_time, SIM_event_post_time, SIM_register_event,
+    event_class_flag_t, event_class_t, SIM_event_cancel_time, SIM_event_find_next_time,
+    SIM_event_post_time, SIM_register_event,
 };
 use std::{ffi::c_void, mem::transmute, ptr::null_mut};
 
@@ -54,17 +52,8 @@ pub fn event_cancel_time(clock: *mut ConfObject, event: *mut EventClass, obj: *m
     unsafe { SIM_event_cancel_time(clock.into(), event.into(), obj.into(), None, null_mut()) }
 }
 
-#[derive(Copy, Clone, Debug)]
-#[repr(u32)]
 /// Flags for an event
-pub enum EventFlags {
-    None = event_class_flag_t_Sim_EC_No_Flags,
-    NotSaved = event_class_flag_t_Sim_EC_Notsaved,
-    MachineSync = event_class_flag_t_Sim_EC_Machine_Sync,
-    NoSerialize = event_class_flag_t_Sim_EC_No_Serialize,
-    SlotEarly = event_class_flag_t_Sim_EC_Slot_Early,
-    SlotLate = event_class_flag_t_Sim_EC_Slot_Late,
-}
+pub type EventFlags = event_class_flag_t;
 
 /// Register an event with a callback. If `flags` is `&[EventFlags::NotSaved]`, `cls` may be
 /// null.
@@ -77,9 +66,10 @@ pub fn register_event<S>(
 where
     S: AsRef<str>,
 {
-    let mut event_flags = EventFlags::None as u32;
+    let mut event_flags = EventFlags::Sim_EC_No_Flags;
+
     for flag in flags {
-        event_flags |= *flag as u32;
+        event_flags |= *flag;
     }
 
     let event = unsafe {

@@ -3,10 +3,10 @@
 
 use std::path::Path;
 
+use crate::api::sys::{SIM_run_python, SIM_source_python, VT_call_python_module_function};
 use crate::api::{clear_exception, last_error, AttrValue, SimException};
 use anyhow::{anyhow, Result};
 use raw_cstr::raw_cstr;
-use simics_api_sys::{SIM_run_python, SIM_source_python, VT_call_python_module_function};
 
 pub fn call_python_module_function<S>(
     module: S,
@@ -31,8 +31,8 @@ where
 {
     unsafe { SIM_source_python(raw_cstr(file.as_ref().to_string_lossy())?) };
 
-    match clear_exception()? {
-        SimException::NoException => Ok(()),
+    match clear_exception() {
+        SimException::SimExc_No_Exception => Ok(()),
         _ => Err(anyhow!("Error running python script: {}", last_error())),
     }
 }
@@ -43,8 +43,8 @@ where
 {
     unsafe { SIM_run_python(raw_cstr(line)?) };
 
-    match clear_exception()? {
-        SimException::NoException => Ok(()),
+    match clear_exception() {
+        SimException::SimExc_No_Exception => Ok(()),
         _ => Err(anyhow!("Error running python script: {}", last_error())),
     }
 }

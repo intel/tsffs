@@ -1,9 +1,9 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::api::sys::{mm_free, mm_zalloc};
 use anyhow::Result;
 use raw_cstr::raw_cstr;
-use simics_api_sys::{mm_free, mm_zalloc};
 use std::{ffi::c_void, mem::transmute};
 
 #[macro_export]
