@@ -1,7 +1,0 @@
-error: Expected `params` attribute
-  --> tests/ui/test_missing_params.rs:10:5
-   |
-10 | /     pub fn test(&self, a: i32, b: i32) -> i32 {
-11 | |         a + b
-12 | |     }
-   | |_____^
