@@ -4,6 +4,6 @@
 #[test]
 #[cfg_attr(miri, ignore)]
 fn ui() {
-    let t = trybuild::TestCases::new();
+    // let t = trybuild::TestCases::new();
     // t.compile_fail("tests/ui/test_missing_params.rs");
 }
