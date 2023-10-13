@@ -9,7 +9,7 @@ use std::ffi::CStr;
 pub type SimException = sim_exception;
 
 /// Get the last SIMICS error as a string
-pub fn last_error() -> String {
+pub fn last_error() -> Error {
     let error_str = unsafe { CStr::from_ptr(SIM_last_error()) };
     error_str.to_string_lossy().to_string()
 }

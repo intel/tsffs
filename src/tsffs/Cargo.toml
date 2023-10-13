@@ -25,7 +25,7 @@ libafl_bolts = { workspace = true }
 raw-cstr = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 simics = { workspace = true, features = ["link", "auto"] }
-simics-api-macro = { workspace = true }
+simics-macro = { workspace = true }
 
 
 c2rust-bitfields = "0.18.0"

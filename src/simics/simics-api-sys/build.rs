@@ -249,7 +249,6 @@ where
     P: AsRef<Path>,
 {
     let subdirs = read_dir(dir)?
-        .into_iter()
         .filter_map(|p| p.ok())
         .map(|p| p.path())
         .filter(|p| p.is_dir())
@@ -672,7 +671,9 @@ fn main() -> Result<()> {
         // NOTE:
         // EVEN with all of the above, a binary built using `cargo build` will not be able to find
         // libsimics-common.so. Instead, when we build a binary that transitively depends on this
-        // -sys crate, we compile it with `cargo rustc`, passing the `-rpath` link argument like:
+        // -sys crate, we compile it with `cargo rustc`, passing the `-rpath` link argument like
+        // so. Note `--disable-new-dtags`, otherwise `libsimics-common.so` cannot find
+        // `libpython3.9.so.1.0` because it will be missing the recursive rpath lookup.
 
         // SIMICS_BASE=/home/rhart/simics-public/simics-6.0.174
         // PYTHON3_INCLUDE=-I/home/rhart/simics-public/simics-6.0.174/linux64/include/python3.9

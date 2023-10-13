@@ -24,7 +24,7 @@ members = [
     "src/tsffs",
     "src/simics/ispm-wrapper",
     "src/simics/simics-api-sys",
-    "src/simics/simics-api-macro",
+    "src/simics/simics-macro",
     "src/simics/simics",
 
     "src/util/command-ext",
@@ -37,7 +37,7 @@ default-members = [
     "src/tsffs",
     "src/simics/ispm-wrapper",
     "src/simics/simics-api-sys",
-    "src/simics/simics-api-macro",
+    "src/simics/simics-macro",
     "src/simics/simics",
 
     "src/util/command-ext",
@@ -49,10 +49,8 @@ default-members = [
 exclude = []
 
 [workspace.dependencies]
-tsffs = { path = "src/tsffs" }
-ispm-wrapper = { path = "src/simics/ispm-wrapper" }
 simics-api-sys = { path = "src/simics/simics-api-sys" }
-simics-api-macro = { path = "src/simics/simics-api-macro" }
+simics-macro = { path = "src/simics/simics-macro" }
 simics = { path = "src/simics/simics" }
 
 command-ext = { path = "src/util/command-ext" }

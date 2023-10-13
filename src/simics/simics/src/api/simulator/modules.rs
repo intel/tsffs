@@ -33,7 +33,7 @@ impl TryFrom<AttrValue> for ModuleInfo {
     type Error = Error;
     fn try_from(value: AttrValue) -> Result<Self> {
         ensure!(
-            attr_is_list(value)?,
+            attr_is_list(value),
             "Could not create ModuleInfo from non-list AttrValue"
         );
         Ok(Self {
@@ -65,7 +65,7 @@ impl TryFrom<AttrValue> for ModuleInfo {
 pub fn get_all_modules() -> Result<Vec<ModuleInfo>> {
     let modules = unsafe { SIM_get_all_modules() };
     ensure!(
-        attr_is_list(modules)?,
+        attr_is_list(modules),
         "Module list was not a list AttrValue"
     );
     let mut module_infos = Vec::new();

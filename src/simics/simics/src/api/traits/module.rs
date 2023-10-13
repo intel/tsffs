@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::api::{ConfClass, ConfObject};
-use anyhow::Result;
+use crate::error::Result;
 
 /// Trait for simics module objects to implement to create a threadsafe module implementation
-pub trait SimicsModule {
+pub trait Module {
     /// Allocates an instance of the object using mm_zalloc and returns a pointer to the
     /// allocated object, whose first entry is the `ConfObject` instance associated with it
     fn alloc<T>(_module_class: *mut ConfClass) -> Result<*mut ConfObject> {
@@ -50,7 +50,7 @@ pub trait SimicsModule {
     }
 }
 
-pub trait SimicsClassCreate {
+pub trait CreateClass {
     /// Create a class and register it in SIMICS. This does not instantiate the class by creating
     /// any objects, it only creates the (python) class that is used as a blueprint to instantiate
     /// the class

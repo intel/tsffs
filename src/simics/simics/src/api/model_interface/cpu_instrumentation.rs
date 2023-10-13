@@ -1,6 +1,8 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+#![allow(clippy::not_unsafe_ptr_arg_deref)]
+
 use crate::api::{
     attr_object_or_nil, get_interface, AttrValue, ConfObject, Interface, PhysicalBlock,
 };
@@ -30,7 +32,7 @@ pub struct CpuInstrumentationSubscribe {
 
 impl CpuInstrumentationSubscribe {
     pub fn try_new(cpu: *mut AttrValue) -> Result<Self> {
-        let ptr: *mut AttrValue = cpu.into();
+        let ptr: *mut AttrValue = cpu;
 
         let cpu: *mut ConfObject = attr_object_or_nil(unsafe { *ptr })?;
 
@@ -70,7 +72,7 @@ impl CpuInstrumentationSubscribe {
         };
 
         if let Some(register) = unsafe { *self.iface }.register_instruction_before_cb {
-            unsafe { register(cpu.into(), null_mut(), Some(cb), user_data) };
+            unsafe { register(cpu, null_mut(), Some(cb), user_data) };
             Ok(())
         } else {
             bail!("Unable to register callback, no register function");
@@ -100,7 +102,7 @@ impl CpuInstrumentationSubscribe {
         };
 
         if let Some(register) = unsafe { *self.iface }.register_cached_instruction_cb {
-            unsafe { register(cpu.into(), null_mut(), Some(cb), user_data) };
+            unsafe { register(cpu, null_mut(), Some(cb), user_data) };
             Ok(())
         } else {
             bail!("Unable to register callback, no register function");
@@ -114,7 +116,7 @@ pub struct CpuInstructionQuery {
 
 impl CpuInstructionQuery {
     pub fn try_new(cpu: *mut AttrValue) -> Result<Self> {
-        let ptr: *mut AttrValue = cpu.into();
+        let ptr: *mut AttrValue = cpu;
 
         let cpu: *mut ConfObject = attr_object_or_nil(unsafe { *ptr })?;
 
@@ -139,9 +141,7 @@ impl CpuInstructionQuery {
         instruction_query: *mut InstructionHandle,
     ) -> Result<&[u8]> {
         let bytes = match unsafe { *self.iface }.get_instruction_bytes {
-            Some(get_instruction_bytes) => unsafe {
-                get_instruction_bytes(cpu.into(), instruction_query.into())
-            },
+            Some(get_instruction_bytes) => unsafe { get_instruction_bytes(cpu, instruction_query) },
             _ => bail!("No function get_instruction_bytes in interface"),
         };
 
@@ -155,7 +155,7 @@ pub struct CpuCachedInstruction {
 
 impl CpuCachedInstruction {
     pub fn try_new(cpu: *mut AttrValue) -> Result<Self> {
-        let ptr: *mut AttrValue = cpu.into();
+        let ptr: *mut AttrValue = cpu;
 
         let cpu: *mut ConfObject = attr_object_or_nil(unsafe { *ptr })?;
 
@@ -179,7 +179,7 @@ pub struct ProcessorInfoV2 {
 
 impl ProcessorInfoV2 {
     pub fn try_new(cpu: *mut AttrValue) -> Result<Self> {
-        let ptr: *mut AttrValue = cpu.into();
+        let ptr: *mut AttrValue = cpu;
 
         let cpu: *mut ConfObject = attr_object_or_nil(unsafe { *ptr })?;
 
@@ -198,7 +198,7 @@ impl ProcessorInfoV2 {
     /// Get the program counter of a CPU
     pub fn get_program_counter(&self, cpu: *mut ConfObject) -> Result<u64> {
         if let Some(get_program_counter) = unsafe { *self.iface }.get_program_counter {
-            Ok(unsafe { get_program_counter(cpu.into()) })
+            Ok(unsafe { get_program_counter(cpu) })
         } else {
             bail!("No function get_program_counter in interface");
         }
@@ -213,7 +213,7 @@ impl ProcessorInfoV2 {
         if let Some(logical_to_physical) = unsafe { *self.iface }.logical_to_physical {
             let addr = unsafe {
                 logical_to_physical(
-                    cpu.into(),
+                    cpu,
                     logical_address,
                     access_t::Sim_Access_Execute
                         | access_t::Sim_Access_Read
@@ -230,7 +230,7 @@ impl ProcessorInfoV2 {
     /// Get the physical memory object associated with a CPU
     pub fn get_physical_memory(&self, cpu: *mut ConfObject) -> Result<*mut ConfObject> {
         if let Some(get_physical_memory) = unsafe { *self.iface }.get_physical_memory {
-            Ok(unsafe { get_physical_memory(cpu.into()) })
+            Ok(unsafe { get_physical_memory(cpu) })
         } else {
             bail!("No function get_physical_memory in interface");
         }
@@ -243,7 +243,7 @@ pub struct IntRegister {
 
 impl IntRegister {
     pub fn try_new(cpu: *mut AttrValue) -> Result<Self> {
-        let ptr: *mut AttrValue = cpu.into();
+        let ptr: *mut AttrValue = cpu;
 
         let cpu: *mut ConfObject = attr_object_or_nil(unsafe { *ptr })?;
 
@@ -265,7 +265,7 @@ impl IntRegister {
         S: AsRef<str>,
     {
         if let Some(get_number) = unsafe { *self.iface }.get_number {
-            Ok(unsafe { get_number(cpu.into(), raw_cstr(register.as_ref())?) })
+            Ok(unsafe { get_number(cpu, raw_cstr(register.as_ref())?) })
         } else {
             bail!("No function get_number in interface");
         }
@@ -274,7 +274,7 @@ impl IntRegister {
     /// Read a register
     pub fn read(&self, cpu: *mut ConfObject, register_number: i32) -> Result<u64> {
         if let Some(read) = unsafe { *self.iface }.read {
-            Ok(unsafe { read(cpu.into(), register_number) })
+            Ok(unsafe { read(cpu, register_number) })
         } else {
             bail!("No function read in interface");
         }
@@ -287,7 +287,7 @@ impl IntRegister {
         register_value: u64,
     ) -> Result<()> {
         if let Some(write) = unsafe { *self.iface }.write {
-            unsafe { write(cpu.into(), register_number, register_value) };
+            unsafe { write(cpu, register_number, register_value) };
             Ok(())
         } else {
             bail!("No function writein interface");
@@ -301,7 +301,7 @@ pub struct Cycle {
 
 impl Cycle {
     pub fn try_new(cpu: *mut AttrValue) -> Result<Self> {
-        let ptr: *mut AttrValue = cpu.into();
+        let ptr: *mut AttrValue = cpu;
 
         let cpu: *mut ConfObject = attr_object_or_nil(unsafe { *ptr })?;
 

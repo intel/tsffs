@@ -8,215 +8,40 @@
 #![deny(clippy::unwrap_used)]
 #![forbid(unsafe_code)]
 
+use darling::{ast::NestedMeta, util::Flag, Error, FromDeriveInput, FromMeta};
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use proc_macro_error::{abort, proc_macro_error};
 use quote::{format_ident, quote, ToTokens};
-use std::{
-    collections::HashSet,
-    hash::{Hash, Hasher},
-};
 use syn::{
-    parse::{Parse, ParseStream, Parser, Result},
-    parse_macro_input,
-    punctuated::Punctuated,
-    Expr, Field, Fields, Generics, Ident, ItemStruct, LitStr, Token,
+    parse::Parser, parse_macro_input, parse_str, Expr, Field, Fields, Generics, Ident,
+    ImplGenerics, ItemFn, ItemStruct, ReturnType, Type, TypeGenerics, Visibility, WhereClause,
 };
 
-#[derive(Clone)]
-enum ModuleAttrValue {
-    LitStr(LitStr),
-    Expr(Expr),
-    // Call(Vec<Expr>),
+#[derive(Debug, FromDeriveInput)]
+#[darling(attributes(module), supports(struct_named))]
+struct ModuleDerive {
+    ident: Ident,
+    generics: Generics,
 }
 
-impl ToTokens for ModuleAttrValue {
+impl ToTokens for ModuleDerive {
     fn to_tokens(&self, tokens: &mut TokenStream2) {
-        match self {
-            Self::LitStr(t) => t.to_tokens(tokens),
-            Self::Expr(t) => t.to_tokens(tokens),
-            // Self::Call(t) => {
-            //     let t = quote!(#(#t),*);
-            //     t.to_tokens(tokens)
-            // }
-        }
-    }
-}
-
-#[derive(Hash, Eq, PartialEq)]
-enum ModuleAttrType {
-    Derive,
-    ClassName,
-    Description,
-    ShortDescription,
-    ClassKind,
-}
-
-struct ModuleAttr {
-    typ: ModuleAttrType,
-    value: Option<ModuleAttrValue>,
-}
-
-impl Hash for ModuleAttr {
-    fn hash<H>(&self, state: &mut H)
-    where
-        H: Hasher,
-    {
-        self.typ.hash(state);
-    }
-}
-
-impl PartialEq for ModuleAttr {
-    fn eq(&self, other: &Self) -> bool {
-        self.typ == other.typ
-    }
-}
-
-impl Eq for ModuleAttr {}
-
-impl Parse for ModuleAttr {
-    fn parse(input: ParseStream) -> Result<Self> {
-        let attr: Ident = input.parse()?;
-
-        let typ = match attr.to_string().as_str() {
-            "class_name" => ModuleAttrType::ClassName,
-            "derive" => ModuleAttrType::Derive,
-            "description" => ModuleAttrType::Description,
-            "short_description" => ModuleAttrType::ShortDescription,
-            "class_kind" => ModuleAttrType::ClassKind,
-            &_ => abort! {
-                attr,
-                r#"Attributes must be one of `derive`, \
-                `name = "class_name"`, \
-                `description = "YOUR DESCRIPTION HERE"`, \
-                `short_description = "YOUR CLASS DESCRIPTION HERE"`, \
-                `kind = ClassKind::KIND`"#
-            },
-        };
-
-        let value = if input.peek(Token![=]) {
-            let assign_token = input.parse::<Token![=]>()?;
-
-            if input.peek(LitStr) {
-                let lit: LitStr = input.parse()?;
-                Some(ModuleAttrValue::LitStr(lit))
-            } else if let Ok(expr) = input.parse::<Expr>() {
-                Some(ModuleAttrValue::Expr(expr))
-            } else {
-                abort! {
-                    assign_token,
-                    "expected `string literal` or `expression` after `=`"
-                };
-            }
-        } else {
-            None
-        };
-
-        Ok(Self { typ, value })
-    }
-}
-
-struct Args {
-    attrs: HashSet<ModuleAttr>,
-}
-
-impl Parse for Args {
-    fn parse(input: ParseStream) -> Result<Self> {
-        let parsed = Punctuated::<ModuleAttr, Token![,]>::parse_terminated(input)?;
-
-        let attrs: HashSet<ModuleAttr> = parsed.into_iter().collect();
-
-        if !attrs.contains(&ModuleAttr {
-            typ: ModuleAttrType::ClassName,
-            value: None,
-        }) {
-            let span = input.span();
-            abort! {
-                span,
-                r#"`class_name` required in `module()` invocation. Try giving your class name like `#[module(class_name = "class_name")]`"#
-            };
-        }
-
-        Ok(Args { attrs })
-    }
-}
-
-impl Args {
-    fn class_name(&self) -> TokenStream2 {
-        if let Some(name_attr) = self.attrs.get(&ModuleAttr {
-            typ: ModuleAttrType::ClassName,
-            value: None,
-        }) {
-            if let Some(ModuleAttrValue::LitStr(name)) = &name_attr.value {
-                return quote! { #name };
-            } else if let Some(ModuleAttrValue::Expr(name)) = &name_attr.value {
-                return quote! { #name };
-            }
-        }
-        unreachable!("No name provided and check somehow failed");
-    }
-
-    fn has_derive(&self) -> bool {
-        self.attrs.contains(&ModuleAttr {
-            typ: ModuleAttrType::Derive,
-            value: None,
+        let ident = &self.ident;
+        let (impl_generics, ty_generics, where_clause) = self.generics.split_for_impl();
+        tokens.extend(quote! {
+            impl #impl_generics simics::traits::module::Module for #ident #ty_generics #where_clause {}
         })
     }
-
-    fn description(&self) -> Option<String> {
-        if let Some(description) = self.attrs.get(&ModuleAttr {
-            typ: ModuleAttrType::Description,
-            value: None,
-        }) {
-            match &description.value {
-                Some(ModuleAttrValue::LitStr(s)) => Some(s.value()),
-                _ => None,
-            }
-        } else {
-            None
-        }
-    }
-
-    fn short_description(&self) -> Option<String> {
-        if let Some(short_description) = self.attrs.get(&ModuleAttr {
-            typ: ModuleAttrType::ShortDescription,
-            value: None,
-        }) {
-            match &short_description.value {
-                Some(ModuleAttrValue::LitStr(s)) => Some(s.value()),
-                _ => None,
-            }
-        } else {
-            None
-        }
-    }
-
-    fn class_kind(&self) -> Option<Expr> {
-        if let Some(class_kind) = self.attrs.get(&ModuleAttr {
-            typ: ModuleAttrType::ClassKind,
-            value: None,
-        }) {
-            match &class_kind.value {
-                Some(ModuleAttrValue::Expr(e)) => Some(e.clone()),
-                _ => None,
-            }
-        } else {
-            None
-        }
-    }
 }
 
-#[proc_macro_derive(SimicsModule)]
-/// Derive the default implementation of [Module]
-pub fn derive_module(input: TokenStream) -> TokenStream {
-    let item_struct = parse_macro_input!(input as ItemStruct);
-
-    let name = &item_struct.ident;
-
-    quote! {
-        impl simics::api::SimicsModule for #name {}
-    }
-    .into()
+#[derive(Debug, FromMeta)]
+struct ModuleOpts {
+    class_name: Expr,
+    derive: Flag,
+    description: Option<String>,
+    short_description: Option<String>,
+    class_kind: Option<Type>,
 }
 
 #[proc_macro_error]
@@ -287,16 +112,27 @@ pub fn derive_module(input: TokenStream) -> TokenStream {
 /// ```
 ///
 pub fn module(args: TokenStream, input: TokenStream) -> TokenStream {
-    let args = parse_macro_input!(args as Args);
+    let attr_args = match NestedMeta::parse_meta_list(args.into()) {
+        Ok(a) => a,
+        Err(e) => return TokenStream::from(Error::from(e).write_errors()),
+    };
 
-    let mut item_struct = parse_macro_input!(input as ItemStruct);
-    let name = &item_struct.ident;
-    let parms = &item_struct.generics;
+    let mut input = parse_macro_input!(input as ItemStruct);
+
+    let args = match ModuleOpts::from_list(&attr_args) {
+        Ok(a) => a,
+        Err(e) => return TokenStream::from(e.write_errors()),
+    };
+
+    let name = &input.ident;
+    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+    let fields = &input.fields;
+
+    let raw_impl = raw_impl(name, fields, &impl_generics, &ty_generics, &where_clause);
 
     // This needs to be generated first before we add the `ConfObject` field
-    let raw_impl = raw_impl(name.to_string(), &item_struct.fields, parms);
 
-    if let Fields::Named(ref mut fields) = item_struct.fields {
+    if let Fields::Named(ref mut fields) = input.fields {
         fields.named.insert(
             0,
             Field::parse_named
@@ -306,32 +142,31 @@ pub fn module(args: TokenStream, input: TokenStream) -> TokenStream {
     };
 
     // Only derive Module if we get a `derive` argument
-    let derive_attribute = if args.has_derive() {
-        quote! { #[derive(SimicsModule)] }
-    } else {
-        quote! {}
-    };
+    let maybe_derive_attribute = args
+        .derive
+        .is_present()
+        .then_some(quote!(#[derive(simics::traits::module::Module)]));
 
     let ffi_impl = ffi_impl(name.to_string());
-    let register_impl = create_impl(name.to_string(), &args, parms);
+    let register_impl = create_impl(
+        name.to_string(),
+        &args,
+        &impl_generics,
+        &ty_generics,
+        &where_clause,
+    );
     let from_impl = from_impl(name.to_string());
 
-    let r: TokenStream = quote! {
-        #derive_attribute
+    quote! {
+        #maybe_derive_attribute
         #[repr(C)]
-        #item_struct
+        #input
         #ffi_impl
         #register_impl
         #raw_impl
         #from_impl
     }
-    .into();
-
-    // let _s = r.to_string();
-
-    // eprintln!("{}", _s);
-
-    r
+    .into()
 }
 
 fn ffi_impl<S>(name: S) -> TokenStream2
@@ -391,7 +226,13 @@ where
     }
 }
 
-fn create_impl<S>(name: S, args: &Args, parms: &Generics) -> TokenStream2
+fn create_impl<S>(
+    name: S,
+    args: &ModuleOpts,
+    impl_generics: &ImplGenerics,
+    ty_generics: &TypeGenerics,
+    where_clause: &Option<&WhereClause>,
+) -> TokenStream2
 where
     S: AsRef<str>,
 {
@@ -406,25 +247,20 @@ where
     let dealloc_fn_name = format_ident!("{}_dealloc", &name_string);
 
     // TODO: Can we clean up the re-quoting of these strings?
-    let class_name = args.class_name();
+    let class_name = &args.class_name;
 
-    let description = match args.description() {
-        Some(description) => description,
-        None => name_string.clone(),
-    };
+    let description = args.description.as_ref().unwrap_or(&name_string);
 
-    let short_description = match args.short_description() {
-        Some(short_description) => short_description,
-        None => name_string,
-    };
+    let short_description = args.short_description.as_ref().unwrap_or(&name_string);
 
-    let kind = match args.class_kind() {
-        Some(kind) => quote! { #kind as u32 },
-        None => quote! { simics::api::ClassKind::Sim_Class_Kind_Vanilla },
-    };
+    let kind = args
+        .class_kind
+        .as_ref()
+        .map(|k| quote!(#k))
+        .unwrap_or(quote!(simics::api::ClassKind::Sim_Class_Kind_Vanilla));
 
     quote! {
-        impl #parms #name #parms {
+        impl #impl_generics #name #ty_generics #where_clause {
             const CLASS: simics::api::ClassInfo = simics::api::ClassInfo {
                 alloc: Some(#alloc_fn_name),
                 init: Some(#init_fn_name),
@@ -439,7 +275,7 @@ where
 
         }
 
-        impl #parms simics::api::SimicsClassCreate for #name #parms {
+        impl #impl_generics simics::api::SimicsClassCreate for #name #ty_generics #where_clause {
             fn create() -> anyhow::Result<*mut simics::api::ConfClass> {
                 simics::api::create_class(#class_name, #name::CLASS)
             }
@@ -447,12 +283,13 @@ where
     }
 }
 
-fn raw_impl<S>(name: S, fields: &Fields, parms: &Generics) -> TokenStream2
-where
-    S: AsRef<str>,
-{
-    let name = format_ident!("{}", name.as_ref());
-
+fn raw_impl(
+    name: &Ident,
+    fields: &Fields,
+    impl_generics: &ImplGenerics,
+    ty_generics: &TypeGenerics,
+    where_clause: &Option<&WhereClause>,
+) -> TokenStream2 {
     let mut field_parameters = Vec::new();
 
     for field in fields {
@@ -475,12 +312,14 @@ where
     }
 
     quote! {
-        impl #parms #name #parms {
+        impl #impl_generics #name #ty_generics #where_clause {
             #[allow(clippy::too_many_arguments)]
+            #[allow(clippy::not_unsafe_ptr_arg_deref)]
             fn new(
                 obj: *mut simics::api::ConfObject,
                 #(#field_parameters),*
             ) -> *mut simics::api::ConfObject  {
+
                 let obj_ptr: *mut simics::api::ConfObject = obj.into();
                 let ptr: *mut #name = obj_ptr as *mut #name;
 
@@ -506,4 +345,146 @@ where
             }
         }
     }
+}
+
+#[derive(Debug, FromMeta)]
+struct SimicsExceptionOpts {}
+
+trait IsResultType {
+    fn is_result_type(&self) -> bool;
+}
+
+impl IsResultType for ReturnType {
+    fn is_result_type(&self) -> bool {
+        match self {
+            ReturnType::Default => false,
+            ReturnType::Type(_, ty) => match &**ty {
+                Type::Path(p) => p
+                    .path
+                    .segments
+                    .last()
+                    .map(|l| l.ident == "Result")
+                    .unwrap_or(false),
+                _ => false,
+            },
+        }
+    }
+}
+
+#[proc_macro_error]
+#[proc_macro_attribute]
+/// Marks a function as being a SIMICS API that can throw exceptions. A SIMICS exception can be
+/// generated by most APIs. This macro makes the function private, wraps it, and adds the
+/// requisite code to check for and report exceptions. `clear_exception` should *not* be called
+/// inside the wrapped function. `last_error` may be called, however, as any exceptions will be
+/// cleared after the wrapped function returns.
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// #[simics_exception]
+/// pub fn write_byte(physical_memory: *mut ConfObject, physical_addr: u64, byte: u8) {
+///     unsafe { SIM_write_byte(physical_memory, physical_addr, byte) };
+/// }
+/// ```
+///
+/// Expands to:
+///
+/// ```rust,ignore
+/// fn _write_byte(physical_memory: *mut ConfObject, physical_addr: u64, byte: u8) {
+///     unsafe { SIM_write_byte(physical_memory, physical_addr, byte) };
+/// }
+///
+/// pub fn write_byte(physical_memory: *mut ConfObject, physical_addr: u64, byte: u8) -> Result<()> {
+///     let res = _write_byte(physical_memory, physical_addr, byte);
+///
+///     match simics::api::get_pending_exception() {
+///         SimException::SimExc_No_Exception => Ok(()),
+///         exception => {
+///             clear_exception();
+///             Err(Error::from(exception))
+///         }
+///     }
+/// }
+/// ```
+pub fn simics_exception(args: TokenStream, input: TokenStream) -> TokenStream {
+    let attr_args = match NestedMeta::parse_meta_list(args.into()) {
+        Ok(a) => a,
+        Err(e) => return TokenStream::from(Error::from(e).write_errors()),
+    };
+
+    let mut input = parse_macro_input!(input as ItemFn);
+
+    let _args = match SimicsExceptionOpts::from_list(&attr_args) {
+        Ok(a) => a,
+        Err(e) => return TokenStream::from(e.write_errors()),
+    };
+
+    // Get the original ident and visibility before we change them
+    let vis = input.vis.clone();
+    let mut sig = input.sig.clone();
+
+    let inner_ident = format_ident!("_{}", input.sig.ident);
+    input.sig.ident = inner_ident.clone();
+    input.vis = Visibility::Inherited;
+
+    let ok_return = sig
+        .output
+        .is_result_type()
+        .then_some(quote!(result))
+        .unwrap_or(quote!(Ok(result)));
+
+    sig.output = match sig.output.is_result_type().then_some(&sig.output) {
+        Some(o) => o.clone(),
+        None => {
+            let output = match &sig.output {
+                ReturnType::Default => quote!(()),
+                ReturnType::Type(_, ty) => quote!(#ty),
+            };
+
+            match parse_str(&quote!(-> crate::error::Result<#output>).to_string()) {
+                Ok(o) => o,
+                Err(e) => return TokenStream::from(Error::from(e).write_errors()),
+            }
+        }
+    };
+
+    let args = sig
+        .inputs
+        .iter()
+        .map(|i| match i {
+            syn::FnArg::Receiver(_) => {
+                abort!(i, "Cannot apply attribute to function with a receiver")
+            }
+            syn::FnArg::Typed(t) => {
+                let pat = &t.pat;
+                quote!(#pat)
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let wrapper = quote! {
+        #vis #sig {
+            let result = #inner_ident(#(#args),*);
+            match crate::api::get_pending_exception() {
+                crate::api::base::sim_exception::SimException::SimExc_No_Exception => #ok_return,
+                exception => {
+                    crate::api::base::sim_exception::clear_exception();
+                    Err(crate::error::Error::SimicsException {
+                        exception,
+                        msg: crate::api::base::sim_exception::last_error()
+                    })
+                }
+            }
+        }
+
+    };
+
+    println!("{:?}", wrapper);
+
+    quote! {
+        #input
+        #wrapper
+    }
+    .into()
 }

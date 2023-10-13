@@ -6,12 +6,8 @@
 extern crate num_traits;
 
 pub mod api;
-
-#[forbid(unsafe_code)]
-pub mod simics;
+pub mod error;
+pub use error::{Error, Result};
 
 #[forbid(unsafe_code)]
 pub mod util;
-
-#[forbid(unsafe_code)]
-pub mod project;

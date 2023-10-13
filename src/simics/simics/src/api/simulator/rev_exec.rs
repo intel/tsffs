@@ -6,7 +6,7 @@
 use crate::api::sys::{
     VT_delete_micro_checkpoint, VT_restore_micro_checkpoint, VT_save_micro_checkpoint,
 };
-use anyhow::Result;
+use crate::error::Result;
 use raw_cstr::raw_cstr;
 use simics_api_sys::micro_checkpoint_flags_t;
 

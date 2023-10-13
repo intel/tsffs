@@ -1,6 +1,8 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+#![allow(clippy::not_unsafe_ptr_arg_deref)]
+
 use crate::api::ConfObject;
 use anyhow::Result;
 use simics_api_sys::{SIM_log_error, SIM_log_info, SIM_log_level, SIM_set_log_level};
@@ -16,7 +18,7 @@ where
     let msg_cstring = CString::new(msg.as_ref())?;
 
     unsafe {
-        SIM_log_info(level, device.into(), LOG_GROUP, msg_cstring.as_ptr());
+        SIM_log_info(level, device, LOG_GROUP, msg_cstring.as_ptr());
     };
 
     Ok(())
@@ -27,7 +29,7 @@ pub fn log_error(device: *mut ConfObject, msg: String) -> Result<()> {
     let msg_cstring = CString::new(msg)?;
 
     unsafe {
-        SIM_log_error(device.into(), LOG_GROUP, msg_cstring.as_ptr());
+        SIM_log_error(device, LOG_GROUP, msg_cstring.as_ptr());
     };
 
     Ok(())
@@ -35,10 +37,10 @@ pub fn log_error(device: *mut ConfObject, msg: String) -> Result<()> {
 
 /// Get the current log level of an object
 pub fn log_level(obj: *mut ConfObject) -> u32 {
-    unsafe { SIM_log_level((obj as *const ConfObject).into()) }
+    unsafe { SIM_log_level(obj as *const ConfObject) }
 }
 
 /// Set the global SIMICS log level
 pub fn set_log_level(obj: *mut ConfObject, level: u32) {
-    unsafe { SIM_set_log_level(obj.into(), level) };
+    unsafe { SIM_set_log_level(obj, level) };
 }

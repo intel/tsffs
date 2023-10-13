@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::api::sys::{mm_free, mm_zalloc};
-use anyhow::Result;
+use crate::error::Result;
 use raw_cstr::raw_cstr;
 use std::{ffi::c_void, mem::transmute};
 

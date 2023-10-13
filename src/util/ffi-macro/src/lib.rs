@@ -263,10 +263,7 @@ impl<'a> FfiMethods<'a> {
                 abort!(method.original, "No receiver on method");
             };
 
-            let maybe_mut_ref = impl_method_receiver
-                .mutability
-                .map(|m| quote!(#m))
-                .unwrap_or_default();
+            let maybe_mut_ref = impl_method_receiver.mutability.map(|m| quote!(#m));
 
             let impl_method_args = method.original.sig.inputs.iter().collect::<Vec<_>>();
 
@@ -484,6 +481,7 @@ pub fn ffi(args: TokenStream, input: TokenStream) -> TokenStream {
         Err(e) => return TokenStream::from(Error::from(e).write_errors()),
     };
 
+    // Extract the options from the #[ffi()] attribute
     let impl_item_opts = match FfiOpts::from_list(&meta) {
         Ok(o) => o,
         Err(e) => return TokenStream::from(e.write_errors()),
@@ -491,14 +489,12 @@ pub fn ffi(args: TokenStream, input: TokenStream) -> TokenStream {
 
     let impl_item = parse_macro_input!(input as ItemImpl);
 
-    let maybe_trait = impl_item
-        .trait_
-        .as_ref()
-        .map(|(not, path, f)| {
-            let maybe_not = not.map(|not| quote!(#not)).unwrap_or_default();
-            quote!(#maybe_not #path #f)
-        })
-        .unwrap_or_default();
+    // Extract the trait component of the `impl X (for Y) {` item. We need this in addition to the
+    // generics below because we re-emit the original implementation.
+    let maybe_trait = impl_item.trait_.as_ref().map(|(not, path, f)| {
+        let maybe_not = not.map(|not| quote!(#not)).unwrap_or_default();
+        quote!(#maybe_not #path #f)
+    });
 
     let impl_item_name = &impl_item.self_ty;
     let (impl_generics, _ty_generics, where_clause) = impl_item.generics.split_for_impl();
