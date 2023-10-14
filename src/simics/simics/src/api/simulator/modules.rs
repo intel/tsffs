@@ -1,13 +1,16 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::api::sys::{
-    SIM_add_module_dir, SIM_get_all_failed_modules, SIM_get_all_modules, SIM_load_module,
-    SIM_module_list_refresh,
-};
-use crate::api::{
-    attr_boolean, attr_integer, attr_is_list, attr_list_item, attr_list_size, attr_string,
-    get_pending_exception, last_error, AttrValue, SimException,
+use crate::{
+    api::{
+        attr_boolean, attr_integer, attr_is_list, attr_list_item, attr_list_size, attr_string,
+        sys::{
+            SIM_add_module_dir, SIM_get_all_failed_modules, SIM_get_all_modules, SIM_load_module,
+            SIM_module_list_refresh,
+        },
+        AttrKind, AttrValue,
+    },
+    Error, Result,
 };
 use raw_cstr::raw_cstr;
 use simics_macro::simics_exception;
@@ -32,21 +35,24 @@ pub struct ModuleInfo {
 impl TryFrom<AttrValue> for ModuleInfo {
     type Error = Error;
     fn try_from(value: AttrValue) -> Result<Self> {
-        ensure!(
-            attr_is_list(value),
-            "Could not create ModuleInfo from non-list AttrValue"
-        );
-        Ok(Self {
-            name: attr_string(unsafe { attr_list_item(value, 0) }?)?,
-            path: attr_string(unsafe { attr_list_item(value, 1) }?)?,
-            loaded: attr_boolean(unsafe { attr_list_item(value, 2) }?)?,
-            version: attr_integer(unsafe { attr_list_item(value, 3) }?)?.try_into()?,
-            user_version: attr_string(unsafe { attr_list_item(value, 4) }?)?,
-            build_id: attr_integer(unsafe { attr_list_item(value, 5) }?)?.try_into()?,
-            build_date: attr_integer(unsafe { attr_list_item(value, 6) }?)?.try_into()?,
-            thread_safe: attr_boolean(unsafe { attr_list_item(value, 8) }?)?,
-            user_path: attr_boolean(unsafe { attr_list_item(value, 10) }?)?,
-        })
+        if attr_is_list(value) {
+            Ok(Self {
+                name: attr_string(unsafe { attr_list_item(value, 0) }?)?,
+                path: attr_string(unsafe { attr_list_item(value, 1) }?)?,
+                loaded: attr_boolean(unsafe { attr_list_item(value, 2) }?)?,
+                version: attr_integer(unsafe { attr_list_item(value, 3) }?)?.try_into()?,
+                user_version: attr_string(unsafe { attr_list_item(value, 4) }?)?,
+                build_id: attr_integer(unsafe { attr_list_item(value, 5) }?)?.try_into()?,
+                build_date: attr_integer(unsafe { attr_list_item(value, 6) }?)?.try_into()?,
+                thread_safe: attr_boolean(unsafe { attr_list_item(value, 8) }?)?,
+                user_path: attr_boolean(unsafe { attr_list_item(value, 10) }?)?,
+            })
+        } else {
+            Err(Error::AttrValueType {
+                actual: value.private_kind,
+                expected: AttrKind::Sim_Val_List,
+            })
+        }
     }
 }
 
@@ -64,10 +70,6 @@ impl TryFrom<AttrValue> for ModuleInfo {
 /// user path - Module was loaded from path provided by user.
 pub fn get_all_modules() -> Result<Vec<ModuleInfo>> {
     let modules = unsafe { SIM_get_all_modules() };
-    ensure!(
-        attr_is_list(modules),
-        "Module list was not a list AttrValue"
-    );
     let mut module_infos = Vec::new();
 
     for i in 0..attr_list_size(modules)? {

@@ -5,15 +5,15 @@
 
 use crate::api::{ConfObject, PhysicalAddress};
 use crate::{
-    api::sys::{SIM_read_byte, SIM_write_byte},
+    api::sys::{
+        SIM_load_binary, SIM_load_file, SIM_read_byte, SIM_read_phys_memory,
+        SIM_read_phys_memory_tags, SIM_write_byte, SIM_write_phys_memory,
+        SIM_write_phys_memory_tags,
+    },
     Error, Result,
 };
 use anyhow::anyhow;
 use raw_cstr::raw_cstr;
-use simics_api_sys::{
-    SIM_load_binary, SIM_load_file, SIM_read_phys_memory, SIM_read_phys_memory_tags,
-    SIM_write_phys_memory, SIM_write_phys_memory_tags,
-};
 use simics_macro::simics_exception;
 use std::path::Path;
 

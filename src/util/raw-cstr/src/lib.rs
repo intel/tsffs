@@ -3,7 +3,7 @@
 
 #![deny(clippy::unwrap_used)]
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use std::{cell::RefCell, collections::HashMap, ffi::CString};
 
 struct RawCStrs(RefCell<HashMap<String, *mut i8>>);
@@ -57,3 +57,25 @@ where
 }
 
 pub use byte_strings::c_str;
+
+pub trait AsRawCstr {
+    /// Get a type as a raw C string
+    fn as_raw_cstr(&self) -> Result<*mut i8>;
+}
+
+impl AsRawCstr for &'static [u8] {
+    /// Get a static slice as a raw C string. Useful for interfaces.
+    fn as_raw_cstr(&self) -> Result<*mut i8> {
+        if !self.last().is_some_and(|l| *l == 0) {
+            Ok(self.as_ptr() as *const i8 as *mut i8)
+        } else {
+            bail!("Empty slice or last element is nonzero");
+        }
+    }
+}
+
+impl AsRawCstr for *mut i8 {
+    fn as_raw_cstr(&self) -> Result<*mut i8> {
+        Ok(*self)
+    }
+}

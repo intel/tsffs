@@ -44,5 +44,4 @@ fn main() -> Result<()> {
     unsafe { SIM_init_command_line() };
     unsafe { SIM_main_loop() };
     unreachable!("SIM_main_loop should never return");
-    Ok(())
 }
