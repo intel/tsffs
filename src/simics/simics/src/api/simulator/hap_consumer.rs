@@ -2,26 +2,101 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #![allow(clippy::unused_unit)]
+#![allow(clippy::not_unsafe_ptr_arg_deref)]
 
-use crate::api::{last_error, AttrValue, ConfObject, GenericTransaction};
-use anyhow::{bail, ensure, Result};
-use raw_cstr::raw_cstr;
-use simics_api_sys::{hap_handle_t, SIM_get_all_hap_types, SIM_hap_add_callback};
-use simics_macro::{simics_exception, simics_hap_codegen};
-use std::{
-    ffi::{c_char, c_void},
-    mem::transmute,
-    ptr::null_mut,
+use crate::{
+    api::{
+        sys::{
+            hap_handle_t, hap_type_t, SIM_get_all_hap_types, SIM_hap_add_type, SIM_hap_get_name,
+            SIM_hap_get_number, SIM_hap_is_active, SIM_hap_is_active_obj,
+            SIM_hap_is_active_obj_idx, SIM_hap_occurred_always, SIM_hap_remove_type,
+        },
+        AttrValue, ConfObject,
+    },
+    Result,
 };
+use raw_cstr::raw_cstr;
+use simics_macro::{simics_exception, simics_hap_codegen};
+use std::{ffi::CStr, ptr::null_mut};
 
 pub use self::haps::*;
 
 pub type HapHandle = hap_handle_t;
+pub type HapType = hap_type_t;
 
 #[simics_exception]
 pub fn get_all_hap_types() -> AttrValue {
     unsafe { SIM_get_all_hap_types() }
 }
+
+#[simics_exception]
+pub fn hap_add_type<S>(hap: S, params: S, param_desc: S, index: S, desc: S) -> Result<HapType>
+where
+    S: AsRef<str>,
+{
+    Ok(unsafe {
+        SIM_hap_add_type(
+            raw_cstr(hap)?,
+            raw_cstr(params)?,
+            raw_cstr(param_desc)?,
+            raw_cstr(index)?,
+            raw_cstr(desc)?,
+            0,
+        )
+    })
+}
+
+#[simics_exception]
+pub fn hap_get_name(hap: HapType) -> Result<String> {
+    Ok(unsafe { CStr::from_ptr(SIM_hap_get_name(hap)) }
+        .to_str()?
+        .to_string())
+}
+
+#[simics_exception]
+pub fn hap_get_number<S>(hap: S) -> Result<HapType>
+where
+    S: AsRef<str>,
+{
+    Ok(unsafe { SIM_hap_get_number(raw_cstr(hap)?) })
+}
+
+#[simics_exception]
+pub fn hap_is_active(hap: HapType) -> bool {
+    unsafe { SIM_hap_is_active(hap) }
+}
+
+#[simics_exception]
+pub fn hap_is_active_obj(hap: HapType, obj: *mut ConfObject) -> bool {
+    unsafe { SIM_hap_is_active_obj(hap, obj) }
+}
+
+#[simics_exception]
+pub fn hap_is_active_obj_idx(hap: HapType, obj: *mut ConfObject, index: i64) -> bool {
+    unsafe { SIM_hap_is_active_obj_idx(hap, obj, index) }
+}
+
+#[simics_exception]
+/// Trigger a hap occurrence
+pub fn hap_occurred_always(
+    hap: HapType,
+    obj: Option<*mut ConfObject>,
+    value: i64,
+    list: *mut AttrValue,
+) -> i32 {
+    unsafe { SIM_hap_occurred_always(hap, obj.unwrap_or(null_mut()), value, list) }
+}
+
+#[simics_exception]
+pub fn hap_remove_type<S>(hap: S) -> Result<()>
+where
+    S: AsRef<str>,
+{
+    unsafe { SIM_hap_remove_type(raw_cstr(hap)?) };
+    Ok(())
+}
+
+// NOTE: recommended to only use the always version
 
 #[simics_hap_codegen(source = "bindings.rs")]
 pub mod haps {}

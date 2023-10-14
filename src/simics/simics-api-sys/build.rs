@@ -298,22 +298,45 @@ fn main() -> Result<()> {
         let hap_document = Html::parse_document(&String::from_utf8(read(hap_doc_path)?)?);
 
         let haps_selector = Selector::parse(r#"article"#).unwrap();
-        let hap_id_slector = Selector::parse(r#"h2"#).unwrap();
-        let pre_selector = Selector::parse(r#"pre"#).unwrap();
+        let haps_id_selector = Selector::parse(r#"h2"#).unwrap();
+        let section_selector = Selector::parse(r#"section"#).unwrap();
+        let hap_code_selector = Selector::parse(r#"pre"#).unwrap();
+        let hap_description_selector = Selector::parse(r#"h3"#).unwrap();
+        let hap_index_selector = Selector::parse(r#"code"#).unwrap();
+
         let haps_article = hap_document.select(&haps_selector).next().unwrap();
-        let hap_names = haps_article
-            .select(&hap_id_slector)
-            .filter_map(|e| e.value().attr("id"))
+        let haps_names = haps_article
+            .select(&haps_id_selector)
+            .filter_map(|h| h.value().id())
             .collect::<Vec<_>>();
-        let hap_codes = haps_article
-            .select(&pre_selector)
-            .map(|e| e.inner_html())
+        let haps_sections = haps_article.select(&section_selector).collect::<Vec<_>>();
+        let haps_code_indices_descriptions = haps_sections
+            .iter()
+            .map(|s| {
+                let code = s
+                    .select(&hap_code_selector)
+                    .next()
+                    .unwrap()
+                    .inner_html()
+                    .trim()
+                    .to_string();
+                let maybe_index = s
+                    .select(&hap_index_selector)
+                    .next()
+                    .map(|i| i.inner_html().trim().to_string());
+                let maybe_description = s
+                    .select(&hap_description_selector)
+                    .last()
+                    .and_then(|i| i.next_sibling())
+                    .and_then(|n| n.value().as_text().map(|t| t.trim().to_string()));
+                (code, maybe_index, maybe_description)
+            })
             .collect::<Vec<_>>();
 
-        let hap_code = hap_names
+        let hap_code = haps_names
             .iter()
-            .zip(hap_codes.iter())
-            .map(|(name, code)| {
+            .zip(haps_code_indices_descriptions.iter())
+            .map(|(name, (code, maybe_index, maybe_description))| {
                 let mut hap_name_name = name.to_ascii_uppercase();
                 hap_name_name += "_HAP_NAME";
                 let mut hap_callback_name = name.to_ascii_lowercase();
@@ -321,8 +344,20 @@ fn main() -> Result<()> {
                 let code = code
                     .replace("(*)", &format!("(*{})", hap_callback_name))
                     .replace(['/', '-'], "_");
+                let comment = format!(
+                    "/**\n * Index: {}\n * Description: {}\n */",
+                    maybe_index
+                        .as_ref()
+                        .unwrap_or(&"Indices not supported".to_string()),
+                    maybe_description
+                        .as_ref()
+                        .unwrap_or(&"No description".to_string())
+                );
 
-                format!("#define {} \"{}\"\ntypedef {}\n", hap_name_name, name, code)
+                format!(
+                    "#define {} \"{}\"\n{}\ntypedef {}\n",
+                    hap_name_name, name, comment, code
+                )
             })
             .collect::<String>();
 

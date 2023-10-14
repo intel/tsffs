@@ -9,8 +9,8 @@ use crate::api::{
     attr_boolean, attr_integer, attr_is_list, attr_list_item, attr_list_size, attr_string,
     get_pending_exception, last_error, AttrValue, SimException,
 };
-use anyhow::{bail, ensure, Error, Result};
 use raw_cstr::raw_cstr;
+use simics_macro::simics_exception;
 use std::path::Path;
 
 pub struct ModuleInfo {
@@ -78,10 +78,12 @@ pub fn get_all_modules() -> Result<Vec<ModuleInfo>> {
     Ok(module_infos)
 }
 
+#[simics_exception]
 pub fn get_all_failed_modules() -> AttrValue {
     unsafe { SIM_get_all_failed_modules() }
 }
 
+#[simics_exception]
 pub fn add_module_dir<P>(path: P) -> Result<()>
 where
     P: AsRef<Path>,
@@ -90,17 +92,16 @@ where
     Ok(())
 }
 
+#[simics_exception]
 pub fn module_list_refresh() {
     unsafe { SIM_module_list_refresh() };
 }
 
+#[simics_exception]
 pub fn load_module<S>(module: S) -> Result<()>
 where
     S: AsRef<str>,
 {
     unsafe { SIM_load_module(raw_cstr(module)?) }
-    match get_pending_exception() {
-        SimException::SimExc_No_Exception => Ok(()),
-        err => bail!("Failed to load module: {:?}: {}", err, last_error()),
-    }
+    Ok(())
 }

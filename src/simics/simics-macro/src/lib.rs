@@ -16,8 +16,8 @@ use quote::{format_ident, quote, ToTokens};
 use std::{collections::HashMap, env::var, fs::read, path::PathBuf};
 use syn::{
     parse::Parser, parse_file, parse_macro_input, parse_str, Expr, Field, Fields, GenericArgument,
-    Generics, Ident, ImplGenerics, Item, ItemConst, ItemFn, ItemMod, ItemStruct, ItemType,
-    PathArguments, ReturnType, Type, TypeGenerics, Visibility, WhereClause,
+    Generics, Ident, ImplGenerics, Item, ItemConst, ItemFn, ItemMod, ItemStruct, ItemType, Lit,
+    Meta, PathArguments, ReturnType, Type, TypeGenerics, Visibility, WhereClause,
 };
 
 #[derive(Debug, FromDeriveInput)]
@@ -790,6 +790,7 @@ pub fn simics_hap_codegen(args: TokenStream, input: TokenStream) -> TokenStream 
     quote! {
         #input_mod_vis mod #input_mod_name {
             use crate::api::sys::*;
+            use raw_cstr::AsRawCstr;
 
             #(#hap_structs)*
         }
@@ -803,6 +804,21 @@ fn hap_name_and_type_to_struct(
     let name = name_callback_type.0;
     let name_name = &name.ident;
     let callback_type = name_callback_type.1;
+    let supports_index_callbacks = callback_type.attrs.iter().any(|a| {
+        if let Meta::NameValue(ref meta) = a.meta {
+            if let Expr::Lit(ref lit) = meta.value {
+                if let Lit::Str(ref str_lit) = lit.lit {
+                    str_lit.value().contains("Index: Indices not supported")
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    });
     let struct_name = format_ident!(
         "{}Hap",
         callback_type
@@ -842,17 +858,114 @@ fn hap_name_and_type_to_struct(
                             let closure_param_names =
                                 input_names.iter().skip(1).collect::<Vec<_>>();
 
+                            let add_callback_methods = quote! {
+                                fn add_callback(callback: Self::Callback) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle> {
+                                    let callback_box = Box::new(callback);
+                                    let callback_raw = Box::into_raw(callback_box);
+                                    let handler: unsafe extern "C" fn() = unsafe { std::mem::transmute(Self::HANDLER) };
+                                    Ok(unsafe {
+                                        crate::api::sys::SIM_hap_add_callback(
+                                            Self::NAME.as_raw_cstr()?,
+                                            Some(handler),
+                                            callback_raw as *mut std::ffi::c_void,
+                                        )
+                                    })
+                                }
+
+                                fn add_callback_object(callback: Self::Callback, obj: *mut crate::api::ConfObject) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle> {
+                                    let callback_box = Box::new(callback);
+                                    let callback_raw = Box::into_raw(callback_box);
+                                    let handler: unsafe extern "C" fn() = unsafe { std::mem::transmute(Self::HANDLER) };
+                                    Ok(unsafe {
+                                        crate::api::sys::SIM_hap_add_callback_obj(
+                                            Self::NAME.as_raw_cstr()?,
+                                            obj,
+                                            0,
+                                            Some(handler),
+                                            callback_raw as *mut std::ffi::c_void,
+                                        )
+                                    })
+                                }
+                            };
+
+                            let maybe_index_callback_methods = supports_index_callbacks.then_some(quote! {
+                                fn add_callback_index(callback: Self::Callback, index: i64) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle> {
+                                    let callback_box = Box::new(callback);
+                                    let callback_raw = Box::into_raw(callback_box);
+                                    let handler: unsafe extern "C" fn() = unsafe { std::mem::transmute(Self::HANDLER) };
+                                    Ok(unsafe {
+                                        crate::api::sys::SIM_hap_add_callback_index(
+                                            Self::NAME.as_raw_cstr()?,
+                                            Some(handler),
+                                            callback_raw as *mut std::ffi::c_void,
+                                            index
+                                        )
+                                    })
+                                }
+
+                                fn add_callback_range(callback: Self::Callback, start: i64, end: i64) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle> {
+                                    let callback_box = Box::new(callback);
+                                    let callback_raw = Box::into_raw(callback_box);
+                                    let handler: unsafe extern "C" fn() = unsafe { std::mem::transmute(Self::HANDLER) };
+                                    Ok(unsafe {
+                                        crate::api::sys::SIM_hap_add_callback_range(
+                                            Self::NAME.as_raw_cstr()?,
+                                            Some(handler),
+                                            callback_raw as *mut std::ffi::c_void,
+                                            start,
+                                            end,
+                                        )
+                                    })
+                                }
+
+                                fn add_callback_object_index(callback: Self::Callback, obj: *mut crate::api::ConfObject, index: i64) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle> {
+                                    let callback_box = Box::new(callback);
+                                    let callback_raw = Box::into_raw(callback_box);
+                                    let handler: unsafe extern "C" fn() = unsafe { std::mem::transmute(Self::HANDLER) };
+                                    Ok(unsafe {
+                                        crate::api::sys::SIM_hap_add_callback_obj_index(
+                                            Self::NAME.as_raw_cstr()?,
+                                            obj,
+                                            0,
+                                            Some(handler),
+                                            callback_raw as *mut std::ffi::c_void,
+                                            index
+                                        )
+                                    })
+                                }
+
+                                fn add_callback_object_range(callback: Self::Callback, obj: *mut crate::api::ConfObject, start: i64, end: i64) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle> {
+                                    let callback_box = Box::new(callback);
+                                    let callback_raw = Box::into_raw(callback_box);
+                                    let handler: unsafe extern "C" fn() = unsafe { std::mem::transmute(Self::HANDLER) };
+                                    Ok(unsafe {
+                                        crate::api::sys::SIM_hap_add_callback_obj_range(
+                                            Self::NAME.as_raw_cstr()?,
+                                            obj,
+                                            0,
+                                            Some(handler),
+                                            callback_raw as *mut std::ffi::c_void,
+                                            start,
+                                            end,
+                                        )
+                                    })
+                                }
+
+
+                            });
+
                             let struct_and_impl = quote! {
                                 pub struct #struct_name {}
 
-                                impl<C> crate::api::traits::hap::Hap<C> for #struct_name
-                                where
-                                    C: Fn(#(#closure_params),*) -> #output + 'static
-                                {
-                                    type Callback = #proto;
+                                impl crate::api::traits::hap::Hap for #struct_name {
+                                    type Handler = #proto;
                                     type Name =  &'static [u8];
+                                    type Callback = Box<dyn Fn(#(#closure_params),*) -> #output + 'static>;
                                     const NAME: Self::Name = crate::api::sys::#name_name;
-                                    const HANDLER: Self::Callback = #handler_name::<C>;
+                                    const HANDLER: Self::Handler = #handler_name::<Self::Callback>;
+
+                                    #add_callback_methods
+                                    #maybe_index_callback_methods
                                 }
 
                                 extern "C" fn #handler_name<F>(#inputs) -> #output

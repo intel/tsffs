@@ -37,6 +37,12 @@ pub enum Error {
         exception: crate::api::base::sim_exception::SimException,
         msg: String,
     },
+    #[error("This registration type is not supported for this hap")]
+    HapRegistrationType,
+    #[error("This deletion type is not supported for this hap")]
+    HapDeleteType,
+    #[error("Value size {actual} is too large (expected <= {expected})")]
+    ValueTooLarge { expected: usize, actual: usize },
 
     // Transparently wrapped errors from std
     #[error(transparent)]
