@@ -1,24 +1,46 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+pub mod breakpoints;
 pub mod callbacks;
+pub mod conf_object;
+pub mod configuration;
 pub mod control;
+pub mod debugger;
 pub mod embed;
 pub mod hap_consumer;
+pub mod host_profiling;
 pub mod memory;
 pub mod modules;
+pub mod output;
+pub mod paths;
 pub mod processor;
 pub mod python;
 pub mod rev_exec;
 pub mod script;
+pub mod sim_caches;
+pub mod sim_get_class;
+pub mod snapshots;
+pub mod thread;
 
+pub use breakpoints::*;
 pub use callbacks::*;
+pub use conf_object::*;
+pub use configuration::*;
 pub use control::*;
+pub use debugger::*;
 pub use embed::*;
 pub use hap_consumer::*;
+pub use host_profiling::*;
 pub use memory::*;
 pub use modules::*;
+pub use output::*;
+pub use paths::*;
 pub use processor::*;
 pub use python::*;
 pub use rev_exec::*;
 pub use script::*;
+pub use sim_caches::*;
+pub use sim_get_class::*;
+pub use snapshots::*;
+pub use thread::*;

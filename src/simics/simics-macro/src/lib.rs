@@ -13,9 +13,11 @@ use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use proc_macro_error::{abort, proc_macro_error};
 use quote::{format_ident, quote, ToTokens};
+use std::{collections::HashMap, env::var, fs::read, path::PathBuf};
 use syn::{
-    parse::Parser, parse_macro_input, parse_str, Expr, Field, Fields, Generics, Ident,
-    ImplGenerics, ItemFn, ItemStruct, ReturnType, Type, TypeGenerics, Visibility, WhereClause,
+    parse::Parser, parse_file, parse_macro_input, parse_str, Expr, Field, Fields, GenericArgument,
+    Generics, Ident, ImplGenerics, Item, ItemConst, ItemFn, ItemMod, ItemStruct, ItemType,
+    PathArguments, ReturnType, Type, TypeGenerics, Visibility, WhereClause,
 };
 
 #[derive(Debug, FromDeriveInput)]
@@ -449,6 +451,11 @@ pub fn simics_exception(args: TokenStream, input: TokenStream) -> TokenStream {
         }
     };
 
+    let maybe_ty_generics = (!&sig.generics.params.is_empty()).then_some({
+        let params = &sig.generics.params;
+        quote!(::<#params>)
+    });
+
     let args = sig
         .inputs
         .iter()
@@ -465,7 +472,7 @@ pub fn simics_exception(args: TokenStream, input: TokenStream) -> TokenStream {
 
     let wrapper = quote! {
         #vis #sig {
-            let result = #inner_ident(#(#args),*);
+            let result = #inner_ident #maybe_ty_generics(#(#args),*);
             match crate::api::get_pending_exception() {
                 crate::api::base::sim_exception::SimException::SimExc_No_Exception => #ok_return,
                 exception => {
@@ -480,11 +487,391 @@ pub fn simics_exception(args: TokenStream, input: TokenStream) -> TokenStream {
 
     };
 
-    println!("{:?}", wrapper);
-
     quote! {
         #input
         #wrapper
     }
     .into()
+}
+
+trait SnakeToCamel {
+    fn snake_to_camel(&self) -> String;
+}
+
+impl SnakeToCamel for String {
+    fn snake_to_camel(&self) -> String {
+        let mut s = String::new();
+        let mut upper = false;
+        for c in self.chars() {
+            if upper || s.is_empty() {
+                s.push(c.to_ascii_uppercase());
+                upper = false;
+            } else if c == '_' {
+                upper = true;
+            } else {
+                s.push(c.to_ascii_lowercase());
+            }
+        }
+        s
+    }
+}
+
+fn interface_field_to_method(field: &Field) -> Option<TokenStream2> {
+    let vis = &field.vis;
+    if let Some(name) = &field.ident {
+        let name_string = name.to_string();
+        if let Type::Path(ref p) = field.ty {
+            if let Some(last) = p.path.segments.last() {
+                if last.ident == "Option" {
+                    if let PathArguments::AngleBracketed(ref args) = last.arguments {
+                        if let Some(GenericArgument::Type(Type::BareFn(proto))) = args.args.first()
+                        {
+                            // NOTE: We `use crate::api::sys::*;` at the top of the module, otherwise
+                            // we would need to rewrite all of the types on `inputs` here.
+                            let inputs = &proto.inputs;
+                            let input_names = inputs
+                                .iter()
+                                .filter_map(|a| a.name.clone().map(|n| n.0))
+                                .collect::<Vec<_>>();
+                            let output = match &proto.output {
+                                ReturnType::Default => quote!(()),
+                                ReturnType::Type(_, t) => quote!(#t),
+                            };
+                            // NOTE: We need to make a new name because in some cases the fn ptr name is the same as one of the parameter
+                            // names
+                            let some_name = format_ident!("{}_fn", name);
+                            return Some(quote! {
+                                #vis fn #name(&mut self, #inputs) -> crate::Result<#output> {
+                                    if let Some(#some_name) = unsafe { *self.interface}.#name {
+                                        Ok(unsafe { #some_name(#(#input_names),*) })
+                                    } else {
+                                        Err(crate::Error::NoInterfaceMethod { method: #name_string.to_string() })
+                                    }
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+#[derive(Debug, FromMeta)]
+struct SimicsInterfaceCodegen {
+    source: String,
+}
+
+#[proc_macro_error]
+#[proc_macro_attribute]
+/// Automatically generate high level bindings to all interfaces provided by SIMICS
+pub fn simics_interface_codegen(args: TokenStream, input: TokenStream) -> TokenStream {
+    let attr_args = match NestedMeta::parse_meta_list(args.into()) {
+        Ok(a) => a,
+        Err(e) => return TokenStream::from(Error::from(e).write_errors()),
+    };
+
+    let codegen_args = match SimicsInterfaceCodegen::from_list(&attr_args) {
+        Ok(a) => a,
+        Err(e) => return TokenStream::from(e.write_errors()),
+    };
+
+    let bindings_source_path = if let Ok(out_dir) = var("OUT_DIR") {
+        PathBuf::from(out_dir).join(codegen_args.source)
+    } else {
+        return TokenStream::from(
+            Error::custom("No environment variable OUT_DIR set").write_errors(),
+        );
+    };
+
+    let bindings_source = if let Ok(bindings_source) = read(&bindings_source_path) {
+        if let Ok(bindings_source) = String::from_utf8(bindings_source) {
+            bindings_source
+        } else {
+            return TokenStream::from(
+                Error::custom("Bindings source file was not UTF8").write_errors(),
+            );
+        }
+    } else {
+        return TokenStream::from(
+            Error::custom("Failed to read bindings source file").write_errors(),
+        );
+    };
+
+    let input = parse_macro_input!(input as ItemMod);
+    let input_mod_vis = &input.vis;
+    let input_mod_name = &input.ident;
+
+    let parsed_bindings = match parse_file(&bindings_source) {
+        Ok(b) => b,
+        Err(e) => return TokenStream::from(Error::from(e).write_errors()),
+    };
+
+    let interface_name_items = parsed_bindings
+        .items
+        .iter()
+        .filter_map(|i| {
+            if let Item::Const(c) = i {
+                if c.ident.to_string().ends_with("_INTERFACE") {
+                    Some((c.ident.to_string(), c))
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect::<HashMap<_, _>>();
+
+    let interfaces = parsed_bindings
+        .items
+        .iter()
+        .filter_map(|i| {
+            if let Item::Struct(s) = i {
+                interface_name_items
+                    .get(&s.ident.to_string().to_ascii_uppercase())
+                    .map(|interface_name_item| (interface_name_item, s))
+            } else {
+                None
+            }
+        })
+        .collect::<HashMap<_, _>>();
+
+    let interface_structs = interfaces
+        .iter()
+        .map(|(name, interface)| {
+            let camel_name = name.ident.to_string().snake_to_camel();
+            let struct_name = format_ident!("{camel_name}",);
+            let interface_ident = &interface.ident;
+            let name_ident = &name.ident;
+            let interface_methods = interface
+                .fields
+                .iter()
+                .filter_map(interface_field_to_method)
+                .collect::<Vec<_>>();
+            let q = quote! {
+                pub struct #struct_name {
+                    interface: *mut crate::api::sys::#interface_ident,
+                }
+
+                impl #struct_name {
+                    #(#interface_methods)*
+                }
+
+                impl crate::api::traits::interface::Interface for #struct_name {
+                    type Interface = crate::api::sys::#interface_ident;
+                    type Name = &'static [u8];
+
+                    const NAME: &'static [u8] = crate::api::sys::#name_ident;
+
+                    fn new(interface: *mut Self::Interface) -> Self {
+                        Self { interface }
+                    }
+                }
+            };
+            q
+        })
+        .collect::<Vec<_>>();
+
+    let res: TokenStream = quote! {
+        #input_mod_vis mod #input_mod_name {
+            use crate::api::sys::*;
+
+            #(#interface_structs)*
+        }
+    }
+    .into();
+
+    // println!("{}", res);
+
+    res
+}
+
+#[derive(Debug, FromMeta)]
+struct SimicsHapCodegen {
+    source: String,
+}
+
+#[proc_macro_error]
+#[proc_macro_attribute]
+/// Automatically generate high level bindings to all HAPs provided by SIMICS
+pub fn simics_hap_codegen(args: TokenStream, input: TokenStream) -> TokenStream {
+    let attr_args = match NestedMeta::parse_meta_list(args.into()) {
+        Ok(a) => a,
+        Err(e) => return TokenStream::from(Error::from(e).write_errors()),
+    };
+
+    let codegen_args = match SimicsHapCodegen::from_list(&attr_args) {
+        Ok(a) => a,
+        Err(e) => return TokenStream::from(e.write_errors()),
+    };
+
+    let bindings_source_path = if let Ok(out_dir) = var("OUT_DIR") {
+        PathBuf::from(out_dir).join(codegen_args.source)
+    } else {
+        return TokenStream::from(
+            Error::custom("No environment variable OUT_DIR set").write_errors(),
+        );
+    };
+
+    let bindings_source = if let Ok(bindings_source) = read(&bindings_source_path) {
+        if let Ok(bindings_source) = String::from_utf8(bindings_source) {
+            bindings_source
+        } else {
+            return TokenStream::from(
+                Error::custom("Bindings source file was not UTF8").write_errors(),
+            );
+        }
+    } else {
+        return TokenStream::from(
+            Error::custom("Failed to read bindings source file").write_errors(),
+        );
+    };
+
+    let input = parse_macro_input!(input as ItemMod);
+    let input_mod_vis = &input.vis;
+    let input_mod_name = &input.ident;
+
+    let parsed_bindings = match parse_file(&bindings_source) {
+        Ok(b) => b,
+        Err(e) => return TokenStream::from(Error::from(e).write_errors()),
+    };
+
+    let hap_name_items = parsed_bindings
+        .items
+        .iter()
+        .filter_map(|i| {
+            if let Item::Const(c) = i {
+                if c.ident.to_string().ends_with("_HAP_NAME") {
+                    Some((c.ident.to_string(), c))
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect::<HashMap<_, _>>();
+
+    // println!("{:?}", hap_name_items);
+
+    let haps = parsed_bindings
+        .items
+        .iter()
+        .filter_map(|i| {
+            if let Item::Type(ty) = i {
+                if ty.ident.to_string().ends_with("_hap_callback") {
+                    hap_name_items
+                        .get(
+                            &(ty.ident
+                                .to_string()
+                                .trim_end_matches("_hap_callback")
+                                .to_ascii_uppercase()
+                                + "_HAP_NAME"),
+                        )
+                        .map(|hap_name_item| (hap_name_item, ty))
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect::<HashMap<_, _>>();
+
+    // println!("{:?}", haps);
+
+    let hap_structs = haps
+        .iter()
+        .filter_map(hap_name_and_type_to_struct)
+        .collect::<Vec<_>>();
+
+    quote! {
+        #input_mod_vis mod #input_mod_name {
+            use crate::api::sys::*;
+
+            #(#hap_structs)*
+        }
+    }
+    .into()
+}
+
+fn hap_name_and_type_to_struct(
+    name_callback_type: (&&&ItemConst, &&ItemType),
+) -> Option<TokenStream2> {
+    let name = name_callback_type.0;
+    let name_name = &name.ident;
+    let callback_type = name_callback_type.1;
+    let struct_name = format_ident!(
+        "{}Hap",
+        callback_type
+            .ident
+            .to_string()
+            .trim_end_matches("_hap_callback")
+            .to_string()
+            .snake_to_camel()
+    );
+    let handler_name = format_ident!(
+        "{}",
+        "handle_".to_string()
+            + callback_type
+                .ident
+                .to_string()
+                .trim_end_matches("_hap_callback"),
+    );
+    if let Type::Path(ref p) = &*callback_type.ty {
+        if let Some(last) = p.path.segments.last() {
+            if last.ident == "Option" {
+                if let PathArguments::AngleBracketed(ref args) = last.arguments {
+                    if let Some(GenericArgument::Type(Type::BareFn(proto))) = args.args.first() {
+                        // NOTE: We `use crate::api::sys::*;` at the top of the module, otherwise
+                        // we would need to rewrite all of the types on `inputs` here.
+                        let inputs = &proto.inputs;
+                        let input_names = inputs
+                            .iter()
+                            .filter_map(|a| a.name.clone().map(|n| n.0))
+                            .collect::<Vec<_>>();
+                        if let Some(userdata_name) = input_names.first() {
+                            let output = match &proto.output {
+                                ReturnType::Default => quote!(()),
+                                ReturnType::Type(_, t) => quote!(#t),
+                            };
+                            let closure_params =
+                                inputs.iter().skip(1).map(|a| &a.ty).collect::<Vec<_>>();
+                            let closure_param_names =
+                                input_names.iter().skip(1).collect::<Vec<_>>();
+
+                            let struct_and_impl = quote! {
+                                pub struct #struct_name {}
+
+                                impl<C> crate::api::traits::hap::Hap<C> for #struct_name
+                                where
+                                    C: Fn(#(#closure_params),*) -> #output + 'static
+                                {
+                                    type Callback = #proto;
+                                    type Name =  &'static [u8];
+                                    const NAME: Self::Name = crate::api::sys::#name_name;
+                                    const HANDLER: Self::Callback = #handler_name::<C>;
+                                }
+
+                                extern "C" fn #handler_name<F>(#inputs) -> #output
+                                    where F: Fn(#(#closure_params),*) -> #output + 'static
+                                {
+                                    let closure: Box<Box<F>> = unsafe { Box::from_raw(#userdata_name as *mut Box<F>) };
+                                    closure(#(#closure_param_names),*)
+                                }
+
+                            };
+
+                            println!("{}", struct_and_impl);
+
+                            return Some(struct_and_impl);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
 }

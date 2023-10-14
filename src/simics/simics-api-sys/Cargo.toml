@@ -18,6 +18,7 @@ version.workspace = true
 [build-dependencies]
 anyhow.workspace = true
 bindgen = "0.68.1"
+scraper = "0.17.1"
 walkdir = "2.4.0"
 
 [features]

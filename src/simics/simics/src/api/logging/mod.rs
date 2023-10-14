@@ -3,9 +3,11 @@
 
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
-use crate::api::ConfObject;
+use crate::api::{
+    sys::{SIM_log_error, SIM_log_info, SIM_log_level, SIM_set_log_level},
+    ConfObject,
+};
 use anyhow::Result;
-use simics_api_sys::{SIM_log_error, SIM_log_info, SIM_log_level, SIM_set_log_level};
 use std::ffi::CString;
 
 const LOG_GROUP: i32 = 0;

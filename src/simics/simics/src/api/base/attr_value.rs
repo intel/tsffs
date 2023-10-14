@@ -14,7 +14,7 @@ use crate::{
         sys::{
             attr_kind_t, attr_value__bindgen_ty_1, attr_value_t, SIM_alloc_attr_dict,
             SIM_alloc_attr_list, SIM_attr_dict_resize, SIM_attr_dict_set_item, SIM_attr_free,
-            SIM_attr_list_resize, SIM_attr_list_set_item, SIM_free_attribute, SIM_get_attribute,
+            SIM_attr_list_resize, SIM_attr_list_set_item, SIM_free_attribute,
         },
         ConfObject,
     },
@@ -389,17 +389,7 @@ pub fn attr_dict_value(attr: AttrValue, index: u32) -> Result<AttrValue> {
 }
 
 #[simics_exception]
-/// Get an attribute of an object
-pub fn get_attribute<S>(obj: *mut ConfObject, attribute: S) -> Result<AttrValue>
-where
-    S: AsRef<str>,
-{
-    Ok(unsafe { SIM_get_attribute(obj, raw_cstr(attribute)?) })
-}
-
-#[simics_exception]
-#[deprecated = "attr_free should be used instead"]
-/// Free an attr value
+/// Free an attr value. [`attr_free`] should be used instead where possible.
 pub fn free_attribute(attr: AttrValue) {
     unsafe { SIM_free_attribute(attr) }
 }

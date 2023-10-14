@@ -27,17 +27,18 @@
 //! - `LDFLAGS=-L/home/user/simics/simics-6.0.174/linux64/bin -z noexecstack -z relro -z now`
 //! - `LIBS=-lsimics-common -lvtutils`
 
-use anyhow::{anyhow, ensure, Result};
+use anyhow::{anyhow, bail, ensure, Result};
 use bindgen::{
     callbacks::{MacroParsingBehavior, ParseCallbacks},
     AliasVariation, Builder, EnumVariation, FieldVisibilityKind, MacroTypeVariation,
     NonCopyUnionStyle,
 };
+use scraper::{Html, Selector};
 use std::{
     collections::HashSet,
     env::var,
     ffi::OsStr,
-    fs::{read_dir, write},
+    fs::{read, read_dir, write},
     iter::once,
     path::{Path, PathBuf},
 };
@@ -106,6 +107,10 @@ const LINUX64_DIRNAME: &str = "linux64";
 /// The name of the binary/library/object subdirectory on windows systems
 const WIN64_DIRNAME: &str = "win64";
 
+/// The path in SIMICS_BASE/HOST_TYPE/ of the HTML file containing HAP documentation required
+/// for high level codegen of builtin HAPs
+const HAP_DOC_PATH: &str = "doc/html/rm-base/rm-haps.html";
+
 // https://github.com/rust-lang/rust-bindgen/issues/687#issuecomment-1312298570
 const IGNORE_MACROS: [&str; 20] = [
     "FE_DIVBYZERO",
@@ -163,9 +168,10 @@ impl IgnoreMacros {
     }
 }
 
-fn generate_include_wrapper<P>(simics_include_path: P) -> Result<String>
+fn generate_include_wrapper<P, S>(simics_include_path: P, hap_code: S) -> Result<String>
 where
     P: AsRef<Path>,
+    S: AsRef<str>,
 {
     let mut include_paths = WalkDir::new(&simics_include_path)
         .into_iter()
@@ -237,7 +243,9 @@ where
         .iter()
         .map(|p| format!("#include <{}>", p.display()))
         .collect::<Vec<_>>();
-    let wrapper = include_stmts.join("\n") + "\n";
+    let wrapper = include_stmts.join("\n") + "\n" + hap_code.as_ref();
+
+    println!("{wrapper}");
 
     Ok(wrapper)
 }
@@ -280,6 +288,44 @@ fn main() -> Result<()> {
             base_dir_path.display()
         );
 
+        let hap_doc_path = if base_dir_path.join(LINUX64_DIRNAME).is_dir() {
+            base_dir_path.join(LINUX64_DIRNAME).join(HAP_DOC_PATH)
+        } else if base_dir_path.join(WIN64_DIRNAME).is_dir() {
+            base_dir_path.join(WIN64_DIRNAME).join(HAP_DOC_PATH)
+        } else {
+            bail!("No windows or linux subdirectory for base path");
+        };
+        let hap_document = Html::parse_document(&String::from_utf8(read(hap_doc_path)?)?);
+
+        let haps_selector = Selector::parse(r#"article"#).unwrap();
+        let hap_id_slector = Selector::parse(r#"h2"#).unwrap();
+        let pre_selector = Selector::parse(r#"pre"#).unwrap();
+        let haps_article = hap_document.select(&haps_selector).next().unwrap();
+        let hap_names = haps_article
+            .select(&hap_id_slector)
+            .filter_map(|e| e.value().attr("id"))
+            .collect::<Vec<_>>();
+        let hap_codes = haps_article
+            .select(&pre_selector)
+            .map(|e| e.inner_html())
+            .collect::<Vec<_>>();
+
+        let hap_code = hap_names
+            .iter()
+            .zip(hap_codes.iter())
+            .map(|(name, code)| {
+                let mut hap_name_name = name.to_ascii_uppercase();
+                hap_name_name += "_HAP_NAME";
+                let mut hap_callback_name = name.to_ascii_lowercase();
+                hap_callback_name += "_hap_callback";
+                let code = code
+                    .replace("(*)", &format!("(*{})", hap_callback_name))
+                    .replace(['/', '-'], "_");
+
+                format!("#define {} \"{}\"\ntypedef {}\n", hap_name_name, name, code)
+            })
+            .collect::<String>();
+
         let simics_base_version = base_dir_path
                 .file_name()
                 .ok_or_else(|| anyhow!("No file name found in SIMICS base path"))?
@@ -317,7 +363,7 @@ fn main() -> Result<()> {
 
         let include_paths = PathBuf::from(&include_paths_env);
 
-        let wrapper_contents = generate_include_wrapper(include_paths)?;
+        let wrapper_contents = generate_include_wrapper(include_paths, hap_code)?;
 
         let bindings =
             Builder::default()
@@ -353,7 +399,7 @@ fn main() -> Result<()> {
                 .default_visibility(FieldVisibilityKind::Public)
                 .default_alias_style(AliasVariation::TypeAlias)
                 .default_enum_style(EnumVariation::Rust {
-                    non_exhaustive: true,
+                    non_exhaustive: false,
                 })
                 .default_macro_constant_type(MacroTypeVariation::Unsigned)
                 .default_non_copy_union_style(NonCopyUnionStyle::BindgenWrapper)
@@ -554,6 +600,8 @@ fn main() -> Result<()> {
                 .bitfield_enum("event_class_flag_t")
                 .bitfield_enum("micro_checkpoint_flags_t")
                 .bitfield_enum("access_t")
+                .bitfield_enum("breakpoint_flag")
+                .bitfield_enum("save_flags_t")
                 .generate()?;
         bindings.write_to_file(bindings_file_path)?;
     }

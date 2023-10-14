@@ -1,5 +1,3 @@
-use crate::api::AttrValue;
-
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(thiserror::Error, Debug)]
@@ -29,7 +27,10 @@ pub enum Error {
     CreateObject { message: String },
     #[error("No current checkpoint directory: {message}")]
     CurrentCheckpointDir { message: String },
-
+    #[error("No matching event found")]
+    NoEventFound,
+    #[error("No method {method} found on interface")]
+    NoInterfaceMethod { method: String },
     #[error("{exception:?}: {msg}")]
     /// An internal error that comes from the sys API.
     SimicsException {

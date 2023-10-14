@@ -1,14 +1,16 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::Result;
+use crate::{
+    api::sys::{
+        cpu_variant_t, gui_mode_t, init_arg_t, init_arg_t__bindgen_ty_1, SIM_init_command_line,
+        SIM_init_environment, SIM_init_simulator2, SIM_main_loop,
+    },
+    Result,
+};
 use clap::ValueEnum;
 use paste::paste;
 use raw_cstr::raw_cstr;
-use simics_api_sys::{
-    cpu_variant_t, gui_mode_t, init_arg_t, init_arg_t__bindgen_ty_1, SIM_init_command_line,
-    SIM_init_environment, SIM_init_simulator2, SIM_main_loop,
-};
 use std::{mem::forget, ptr::null};
 
 #[derive(Debug, Clone)]
@@ -24,9 +26,6 @@ impl ToString for GuiMode {
             gui_mode_t::GUI_Mode_Mixed => "mixed",
             gui_mode_t::GUI_Mode_Only => "gui",
             gui_mode_t::GUI_Mode_Default => "default",
-            _ => {
-                panic!("Unmatched GUI mode {self:?}");
-            }
         }
         .to_string()
     }

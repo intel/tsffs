@@ -1,45 +1,35 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
-//! conf_object - High level bindings for conf-object.h
-//!
-//! Defines:
-//! - class_data_t
-//! - class_info_t
-//! - conf_class_t
-//! - conf_object_t
-//! - object_iter_t
+#![allow(clippy::not_unsafe_ptr_arg_deref, clippy::too_many_arguments)]
+
+//! Bindings for configuration objects
 
 use crate::{
     api::{
         last_error,
         sys::{
             attr_attr_t, class_data_t, class_info_t, class_kind_t, conf_class_t, conf_object_t,
-            SIM_class_has_attribute, SIM_copy_class, SIM_create_class, SIM_create_object,
-            SIM_current_checkpoint_dir, SIM_delete_object, SIM_delete_objects, SIM_extend_class,
-            SIM_get_all_classes, SIM_get_all_objects, SIM_get_attribute,
-            SIM_get_attribute_attributes, SIM_get_attribute_idx, SIM_get_class,
-            SIM_get_class_interface, SIM_get_class_name, SIM_get_interface, SIM_get_object,
-            SIM_object_id, SIM_object_is_configured, SIM_object_name, SIM_register_interface,
-            SIM_require_object,
+            get_attr_t, get_class_attr_t, object_iter_t, set_attr_t, set_class_attr_t, set_error_t,
+            SIM_attribute_error, SIM_copy_class, SIM_create_class, SIM_extend_class,
+            SIM_extension_data, SIM_get_class, SIM_get_class_data, SIM_get_class_interface,
+            SIM_get_class_name, SIM_get_interface, SIM_marked_for_deletion, SIM_object_data,
+            SIM_object_descendant, SIM_object_id, SIM_object_is_configured, SIM_object_iterator,
+            SIM_object_iterator_next, SIM_object_name, SIM_object_parent,
+            SIM_register_attribute_with_user_data, SIM_register_class_alias,
+            SIM_register_class_attribute_with_user_data, SIM_register_interface,
+            SIM_register_typed_attribute, SIM_register_typed_class_attribute, SIM_require_object,
+            SIM_set_class_data, SIM_set_object_configured, SIM_shallow_object_iterator,
         },
         AttrValue, Interface,
     },
     Error, Result,
 };
-use raw_cstr::raw_cstr;
-use simics_api_sys::{
-    get_attr_t, get_class_attr_t, object_iter_t, set_attr_t, set_class_attr_t, set_error_t,
-    SIM_attribute_error, SIM_object_descendant, SIM_object_iterator, SIM_object_iterator_next,
-    SIM_object_parent, SIM_register_attribute_with_user_data,
-    SIM_register_class_attribute_with_user_data, SIM_register_typed_attribute,
-    SIM_register_typed_class_attribute, SIM_set_object_configured, SIM_shallow_object_iterator,
-};
+use raw_cstr::{raw_cstr, AsRawCstr};
 use simics_macro::simics_exception;
 use std::{
     ffi::{c_void, CStr},
     ops::Range,
-    path::PathBuf,
     ptr::null_mut,
 };
 
@@ -56,6 +46,7 @@ pub type GetClassAttr = get_class_attr_t;
 pub type SetClassAttr = set_class_attr_t;
 pub type SetErr = set_error_t;
 
+/// A type in a [`TypeStringType::List`]
 pub enum TypeStringListType {
     Type(Box<TypeStringType>),
     Range(Range<usize>, Box<TypeStringType>),
@@ -78,6 +69,7 @@ impl ToString for TypeStringListType {
     }
 }
 
+/// A type in a python-like type string
 pub enum TypeStringType {
     Integer,
     Float,
@@ -113,121 +105,17 @@ impl ToString for TypeStringType {
     }
 }
 
-trait GetTypedAttrClosure: FnOnce(*mut ConfObject, *mut AttrValue) -> AttrValue + 'static {}
-trait SetTypedAttrClosure:
-    FnOnce(*mut ConfObject, *mut AttrValue, *mut AttrValue) -> SetErr + 'static
-{
-}
-trait GetTypedClassAttrClosure: FnOnce(*mut ConfClass, *mut AttrValue) -> AttrValue + 'static {}
-trait SetTypedClassAttrClosure:
-    FnOnce(*mut ConfClass, *mut AttrValue, *mut AttrValue) -> SetErr + 'static
-{
-}
-trait GetAttrClosure: FnOnce(*mut ConfObject) -> AttrValue + 'static {}
-trait SetAttrClosure: FnOnce(*mut ConfObject, *mut AttrValue) -> SetErr + 'static {}
-trait GetClassAttrClosure: FnOnce(*mut ConfClass) -> AttrValue + 'static {}
-trait SetClassAttrClosure: FnOnce(*mut ConfClass, *mut AttrValue) -> SetErr + 'static {}
-
-extern "C" fn get_typed_attr_handler<F>(
-    cb: *mut c_void,
-    obj: *mut ConfObject,
-    idx: *mut AttrValue,
-) -> AttrValue
-where
-    F: GetTypedAttrClosure,
-{
-    let closure: Box<Box<F>> = unsafe { Box::from_raw(cb as *mut Box<F>) };
-
-    closure(obj, idx)
-}
-
-extern "C" fn set_typed_attr_handler<F>(
-    cb: *mut c_void,
-    obj: *mut ConfObject,
-    val: *mut AttrValue,
-    idx: *mut AttrValue,
-) -> SetErr
-where
-    F: SetTypedAttrClosure,
-{
-    let closure: Box<Box<F>> = unsafe { Box::from_raw(cb as *mut Box<F>) };
-
-    closure(obj, val, idx)
-}
-
-extern "C" fn get_typed_class_attr_handler<F>(
-    cb: *mut c_void,
-    cls: *mut ConfClass,
-    idx: *mut AttrValue,
-) -> AttrValue
-where
-    F: GetTypedClassAttrClosure,
-{
-    let closure: Box<Box<F>> = unsafe { Box::from_raw(cb as *mut Box<F>) };
-
-    closure(cls, idx)
-}
-
-extern "C" fn set_typed_class_attr_handler<F>(
-    cb: *mut c_void,
-    cls: *mut ConfClass,
-    val: *mut AttrValue,
-    idx: *mut AttrValue,
-) -> SetErr
-where
-    F: SetTypedClassAttrClosure,
-{
-    let closure: Box<Box<F>> = unsafe { Box::from_raw(cb as *mut Box<F>) };
-
-    closure(cls, val, idx)
-}
-
-extern "C" fn get_attr_handler<F>(obj: *mut ConfObject, cb: *mut c_void) -> AttrValue
-where
-    F: GetAttrClosure,
-{
-    let closure: Box<Box<F>> = unsafe { Box::from_raw(cb as *mut Box<F>) };
-
-    closure(obj)
-}
-
-extern "C" fn set_attr_handler<F>(
-    obj: *mut ConfObject,
-    val: *mut AttrValue,
-    cb: *mut c_void,
-) -> SetErr
-where
-    F: SetAttrClosure,
-{
-    let closure: Box<Box<F>> = unsafe { Box::from_raw(cb as *mut Box<F>) };
-
-    closure(obj, val)
-}
-
-extern "C" fn get_class_attr_handler<F>(cls: *mut ConfClass, cb: *mut c_void) -> AttrValue
-where
-    F: GetClassAttrClosure,
-{
-    let closure: Box<Box<F>> = unsafe { Box::from_raw(cb as *mut Box<F>) };
-
-    closure(cls)
-}
-
-extern "C" fn set_class_attr_handler<F>(
-    cls: *mut ConfClass,
-    val: *mut AttrValue,
-    cb: *mut c_void,
-) -> SetErr
-where
-    F: SetClassAttrClosure,
-{
-    let closure: Box<Box<F>> = unsafe { Box::from_raw(cb as *mut Box<F>) };
-
-    closure(cls, val)
-}
-
 // NOTE: There is an old class creation method, but it is *actually* deprecated, so we do not
 // include it with a #[deprecated] warning.
+
+#[simics_exception]
+pub fn register_class_alias<S>(alias: S, name: S) -> Result<()>
+where
+    S: AsRef<str>,
+{
+    unsafe { SIM_register_class_alias(raw_cstr(alias)?, raw_cstr(name)?) };
+    Ok(())
+}
 
 #[simics_exception]
 /// Create a class instance
@@ -244,7 +132,7 @@ where
     if cls.is_null() {
         Err(Error::CreateClass {
             name: name.as_ref().to_string(),
-            message: last_error()?,
+            message: last_error(),
         })
     } else {
         Ok(cls)
@@ -252,11 +140,13 @@ where
 }
 
 #[simics_exception]
+/// Extend a class with another class
 pub fn extend_class(cls: *mut ConfClass, ext: *mut ConfClass) {
     unsafe { SIM_extend_class(cls, ext) };
 }
 
 #[simics_exception]
+/// Make a copy of a class with another name and description
 pub fn copy_class<S>(name: S, src_cls: *mut ConfClass, desc: S) -> Result<*mut ConfClass>
 where
     S: AsRef<str>,
@@ -265,20 +155,31 @@ where
 }
 
 #[simics_exception]
+/// Get the name of a class
 pub fn get_class_name(class_data: *mut ConfClass) -> Result<String> {
     Ok(unsafe { CStr::from_ptr(SIM_get_class_name(class_data)) }
         .to_str()
         .map(|s| s.to_string())?)
 }
 
-// NOTE: Not implementing (set|get)_class_data, requires 'static
+#[simics_exception]
+pub fn set_class_data<T>(cls: *mut ConfClass, data: T) {
+    unsafe { SIM_set_class_data(cls, Box::into_raw(Box::new(data)) as *mut c_void) }
+}
 
 #[simics_exception]
+pub fn get_class_data<T>(cls: *mut ConfClass) -> Box<T> {
+    unsafe { Box::from_raw(SIM_get_class_data(cls) as *mut T) }
+}
+
+#[simics_exception]
+/// Require an object to be finalized. If it has not been finalized, finalized will be called.
 pub fn require_object(obj: *mut ConfObject) {
     unsafe { SIM_require_object(obj) };
 }
 
 #[simics_exception]
+/// Get the name of an object
 pub fn object_name(obj: *mut ConfObject) -> Result<String> {
     Ok(unsafe { CStr::from_ptr(SIM_object_name(obj)) }
         .to_str()
@@ -286,6 +187,7 @@ pub fn object_name(obj: *mut ConfObject) -> Result<String> {
 }
 
 #[simics_exception]
+/// Get the id of an object
 pub fn object_id(obj: *mut ConfObject) -> Result<String> {
     Ok(unsafe { CStr::from_ptr(SIM_object_id(obj)) }
         .to_str()
@@ -293,21 +195,35 @@ pub fn object_id(obj: *mut ConfObject) -> Result<String> {
 }
 
 #[simics_exception]
+/// Check whether an object is configured
 pub fn object_is_configured(obj: *mut ConfObject) -> bool {
     unsafe { SIM_object_is_configured(obj) }
 }
 
 #[simics_exception]
+/// Set an object as configured
 pub fn set_object_configured(obj: *mut ConfObject) {
     unsafe { SIM_set_object_configured(obj) }
 }
 
 #[simics_exception]
+pub fn object_data<T>(obj: *mut ConfObject) -> Box<T> {
+    unsafe { Box::from_raw(SIM_object_data(obj) as *mut T) }
+}
+
+#[simics_exception]
+pub fn extension_data<T>(obj: *mut ConfObject, cls: *mut ConfClass) -> Box<T> {
+    unsafe { Box::from_raw(SIM_extension_data(obj, cls) as *mut T) }
+}
+
+#[simics_exception]
+/// Get the parent of an object
 pub fn object_parent(obj: *mut ConfObject) -> *mut ConfObject {
     unsafe { SIM_object_parent(obj) }
 }
 
 #[simics_exception]
+/// Get an object's child object, if it has one with a given name
 pub fn object_descendant<S>(obj: *mut ConfObject, relname: S) -> Result<*mut ConfObject>
 where
     S: AsRef<str>,
@@ -316,16 +232,19 @@ where
 }
 
 #[simics_exception]
+/// Obtain an iterator over the child objects at all depths of a given object
 pub fn object_iterator(obj: *mut ConfObject) -> ObjectIter {
     unsafe { SIM_object_iterator(obj) }
 }
 
 #[simics_exception]
+/// Obtain an iterator over the child objects at depth 1 of a given object
 pub fn shallow_object_iterator(obj: *mut ConfObject) -> ObjectIter {
     unsafe { SIM_shallow_object_iterator(obj) }
 }
 
 #[simics_exception]
+/// Consume and return the next item of an object iterator.
 pub fn object_iterator_next(iter: *mut ObjectIter) -> Option<*mut ConfObject> {
     let obj = unsafe { SIM_object_iterator_next(iter) };
 
@@ -336,7 +255,107 @@ pub fn object_iterator_next(iter: *mut ObjectIter) -> Option<*mut ConfObject> {
     }
 }
 
+extern "C" fn get_typed_attr_handler<F>(
+    cb: *mut c_void,
+    obj: *mut ConfObject,
+    idx: *mut AttrValue,
+) -> AttrValue
+where
+    F: FnOnce(*mut ConfObject, *mut AttrValue) -> AttrValue + 'static,
+{
+    let closure: Box<Box<F>> = unsafe { Box::from_raw(cb as *mut Box<F>) };
+
+    closure(obj, idx)
+}
+
+extern "C" fn set_typed_attr_handler<F>(
+    cb: *mut c_void,
+    obj: *mut ConfObject,
+    val: *mut AttrValue,
+    idx: *mut AttrValue,
+) -> SetErr
+where
+    F: FnOnce(*mut ConfObject, *mut AttrValue, *mut AttrValue) -> SetErr + 'static,
+{
+    let closure: Box<Box<F>> = unsafe { Box::from_raw(cb as *mut Box<F>) };
+
+    closure(obj, val, idx)
+}
+
+extern "C" fn get_typed_class_attr_handler<F>(
+    cb: *mut c_void,
+    cls: *mut ConfClass,
+    idx: *mut AttrValue,
+) -> AttrValue
+where
+    F: FnOnce(*mut ConfClass, *mut AttrValue) -> AttrValue + 'static,
+{
+    let closure: Box<Box<F>> = unsafe { Box::from_raw(cb as *mut Box<F>) };
+
+    closure(cls, idx)
+}
+
+extern "C" fn set_typed_class_attr_handler<F>(
+    cb: *mut c_void,
+    cls: *mut ConfClass,
+    val: *mut AttrValue,
+    idx: *mut AttrValue,
+) -> SetErr
+where
+    F: FnOnce(*mut ConfClass, *mut AttrValue, *mut AttrValue) -> SetErr + 'static,
+{
+    let closure: Box<Box<F>> = unsafe { Box::from_raw(cb as *mut Box<F>) };
+
+    closure(cls, val, idx)
+}
+
+extern "C" fn get_attr_handler<F>(obj: *mut ConfObject, cb: *mut c_void) -> AttrValue
+where
+    F: FnOnce(*mut ConfObject) -> AttrValue + 'static,
+{
+    let closure: Box<Box<F>> = unsafe { Box::from_raw(cb as *mut Box<F>) };
+
+    closure(obj)
+}
+
+extern "C" fn set_attr_handler<F>(
+    obj: *mut ConfObject,
+    val: *mut AttrValue,
+    cb: *mut c_void,
+) -> SetErr
+where
+    F: FnOnce(*mut ConfObject, *mut AttrValue) -> SetErr + 'static,
+{
+    let closure: Box<Box<F>> = unsafe { Box::from_raw(cb as *mut Box<F>) };
+
+    closure(obj, val)
+}
+
+extern "C" fn get_class_attr_handler<F>(cls: *mut ConfClass, cb: *mut c_void) -> AttrValue
+where
+    F: FnOnce(*mut ConfClass) -> AttrValue + 'static,
+{
+    let closure: Box<Box<F>> = unsafe { Box::from_raw(cb as *mut Box<F>) };
+
+    closure(cls)
+}
+
+extern "C" fn set_class_attr_handler<F>(
+    cls: *mut ConfClass,
+    val: *mut AttrValue,
+    cb: *mut c_void,
+) -> SetErr
+where
+    F: FnOnce(*mut ConfClass, *mut AttrValue) -> SetErr + 'static,
+{
+    let closure: Box<Box<F>> = unsafe { Box::from_raw(cb as *mut Box<F>) };
+
+    closure(cls, val)
+}
+
 #[simics_exception]
+/// Register a typed attribute of a class. This attribute will appear on all instances of the
+/// class.
 pub fn register_typed_attribute<S, GF, SF>(
     cls: *mut ConfClass,
     name: S,
@@ -349,8 +368,8 @@ pub fn register_typed_attribute<S, GF, SF>(
 ) -> Result<()>
 where
     S: AsRef<str>,
-    GF: GetTypedAttrClosure,
-    SF: SetTypedAttrClosure,
+    GF: FnOnce(*mut ConfObject, *mut AttrValue) -> AttrValue + 'static,
+    SF: FnOnce(*mut ConfObject, *mut AttrValue, *mut AttrValue) -> SetErr + 'static,
 {
     let attr_type = if let Some(attr_type) = attr_type {
         raw_cstr(attr_type.to_string())?
@@ -376,9 +395,9 @@ where
             cls,
             raw_cstr(name)?,
             Some(get_typed_attr_handler::<GF>),
-            getter_cb_raw as *mut _ as *mut c_void,
+            getter_cb_raw as *mut c_void,
             Some(set_typed_attr_handler::<SF>),
-            setter_cb_raw as *mut _ as *mut c_void,
+            setter_cb_raw as *mut c_void,
             attr,
             attr_type,
             idx_type,
@@ -390,6 +409,7 @@ where
 }
 
 #[simics_exception]
+/// Register a typed attribute of a class. This attribute will appear on the class object itself.
 pub fn register_typed_class_attribute<S, GF, SF>(
     cls: *mut ConfClass,
     name: S,
@@ -402,8 +422,8 @@ pub fn register_typed_class_attribute<S, GF, SF>(
 ) -> Result<()>
 where
     S: AsRef<str>,
-    GF: GetTypedClassAttrClosure,
-    SF: SetTypedClassAttrClosure,
+    GF: FnOnce(*mut ConfClass, *mut AttrValue) -> AttrValue + 'static,
+    SF: FnOnce(*mut ConfClass, *mut AttrValue, *mut AttrValue) -> SetErr + 'static,
 {
     let attr_type = if let Some(attr_type) = attr_type {
         raw_cstr(attr_type.to_string())?
@@ -429,9 +449,9 @@ where
             cls,
             raw_cstr(name)?,
             Some(get_typed_class_attr_handler::<GF>),
-            getter_cb_raw as *mut _ as *mut c_void,
+            getter_cb_raw as *mut c_void,
             Some(set_typed_class_attr_handler::<SF>),
-            setter_cb_raw as *mut _ as *mut c_void,
+            setter_cb_raw as *mut c_void,
             attr,
             attr_type,
             idx_type,
@@ -443,6 +463,7 @@ where
 }
 
 #[simics_exception]
+/// Register a pseudo-untyped attribute of the instances of a class.
 pub fn register_attribute<S, GF, SF>(
     cls: *mut ConfClass,
     name: S,
@@ -450,22 +471,15 @@ pub fn register_attribute<S, GF, SF>(
     setter: SF,
     attr: AttrAttr,
     attr_type: Option<TypeStringType>,
-    idx_type: Option<TypeStringType>,
     desc: S,
 ) -> Result<()>
 where
     S: AsRef<str>,
-    GF: GetAttrClosure,
-    SF: SetAttrClosure,
+    GF: FnOnce(*mut ConfObject) -> AttrValue + 'static,
+    SF: FnOnce(*mut ConfObject, *mut AttrValue) -> SetErr + 'static,
 {
     let attr_type = if let Some(attr_type) = attr_type {
         raw_cstr(attr_type.to_string())?
-    } else {
-        null_mut()
-    };
-
-    let idx_type = if let Some(idx_type) = idx_type {
-        raw_cstr(idx_type.to_string())?
     } else {
         null_mut()
     };
@@ -482,9 +496,9 @@ where
             cls,
             raw_cstr(name)?,
             Some(get_attr_handler::<GF>),
-            getter_cb_raw as *mut _ as *mut c_void,
+            getter_cb_raw as *mut c_void,
             Some(set_attr_handler::<SF>),
-            setter_cb_raw as *mut _ as *mut c_void,
+            setter_cb_raw as *mut c_void,
             attr,
             attr_type,
             raw_cstr(desc)?,
@@ -495,6 +509,7 @@ where
 }
 
 #[simics_exception]
+/// Register a pseudo-untyped attribute on a class itself.
 pub fn register_class_attribute<S, GF, SF>(
     cls: *mut ConfClass,
     name: S,
@@ -502,22 +517,15 @@ pub fn register_class_attribute<S, GF, SF>(
     setter: SF,
     attr: AttrAttr,
     attr_type: Option<TypeStringType>,
-    idx_type: Option<TypeStringType>,
     desc: S,
 ) -> Result<()>
 where
     S: AsRef<str>,
-    GF: GetClassAttrClosure,
-    SF: SetClassAttrClosure,
+    GF: FnOnce(*mut ConfClass) -> AttrValue + 'static,
+    SF: FnOnce(*mut ConfClass, *mut AttrValue) -> SetErr + 'static,
 {
     let attr_type = if let Some(attr_type) = attr_type {
         raw_cstr(attr_type.to_string())?
-    } else {
-        null_mut()
-    };
-
-    let idx_type = if let Some(idx_type) = idx_type {
-        raw_cstr(idx_type.to_string())?
     } else {
         null_mut()
     };
@@ -534,9 +542,9 @@ where
             cls,
             raw_cstr(name)?,
             Some(get_class_attr_handler::<GF>),
-            getter_cb_raw as *mut _ as *mut c_void,
+            getter_cb_raw as *mut c_void,
             Some(set_class_attr_handler::<SF>),
-            setter_cb_raw as *mut _ as *mut c_void,
+            setter_cb_raw as *mut c_void,
             attr,
             attr_type,
             raw_cstr(desc)?,
@@ -550,112 +558,18 @@ where
 // typed attributes, and we need userdata for our handlers
 
 #[simics_exception]
+/// When called inside a getter or setter callback (e.g. inside [`register_attribute`]'s
+/// `getter` or `setter`), this function marks the get or set as an error and sets the
+/// error message.
 pub fn attribute_error<S>(msg: S) -> Result<()>
 where
     S: AsRef<str>,
 {
-    Ok(unsafe { SIM_attribute_error(raw_cstr(msg)?) })
+    unsafe { SIM_attribute_error(raw_cstr(msg)?) };
+    Ok(())
 }
 
 // NOTE: add_configuration not implemented, it is only to be used from Python
-
-#[simics_exception]
-/// Check if a class implements an attribute
-pub fn class_has_attribute<S>(cls: *mut ConfClass, attr: S) -> Result<bool>
-where
-    S: AsRef<str>,
-{
-    Ok(unsafe { SIM_class_has_attribute(cls, raw_cstr(attr.as_ref())?) })
-}
-
-#[simics_exception]
-/// Create a new instance of a configuration class
-pub fn create_object<S>(cls: *mut ConfClass, name: S, attrs: AttrValue) -> Result<*mut ConfObject>
-where
-    S: AsRef<str>,
-{
-    let obj = unsafe { SIM_create_object(cls.into(), raw_cstr(name)?, attrs) };
-
-    if obj.is_null() {
-        Err(Error::CreateObject {
-            message: last_error()?,
-        })
-    } else {
-        Ok(obj)
-    }
-}
-
-/// Get the current checkpoint (bundle) directory if called during loading of a checkpoint.
-/// May be absolute or relative.
-pub fn current_checkpoint_dir() -> Result<PathBuf> {
-    let res = unsafe { SIM_current_checkpoint_dir() };
-
-    if res.is_null() {
-        Err(Error::CurrentCheckpointDir {
-            message: last_error()?,
-        })
-    } else {
-        let mut dir = unsafe { CStr::from_ptr(res) }.to_str()?;
-
-        if dir.is_empty() {
-            dir = ".";
-        }
-
-        Ok(PathBuf::from(dir))
-    }
-}
-
-#[simics_exception]
-/// Delete the objects in the list or throw an exception if unsuccessful
-pub fn delete_objects(val: AttrValue) {
-    unsafe { SIM_delete_objects(val) };
-}
-
-#[simics_exception]
-/// Delete the object or throw an exception if unsuccessful
-pub fn delete_object(obj: *mut ConfObject) {
-    unsafe { SIM_delete_object(obj) };
-}
-
-/// Get an unordered list of all conf classes in the simulator
-pub fn get_all_classes() -> AttrValue {
-    unsafe { SIM_get_all_classes() }
-}
-
-/// Get an unordered list of all conf objects in the simulator
-pub fn get_all_objects() -> AttrValue {
-    unsafe { SIM_get_all_objects() }
-}
-
-#[simics_exception]
-/// Get the attribute of a given name from an object
-pub fn get_attribute<S>(obj: *mut ConfObject, name: S) -> Result<AttrValue>
-where
-    S: AsRef<str>,
-{
-    Ok(unsafe { SIM_get_attribute(obj, raw_cstr(name)?) })
-}
-
-#[simics_exception]
-/// Get an index of an attribute of a given name from an object
-pub fn get_attribute_idx<S>(
-    obj: *mut ConfObject,
-    name: S,
-    index: *mut AttrValue,
-) -> Result<AttrValue>
-where
-    S: AsRef<str>,
-{
-    Ok(unsafe { SIM_get_attribute_idx(obj, raw_cstr(name)?, index) })
-}
-
-/// Get the flags of an attribute in a class
-pub fn get_attribute_attributes<S>(cls: *mut ConfClass, attr: S) -> Result<AttrAttr>
-where
-    S: AsRef<str>,
-{
-    Ok(unsafe { SIM_get_attribute_attributes(cls, raw_cstr(attr)?) })
-}
 
 #[simics_exception]
 /// Register an interface for a class
@@ -680,32 +594,35 @@ where
     if status != 0 {
         Err(Error::RegisterInterface {
             name: name.as_ref().to_string(),
-            message: last_error()?,
+            message: last_error(),
         })
     } else {
         Ok(status)
     }
 }
 
+// TODO: Port & compatible interfaces
+
 #[simics_exception]
 /// Get an interface of an object
-pub fn get_interface<T>(obj: *mut ConfObject, iface: Interface) -> Result<*mut T> {
+pub fn get_interface<I>(obj: *mut ConfObject) -> Result<*mut I::Interface>
+where
+    I: Interface,
+{
     Ok(unsafe {
-        SIM_get_interface(
-            obj as *const ConfObject,
-            iface.try_as_slice()?.as_ptr() as *const i8,
-        ) as *mut T
+        SIM_get_interface(obj as *const ConfObject, I::NAME.as_raw_cstr()?) as *mut I::Interface
     })
 }
 
 #[simics_exception]
 /// Get an interface of a class
-pub fn get_class_interface<T>(cls: *mut ConfClass, iface: Interface) -> Result<*mut T> {
+pub fn get_class_interface<I>(cls: *mut ConfClass) -> Result<*mut I::Interface>
+where
+    I: Interface,
+{
     Ok(unsafe {
-        SIM_get_class_interface(
-            cls as *const ConfClass,
-            iface.try_as_slice()?.as_ptr() as *const i8,
-        ) as *mut T
+        SIM_get_class_interface(cls as *const ConfClass, I::NAME.as_raw_cstr()?)
+            as *mut I::Interface
     })
 }
 
@@ -731,18 +648,7 @@ where
 }
 
 #[simics_exception]
-/// Get an existing instance object by name
-pub fn get_object<S>(name: S) -> Result<*mut ConfObject>
-where
-    S: AsRef<str>,
-{
-    let obj = unsafe { SIM_get_object(raw_cstr(name.as_ref())?) };
-
-    if obj.is_null() {
-        Err(Error::ObjectNotFound {
-            name: name.as_ref().to_string(),
-        })
-    } else {
-        Ok(obj)
-    }
+/// Check whether an object has been marked for deletion
+pub fn marked_for_deletion(obj: *mut ConfObject) -> bool {
+    unsafe { SIM_marked_for_deletion(obj) }
 }
