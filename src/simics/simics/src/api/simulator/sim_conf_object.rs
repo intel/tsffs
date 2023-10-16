@@ -38,6 +38,7 @@ where
 }
 
 #[simics_exception]
+/// Get a port for a class
 pub fn class_port<S>(cls: *mut ConfClass, portname: S) -> Result<*mut ConfClass>
 where
     S: AsRef<str>,
@@ -119,6 +120,7 @@ where
 }
 
 #[simics_exception]
+/// Set an attribute value on an object
 pub fn set_attribute<S>(obj: *mut ConfObject, name: S, value: *mut AttrValue) -> Result<SetErr>
 where
     S: AsRef<str>,
@@ -127,6 +129,7 @@ where
 }
 
 #[simics_exception]
+/// Set an attribute value at an index on an object
 pub fn set_attribute_idx<S>(
     obj: *mut ConfObject,
     name: S,
@@ -140,6 +143,7 @@ where
 }
 
 #[simics_exception]
+/// Set the default value of an attribute on an object
 pub fn set_attribute_default<S>(obj: *mut ConfObject, name: S, value: AttrValue) -> Result<SetErr>
 where
     S: AsRef<str>,
@@ -148,6 +152,7 @@ where
 }
 
 #[simics_exception]
+/// Set the default value of an attribute on a class
 pub fn set_class_attribute<S>(cls: *mut ConfClass, name: S, value: *mut AttrValue) -> Result<SetErr>
 where
     S: AsRef<str>,
@@ -156,6 +161,7 @@ where
 }
 
 #[simics_exception]
+/// Set the default value of an attribute on a class with an index
 pub fn set_class_attribute_idx<S>(
     cls: *mut ConfClass,
     name: S,
@@ -168,11 +174,13 @@ where
     Ok(unsafe { SIM_set_class_attribute_idx(cls, raw_cstr(name)?, index, value) })
 }
 
+#[simics_exception]
 /// Get an unordered list of all conf classes in the simulator
 pub fn get_all_classes() -> AttrValue {
     unsafe { SIM_get_all_classes() }
 }
 
+#[simics_exception]
 /// Get an unordered list of all conf objects in the simulator
 pub fn get_all_objects() -> AttrValue {
     unsafe { SIM_get_all_objects() }

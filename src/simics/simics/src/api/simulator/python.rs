@@ -13,6 +13,7 @@ use simics_macro::simics_exception;
 use std::path::Path;
 
 #[simics_exception]
+/// Source a python file of SIMICS python code
 pub fn source_python<P>(file: P) -> Result<()>
 where
     P: AsRef<Path>,
@@ -22,6 +23,7 @@ where
 }
 
 #[simics_exception]
+/// Run (by eval-ing) python code in the simulator context
 pub fn run_python<S>(line: S) -> Result<AttrValue>
 where
     S: AsRef<str>,
@@ -30,6 +32,7 @@ where
 }
 
 #[simics_exception]
+/// Call a python function with a set of arguments
 pub fn call_python_function<S>(function: S, args: *mut AttrValue) -> Result<AttrValue>
 where
     S: AsRef<str>,
@@ -38,6 +41,7 @@ where
 }
 
 #[simics_exception]
+/// Call a function in a python module
 pub fn call_python_module_function<S>(
     module: S,
     function: S,

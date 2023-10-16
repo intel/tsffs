@@ -15,21 +15,25 @@ use crate::api::{
 pub type TupleIntString = tuple_int_string_t;
 
 #[simics_exception]
+/// Check if an object is a processor
 pub fn object_is_processor(obj: *mut ConfObject) -> bool {
     unsafe { SIM_object_is_processor(obj) }
 }
 
 #[simics_exception]
+/// Get the number of processors in the simulation
 pub fn number_processors() -> i32 {
     unsafe { SIM_number_processors() }
 }
 
 #[simics_exception]
+/// Reset (hard or soft) a processor
 pub fn reset_processor(cpu: *mut ConfObject, hard_reset: i32) {
     unsafe { SIM_reset_processor(cpu, hard_reset) }
 }
 
 #[simics_exception]
+/// Get the list of all processors in the simulation
 pub fn get_all_processors() -> AttrValue {
     unsafe { SIM_get_all_processors() }
 }
@@ -47,16 +51,19 @@ pub fn get_processor_number(cpu: *mut ConfObject) -> i32 {
 }
 
 #[simics_exception]
+/// Get the current processor
 pub fn current_processor() -> *mut ConfObject {
     unsafe { SIM_current_processor() }
 }
 
 #[simics_exception]
+/// Get the processor's current privilege level
 pub fn processor_privilege_level(cpu: *mut ConfObject) -> i32 {
     unsafe { SIM_processor_privilege_level(cpu) }
 }
 
 #[simics_exception]
+/// Disassemble an address to a size and string
 pub fn disassemble_address(
     cpu: *mut ConfObject,
     address: GenericAddress,
@@ -67,6 +74,7 @@ pub fn disassemble_address(
 }
 
 #[simics_exception]
+/// Get the current active clock
 pub fn current_clock() -> *mut ConfObject {
     unsafe { SIM_current_clock() }
 }

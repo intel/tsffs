@@ -11,6 +11,7 @@ use crate::{
 use clap::ValueEnum;
 use paste::paste;
 use raw_cstr::raw_cstr;
+use simics_macro::simics_exception;
 use std::{mem::forget, ptr::null};
 
 #[derive(Debug, Clone)]
@@ -178,6 +179,8 @@ impl InitArgs {
     }
 }
 
+#[simics_exception]
+/// Initialize the environment (for SIMICS frontends)
 pub fn init_environment<I, S>(argv: I, handle_signals: bool, allow_core_dumps: bool) -> Result<()>
 where
     I: IntoIterator<Item = S>,
@@ -198,14 +201,21 @@ where
     Ok(())
 }
 
+#[simics_exception]
+/// Initialize the simulator with arguments.
 pub fn init_simulator(args: &mut InitArgs) {
     unsafe { SIM_init_simulator2(args.as_mut_ptr()) };
 }
 
+#[simics_exception]
+/// Initialize the SIMICS command line. [`main_loop`] needs to be called next otherwise the
+/// command line will exit immediately.
 pub fn init_command_line() {
     unsafe { SIM_init_command_line() };
 }
 
+/// Pass control to SIMICS and block until SIMICS exits. This is typically called after
+/// [`init_command_line`].
 pub fn main_loop() -> ! {
     unsafe { SIM_main_loop() };
     unreachable!("Something went wrong initializing the SIMICS main loop")

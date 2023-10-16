@@ -109,6 +109,7 @@ impl ToString for TypeStringType {
 // include it with a #[deprecated] warning.
 
 #[simics_exception]
+/// Register an alias that can be used to access a given class via another name
 pub fn register_class_alias<S>(alias: S, name: S) -> Result<()>
 where
     S: AsRef<str>,
@@ -118,7 +119,7 @@ where
 }
 
 #[simics_exception]
-/// Create a class instance
+/// Create a SIMICS class
 pub fn create_class<S>(name: S, class_info: ClassInfo) -> Result<*mut ConfClass>
 where
     S: AsRef<str>,
@@ -163,11 +164,13 @@ pub fn get_class_name(class_data: *mut ConfClass) -> Result<String> {
 }
 
 #[simics_exception]
+/// Set the associated data for a class
 pub fn set_class_data<T>(cls: *mut ConfClass, data: T) {
     unsafe { SIM_set_class_data(cls, Box::into_raw(Box::new(data)) as *mut c_void) }
 }
 
 #[simics_exception]
+/// Retriev the associated data from a class
 pub fn get_class_data<T>(cls: *mut ConfClass) -> Box<T> {
     unsafe { Box::from_raw(SIM_get_class_data(cls) as *mut T) }
 }
@@ -207,11 +210,13 @@ pub fn set_object_configured(obj: *mut ConfObject) {
 }
 
 #[simics_exception]
+/// Get the data from an object
 pub fn object_data<T>(obj: *mut ConfObject) -> Box<T> {
     unsafe { Box::from_raw(SIM_object_data(obj) as *mut T) }
 }
 
 #[simics_exception]
+/// Get the extension data from an object
 pub fn extension_data<T>(obj: *mut ConfObject, cls: *mut ConfClass) -> Box<T> {
     unsafe { Box::from_raw(SIM_extension_data(obj, cls) as *mut T) }
 }
@@ -573,13 +578,12 @@ where
 
 #[simics_exception]
 /// Register an interface for a class
-pub fn register_interface<S, T>(cls: *mut ConfClass, name: S) -> Result<i32>
+pub fn register_interface<I>(cls: *mut ConfClass) -> Result<i32>
 where
-    S: AsRef<str>,
-    T: Default,
+    I: Interface,
 {
-    let name_raw = raw_cstr(name.as_ref())?;
-    let iface_box = Box::<T>::default();
+    let name_raw = I::NAME.as_raw_cstr()?;
+    let iface_box = Box::<I::InternalInterface>::default();
     // Note: This allocates and never frees. This is *required* by SIMICS and it is an error to
     // free this pointer
     let iface_raw = Box::into_raw(iface_box);
@@ -589,40 +593,32 @@ where
         "Pointer is not convertible to *mut c_void"
     );
 
-    let status = unsafe { SIM_register_interface(cls, name_raw, iface_raw as *mut _) };
-
-    if status != 0 {
-        Err(Error::RegisterInterface {
-            name: name.as_ref().to_string(),
-            message: last_error(),
-        })
-    } else {
-        Ok(status)
-    }
+    Ok(unsafe { SIM_register_interface(cls, name_raw, iface_raw as *mut _) })
 }
 
 // TODO: Port & compatible interfaces
 
 #[simics_exception]
 /// Get an interface of an object
-pub fn get_interface<I>(obj: *mut ConfObject) -> Result<*mut I::Interface>
+pub fn get_interface<I>(obj: *mut ConfObject) -> Result<I>
 where
     I: Interface,
 {
-    Ok(unsafe {
-        SIM_get_interface(obj as *const ConfObject, I::NAME.as_raw_cstr()?) as *mut I::Interface
-    })
+    Ok(I::new(unsafe {
+        SIM_get_interface(obj as *const ConfObject, I::NAME.as_raw_cstr()?)
+            as *mut I::InternalInterface
+    }))
 }
 
 #[simics_exception]
 /// Get an interface of a class
-pub fn get_class_interface<I>(cls: *mut ConfClass) -> Result<*mut I::Interface>
+pub fn get_class_interface<I>(cls: *mut ConfClass) -> Result<*mut I::InternalInterface>
 where
     I: Interface,
 {
     Ok(unsafe {
         SIM_get_class_interface(cls as *const ConfClass, I::NAME.as_raw_cstr()?)
-            as *mut I::Interface
+            as *mut I::InternalInterface
     })
 }
 

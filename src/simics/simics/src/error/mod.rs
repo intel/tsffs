@@ -1,7 +1,7 @@
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(thiserror::Error, Debug)]
-/// SIMICS error
+/// SIMICS errors, including internal and APIs used
 pub enum Error {
     #[error("AttrValue is {actual:?}, expected {expected:?}")]
     AttrValueType {
@@ -49,6 +49,8 @@ pub enum Error {
     TryFromIntError(#[from] std::num::TryFromIntError),
     #[error(transparent)]
     Utf8Error(#[from] std::str::Utf8Error),
+    #[error(transparent)]
+    NulError(#[from] std::ffi::NulError),
     // Anyhow error type to allow wrapping any other errors (e.g. from other crates in the
     // workspace)
     #[error(transparent)]

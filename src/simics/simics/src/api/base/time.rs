@@ -1,6 +1,8 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+//! Time management APIs
+
 use crate::api::{
     sys::{
         SIM_cycle_count, SIM_object_clock, SIM_picosecond_clock, SIM_stall, SIM_stall_count,

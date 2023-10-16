@@ -3,6 +3,8 @@
 
 #![allow(clippy::not_unsafe_ptr_arg_deref, clippy::too_many_arguments)]
 
+//! High level bindings for API-provided SIMICS interfaces
+
 use simics_macro::simics_interface_codegen;
 
 pub use self::interfaces::*;

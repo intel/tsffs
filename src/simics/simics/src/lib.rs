@@ -3,11 +3,13 @@
 
 #![deny(clippy::unwrap_used)]
 
+pub use error::{Error, Result};
+
 extern crate num_traits;
 
 pub mod api;
 pub mod error;
-pub use error::{Error, Result};
+pub mod log;
 
 #[forbid(unsafe_code)]
 pub mod util;

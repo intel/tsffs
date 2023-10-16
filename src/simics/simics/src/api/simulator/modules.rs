@@ -81,11 +81,13 @@ pub fn get_all_modules() -> Result<Vec<ModuleInfo>> {
 }
 
 #[simics_exception]
+/// Get the list of modules that failed to initialize
 pub fn get_all_failed_modules() -> AttrValue {
     unsafe { SIM_get_all_failed_modules() }
 }
 
 #[simics_exception]
+/// Add a directory to the simulator to search for modules when running `load_module("name")`.
 pub fn add_module_dir<P>(path: P) -> Result<()>
 where
     P: AsRef<Path>,
@@ -95,11 +97,13 @@ where
 }
 
 #[simics_exception]
+/// Refresh the module list
 pub fn module_list_refresh() {
     unsafe { SIM_module_list_refresh() };
 }
 
 #[simics_exception]
+/// Load a module into the simulator
 pub fn load_module<S>(module: S) -> Result<()>
 where
     S: AsRef<str>,

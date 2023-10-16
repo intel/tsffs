@@ -15,6 +15,7 @@ use raw_cstr::raw_cstr;
 use simics_macro::simics_exception;
 
 #[simics_exception]
+/// Run a SIMICS CLI command
 pub fn run_command<S>(line: S) -> Result<AttrValue>
 where
     S: AsRef<str>,
@@ -23,6 +24,7 @@ where
 }
 
 #[simics_exception]
+/// Run a SIMICS CLI command file
 pub fn run_command_file<S>(file: S, local: bool) -> Result<()>
 where
     S: AsRef<str>,
@@ -32,6 +34,7 @@ where
 }
 
 #[simics_exception]
+/// Run a SIMICS cli command file with a list of parameters
 pub fn run_command_file_params<S>(file: S, local: bool, params: AttrValue) -> Result<()>
 where
     S: AsRef<str>,
@@ -41,6 +44,7 @@ where
 }
 
 #[simics_exception]
+/// Load a target
 pub fn load_target<S>(target: S, ns: S, presets: AttrValue, cmdline_args: AttrValue) -> Result<()>
 where
     S: AsRef<str>,
@@ -50,6 +54,7 @@ where
 }
 
 #[simics_exception]
+/// Check whether running in batch mode
 pub fn get_batch_mode() -> bool {
     unsafe { SIM_get_batch_mode() }
 }

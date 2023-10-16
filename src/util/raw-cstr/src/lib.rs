@@ -66,10 +66,10 @@ pub trait AsRawCstr {
 impl AsRawCstr for &'static [u8] {
     /// Get a static slice as a raw C string. Useful for interfaces.
     fn as_raw_cstr(&self) -> Result<*mut i8> {
-        if !self.last().is_some_and(|l| *l == 0) {
+        if self.last().is_some_and(|l| *l == 0) {
             Ok(self.as_ptr() as *const i8 as *mut i8)
         } else {
-            bail!("Empty slice or last element is nonzero");
+            bail!("Empty slice or last element is nonzero: {:?}", self);
         }
     }
 }

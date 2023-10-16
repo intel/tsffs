@@ -1,6 +1,8 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+//! Breakpoint APIs
+
 use crate::api::{
     sys::{
         access_t, breakpoint_flag, breakpoint_id_t, breakpoint_kind_t, SIM_breakpoint,

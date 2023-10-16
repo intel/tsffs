@@ -253,6 +253,7 @@ where
 }
 
 #[simics_exception]
+/// Run a closure in a new thread.
 pub fn run_in_thread<F>(cb: F)
 where
     F: FnOnce() + 'static,

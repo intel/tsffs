@@ -1,6 +1,8 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+//! HAP APIs
+
 #![allow(clippy::unused_unit)]
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
@@ -25,11 +27,13 @@ pub type HapHandle = hap_handle_t;
 pub type HapType = hap_type_t;
 
 #[simics_exception]
+/// Return an attribute list of all hap types.
 pub fn get_all_hap_types() -> AttrValue {
     unsafe { SIM_get_all_hap_types() }
 }
 
 #[simics_exception]
+/// Add a new hap type
 pub fn hap_add_type<S>(hap: S, params: S, param_desc: S, index: S, desc: S) -> Result<HapType>
 where
     S: AsRef<str>,
@@ -47,6 +51,7 @@ where
 }
 
 #[simics_exception]
+/// Get the name from a hap number
 pub fn hap_get_name(hap: HapType) -> Result<String> {
     Ok(unsafe { CStr::from_ptr(SIM_hap_get_name(hap)) }
         .to_str()?
@@ -54,6 +59,7 @@ pub fn hap_get_name(hap: HapType) -> Result<String> {
 }
 
 #[simics_exception]
+/// Get the number from a hap name
 pub fn hap_get_number<S>(hap: S) -> Result<HapType>
 where
     S: AsRef<str>,
@@ -62,16 +68,19 @@ where
 }
 
 #[simics_exception]
+/// Check if a hap is active (i.e. it has 1 or more registered handlers)
 pub fn hap_is_active(hap: HapType) -> bool {
     unsafe { SIM_hap_is_active(hap) }
 }
 
 #[simics_exception]
+/// Check if a hap is active for a given object
 pub fn hap_is_active_obj(hap: HapType, obj: *mut ConfObject) -> bool {
     unsafe { SIM_hap_is_active_obj(hap, obj) }
 }
 
 #[simics_exception]
+/// check if a hap is active for a given object and index
 pub fn hap_is_active_obj_idx(hap: HapType, obj: *mut ConfObject, index: i64) -> bool {
     unsafe { SIM_hap_is_active_obj_idx(hap, obj, index) }
 }
@@ -88,6 +97,7 @@ pub fn hap_occurred_always(
 }
 
 #[simics_exception]
+/// Remove a custom hap type registered with [`hap_add_type`]
 pub fn hap_remove_type<S>(hap: S) -> Result<()>
 where
     S: AsRef<str>,

@@ -29,6 +29,14 @@ use std::{
 /// concatenated and converted to host native format. Each such file is looked up first
 /// in the current Simics project, and then in all Simics packages. If a match is found,
 /// the native form of the file found will be returned.
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// use simics::api::lookup_file;
+///
+/// lookup_file("%simics%/target/Software.efi")?;
+/// ```
 pub fn lookup_file<S>(file: S) -> Result<PathBuf>
 where
     S: AsRef<str>,
@@ -39,6 +47,7 @@ where
 }
 
 #[simics_exception]
+/// Add a directory to the SIMICS search path
 pub fn add_directory<P>(directory: P, prepend: bool) -> Result<()>
 where
     P: AsRef<Path>,
@@ -59,11 +68,13 @@ where
 }
 
 #[simics_exception]
+/// Clear extra search directories
 pub fn clear_directories() {
     unsafe { SIM_clear_directories() };
 }
 
 #[simics_exception]
+/// Get the list of extra search directories
 pub fn get_directories() -> AttrValue {
     unsafe { SIM_get_directories() }
 }

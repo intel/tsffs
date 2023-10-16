@@ -1,6 +1,8 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+//! Configuration APIs
+
 use crate::{
     api::{
         last_error,
@@ -24,6 +26,7 @@ pub type PreConfObjectSet = pre_conf_object_set_t;
 pub type SaveFlags = save_flags_t;
 
 #[simics_exception]
+/// Read a configuration file into the simulator state
 pub fn read_configuration<P>(file: P) -> Result<()>
 where
     P: AsRef<Path>,
@@ -40,11 +43,13 @@ where
 }
 
 #[simics_exception]
+/// Set the current configuration from a value
 pub fn set_configuration(conf: AttrValue) {
     unsafe { SIM_set_configuration(conf) }
 }
 
 #[simics_exception]
+/// Add a configuration
 pub fn add_configuration<P>(object_list: *mut PreConfObjectSet, file: P) -> Result<()>
 where
     P: AsRef<Path>,
@@ -85,6 +90,7 @@ pub fn current_checkpoint_dir() -> Result<PathBuf> {
 }
 
 #[simics_exception]
+/// Save the current configuration to a file
 pub fn write_configuration_to_file<P>(file: P, flags: SaveFlags) -> Result<()>
 where
     P: AsRef<Path>,

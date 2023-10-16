@@ -9,6 +9,7 @@ use raw_cstr::raw_cstr;
 use simics_macro::simics_exception;
 
 #[simics_exception]
+/// Get a class by name
 pub fn get_class<S>(name: S) -> Result<*mut ConfClass>
 where
     S: AsRef<str>,

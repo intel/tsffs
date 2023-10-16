@@ -1,6 +1,8 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+//! SIMICS APIs for event management
+
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 use crate::{
@@ -19,6 +21,8 @@ use simics_macro::simics_exception;
 use std::{ffi::c_void, ptr::null_mut};
 use typed_builder::TypedBuilder;
 
+/// Flags for an event
+pub type EventFlags = event_class_flag_t;
 pub type EventClass = event_class_t;
 pub type Cycles = cycles_t;
 
@@ -77,12 +81,12 @@ where
 }
 
 #[simics_exception]
-/// Register an event with a callback. If `flags` is `&[EventFlags::NotSaved]`, `cls` may be
+/// Register an event with a callback. If `flags` is `EventFlags::NotSaved`, `cls` may be
 /// null.
 pub fn register_event<S, C, D, DE>(
     name: S,
     cls: *mut ConfClass,
-    flags: &[EventFlags],
+    flags: EventFlags,
 ) -> Result<*mut EventClass>
 where
     S: AsRef<str>,
@@ -90,17 +94,11 @@ where
     D: FnMut(*mut ConfObject) + 'static,
     DE: FnMut(*mut ConfObject) -> *mut i8 + 'static,
 {
-    let mut event_flags = EventFlags::Sim_EC_No_Flags;
-
-    for flag in flags {
-        event_flags |= *flag;
-    }
-
     let event = unsafe {
         SIM_register_event(
             raw_cstr(name.as_ref())?,
             cls,
-            event_flags,
+            flags,
             Some(event_callback_handler::<C, D, DE>),
             Some(event_destroy_handler::<C, D, DE>),
             // TODO: Serialize the callback userdata?
@@ -192,6 +190,3 @@ pub fn event_find_next_time(
 }
 
 // TODO: Add step API
-
-/// Flags for an event
-pub type EventFlags = event_class_flag_t;

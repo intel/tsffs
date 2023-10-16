@@ -1,6 +1,8 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+//! SIMICS simulator APIs for programming the simulator from a module or frontend
+
 pub mod breakpoints;
 pub mod callbacks;
 pub mod configuration;

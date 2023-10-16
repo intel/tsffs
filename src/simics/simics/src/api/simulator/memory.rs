@@ -1,6 +1,8 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+//! Memory access APIs
+
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 use crate::api::{ConfObject, PhysicalAddress};
@@ -18,11 +20,15 @@ use simics_macro::simics_exception;
 use std::path::Path;
 
 #[simics_exception]
+/// Read physical memory at a physical address with a given length. Length must be less than or
+/// equal to 8 bytes
 pub fn read_phys_memory(cpu: *mut ConfObject, paddr: PhysicalAddress, length: i32) -> u64 {
     unsafe { SIM_read_phys_memory(cpu, paddr, length) }
 }
 
 #[simics_exception]
+/// Write bytes to physical memory. `value` must be less than or equal to 8 bytes in length.
+/// Bytes are written in little-endian format.
 pub fn write_phys_memory(cpu: *mut ConfObject, paddr: PhysicalAddress, value: &[u8]) -> Result<()> {
     let mut value_buffer = [0u8; 8];
     if value.len() > value_buffer.len() {
@@ -51,6 +57,8 @@ pub fn write_byte(physical_memory: *mut ConfObject, physical_addr: u64, byte: u8
 }
 
 #[simics_exception]
+/// Retrieve physical memory tags from memory supporting physical tags, such as CHERI supported
+/// memory.
 pub fn read_phys_memory_tags(
     mem_space: *mut ConfObject,
     paddr: PhysicalAddress,
@@ -60,6 +68,8 @@ pub fn read_phys_memory_tags(
 }
 
 #[simics_exception]
+/// Set physical memory tags from memory supporting physical tags, such as CHERI supported
+/// memory.
 pub fn write_phys_memory_tags(
     mem_space: *mut ConfObject,
     paddr: PhysicalAddress,
@@ -70,6 +80,7 @@ pub fn write_phys_memory_tags(
 }
 
 #[simics_exception]
+/// Load a binary file into the address space
 pub fn load_binary<P>(
     obj: *mut ConfObject,
     file: P,
@@ -97,6 +108,7 @@ where
 }
 
 #[simics_exception]
+/// Load a (not necessarily binary) file into the physical address space
 pub fn load_file<P>(
     obj: *mut ConfObject,
     file: P,

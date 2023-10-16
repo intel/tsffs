@@ -1,6 +1,8 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+//! Not officially exported CORE APIs
+
 use simics_macro::simics_exception;
 
 extern "C" {

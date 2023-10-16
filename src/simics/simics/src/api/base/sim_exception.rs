@@ -1,6 +1,11 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+//! SIMICS exception handling APIs. These should typically not be used directly, most SIMICS
+//! api functions provided by this crate use the `#[simics_exception]` attribute to automatically
+//! convert thrown exceptions into a [`Result`]. This allows more idiomatic error handling
+//! via `Result`s.
+
 use crate::api::sys::{
     sim_exception, SIM_clear_exception, SIM_get_pending_exception, SIM_last_error,
 };

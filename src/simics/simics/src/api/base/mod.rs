@@ -1,6 +1,9 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+//! The high level SIMICS API bindings. This module provides high-level bindings to almost all
+//! SIMICS APIs, including attributes, objects, simulator APIs, interfaces, and HAPs.
+
 pub mod attr_value;
 pub mod conf_object;
 pub mod event;

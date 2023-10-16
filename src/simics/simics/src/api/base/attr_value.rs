@@ -161,7 +161,7 @@ pub fn make_attr_data_adopt<T>(data: T) -> Result<AttrValue> {
 
 /// Create a new attribute list
 pub fn make_attr_list(length: u32, attrs: Vec<AttrValue>) -> Result<AttrValue> {
-    let mut list = alloc_attr_list(length);
+    let mut list = alloc_attr_list(length)?;
     attrs
         .into_iter()
         .enumerate()
@@ -169,29 +169,38 @@ pub fn make_attr_list(length: u32, attrs: Vec<AttrValue>) -> Result<AttrValue> {
     Ok(list)
 }
 
+#[simics_exception]
 /// Allocate a new attribute list of a given length
 pub fn alloc_attr_list(length: u32) -> AttrValue {
     unsafe { SIM_alloc_attr_list(length) }
 }
 
+#[simics_exception]
+/// Allocate a new attribute dictionary of a given size
 pub fn alloc_attr_dict(length: u32) -> AttrValue {
     unsafe { SIM_alloc_attr_dict(length) }
 }
 
 #[simics_exception]
+/// Set an element in an attribute list at a given index to a given value
 pub fn attr_list_set_item(attr: *mut AttrValue, index: u32, elem: AttrValue) {
     unsafe { SIM_attr_list_set_item(attr, index, elem) }
 }
 
+#[simics_exception]
+/// Resize an attribute list. Shrinking the list triggers destruction of the dropped items
 pub fn attr_list_resize(attr: *mut AttrValue, newsize: u32) {
     unsafe { SIM_attr_list_resize(attr, newsize) };
 }
 
 #[simics_exception]
+/// Set an item at a key and index to a value in a given dictionary
 pub fn attr_dict_set_item(attr: *mut AttrValue, index: u32, key: AttrValue, value: AttrValue) {
     unsafe { SIM_attr_dict_set_item(attr, index, key, value) };
 }
 
+#[simics_exception]
+/// Resize an attribute dictionary. Shrinking the list triggers destruction of the dropped items
 pub fn attr_dict_resize(attr: *mut AttrValue, newsize: u32) {
     unsafe { SIM_attr_dict_resize(attr, newsize) };
 }

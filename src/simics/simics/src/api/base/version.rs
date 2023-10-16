@@ -1,6 +1,8 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+//! SIMICS version access and management APIs
+
 use crate::{
     api::sys::{
         SIM_copyright, SIM_register_copyright, SIM_version, SIM_version_base, SIM_version_major,
