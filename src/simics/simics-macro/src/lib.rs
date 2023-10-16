@@ -158,7 +158,7 @@ pub fn class(args: TokenStream, input: TokenStream) -> TokenStream {
         &ty_generics,
         &where_clause,
     );
-    let from_impl = from_impl(name.to_string());
+    let from_impl = from_impl(&input);
 
     quote! {
         #maybe_derive_attribute
@@ -324,7 +324,7 @@ fn raw_impl(
             ) -> *mut simics::api::ConfObject  {
 
                 let obj_ptr: *mut simics::api::ConfObject = obj.into();
-                let ptr: *mut #name = obj_ptr as *mut #name;
+                let ptr: *mut #name #ty_generics= obj_ptr as *mut #name #ty_generics;
 
                 #(#field_initializers)*
 
@@ -334,16 +334,16 @@ fn raw_impl(
     }
 }
 
-fn from_impl<S>(name: S) -> TokenStream2
-where
-    S: AsRef<str>,
-{
-    let name = format_ident!("{}", name.as_ref());
+fn from_impl(input: &ItemStruct) -> TokenStream2 {
+    let name = &input.ident;
+    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     quote! {
-        impl From<*mut simics::api::ConfObject> for &'static mut #name {
+        impl #impl_generics From<*mut simics::api::ConfObject> for &'static mut #name #ty_generics
+            #where_clause
+        {
             fn from(value: *mut simics::api::ConfObject) -> Self {
-                let ptr: *mut #name = value as *mut #name;
+                let ptr: *mut #name #ty_generics = value as *mut #name #ty_generics ;
                 unsafe { &mut *ptr }
             }
         }

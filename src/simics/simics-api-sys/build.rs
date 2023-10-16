@@ -294,7 +294,14 @@ fn main() -> Result<()> {
     } else {
         bail!("No windows or linux subdirectory for base path");
     };
-    let hap_document = Html::parse_document(&String::from_utf8(read(hap_doc_path)?)?);
+
+    let hap_document =
+        Html::parse_document(&String::from_utf8(read(&hap_doc_path).map_err(|e| {
+            anyhow!(
+                "Error reading document path {} to extract HAP definitions: {e}",
+                hap_doc_path.display()
+            )
+        })?)?);
 
     let haps_selector = Selector::parse(r#"article"#).unwrap();
     let haps_id_selector = Selector::parse(r#"h2"#).unwrap();

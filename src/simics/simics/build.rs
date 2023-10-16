@@ -36,8 +36,15 @@ fn main() -> Result<()> {
     let simics_api_version = Versioning::new(SIMICS_VERSION)
         .ok_or_else(|| anyhow!("Invalid version {}", SIMICS_VERSION))?;
 
-    // The minimum version required to enable the experimental snapshots API
+    if VersionConstraint::from_str("<6.0.163")?.matches(&simics_api_version) {
+        // Bail out if we are targeting a version before 6.0.163. We don't test any earlier than
+        // this.
+        panic!("Target SIMICS API version is too old. The minimum version supported is 6.0.163.");
+    }
+
     if VersionConstraint::from_str(">=6.0.173")?.matches(&simics_api_version) {
+        // Enable the experimental snapshots api for versions over 6.0.173 (where the API first
+        // appears)
         println!("cargo:rustc-cfg=simics_experimental_api_snapshots");
     }
 

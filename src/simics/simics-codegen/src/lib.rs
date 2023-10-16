@@ -78,6 +78,7 @@ fn hap_name_and_type_to_struct(
     let name = name_callback_type.0;
     let name_name = &name.ident;
     let callback_type = name_callback_type.1;
+    let callback_doc = &callback_type.attrs;
     let supports_index_callbacks = callback_type.attrs.iter().any(|a| {
         if let Meta::NameValue(ref meta) = a.meta {
             if let Expr::Lit(ref lit) = meta.value {
@@ -231,6 +232,7 @@ fn hap_name_and_type_to_struct(
                             });
 
                             let struct_and_impl = quote! {
+                                #(#callback_doc)*
                                 pub struct #struct_name {}
 
                                 impl crate::api::traits::hap::Hap for #struct_name {
