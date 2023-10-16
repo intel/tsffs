@@ -18,7 +18,7 @@ use crate::{
     Result,
 };
 use raw_cstr::raw_cstr;
-use simics_macro::{simics_exception, simics_hap_codegen};
+use simics_macro::simics_exception;
 use std::{ffi::CStr, ptr::null_mut};
 
 pub use self::haps::*;
@@ -108,5 +108,4 @@ where
 
 // NOTE: recommended to only use the always version
 
-#[simics_hap_codegen(source = "bindings.rs")]
-pub mod haps {}
+include!(concat!(env!("OUT_DIR"), "/haps.rs"));

@@ -5,11 +5,6 @@
 
 //! High level bindings for API-provided SIMICS interfaces
 
-use simics_macro::simics_interface_codegen;
-
 pub use self::interfaces::*;
 
-#[simics_interface_codegen(source = "bindings.rs")]
-/// Automatically generated bindings for interfaces provided by the SIMICS API. See the
-/// simics-macro crate for details
-pub mod interfaces {}
+include!(concat!(env!("OUT_DIR"), "/interfaces.rs"));

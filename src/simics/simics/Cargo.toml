@@ -50,4 +50,6 @@ link = ["simics-api-sys/link"]
 [build-dependencies]
 anyhow.workspace = true
 simics-api-sys.workspace = true
+simics-codegen.workspace = true
+simics-macro.workspace = true
 version-tools.workspace = true

@@ -25,6 +25,7 @@ members = [
     "src/simics/ispm-wrapper",
     "src/simics/simics-api-sys",
     "src/simics/simics-macro",
+    "src/simics/simics-codegen",
     "src/simics/simics",
 
     "src/util/command-ext",
@@ -38,6 +39,7 @@ default-members = [
     "src/simics/ispm-wrapper",
     "src/simics/simics-api-sys",
     "src/simics/simics-macro",
+    "src/simics/simics-codegen",
     "src/simics/simics",
 
     "src/util/command-ext",
@@ -51,6 +53,7 @@ exclude = []
 [workspace.dependencies]
 simics-api-sys = { path = "src/simics/simics-api-sys" }
 simics-macro = { path = "src/simics/simics-macro" }
+simics-codegen = { path = "src/simics/simics-codegen" }
 simics = { path = "src/simics/simics" }
 
 command-ext = { path = "src/util/command-ext" }
