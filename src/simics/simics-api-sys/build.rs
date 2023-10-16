@@ -276,117 +276,116 @@ where
 fn main() -> Result<()> {
     println!("cargo:rerun-if-changed=build.rs");
 
-    if cfg!(feature = "auto") {
-        let base_dir_path = PathBuf::from(
-            var(SIMICS_BASE_ENV)
-                .map_err(|e| anyhow!("No environment variable {SIMICS_BASE_ENV} found: {e}"))?,
-        );
+    let base_dir_path = PathBuf::from(
+        var(SIMICS_BASE_ENV)
+            .map_err(|e| anyhow!("No environment variable {SIMICS_BASE_ENV} found: {e}"))?,
+    );
 
-        ensure!(
-            base_dir_path.is_dir(),
-            "{} is not a directory",
-            base_dir_path.display()
-        );
+    ensure!(
+        base_dir_path.is_dir(),
+        "{} is not a directory",
+        base_dir_path.display()
+    );
 
-        let hap_doc_path = if base_dir_path.join(LINUX64_DIRNAME).is_dir() {
-            base_dir_path.join(LINUX64_DIRNAME).join(HAP_DOC_PATH)
-        } else if base_dir_path.join(WIN64_DIRNAME).is_dir() {
-            base_dir_path.join(WIN64_DIRNAME).join(HAP_DOC_PATH)
-        } else {
-            bail!("No windows or linux subdirectory for base path");
-        };
-        let hap_document = Html::parse_document(&String::from_utf8(read(hap_doc_path)?)?);
+    let hap_doc_path = if base_dir_path.join(LINUX64_DIRNAME).is_dir() {
+        base_dir_path.join(LINUX64_DIRNAME).join(HAP_DOC_PATH)
+    } else if base_dir_path.join(WIN64_DIRNAME).is_dir() {
+        base_dir_path.join(WIN64_DIRNAME).join(HAP_DOC_PATH)
+    } else {
+        bail!("No windows or linux subdirectory for base path");
+    };
+    let hap_document = Html::parse_document(&String::from_utf8(read(hap_doc_path)?)?);
 
-        let haps_selector = Selector::parse(r#"article"#).unwrap();
-        let haps_id_selector = Selector::parse(r#"h2"#).unwrap();
-        let section_selector = Selector::parse(r#"section"#).unwrap();
-        let hap_code_selector = Selector::parse(r#"pre"#).unwrap();
-        let hap_description_selector = Selector::parse(r#"h3"#).unwrap();
-        let hap_index_selector = Selector::parse(r#"code"#).unwrap();
+    let haps_selector = Selector::parse(r#"article"#).unwrap();
+    let haps_id_selector = Selector::parse(r#"h2"#).unwrap();
+    let section_selector = Selector::parse(r#"section"#).unwrap();
+    let hap_code_selector = Selector::parse(r#"pre"#).unwrap();
+    let hap_description_selector = Selector::parse(r#"h3"#).unwrap();
+    let hap_index_selector = Selector::parse(r#"code"#).unwrap();
 
-        let haps_article = hap_document.select(&haps_selector).next().unwrap();
-        let haps_names = haps_article
-            .select(&haps_id_selector)
-            .filter_map(|h| h.value().id())
-            .collect::<Vec<_>>();
-        let haps_sections = haps_article.select(&section_selector).collect::<Vec<_>>();
-        let haps_code_indices_descriptions = haps_sections
-            .iter()
-            .map(|s| {
-                let code = s
-                    .select(&hap_code_selector)
-                    .next()
-                    .unwrap()
-                    .inner_html()
-                    .trim()
-                    .to_string();
-                let maybe_index = s
-                    .select(&hap_index_selector)
-                    .next()
-                    .map(|i| i.inner_html().trim().to_string());
-                let maybe_description = s
-                    .select(&hap_description_selector)
-                    .last()
-                    .and_then(|i| i.next_sibling())
-                    .and_then(|n| n.value().as_text().map(|t| t.trim().to_string()));
-                (code, maybe_index, maybe_description)
-            })
-            .collect::<Vec<_>>();
+    let haps_article = hap_document.select(&haps_selector).next().unwrap();
+    let haps_names = haps_article
+        .select(&haps_id_selector)
+        .filter_map(|h| h.value().id())
+        .collect::<Vec<_>>();
+    let haps_sections = haps_article.select(&section_selector).collect::<Vec<_>>();
+    let haps_code_indices_descriptions = haps_sections
+        .iter()
+        .map(|s| {
+            let code = s
+                .select(&hap_code_selector)
+                .next()
+                .unwrap()
+                .inner_html()
+                .trim()
+                .to_string();
+            let maybe_index = s
+                .select(&hap_index_selector)
+                .next()
+                .map(|i| i.inner_html().trim().to_string());
+            let maybe_description = s
+                .select(&hap_description_selector)
+                .last()
+                .and_then(|i| i.next_sibling())
+                .and_then(|n| n.value().as_text().map(|t| t.trim().to_string()));
+            (code, maybe_index, maybe_description)
+        })
+        .collect::<Vec<_>>();
 
-        let hap_code = haps_names
-            .iter()
-            .zip(haps_code_indices_descriptions.iter())
-            .map(|(name, (code, maybe_index, maybe_description))| {
-                let mut hap_name_name = name.to_ascii_uppercase();
-                hap_name_name += "_HAP_NAME";
-                let mut hap_callback_name = name.to_ascii_lowercase();
-                hap_callback_name += "_hap_callback";
-                let code = code
-                    .replace("(*)", &format!("(*{})", hap_callback_name))
-                    .replace(['/', '-'], "_");
-                let comment = format!(
-                    "/**\n * Index: {}\n * Description: {}\n */",
-                    maybe_index
-                        .as_ref()
-                        .unwrap_or(&"Indices not supported".to_string()),
-                    maybe_description
-                        .as_ref()
-                        .unwrap_or(&"No description".to_string())
-                );
+    let hap_code = haps_names
+        .iter()
+        .zip(haps_code_indices_descriptions.iter())
+        .map(|(name, (code, maybe_index, maybe_description))| {
+            let mut hap_name_name = name.to_ascii_uppercase();
+            hap_name_name += "_HAP_NAME";
+            let mut hap_callback_name = name.to_ascii_lowercase();
+            hap_callback_name += "_hap_callback";
+            let code = code
+                .replace("(*)", &format!("(*{})", hap_callback_name))
+                .replace(['/', '-'], "_");
+            let comment = format!(
+                "/**\n * Index: {}\n * Description: {}\n */",
+                maybe_index
+                    .as_ref()
+                    .unwrap_or(&"Indices not supported".to_string()),
+                maybe_description
+                    .as_ref()
+                    .unwrap_or(&"No description".to_string())
+            );
 
-                format!(
-                    "#define {} \"{}\"\n{}\ntypedef {}\n",
-                    hap_name_name, name, comment, code
-                )
-            })
-            .collect::<String>();
+            format!(
+                "#define {} \"{}\"\n{}\ntypedef {}\n",
+                hap_name_name, name, comment, code
+            )
+        })
+        .collect::<String>();
 
-        let simics_base_version = base_dir_path
+    let simics_base_version = base_dir_path
                 .file_name()
                 .ok_or_else(|| anyhow!("No file name found in SIMICS base path"))?
                 .to_str()
                 .ok_or_else(|| anyhow!("Could not convert file name to string"))?
                 .split('-')
-                .next()
+                .last()
                 .ok_or_else(|| anyhow!("Could not split to obtain version: SIMICS base directory may not be in the format simics-X.X.XXX"))?
                 .to_string();
 
-        let simics_base_version_const_declaration = format!(
-            r#"pub const SIMICS_VERSION: &str = "{}";"#,
-            simics_base_version
-        );
+    let simics_base_version_const_declaration = format!(
+        r#"pub const SIMICS_VERSION: &str = "{}";"#,
+        simics_base_version
+    );
 
-        let out_dir_path = PathBuf::from(
-            var(OUT_DIR_ENV)
-                .map_err(|e| anyhow!("No environment variable {OUT_DIR_ENV} found: {e}"))?,
-        );
+    let out_dir_path = PathBuf::from(
+        var(OUT_DIR_ENV)
+            .map_err(|e| anyhow!("No environment variable {OUT_DIR_ENV} found: {e}"))?,
+    );
 
-        let bindings_file_path = out_dir_path.join(AUTO_BINDINGS_FILENAME);
-        let version_file_path = out_dir_path.join(AUTO_BINDINGS_VERSION_FILENAME);
+    let bindings_file_path = out_dir_path.join(AUTO_BINDINGS_FILENAME);
+    let version_file_path = out_dir_path.join(AUTO_BINDINGS_VERSION_FILENAME);
 
-        write(version_file_path, simics_base_version_const_declaration)?;
+    write(version_file_path, simics_base_version_const_declaration)?;
 
-        let include_paths_env = var(INCLUDE_PATHS_ENV).or_else(|e| {
+    let include_paths_env = var(INCLUDE_PATHS_ENV).or_else(|e| {
             println!("cargo:warning=No environment variable {INCLUDE_PATHS_ENV} set. Using default include paths: {e}");
             base_dir_path
                 .join("src")
@@ -396,11 +395,11 @@ fn main() -> Result<()> {
                 .ok_or_else(|| anyhow!("Could not convert path to string"))
         })?;
 
-        let include_paths = PathBuf::from(&include_paths_env);
+    let include_paths = PathBuf::from(&include_paths_env);
 
-        let wrapper_contents = generate_include_wrapper(include_paths, hap_code)?;
+    let wrapper_contents = generate_include_wrapper(include_paths, hap_code)?;
 
-        let bindings =
+    let bindings =
             Builder::default()
                 .clang_arg(var(PYTHON3_INCLUDE_ENV).or_else(|e| {
                     println!("cargo:warning=No environment variable {PYTHON3_INCLUDE_ENV} set. Using default include paths: {e}");
@@ -638,8 +637,8 @@ fn main() -> Result<()> {
                 .bitfield_enum("breakpoint_flag")
                 .bitfield_enum("save_flags_t")
                 .generate()?;
-        bindings.write_to_file(bindings_file_path)?;
-    }
+
+    bindings.write_to_file(bindings_file_path)?;
 
     if cfg!(feature = "link") {
         let base_dir_path = PathBuf::from(

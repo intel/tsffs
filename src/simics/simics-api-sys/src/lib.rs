@@ -14,30 +14,4 @@ mod bindings;
 
 pub use bindings::*;
 
-#[cfg(feature = "auto")]
 include!(concat!(env!("OUT_DIR"), "/version-auto.rs"));
-
-#[cfg(feature = "6.0.163")]
-pub const SIMICS_VERSION: &str = "6.0.163";
-#[cfg(feature = "6.0.164")]
-pub const SIMICS_VERSION: &str = "6.0.164";
-#[cfg(feature = "6.0.165")]
-pub const SIMICS_VERSION: &str = "6.0.165";
-#[cfg(feature = "6.0.166")]
-pub const SIMICS_VERSION: &str = "6.0.166";
-#[cfg(feature = "6.0.167")]
-pub const SIMICS_VERSION: &str = "6.0.167";
-#[cfg(feature = "6.0.168")]
-pub const SIMICS_VERSION: &str = "6.0.168";
-#[cfg(feature = "6.0.169")]
-pub const SIMICS_VERSION: &str = "6.0.169";
-#[cfg(feature = "6.0.170")]
-pub const SIMICS_VERSION: &str = "6.0.170";
-#[cfg(feature = "6.0.171")]
-pub const SIMICS_VERSION: &str = "6.0.171";
-#[cfg(feature = "6.0.172")]
-pub const SIMICS_VERSION: &str = "6.0.172";
-#[cfg(feature = "6.0.173")]
-pub const SIMICS_VERSION: &str = "6.0.173";
-#[cfg(feature = "6.0.174")]
-pub const SIMICS_VERSION: &str = "6.0.174";

@@ -24,7 +24,7 @@
 use anyhow::{anyhow, bail, Error, Result};
 use serde::{de::Error as _, Deserialize, Deserializer};
 use std::str::FromStr;
-use versions::{Chunk, Versioning};
+pub use versions::*;
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]

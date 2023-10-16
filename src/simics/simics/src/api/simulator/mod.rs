@@ -21,6 +21,7 @@ pub mod script;
 pub mod sim_caches;
 pub mod sim_conf_object;
 pub mod sim_get_class;
+#[cfg(simics_experimental_api_snapshots)]
 pub mod snapshots;
 
 pub use breakpoints::*;
@@ -41,4 +42,6 @@ pub use script::*;
 pub use sim_caches::*;
 pub use sim_conf_object::*;
 pub use sim_get_class::*;
+
+#[cfg(simics_experimental_api_snapshots)]
 pub use snapshots::*;

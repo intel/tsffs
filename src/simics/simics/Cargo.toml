@@ -40,14 +40,14 @@ versions = "5.0.0"
 walkdir = "2.3.3"
 thiserror = "1.0.49"
 anyhow.workspace = true
-typed-builder = "0.16.2"
+typed-builder = "0.17.0"
 
 [features]
-default = ["derive", "link", "auto"]
+default = ["derive", "link"]
 derive = ["simics-macro"]
 link = ["simics-api-sys/link"]
-auto = ["simics-api-sys/auto"]
 
 [build-dependencies]
 anyhow.workspace = true
 simics-api-sys.workspace = true
+version-tools.workspace = true
