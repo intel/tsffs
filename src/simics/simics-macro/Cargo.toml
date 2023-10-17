@@ -25,6 +25,7 @@ syn = { version = "2.0.15", features = ["full"] }
 proc-macro2 = "1.0.56"
 proc-macro-error = "1.0.4"
 darling = "0.20.3"
+indoc = "2.0.4"
 
 [dev-dependencies]
 

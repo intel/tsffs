@@ -6,15 +6,22 @@
 #![deny(clippy::unwrap_used)]
 #![forbid(unsafe_code)]
 
+use std::{
+    env::var,
+    fs::{create_dir_all, write},
+    path::PathBuf,
+};
+
 use darling::{ast::NestedMeta, util::Flag, Error, FromDeriveInput, FromMeta, Result};
+use indoc::formatdoc;
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use proc_macro_error::{abort, proc_macro_error};
 use quote::{format_ident, quote, ToTokens};
 use syn::{
-    parse::Parser, parse_macro_input, parse_str, DeriveInput, Expr, Field, Fields, Generics, Ident,
-    ImplGenerics, ImplItem, ItemFn, ItemImpl, ItemStruct, Lit, ReturnType, Type, TypeGenerics,
-    Visibility, WhereClause,
+    parse::Parser, parse_macro_input, parse_str, DeriveInput, Expr, Field, Fields, FnArg,
+    GenericArgument, Generics, Ident, ImplGenerics, ImplItem, ItemFn, ItemImpl, ItemStruct, Lit,
+    Pat, ReturnType, Signature, Type, TypeGenerics, Visibility, WhereClause,
 };
 
 #[derive(Debug, FromDeriveInput)]
@@ -518,9 +525,7 @@ impl SnakeToCamel for String {
 }
 
 #[derive(Debug, FromMeta)]
-struct InterfaceOpts {
-    name: String,
-}
+struct InterfaceOpts {}
 
 #[proc_macro_error]
 #[proc_macro_attribute]
@@ -528,10 +533,13 @@ struct InterfaceOpts {
 ///
 /// This macro generates an implementation of [`Interface`] and [`HasInterface`] for the
 /// struct, as well as a new struct called #original_nameInterface, which wraps the
-/// low-level pointer to CFFI compatible struct.
+/// low-level pointer to CFFI compatible struct. The interface will be named the same as
+/// the class, converted to ascii lowercase characters. For example a struct named
+/// `Tsffs` will have a generated interface name `tsffs`.
 ///
 /// One implementation of the struct should be annotated with `#[interface_impl]` to
-/// generate CFFI compatible functions that can be called through the SIMICS interface.
+/// generate CFFI compatible functions that can be called through the SIMICS interface for that
+/// implementation's methods.
 pub fn interface(args: TokenStream, input: TokenStream) -> TokenStream {
     let attr_args = match NestedMeta::parse_meta_list(args.into()) {
         Ok(a) => a,
@@ -540,7 +548,7 @@ pub fn interface(args: TokenStream, input: TokenStream) -> TokenStream {
 
     let input = parse_macro_input!(input as ItemStruct);
 
-    let args = match InterfaceOpts::from_list(&attr_args) {
+    let _args = match InterfaceOpts::from_list(&attr_args) {
         Ok(a) => a,
         Err(e) => return TokenStream::from(e.write_errors()),
     };
@@ -550,7 +558,10 @@ pub fn interface(args: TokenStream, input: TokenStream) -> TokenStream {
     let ident = &input.ident;
     let interface_ident = format_ident!("{}Interface", ident);
     let interface_internal_ident = format_ident!("{}InterfaceInternal", ident);
-    let interface_name_literal: Lit = match parse_str(&format!(r#"b"{}\0""#, args.name)) {
+    let interface_name_literal: Lit = match parse_str(&format!(
+        r#"b"{}\0""#,
+        input.ident.to_string().to_ascii_lowercase()
+    )) {
         Ok(l) => l,
         Err(e) => return TokenStream::from(Error::from(e).write_errors()),
     };
@@ -603,8 +614,215 @@ fn type_name(ty: &Type) -> Result<Ident> {
     Err(Error::custom("Incorrect type to get ident"))
 }
 
+fn interface_function_type_to_ctype(ty: &Type) -> String {
+    match &ty {
+        Type::Paren(i) => interface_function_type_to_ctype(&i.elem),
+        Type::Path(p) => {
+            // First, check if the outer is an option. If it is, we just discard it and take the
+            // inner type.
+            if let Some(last) = p.path.segments.last() {
+                let ty_ident = &last.ident;
+                match &last.arguments {
+                    syn::PathArguments::None => {
+                        // No angle arguments, we can break down the type now
+                        let tystr = ty_ident.to_string();
+                        match tystr.as_str() {
+                            "ConfObject" => "conf_object_t",
+                            "AttrValue" => "attr_value_t",
+                            "BreakpointId" => "breakpoint_id_t",
+                            "GenericAddress" => "generic_address_t",
+                            "u8" => "uint8",
+                            "u16" => "uint16",
+                            "u32" => "uint32",
+                            "u64" => "uint64",
+                            "i8" => "int8",
+                            "i16" => "int16",
+                            "i32" => "int32",
+                            "i64" => "int64",
+                            // NOTE: This is not exactly right, but we don't expect anyone to
+                            // run simics on a 32-bit host.
+                            "f32" => "float",
+                            "f64" => "double",
+                            "c_char" => "char",
+                            // Attempt to use the type as-is. This is unlikely to work, but allows
+                            // creative people to be creative
+                            other => other,
+                        }
+                        .to_string()
+                    }
+                    syn::PathArguments::AngleBracketed(a) => {
+                        if last.ident == "Option" {
+                            if let Some(GenericArgument::Type(ty)) = a.args.first() {
+                                interface_function_type_to_ctype(ty)
+                            } else {
+                                panic!("Unsupported generic arguments");
+                            }
+                        } else {
+                            panic!("Unsupported function type with arguments: {ty_ident}");
+                        }
+                    }
+                    _ => panic!("Unsupported interface function type argument"),
+                }
+            } else {
+                panic!("Unexpected empty path in interface function type");
+            }
+        }
+        Type::Ptr(p) => {
+            let ptr_ty = interface_function_type_to_ctype(&p.elem);
+            let maybe_const = p
+                .const_token
+                .is_some()
+                .then_some("const ".to_string())
+                .unwrap_or_default();
+            format!("{maybe_const}{ptr_ty} *")
+        }
+        _ => panic!("Unsupported type for C interface generation: {ty:?}"),
+    }
+}
+
+fn generate_interface_function_type(signature: &Signature) -> String {
+    let name = &signature.ident;
+    let ty = signature
+        .inputs
+        .iter()
+        .map(|i| match i {
+            FnArg::Receiver(_) => "conf_object_t * obj".to_string(),
+            FnArg::Typed(a) => {
+                let ty = interface_function_type_to_ctype(&a.ty);
+                let name = match &*a.pat {
+                    Pat::Ident(ref p) => p.ident.to_string(),
+                    _ => panic!("Expected ident pattern type"),
+                };
+                format!("{} {}", ty, name)
+            }
+        })
+        .collect::<Vec<_>>();
+    let ty_params = ty.join(", ");
+
+    let output = match &signature.output {
+        ReturnType::Default => "void".to_string(),
+        ReturnType::Type(_, t) => interface_function_type_to_ctype(t),
+    };
+
+    format!("{output} (*{name})({ty_params});")
+}
+
+fn generate_interface_header(input: &ItemImpl) -> String {
+    let input_name = type_name(&input.self_ty).expect("Invalid type name");
+    let interface_name = input_name.to_string().to_ascii_lowercase();
+    let interface_struct_name = format!("{interface_name}_interface");
+    let interface_struct_name_define = interface_struct_name.to_ascii_uppercase();
+    let interface_struct_ty_name = format!("{interface_struct_name}_t");
+    let include_guard = format!("{}_INTERFACE_H", interface_name.to_ascii_uppercase());
+    let interface_functions = input
+        .items
+        .iter()
+        .filter_map(|i| {
+            if let ImplItem::Fn(ref f) = i {
+                Some(&f.sig)
+            } else {
+                None
+            }
+        })
+        .map(generate_interface_function_type)
+        .collect::<Vec<_>>();
+    let interface_functions_code = interface_functions.join("\n    ");
+
+    formatdoc! {r#"
+        // Copyright (C) 2023 Intel Corporation
+        // SPDX-License-Identifier: Apache-2.0
+
+        #ifndef {include_guard}
+        #define {include_guard}
+
+        #include <simics/device-api.h>
+
+        #ifdef __cplusplus
+        extern "C" {{
+        #endif
+
+        typedef struct {interface_struct_name} {interface_struct_ty_name};
+
+        struct {interface_struct_name} {{
+            {interface_functions_code}
+        }};
+
+        #define {interface_struct_name_define} "{interface_name}"
+
+        #ifdef __cplusplus
+        }}
+        #endif
+
+        #endif // {include_guard}
+
+    "#}
+}
+
+fn generate_interface_dml<S>(input: &ItemImpl, header_name: S) -> String
+where
+    S: AsRef<str>,
+{
+    let header_name = header_name.as_ref();
+    let input_name = type_name(&input.self_ty).expect("Invalid type name");
+    let interface_name = input_name.to_string().to_ascii_lowercase();
+    let interface_struct_name = format!("{interface_name}_interface");
+    let interface_struct_name_define = interface_struct_name.to_ascii_uppercase();
+    let interface_struct_ty_name = format!("{interface_struct_name}_t");
+    let interface_functions = input
+        .items
+        .iter()
+        .filter_map(|i| {
+            if let ImplItem::Fn(ref f) = i {
+                Some(&f.sig)
+            } else {
+                None
+            }
+        })
+        .map(generate_interface_function_type)
+        .collect::<Vec<_>>();
+    let interface_functions_code = interface_functions.join("\n    ");
+
+    formatdoc! {r#"
+        // Copyright (C) 2023 Intel Corporation
+        // SPDX-License-Identifier: Apache-2.0
+
+        dml 1.4;
+
+        header %{{
+        #include "{header_name}"
+        %}}
+
+        extern typedef struct {{
+            {interface_functions_code}
+        }} {interface_struct_ty_name};
+
+        extern const char *const {interface_struct_name_define};
+    "#}
+}
+
+fn generate_interface_makefile<S>(header_name: S) -> String
+where
+    S: AsRef<str>,
+{
+    let header_name = header_name.as_ref();
+
+    formatdoc! {r#"
+        IFACE_FILES = {header_name}
+        THREAD_SAFE = yes
+
+        ifeq ($(MODULE_MAKEFILE),)
+        $(error Make sure you compile your module from the project directory)
+        else
+        include $(MODULE_MAKEFILE)
+        endif
+    "#}
+}
+
 #[derive(Debug, FromMeta)]
-struct InterfaceImplOpts {}
+struct InterfaceImplOpts {
+    #[darling(rename = "modules_path")]
+    generate_path: Option<String>,
+}
 
 #[proc_macro_error]
 #[proc_macro_attribute]
@@ -612,6 +830,50 @@ struct InterfaceImplOpts {}
 /// implementation of a struct annotated with `#[interface()]`. It generates an
 /// FFI-compatible structure containing CFFI compatible function pointers to call
 /// through to this struct's methods.
+///
+/// # Arguments
+///
+/// - `modules_path`: If set, generate a Makefile, .h, and .dml file for the interface. This
+///   path should be to the project's `modules` directory. It can be relative to the crate
+///   containing the code using this attribute. For example, if the `tsffs` crate is located in
+///   $SIMICS_PROJECT/src/tsffs/, `modules_path = "../../modules/"` would be specified. This is
+///   similar to the syntax used by `include!` and `include_str!`.
+///
+/// # Notes on C/H generation
+///
+/// In the normal build toolchain, an interface called `tsffs` is declared with:
+///
+/// ```c
+/// #ifndef TSFFS_INTERFACE_H
+/// #define TSFFS_INTERFACE_H
+/// #include <simics/device-api.h>
+/// #include <simics/pywrap.h>
+///
+/// #ifdef __cplusplus
+/// extern "C" {
+/// #endif
+///
+/// SIM_INTERFACE(tsffs) {
+///   // Python-exportable interface methods...
+/// #ifndef PYWRAP
+///   // Non python-exportable methods
+/// #endif
+/// };
+/// #define TSFFS_INTERFACE "tsffs"
+///
+/// #ifdef __cplusplus
+/// }
+/// #endif
+/// #endif TSFFS_INTERFACE_H
+/// ```
+/// Where `SIM_INTERFACE(tsffs)` expands to:
+///
+/// ```c
+/// typedef struct tsffs_interface tsffs_interface_t; struct tsffs_interface
+/// ```
+///
+/// During code-generation, we do not include `pywrap.h`, and all methods must be exportable to
+/// Python. We also do not use the `SIM_INTERFACE` macro.
 pub fn interface_impl(args: TokenStream, input: TokenStream) -> TokenStream {
     let attr_args = match NestedMeta::parse_meta_list(args.into()) {
         Ok(a) => a,
@@ -620,7 +882,7 @@ pub fn interface_impl(args: TokenStream, input: TokenStream) -> TokenStream {
 
     let input = parse_macro_input!(input as ItemImpl);
 
-    let _args = match InterfaceImplOpts::from_list(&attr_args) {
+    let args = match InterfaceImplOpts::from_list(&attr_args) {
         Ok(a) => a,
         Err(e) => return TokenStream::from(e.write_errors()),
     };
@@ -692,6 +954,50 @@ pub fn interface_impl(args: TokenStream, input: TokenStream) -> TokenStream {
             quote!(#name: Some(#ffi_interface_mod_name::#name))
         })
         .collect::<Vec<_>>();
+
+    let crate_directory_path = PathBuf::from(
+        var("CARGO_MANIFEST_DIR").expect("No CARGO_MANIFEST_DIR set. This should be impossible."),
+    );
+
+    if let Some(generate_path) = args.generate_path {
+        let generate_path = if generate_path.starts_with('/') {
+            PathBuf::from(generate_path)
+        } else {
+            crate_directory_path.join(generate_path).join(format!(
+                "{}-interface",
+                input_name.to_string().to_ascii_lowercase()
+            ))
+        };
+
+        if !generate_path.is_dir() {
+            if let Err(e) = create_dir_all(&generate_path) {
+                return TokenStream::from(
+                    Error::custom(format!(
+                        "Failed to create generated interface directory: {e}"
+                    ))
+                    .write_errors(),
+                );
+            }
+        }
+
+        let header_name = format!(
+            "{}-interface.h",
+            input_name.to_string().to_ascii_lowercase()
+        );
+        let dml_name = format!(
+            "{}-interface.dml",
+            input_name.to_string().to_ascii_lowercase()
+        );
+        let makefile_name = "Makefile";
+
+        let header = generate_interface_header(&input);
+        let dml = generate_interface_dml(&input, &header_name);
+        let makefile = generate_interface_makefile(&header_name);
+
+        write(generate_path.join(header_name), header).expect("Failed to write header file");
+        write(generate_path.join(dml_name), dml).expect("Failed to write dml file");
+        write(generate_path.join(makefile_name), makefile).expect("Failed to write makefile");
+    }
 
     quote! {
         #[ffi(mod_name = #ffi_interface_mod_name, self_ty = "*mut simics::api::ConfObject")]

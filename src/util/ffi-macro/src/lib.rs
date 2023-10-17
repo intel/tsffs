@@ -83,8 +83,8 @@ use proc_macro2::TokenStream as TokenStream2;
 use proc_macro_error::{abort, proc_macro_error};
 use quote::{format_ident, quote};
 use syn::{
-    parse_macro_input, parse_str, FnArg, ImplItem, ImplItemFn, ItemImpl, Pat, PathArguments,
-    ReturnType, Type,
+    parse_macro_input, parse_str, FnArg, ImplGenerics, ImplItem, ImplItemFn, ItemImpl, Pat,
+    PathArguments, ReturnType, Type, TypeGenerics, WhereClause,
 };
 
 #[derive(Debug, Clone, FromMeta)]
@@ -147,6 +147,7 @@ struct FfiMethods<'a> {
     ffi_self_ty: Option<Type>,
     expect: Flag,
     self_ty: Type,
+    self_generics: (ImplGenerics<'a>, TypeGenerics<'a>, Option<&'a WhereClause>),
     ffi_methods: Vec<WithOriginal<FfiMethodOpts, ImplItemFn>>,
     other_items: Vec<&'a ImplItem>,
 }
@@ -158,6 +159,7 @@ impl<'a> TryFrom<(&'a ItemImpl, Option<Type>, Flag)> for FfiMethods<'a> {
         let expect = value.2;
         let ffi_self_ty = value.1;
         let value = value.0;
+        let self_generics = value.generics.split_for_impl();
         let mut ffi_methods = Vec::new();
         let mut other_items = Vec::new();
         let mut errors = Vec::new();
@@ -188,6 +190,7 @@ impl<'a> TryFrom<(&'a ItemImpl, Option<Type>, Flag)> for FfiMethods<'a> {
                 ffi_self_ty,
                 expect,
                 self_ty: *value.self_ty.clone(),
+                self_generics,
                 ffi_methods,
                 other_items,
             })
@@ -388,18 +391,19 @@ impl<'a> FfiMethods<'a> {
                     quote!(.expect(#expect_message))
                 })
                 .unwrap_or_default();
+            let (_self_impl_genrics, self_ty_generics, self_where_clause) = &self.self_generics;
 
             let impl_method_call = quote! {
-                    Into::<&#maybe_mut_ref super::#self_ty>::into(#self_name).#impl_method_name(
+                    Into::<&#maybe_mut_ref super::#self_ty #self_ty_generics>::into(#self_name).#impl_method_name(
                         #(#impl_method_call_args),*
                     )#impl_maybe_expect
             };
 
             methods.push(quote! {
                 #[no_mangle]
-                #ffi_func_visibility extern "C" fn #ffi_func_name(
+                #ffi_func_visibility extern "C" fn #ffi_func_name<#self_ty_generics>(
                     #(#ffi_func_args),*
-                ) #ffi_func_return_ty {
+                ) #ffi_func_return_ty #self_where_clause {
                     #impl_method_call
                 }
             })
