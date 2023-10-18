@@ -55,4 +55,6 @@ pub enum Error {
     // workspace)
     #[error(transparent)]
     Other(#[from] anyhow::Error),
+    #[error(transparent)]
+    Infallible(#[from] std::convert::Infallible),
 }

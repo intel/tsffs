@@ -1,0 +1,211 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
+use crate::{
+    api::{
+        attr_boolean, attr_dict_key, attr_dict_size, attr_dict_value, attr_floating, attr_integer,
+        attr_list_item, attr_list_size, attr_string, make_attr_boolean, make_attr_dict,
+        make_attr_floating, make_attr_int64, make_attr_list, make_attr_string_adopt,
+        make_attr_uint64, AttrValue,
+    },
+    Error, Result,
+};
+use std::{collections::HashMap, hash::Hash};
+
+pub trait AsAttrValue {
+    /// Return a copy of this object as an attr value. Used to return data through the
+    /// SIMICS API
+    fn as_attr_value(&self) -> Result<AttrValue>;
+}
+
+macro_rules! impl_from_unsigned {
+    ($t:ty) => {
+        impl AsAttrValue for $t {
+            fn as_attr_value(&self) -> Result<AttrValue> {
+                #[allow(clippy::unnecessary_cast)]
+                make_attr_uint64(*self as u64)
+            }
+        }
+    };
+}
+
+macro_rules! impl_from_signed {
+    ($t:ty) => {
+        impl AsAttrValue for $t {
+            fn as_attr_value(&self) -> Result<AttrValue> {
+                #[allow(clippy::unnecessary_cast)]
+                Ok(make_attr_int64(*self as i64))
+            }
+        }
+    };
+}
+
+macro_rules! impl_from_float {
+    ($t:ty) => {
+        impl AsAttrValue for $t {
+            fn as_attr_value(&self) -> Result<AttrValue> {
+                #[allow(clippy::unnecessary_cast)]
+                Ok(make_attr_floating(*self as f64))
+            }
+        }
+    };
+}
+
+impl_from_unsigned! { u8 }
+impl_from_unsigned! { u16 }
+impl_from_unsigned! { u32 }
+impl_from_unsigned! { u64 }
+
+impl_from_signed! { i8 }
+impl_from_signed! { i16 }
+impl_from_signed! { i32 }
+impl_from_signed! { i64 }
+
+impl_from_float! { f32 }
+impl_from_float! { f64 }
+
+impl AsAttrValue for bool {
+    fn as_attr_value(&self) -> Result<AttrValue> {
+        Ok(make_attr_boolean(*self))
+    }
+}
+
+impl AsAttrValue for String {
+    fn as_attr_value(&self) -> Result<AttrValue> {
+        make_attr_string_adopt(self)
+    }
+}
+
+impl<T> AsAttrValue for Vec<T>
+where
+    T: AsAttrValue,
+{
+    fn as_attr_value(&self) -> Result<AttrValue> {
+        let attrs = self
+            .iter()
+            .map(|i| i.as_attr_value())
+            .collect::<Result<Vec<AttrValue>>>()?;
+        make_attr_list(attrs)
+    }
+}
+
+impl<T, U> AsAttrValue for HashMap<T, U>
+where
+    T: AsAttrValue,
+    U: AsAttrValue,
+{
+    fn as_attr_value(&self) -> Result<AttrValue> {
+        let attrs = self
+            .iter()
+            .map(|(k, v)| match (k.as_attr_value(), v.as_attr_value()) {
+                (Ok(k), Ok(v)) => Ok((k, v)),
+                (Err(e), _) => Err(e),
+                (_, Err(e)) => Err(e),
+            })
+            .collect::<Result<Vec<(AttrValue, AttrValue)>>>()?;
+        make_attr_dict(attrs)
+    }
+}
+
+pub trait FromAttrValue {
+    fn from_attr_value(value: AttrValue) -> Result<Self>
+    where
+        Self: Sized;
+}
+
+macro_rules! impl_to_integer {
+    ($t:ty) => {
+        impl FromAttrValue for $t {
+            fn from_attr_value(value: AttrValue) -> Result<Self>
+            where
+                Self: Sized,
+            {
+                attr_integer(value).and_then(|i| <$t>::try_from(i).map_err(Error::from))
+            }
+        }
+    };
+}
+
+macro_rules! impl_to_float {
+    ($t:ty) => {
+        impl FromAttrValue for $t {
+            fn from_attr_value(value: AttrValue) -> Result<Self>
+            where
+                Self: Sized,
+            {
+                Ok(attr_floating(value)? as $t)
+            }
+        }
+    };
+}
+
+impl_to_integer! { u8 }
+impl_to_integer! { u16 }
+impl_to_integer! { u32 }
+impl_to_integer! { u64 }
+
+impl_to_integer! { i8 }
+impl_to_integer! { i16 }
+impl_to_integer! { i32 }
+impl_to_integer! { i64 }
+
+impl_to_float! { f32 }
+impl_to_float! { f64 }
+
+impl FromAttrValue for bool {
+    fn from_attr_value(value: AttrValue) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        attr_boolean(value)
+    }
+}
+
+impl FromAttrValue for String {
+    fn from_attr_value(value: AttrValue) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        attr_string(value)
+    }
+}
+
+impl<T> FromAttrValue for Vec<T>
+where
+    T: FromAttrValue,
+{
+    fn from_attr_value(value: AttrValue) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        let size = attr_list_size(value)?;
+
+        (0..size)
+            .map(|i| attr_list_item(value, i).and_then(T::from_attr_value))
+            .collect::<Result<Vec<T>>>()
+    }
+}
+
+impl<T, U> FromAttrValue for HashMap<T, U>
+where
+    T: FromAttrValue + Hash + Eq,
+    U: FromAttrValue,
+{
+    fn from_attr_value(value: AttrValue) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        let size = attr_dict_size(value)?;
+
+        let items = (0..size)
+            .map(|i| {
+                attr_dict_key(value, i)
+                    .and_then(|k| attr_dict_value(value, i).map(|v| (k, v)))
+                    .and_then(|(k, v)| T::from_attr_value(k).map(|k| (k, v)))
+                    .and_then(|(k, v)| U::from_attr_value(v).map(|v| (k, v)))
+            })
+            .collect::<Result<Vec<(T, U)>>>()?;
+
+        Ok(items.into_iter().collect::<HashMap<T, U>>())
+    }
+}

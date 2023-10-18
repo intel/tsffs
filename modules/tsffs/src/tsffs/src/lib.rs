@@ -27,10 +27,10 @@
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 #![deny(clippy::unwrap_used)]
 
-use std::{cell::RefCell, rc::Rc};
-
-use driver::Driver;
-use fuzzer::Fuzzer;
+use crate::{
+    detector::Detector, driver::Driver, fuzzer::Fuzzer, interface::TsffsInterfaceInternal,
+    tracer::Tracer,
+};
 use getters::Getters;
 use simics::{
     api::{set_log_level, Class, ConfObject, LogLevel},
@@ -46,12 +46,6 @@ pub mod init;
 pub mod interface;
 pub mod tracer;
 pub mod traits;
-
-use crate::{
-    detector::{Detector, SolutionConfiguration},
-    interface::TsffsInterfaceInternal,
-    tracer::Tracer,
-};
 
 /// The class name used for all operations interfacing with SIMICS
 pub const CLASS_NAME: &str = env!("CARGO_PKG_NAME");

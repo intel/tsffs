@@ -20,10 +20,9 @@ use crate::{
     },
     Error, Result,
 };
-use raw_cstr::raw_cstr;
 use simics_macro::simics_exception;
 use std::{
-    ffi::CStr,
+    ffi::{CStr, CString},
     mem::size_of,
     ptr::{addr_of_mut, null_mut},
 };
@@ -96,16 +95,18 @@ pub fn make_attr_string_adopt<S>(s: S) -> Result<AttrValue>
 where
     S: AsRef<str>,
 {
-    let string = raw_cstr(s)?;
+    let string = CString::new(s.as_ref())?;
+
+    let string_ptr = string.into_raw();
 
     Ok(AttrValue {
-        private_kind: if string.is_null() {
+        private_kind: if string_ptr.is_null() {
             AttrKind::Sim_Val_Nil
         } else {
             AttrKind::Sim_Val_String
         },
         private_size: 0,
-        private_u: attr_value__bindgen_ty_1 { string },
+        private_u: attr_value__bindgen_ty_1 { string: string_ptr },
     })
 }
 
@@ -160,10 +161,14 @@ pub fn make_attr_data_adopt<T>(data: T) -> Result<AttrValue> {
 /// NOTE: We do not implement a vararg version, this is rust.
 
 /// Create a new attribute list
-pub fn make_attr_list(length: u32, attrs: Vec<AttrValue>) -> Result<AttrValue> {
+pub fn make_attr_list(attrs: Vec<AttrValue>) -> Result<AttrValue> {
+    let length = attrs.len().try_into()?;
     let mut list = alloc_attr_list(length)?;
     attrs
         .into_iter()
+        // NOTE: This silently drops items from lists longer than u32::max...should not really
+        // be an issue because we already error if we can't convert
+        .take(length as usize)
         .enumerate()
         .try_for_each(|(i, a)| attr_list_set_item(addr_of_mut!(list), i as u32, a))?;
     Ok(list)
@@ -173,6 +178,18 @@ pub fn make_attr_list(length: u32, attrs: Vec<AttrValue>) -> Result<AttrValue> {
 /// Allocate a new attribute list of a given length
 pub fn alloc_attr_list(length: u32) -> AttrValue {
     unsafe { SIM_alloc_attr_list(length) }
+}
+
+/// Create a new attribute dict
+pub fn make_attr_dict(attrs: Vec<(AttrValue, AttrValue)>) -> Result<AttrValue> {
+    let length = attrs.len().try_into()?;
+    let mut dict = alloc_attr_dict(length)?;
+    attrs
+        .into_iter()
+        .take(length as usize)
+        .enumerate()
+        .try_for_each(|(i, (k, v))| attr_dict_set_item(addr_of_mut!(dict), i as u32, k, v))?;
+    Ok(dict)
 }
 
 #[simics_exception]
@@ -344,7 +361,7 @@ pub fn attr_list_size(attr: AttrValue) -> Result<u32> {
 ///
 /// The bounds of the list are checked before obtaining an offset, so this function will never
 /// crash unless the list size is incorrectly set by SIMICS
-pub unsafe fn attr_list_item(attr: AttrValue, index: u32) -> Result<AttrValue> {
+pub fn attr_list_item(attr: AttrValue, index: u32) -> Result<AttrValue> {
     let length = attr_list_size(attr)?;
 
     if index < length {

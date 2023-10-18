@@ -4,7 +4,7 @@
 use crate::{tracer::CoverageMode, Tsffs};
 use ffi_macro::ffi;
 use simics::{
-    api::{AsConfObject, BreakpointId, GenericAddress},
+    api::{AsConfObject, AttrValue, BreakpointId, GenericAddress},
     error, info, Result,
 };
 use simics_macro::interface_impl;
@@ -73,14 +73,28 @@ impl Tsffs {
     /// - `r0` set to the address the fuzzer should write the testcase to each execution
     /// - `r1` set to the address of a variable containing the maximum size of a testcase,
     ///   which will be overwritten each execution with the current actual size of the testcase
-    pub fn set_start_on_harness(&self, start_on_harness: bool) {}
+    pub fn set_start_on_harness(&mut self, start_on_harness: bool) {
+        info!(
+            self.as_conf_object_mut(),
+            "set_start_on_harness({start_on_harness})"
+        );
+
+        *self.driver_mut().configuration_mut().start_on_harness_mut() = start_on_harness;
+    }
 
     /// Interface method to enable or disable the fuzzer to stop automatically when it
     /// reaches the default stop condition for the architecture of the processor that is
     /// running when the default stop condition occurs. Note that this method will not
     /// resume or run the simulation, the SIMICS script containing this call should
     /// resume execution afterward.
-    pub fn set_stop_on_harness(&self, stop_on_harness: bool) {}
+    pub fn set_stop_on_harness(&mut self, stop_on_harness: bool) {
+        info!(
+            self.as_conf_object_mut(),
+            "set_stop_on_harness({stop_on_harness})"
+        );
+
+        *self.driver_mut().configuration_mut().stop_on_harness_mut() = stop_on_harness;
+    }
 
     /// Interface method to manually start the fuzzing loop by taking a snapshot, saving the
     /// testcase and size address and resuming execution of the simulation.
@@ -102,7 +116,7 @@ impl Tsffs {
     ) {
         info!(
             self.as_conf_object_mut(),
-            "start({testcase_address:#x}, {size_address:#x})"
+            "start({testcase_address:#x}, {size_address:#x}, {virt})"
         );
     }
 
@@ -123,7 +137,7 @@ impl Tsffs {
     ) {
         info!(
             self.as_conf_object_mut(),
-            "start_with_maximum_size({testcase_address:#x}, {maximum_size:#x})"
+            "start_with_maximum_size({testcase_address:#x}, {maximum_size:#x}, {virt})"
         );
     }
 
@@ -136,14 +150,6 @@ impl Tsffs {
         info!(self.as_conf_object_mut(), "stop");
     }
 
-    /// Interface method to set the fuzzer to use the experimental snapshots interface
-    /// instead of the micro checkpoints interface for snapshot save and restore operations
-    pub fn set_use_snapshots(&mut self, use_snapshots: bool) {
-        info!(self.as_conf_object_mut(), "use_snapshots({use_snapshots})");
-
-        *self.driver_mut().configuration_mut().use_snapshots_mut() = use_snapshots;
-    }
-
     /// Interface method to manually signal to stop execution with a solution condition.
     /// When this method is called, the current testcase execution will be stopped as if
     /// it had finished executing with an exception or timeout, and the state will be
@@ -154,6 +160,14 @@ impl Tsffs {
         info!(self.as_conf_object_mut(), "solution({id:#x}, {message})");
 
         Ok(())
+    }
+
+    /// Interface method to set the fuzzer to use the experimental snapshots interface
+    /// instead of the micro checkpoints interface for snapshot save and restore operations
+    pub fn set_use_snapshots(&mut self, use_snapshots: bool) {
+        info!(self.as_conf_object_mut(), "use_snapshots({use_snapshots})");
+
+        *self.driver_mut().configuration_mut().use_snapshots_mut() = use_snapshots;
     }
 
     /// Interface method to set the execution timeout in seconds
@@ -213,21 +227,6 @@ impl Tsffs {
             .all_exceptions_are_solutions_mut() = all_exceptions_are_solutions;
     }
 
-    /// Set whether all SIMICS breakpoints are considered solutions. If set to true, any
-    /// breakpoint (read, write, or execute) encountered during fuzzing will be saved as
-    /// a solution.
-    pub fn set_all_breakpoints_are_solutions(&mut self, all_breakpoints_are_solutions: bool) {
-        info!(
-            self.as_conf_object_mut(),
-            "set_all_breakpoints_are_solutions({all_breakpoints_are_solutions})"
-        );
-
-        *self
-            .detector_mut()
-            .config_mut()
-            .all_breakpoints_are_solutions_mut() = all_breakpoints_are_solutions;
-    }
-
     /// Set a specific breakpoint number to be considered a solution. If a breakpoint with
     /// this ID is encountered during fuzzing, the input will be saved as a solution.
     pub fn add_breakpoint_solution(&mut self, breakpoint: BreakpointId) {
@@ -253,6 +252,21 @@ impl Tsffs {
             .config_mut()
             .breakpoints_mut()
             .remove(&breakpoint);
+    }
+
+    /// Set whether all SIMICS breakpoints are considered solutions. If set to true, any
+    /// breakpoint (read, write, or execute) encountered during fuzzing will be saved as
+    /// a solution.
+    pub fn set_all_breakpoints_are_solutions(&mut self, all_breakpoints_are_solutions: bool) {
+        info!(
+            self.as_conf_object_mut(),
+            "set_all_breakpoints_are_solutions({all_breakpoints_are_solutions})"
+        );
+
+        *self
+            .detector_mut()
+            .config_mut()
+            .all_breakpoints_are_solutions_mut() = all_breakpoints_are_solutions;
     }
 
     /// Set the coverage tracing mode to either "hit-count" (the default) or "once". The hit-count
