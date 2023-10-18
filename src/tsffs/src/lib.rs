@@ -27,19 +27,58 @@
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 #![deny(clippy::unwrap_used)]
 
-pub mod client;
-pub mod config;
-pub mod faults;
-pub mod magic;
-pub mod messages;
-/// cbindgen:ignore
-pub mod module;
-mod processor;
-pub mod state;
-pub mod stops;
+use std::{cell::RefCell, rc::Rc};
+
+use driver::Driver;
+use fuzzer::Fuzzer;
+use getters::Getters;
+use simics::{
+    api::{set_log_level, Class, ConfObject, LogLevel},
+    info, Result,
+};
+use simics_macro::{class, interface, AsConfObject};
+
+pub mod arch;
+pub mod detector;
+pub mod driver;
+pub mod fuzzer;
+pub mod init;
+pub mod interface;
+pub mod tracer;
 pub mod traits;
 
-pub use module::ModuleInterface;
+use crate::{
+    detector::{Detector, SolutionConfiguration},
+    interface::TsffsInterfaceInternal,
+    tracer::Tracer,
+};
 
 /// The class name used for all operations interfacing with SIMICS
 pub const CLASS_NAME: &str = env!("CARGO_PKG_NAME");
+
+#[class(name = CLASS_NAME)]
+#[derive(AsConfObject, Getters, Debug)]
+#[getters(mutable)]
+#[interface]
+pub struct Tsffs {
+    driver: Driver<'static>,
+    fuzzer: Fuzzer,
+    detector: Detector,
+    tracer: Tracer,
+}
+
+impl Class for Tsffs {
+    fn init(instance: *mut ConfObject) -> Result<*mut ConfObject> {
+        set_log_level(instance, LogLevel::Trace)?;
+
+        info!(instance, "Initialized instance");
+
+        Ok(Tsffs::new(
+            instance,
+            Driver::builder().parent(instance.into()).build(),
+            Fuzzer::default(),
+            Detector::default(),
+            Tracer::default(),
+        ))
+    }
+}

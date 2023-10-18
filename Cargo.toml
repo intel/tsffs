@@ -30,6 +30,7 @@ members = [
 
     "src/util/command-ext",
     "src/util/ffi-macro",
+    "src/util/getters",
     "src/util/raw-cstr",
     "src/util/tmp-dir",
     "src/util/version-tools",
@@ -44,6 +45,7 @@ default-members = [
 
     "src/util/command-ext",
     "src/util/ffi-macro",
+    "src/util/getters",
     "src/util/raw-cstr",
     "src/util/tmp-dir",
     "src/util/version-tools",
@@ -58,6 +60,7 @@ simics = { path = "src/simics/simics" }
 
 command-ext = { path = "src/util/command-ext" }
 ffi-macro = { path = "src/util/ffi-macro" }
+getters = { path = "src/util/getters" }
 raw-cstr = { path = "src/util/raw-cstr" }
 tmp-dir = { path = "src/util/tmp-dir" }
 version-tools = { path = "src/util/version-tools" }

@@ -24,9 +24,8 @@ libafl = { workspace = true }
 libafl_bolts = { workspace = true }
 raw-cstr = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
-simics = { workspace = true, features = ["link", "auto"] }
+simics = { workspace = true, features = ["link"] }
 simics-macro = { workspace = true }
-
 
 c2rust-bitfields = "0.18.0"
 const_format = "0.2.30"
@@ -38,13 +37,8 @@ num-traits = "0.2.15"
 rand = "0.8.5"
 rng = "0.1.0"
 rust-fsm = "0.6.1"
-tracing = "0.1.37"
-tracing-subscriber = { version = "0.3.17", features = [
-    "ansi",
-    "json",
-    "fmt",
-    "std",
-] }
 yaxpeax-arch = "0.2.7"
 yaxpeax-x86 = "1.2.0"
 c2rust-bitfields-derive = "0.18.0"
+typed-builder = "0.17.0"
+getters.workspace = true

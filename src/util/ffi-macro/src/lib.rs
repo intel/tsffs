@@ -294,7 +294,7 @@ impl<'a> FfiMethods<'a> {
                         quote!(#ty)
                     } else {
                         let ty = &self.self_ty;
-                        quote!(super::#ty)
+                        quote!(#ty)
                     };
 
                     let name = arg
@@ -394,14 +394,14 @@ impl<'a> FfiMethods<'a> {
             let (_self_impl_genrics, self_ty_generics, self_where_clause) = &self.self_generics;
 
             let impl_method_call = quote! {
-                    Into::<&#maybe_mut_ref super::#self_ty #self_ty_generics>::into(#self_name).#impl_method_name(
+                    Into::<&#maybe_mut_ref #self_ty>::into(#self_name).#impl_method_name(
                         #(#impl_method_call_args),*
                     )#impl_maybe_expect
             };
 
             methods.push(quote! {
                 #[no_mangle]
-                #ffi_func_visibility extern "C" fn #ffi_func_name<#self_ty_generics>(
+                #ffi_func_visibility extern "C" fn #ffi_func_name #self_ty_generics(
                     #(#ffi_func_args),*
                 ) #ffi_func_return_ty #self_where_clause {
                     #impl_method_call
@@ -424,6 +424,7 @@ struct FfiOpts {
     #[darling(default)]
     self_ty: Option<String>,
     expect: Flag,
+    use_all: Flag,
 }
 
 #[proc_macro_attribute]
@@ -543,15 +544,27 @@ pub fn ffi(args: TokenStream, input: TokenStream) -> TokenStream {
     };
 
     let ffi_mod_methods = &impl_methods.ffi();
+    let maybe_use_all = impl_item_opts
+        .use_all
+        .is_present()
+        .then_some(quote!(
+            use super::*;
+        ))
+        .unwrap_or_default();
 
-    quote! {
+    let q: TokenStream = quote! {
         impl #impl_generics #maybe_trait #impl_item_name  #where_clause {
             #impl_methods_original
         }
 
         #ffi_mod_visibility mod #ffi_mod_name {
+            #maybe_use_all
             #ffi_mod_methods
         }
     }
-    .into()
+    .into();
+
+    // println!("{q}");
+
+    q
 }

@@ -28,13 +28,13 @@
 /// This macro will cause simulator exit, triggering a cascading panic, if it is called while
 /// the simulator is run with `-werror`.
 macro_rules! error {
-    ($obj:expr, $fmt:literal, $($args:tt)*) => {
-        simics::log!(simics::api::logging::LogLevel::Error, $obj, $fmt, $($args)*)
+    ($obj:expr, $fmt:literal $($args:tt)*) => {
+        simics::log!(simics::api::logging::LogLevel::Error, $obj, $fmt $($args)*)
     };
-    ($fmt:literal, $($args:tt)*) => {
+    ($fmt:literal $($args:tt)*) => {
         simics::log!(
             simics::api::logging::LogLevel::Warn,
-            $fmt,
+            $fmt
             $($args)*
         )
     };
@@ -63,13 +63,13 @@ macro_rules! error {
 /// object is valid, but if your use case requires handling errors or is dynamically generating
 /// objects without static lifetimes, you should use the internal [`log_info`] API instead.
 macro_rules! warn {
-    ($obj:expr, $fmt:literal, $($args:tt)*) => {
-        simics::log!(simics::api::logging::LogLevel::Warn, $obj, $fmt, $($args)*)
+    ($obj:expr, $fmt:literal $($args:tt)*) => {
+        simics::log!(simics::api::logging::LogLevel::Warn, $obj, $fmt $($args)*)
     };
-    ($fmt:literal, $($args:tt)*) => {
+    ($fmt:literal $($args:tt)*) => {
         simics::log!(
             simics::api::logging::LogLevel::Warn,
-            $fmt,
+            $fmt
             $($args)*
         )
     };
@@ -98,13 +98,13 @@ macro_rules! warn {
 /// object is valid, but if your use case requires handling errors or is dynamically generating
 /// objects without static lifetimes, you should use the internal [`log_info`] API instead.
 macro_rules! info {
-    ($obj:expr, $fmt:literal, $($args:tt)*) => {
-        simics::log!(simics::api::logging::LogLevel::Info, $obj, $fmt, $($args)*)
+    ($obj:expr, $fmt:literal $($args:tt)*) => {
+        simics::log!(simics::api::logging::LogLevel::Info, $obj, $fmt $($args)*)
     };
-    ($fmt:literal, $($args:tt)*) => {
+    ($fmt:literal $($args:tt)*) => {
         simics::log!(
             simics::api::logging::LogLevel::Info,
-            $fmt,
+            $fmt
             $($args)*
         )
     };
@@ -133,13 +133,13 @@ macro_rules! info {
 /// object is valid, but if your use case requires handling errors or is dynamically generating
 /// objects without static lifetimes, you should use the internal [`log_info`] API instead.
 macro_rules! debug {
-    ($obj:expr, $fmt:literal, $($args:tt)*) => {
-        simics::log!(simics::api::logging::LogLevel::Debug, $obj, $fmt, $($args)*)
+    ($obj:expr, $fmt:literal $($args:tt)*) => {
+        simics::log!(simics::api::logging::LogLevel::Debug, $obj, $fmt $($args)*)
     };
-    ($fmt:literal, $($args:tt)*) => {
+    ($fmt:literal $($args:tt)*) => {
         simics::log!(
             simics::api::logging::LogLevel::Debug,
-            $fmt,
+            $fmt
             $($args)*
         )
     };
@@ -168,13 +168,13 @@ macro_rules! debug {
 /// object is valid, but if your use case requires handling errors or is dynamically generating
 /// objects without static lifetimes, you should use the internal [`log_info`] API instead.
 macro_rules! trace {
-    ($obj:expr, $fmt:literal, $($args:tt)*) => {
-        simics::log!(simics::api::logging::LogLevel::Trace, $obj, $fmt, $($args)*)
+    ($obj:expr, $fmt:literal $($args:tt)*) => {
+        simics::log!(simics::api::logging::LogLevel::Trace, $obj, $fmt $($args)*)
     };
-    ($fmt:literal, $($args:tt)*) => {
+    ($fmt:literal $($args:tt)*) => {
         simics::log!(
             simics::api::logging::LogLevel::Trace,
-            $fmt,
+            $fmt
             $($args)*
         )
     };
@@ -204,41 +204,43 @@ macro_rules! trace {
 /// object is valid, but if your use case requires handling errors or is dynamically generating
 /// objects without static lifetimes, you should use the internal [`log_info`] API instead.
 macro_rules! log {
-    ($level:expr, $obj:expr, $fmt:literal, $($args:tt)*) => {
+    ($level:expr, $obj:expr, $fmt:literal $($args:tt)*) => {
         match $level {
             simics::api::logging::LogLevel::Error => {
+                #[allow(unnecessary_cast)]
                 simics::api::logging::log_error(
-                    $obj,
-                    format!($fmt, $($args)*),
+                    $obj as *mut simics::api::ConfObject,
+                    format!($fmt $($args)*),
                 ).unwrap_or_else(|e| {
                     panic!(
                         "Fatal error attempting to log message {}: {}",
-                        format!($fmt, $($args)*),
+                        format!($fmt $($args)*),
                         e
                     )
                 })
             }
             _ => {
+                #[allow(unnecessary_cast)]
                 simics::api::logging::log_info(
                     $level,
-                    $obj,
-                    format!($fmt, $($args)*),
+                    $obj as *mut simics::api::ConfObject,
+                    format!($fmt $($args)*),
                 ).unwrap_or_else(|e| {
                     panic!(
                         "Fatal error attempting to log message {}: {}",
-                        format!($fmt, $($args)*),
+                        format!($fmt $($args)*),
                         e
                     )
                 })
             }
         }
     };
-    ($level:expr, $fmt:literal, $($args:tt)*) => {
+    ($level:expr, $fmt:literal $($args:tt)*) => {
         simics::log!(
             $level,
             simics::api::simulator::sim_conf_object::get_object("sim")
                 .unwrap_or_else(|e| panic!("Unable to get base sim object: {e}")),
-            $fmt,
+            $fmt
             $($args)*
         )
     };

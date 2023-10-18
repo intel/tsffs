@@ -21,7 +21,7 @@ use quote::{format_ident, quote, ToTokens};
 use syn::{
     parse::Parser, parse_macro_input, parse_str, DeriveInput, Expr, Field, Fields, FnArg,
     GenericArgument, Generics, Ident, ImplGenerics, ImplItem, ItemFn, ItemImpl, ItemStruct, Lit,
-    Pat, ReturnType, Signature, Type, TypeGenerics, Visibility, WhereClause,
+    Pat, PathArguments, ReturnType, Signature, Type, TypeGenerics, Visibility, WhereClause,
 };
 
 #[derive(Debug, FromDeriveInput)]
@@ -43,9 +43,40 @@ impl ToTokens for ClassDerive {
 
 #[proc_macro_derive(Class)]
 /// Derive macro for the [`Class`] trait.
-pub fn module_derive(input: TokenStream) -> TokenStream {
+pub fn class_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let args = match ClassDerive::from_derive_input(&input) {
+        Ok(opts) => opts,
+        Err(e) => return e.write_errors().into(),
+    };
+    quote! {
+        #args
+    }
+    .into()
+}
+
+#[derive(Debug, FromDeriveInput)]
+#[darling(attributes(module), supports(struct_named))]
+struct AsConfObjectDerive {
+    ident: Ident,
+    generics: Generics,
+}
+
+impl ToTokens for AsConfObjectDerive {
+    fn to_tokens(&self, tokens: &mut TokenStream2) {
+        let ident = &self.ident;
+        let (impl_generics, ty_generics, where_clause) = self.generics.split_for_impl();
+        tokens.extend(quote! {
+            impl #impl_generics simics::api::traits::class::AsConfObject for #ident #ty_generics #where_clause {}
+        })
+    }
+}
+
+#[proc_macro_derive(AsConfObject)]
+/// Derive macro for the [`Class`] trait.
+pub fn as_conf_object_derive(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let args = match AsConfObjectDerive::from_derive_input(&input) {
         Ok(opts) => opts,
         Err(e) => return e.write_errors().into(),
     };
@@ -155,7 +186,10 @@ pub fn class(args: TokenStream, input: TokenStream) -> TokenStream {
     };
 
     // Only derive Module if we get a `derive` argument
-    let maybe_derive_attribute = args.derive.is_present().then_some(quote!(#[derive(Class)]));
+    let maybe_derive_attribute = args
+        .derive
+        .is_present()
+        .then_some(quote!(#[derive(Class, AsConfObject)]));
 
     let ffi_impl = ffi_impl(name.to_string());
     let register_impl = create_impl(
@@ -331,7 +365,7 @@ fn raw_impl(
             ) -> *mut simics::api::ConfObject  {
 
                 let obj_ptr: *mut simics::api::ConfObject = obj.into();
-                let ptr: *mut #name #ty_generics= obj_ptr as *mut #name #ty_generics;
+                let ptr: *mut #name #ty_generics = obj_ptr as *mut #name #ty_generics;
 
                 #(#field_initializers)*
 
@@ -352,6 +386,15 @@ fn from_impl(input: &ItemStruct) -> TokenStream2 {
             fn from(value: *mut simics::api::ConfObject) -> Self {
                 let ptr: *mut #name #ty_generics = value as *mut #name #ty_generics ;
                 unsafe { &mut *ptr }
+            }
+        }
+
+        impl #impl_generics From<*mut simics::api::ConfObject> for &'static #name #ty_generics
+            #where_clause
+        {
+            fn from(value: *mut simics::api::ConfObject) -> Self {
+                let ptr: *const #name #ty_generics = value as *const #name #ty_generics ;
+                unsafe { &*ptr }
             }
         }
     }
@@ -579,9 +622,7 @@ pub fn interface(args: TokenStream, input: TokenStream) -> TokenStream {
             type Interface = #interface_ident;
         }
 
-        impl #impl_generics simics::api::traits::interface::Interface for #interface_ident #ty_generics
-        #where_clause
-        {
+        impl simics::api::traits::interface::Interface for #interface_ident {
             type InternalInterface = #interface_internal_ident;
             type Name = &'static [u8];
 
@@ -617,6 +658,13 @@ fn type_name(ty: &Type) -> Result<Ident> {
 fn interface_function_type_to_ctype(ty: &Type) -> String {
     match &ty {
         Type::Paren(i) => interface_function_type_to_ctype(&i.elem),
+        Type::Tuple(t) => {
+            if t.elems.is_empty() {
+                "void".to_string()
+            } else {
+                panic!("Non-empty tuple is not a valid C type");
+            }
+        }
         Type::Path(p) => {
             // First, check if the outer is an option. If it is, we just discard it and take the
             // inner type.
@@ -643,6 +691,8 @@ fn interface_function_type_to_ctype(ty: &Type) -> String {
                             // run simics on a 32-bit host.
                             "f32" => "float",
                             "f64" => "double",
+                            "usize" => "size_t",
+                            "isize" => "ssize_t",
                             "c_char" => "char",
                             // Attempt to use the type as-is. This is unlikely to work, but allows
                             // creative people to be creative
@@ -651,7 +701,8 @@ fn interface_function_type_to_ctype(ty: &Type) -> String {
                         .to_string()
                     }
                     syn::PathArguments::AngleBracketed(a) => {
-                        if last.ident == "Option" {
+                        // Options and results can be extracted directly
+                        if last.ident == "Option" || last.ident == "Result" {
                             if let Some(GenericArgument::Type(ty)) = a.args.first() {
                                 interface_function_type_to_ctype(ty)
                             } else {
@@ -712,7 +763,6 @@ fn generate_interface_header(input: &ItemImpl) -> String {
     let interface_name = input_name.to_string().to_ascii_lowercase();
     let interface_struct_name = format!("{interface_name}_interface");
     let interface_struct_name_define = interface_struct_name.to_ascii_uppercase();
-    let interface_struct_ty_name = format!("{interface_struct_name}_t");
     let include_guard = format!("{}_INTERFACE_H", interface_name.to_ascii_uppercase());
     let interface_functions = input
         .items
@@ -736,14 +786,13 @@ fn generate_interface_header(input: &ItemImpl) -> String {
         #define {include_guard}
 
         #include <simics/device-api.h>
+        #include <simics/pywrap.h>
 
         #ifdef __cplusplus
         extern "C" {{
         #endif
 
-        typedef struct {interface_struct_name} {interface_struct_ty_name};
-
-        struct {interface_struct_name} {{
+        SIM_INTERFACE({interface_name}) {{
             {interface_functions_code}
         }};
 
@@ -933,7 +982,25 @@ pub fn interface_impl(args: TokenStream, input: TokenStream) -> TokenStream {
             inputs.insert(0, quote!(obj: *mut simics::api::ConfObject));
             let output = match &s.output {
                 ReturnType::Default => quote!(()),
-                ReturnType::Type(_, t) => quote!(#t),
+                ReturnType::Type(_, t) => {
+                    if s.output.is_result_type() {
+                        let Type::Path(ref path) = &**t else {
+                            panic!("Type is result but is not a path");
+                        };
+                        let Some(last) = path.path.segments.last() else {
+                            panic!("Path has no last segment");
+                        };
+                        let PathArguments::AngleBracketed(args) = &last.arguments else {
+                            panic!("Path does not have angle bracketed arguments");
+                        };
+                        let Some(first) = args.args.first() else {
+                            panic!("Path does not have a first angle bracketed argument");
+                        };
+                        quote!(#first)
+                    } else {
+                        quote!(#t)
+                    }
+                }
             };
             quote!(pub #name: Option<extern "C" fn(#(#inputs),*) -> #output>)
         })
@@ -999,8 +1066,8 @@ pub fn interface_impl(args: TokenStream, input: TokenStream) -> TokenStream {
         write(generate_path.join(makefile_name), makefile).expect("Failed to write makefile");
     }
 
-    quote! {
-        #[ffi(mod_name = #ffi_interface_mod_name, self_ty = "*mut simics::api::ConfObject")]
+    let q: TokenStream = quote! {
+        #[ffi(use_all, expect, mod_name = #ffi_interface_mod_name, self_ty = "*mut simics::api::ConfObject")]
         impl #impl_generics #input_name #ty_generics #where_clause {
             #(#impl_fns)*
         }
@@ -1018,5 +1085,9 @@ pub fn interface_impl(args: TokenStream, input: TokenStream) -> TokenStream {
             }
         }
     }
-    .into()
+    .into();
+
+    // println!("{q}");
+
+    q
 }

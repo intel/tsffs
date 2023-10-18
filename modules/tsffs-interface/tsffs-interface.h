@@ -1,21 +1,6 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
-/*
-  © 2017 Intel Corporation
-*/
-
-/*
-  tsffs_module-interface.h - Skeleton code to base new interface modules on
-*/
-
-/* This module is a template for defining new interface types. See the
-   "Defining New Interface Types" section of the
-   "Simics Model Builder User's Guide" for further documentation.
-
-   The corresponding DML definition can be found in tsffs_module_interface.dml
- */
-
 #ifndef TSFFS_INTERFACE_H
 #define TSFFS_INTERFACE_H
 
@@ -26,35 +11,30 @@
 extern "C" {
 #endif
 
-/* If you need to define new struct types, a definition like this will make it
-   possible to allocate such structs from Python using tsffs_module_data_t().
-
-   Before doing this, you will have to load the tsffs_module_interface
-   Simics module, and import the tsffs_module_interface Python module. */
-
-/* This defines a new interface type. Its corresponding C data type will be
-   called "tsffs_module_interface_t". */
 SIM_INTERFACE(tsffs) {
-  void (*init)(conf_object_t* obj);
-  void (*add_processor)(conf_object_t* obj, attr_value_t* processor);
-  void (*add_fault)(conf_object_t* obj, int64 fault);
-  void (*add_channels)(conf_object_t* obj, attr_value_t* tx, attr_value_t* rx);
-  void (*set_breakpoints_are_faults)(conf_object_t* obj,
-                                     bool breakpoints_are_faults);
-#ifndef PYWRAP
-  /* methods that cannot be exported to Python, for example as it refers
-     to unknown data types, must be enclosed by "#ifndef PYWRAP" ...
-     "#endif". See the "Restrictions" subsection of "Defining New
-     Interface Types" mentioned above. */
-#endif
+    void (*set_start_on_harness)(conf_object_t * obj, bool start_on_harness);
+    void (*set_stop_on_harness)(conf_object_t * obj, bool stop_on_harness);
+    void (*start)(conf_object_t * obj, generic_address_t testcase_address, generic_address_t size_address, bool virt);
+    void (*start_with_maximum_size)(conf_object_t * obj, generic_address_t testcase_address, size_t maximum_size, bool virt);
+    void (*stop)(conf_object_t * obj);
+    void (*set_use_snapshots)(conf_object_t * obj, bool use_snapshots);
+    void (*solution)(conf_object_t * obj, uint64 id, char * message);
+    void (*set_timeout)(conf_object_t * obj, double timeout);
+    void (*add_exception_solution)(conf_object_t * obj, int64 exception);
+    void (*remove_exception_solution)(conf_object_t * obj, int64 exception);
+    void (*set_all_exceptions_are_solutions)(conf_object_t * obj, bool all_exceptions_are_solutions);
+    void (*set_all_breakpoints_are_solutions)(conf_object_t * obj, bool all_breakpoints_are_solutions);
+    void (*add_breakpoint_solution)(conf_object_t * obj, breakpoint_id_t breakpoint);
+    void (*remove_breakpoint_solution)(conf_object_t * obj, breakpoint_id_t breakpoint);
+    void (*set_tracing_mode)(conf_object_t * obj, char * mode);
+    void (*set_cmplog_enabled)(conf_object_t * obj, bool enabled);
 };
 
-/* Use a #define like this whenever you need to use the name of the interface
-   type; the C compiler will then catch any typos at compile-time. */
 #define TSFFS_INTERFACE "tsffs"
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* ! TSFFS_INTERFACE_H */
+#endif // TSFFS_INTERFACE_H
+

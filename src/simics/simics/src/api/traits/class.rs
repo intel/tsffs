@@ -56,3 +56,15 @@ pub trait CreateClass {
     /// the class
     fn create() -> Result<*mut ConfClass>;
 }
+
+pub trait AsConfObject {
+    /// Get a reference to this object as a `ConfObject` raw pointer
+    fn as_conf_object(&self) -> *const ConfObject {
+        self as *const _ as *const ConfObject
+    }
+
+    /// Get a mutable reference to this object as a mutable raw `ConfObject` pointer
+    fn as_conf_object_mut(&mut self) -> *mut ConfObject {
+        self as *mut _ as *mut ConfObject
+    }
+}

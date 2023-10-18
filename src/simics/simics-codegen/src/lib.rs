@@ -238,7 +238,7 @@ fn hap_name_and_type_to_struct(
                                 impl crate::api::traits::hap::Hap for #struct_name {
                                     type Handler = #proto;
                                     type Name =  &'static [u8];
-                                    type Callback = Box<dyn Fn(#(#closure_params),*) -> #output + 'static>;
+                                    type Callback = Box<dyn FnMut(#(#closure_params),*) -> #output + 'static>;
                                     const NAME: Self::Name = crate::api::sys::#name_name;
                                     const HANDLER: Self::Handler = #handler_name::<Self::Callback>;
 
@@ -247,9 +247,9 @@ fn hap_name_and_type_to_struct(
                                 }
 
                                 extern "C" fn #handler_name<F>(#inputs) -> #output
-                                    where F: Fn(#(#closure_params),*) -> #output + 'static
+                                    where F: FnMut(#(#closure_params),*) -> #output + 'static
                                 {
-                                    let closure: Box<Box<F>> = unsafe { Box::from_raw(#userdata_name as *mut Box<F>) };
+                                    let mut closure: Box<Box<F>> = unsafe { Box::from_raw(#userdata_name as *mut Box<F>) };
                                     closure(#(#closure_param_names),*)
                                 }
 
