@@ -13,7 +13,7 @@ fn main() -> Result<()> {
     let tests_out_file = out_dir.join(TESTS_FILE);
 
     let tests_tokens = simics_tests("../../../");
-    write(&tests_out_file, tests_tokens.to_string())?;
+    write(tests_out_file, tests_tokens.to_string())?;
 
     Ok(())
 }
