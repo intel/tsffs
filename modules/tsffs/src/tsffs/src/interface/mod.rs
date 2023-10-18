@@ -4,11 +4,12 @@
 use crate::{tracer::CoverageMode, Tsffs};
 use ffi_macro::ffi;
 use simics::{
-    api::{AsConfObject, AttrValue, BreakpointId, GenericAddress},
+    api::{AsAttrValue, AsConfObject, AttrValue, AttrValueType, BreakpointId, GenericAddress},
     error, info, Result,
 };
 use simics_macro::interface_impl;
 use std::{
+    collections::HashMap,
     ffi::{c_char, CStr},
     str::FromStr,
 };
@@ -347,5 +348,11 @@ impl Tsffs {
         );
 
         Ok(())
+    }
+
+    pub fn get_configuration(&mut self) -> Result<AttrValue> {
+        let mut configuration = HashMap::new();
+        self.detector().config().to_dict(&mut configuration);
+        configuration.as_attr_value()
     }
 }

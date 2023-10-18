@@ -41,6 +41,7 @@ walkdir = "2.3.3"
 thiserror = "1.0.49"
 anyhow.workspace = true
 typed-builder = "0.17.0"
+ordered-float = "4.1.1"
 
 [features]
 default = ["derive", "link"]

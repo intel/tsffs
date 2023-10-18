@@ -37,15 +37,15 @@ impl TryFrom<AttrValue> for ModuleInfo {
     fn try_from(value: AttrValue) -> Result<Self> {
         if attr_is_list(value) {
             Ok(Self {
-                name: attr_string(unsafe { attr_list_item(value, 0) }?)?,
-                path: attr_string(unsafe { attr_list_item(value, 1) }?)?,
-                loaded: attr_boolean(unsafe { attr_list_item(value, 2) }?)?,
-                version: attr_integer(unsafe { attr_list_item(value, 3) }?)?.try_into()?,
-                user_version: attr_string(unsafe { attr_list_item(value, 4) }?)?,
-                build_id: attr_integer(unsafe { attr_list_item(value, 5) }?)?.try_into()?,
-                build_date: attr_integer(unsafe { attr_list_item(value, 6) }?)?.try_into()?,
-                thread_safe: attr_boolean(unsafe { attr_list_item(value, 8) }?)?,
-                user_path: attr_boolean(unsafe { attr_list_item(value, 10) }?)?,
+                name: attr_string(attr_list_item(value, 0)?)?,
+                path: attr_string(attr_list_item(value, 1)?)?,
+                loaded: attr_boolean(attr_list_item(value, 2)?)?,
+                version: attr_integer(attr_list_item(value, 3)?)?.try_into()?,
+                user_version: attr_string(attr_list_item(value, 4)?)?,
+                build_id: attr_integer(attr_list_item(value, 5)?)?.try_into()?,
+                build_date: attr_integer(attr_list_item(value, 6)?)?.try_into()?,
+                thread_safe: attr_boolean(attr_list_item(value, 8)?)?,
+                user_path: attr_boolean(attr_list_item(value, 10)?)?,
             })
         } else {
             Err(Error::AttrValueType {
@@ -73,7 +73,7 @@ pub fn get_all_modules() -> Result<Vec<ModuleInfo>> {
     let mut module_infos = Vec::new();
 
     for i in 0..attr_list_size(modules)? {
-        let module_info = unsafe { attr_list_item(modules, i) }?;
+        let module_info = attr_list_item(modules, i)?;
         module_infos.push(ModuleInfo::try_from(module_info)?);
     }
 

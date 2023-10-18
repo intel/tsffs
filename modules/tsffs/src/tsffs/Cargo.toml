@@ -42,6 +42,7 @@ yaxpeax-x86 = "1.2.0"
 c2rust-bitfields-derive = "0.18.0"
 typed-builder = "0.17.0"
 getters.workspace = true
+ordered-float = "4.1.1"
 
 [dev-dependencies]
 ispm-wrapper = { path = "../simics/ispm-wrapper" }

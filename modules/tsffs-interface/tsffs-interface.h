@@ -31,6 +31,7 @@ SIM_INTERFACE(tsffs) {
     void (*set_corpus_directory)(conf_object_t * obj, char * corpus_directory);
     void (*set_solutions_directory)(conf_object_t * obj, char * solutions_directory);
     void (*set_generate_random_corpus)(conf_object_t * obj, bool generate_random_corpus);
+    attr_value_t (*get_configuration)(conf_object_t * obj);
 };
 
 #define TSFFS_INTERFACE "tsffs"

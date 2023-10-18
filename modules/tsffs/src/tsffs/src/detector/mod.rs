@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use getters::Getters;
-use simics::api::BreakpointId;
-use std::collections::HashSet;
+use ordered_float::OrderedFloat;
+use simics::api::{AttrValueType, BreakpointId};
+use std::collections::{HashMap, HashSet};
 use typed_builder::TypedBuilder;
 
 /// The timeout runs in virtual time, so a typical 5 second timeout is acceptable
@@ -12,7 +13,7 @@ pub const TIMEOUT_DEFAULT: f64 = 5.0;
 #[derive(TypedBuilder, Getters, Debug)]
 #[getters(mutable)]
 /// Configuration of the fuzzer of each condition that can be treated as a fault
-pub struct SolutionConfiguration {
+pub struct DetectorConfiguration {
     #[builder(default = false)]
     /// Whether any breakpoint that occurs during fuzzing is treated as a fault
     all_breakpoints_are_solutions: bool,
@@ -31,7 +32,42 @@ pub struct SolutionConfiguration {
     timeout: f64,
 }
 
-impl Default for SolutionConfiguration {
+impl DetectorConfiguration {
+    pub fn to_dict(&self, dict: &mut HashMap<String, AttrValueType>) {
+        dict.insert(
+            "all_breakpoints_are_solutions".to_string(),
+            AttrValueType::Bool(*self.all_breakpoints_are_solutions()),
+        );
+        dict.insert(
+            "all_exceptions_are_solutions".to_string(),
+            AttrValueType::Bool(*self.all_breakpoints_are_solutions()),
+        );
+        dict.insert(
+            "exceptions".to_string(),
+            AttrValueType::Set(
+                self.exceptions()
+                    .iter()
+                    .map(|i| AttrValueType::I64(*i))
+                    .collect::<_>(),
+            ),
+        );
+        dict.insert(
+            "breakpoints".to_string(),
+            AttrValueType::Set(
+                self.breakpoints()
+                    .iter()
+                    .map(|i| AttrValueType::I32(*i))
+                    .collect::<_>(),
+            ),
+        );
+        dict.insert(
+            "timeout".to_string(),
+            AttrValueType::F64(OrderedFloat(*self.timeout())),
+        );
+    }
+}
+
+impl Default for DetectorConfiguration {
     fn default() -> Self {
         Self::builder().build()
     }
@@ -40,13 +76,13 @@ impl Default for SolutionConfiguration {
 #[derive(TypedBuilder, Getters, Debug)]
 #[getters(mutable)]
 pub struct Detector {
-    config: SolutionConfiguration,
+    config: DetectorConfiguration,
 }
 
 impl Default for Detector {
     fn default() -> Self {
         Self::builder()
-            .config(SolutionConfiguration::default())
+            .config(DetectorConfiguration::default())
             .build()
     }
 }
