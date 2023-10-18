@@ -24,6 +24,9 @@ extern typedef struct {
     void (*remove_breakpoint_solution)(conf_object_t * obj, breakpoint_id_t breakpoint);
     void (*set_tracing_mode)(conf_object_t * obj, char * mode);
     void (*set_cmplog_enabled)(conf_object_t * obj, bool enabled);
+    void (*set_corpus_directory)(conf_object_t * obj, char * corpus_directory);
+    void (*set_solutions_directory)(conf_object_t * obj, char * solutions_directory);
+    void (*set_generate_random_corpus)(conf_object_t * obj, bool generate_random_corpus);
 } tsffs_interface_t;
 
 extern const char *const TSFFS_INTERFACE;

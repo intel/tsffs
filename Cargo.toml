@@ -21,49 +21,52 @@ version = "0.1.0"
 [workspace]
 resolver = "2"
 members = [
-    "src/tsffs",
-    "src/simics/ispm-wrapper",
-    "src/simics/simics-api-sys",
-    "src/simics/simics-macro",
-    "src/simics/simics-codegen",
-    "src/simics/simics",
+    "modules/tsffs/tests",
+    "modules/tsffs/src/tsffs",
+    "modules/tsffs/src/simics/ispm-wrapper",
+    "modules/tsffs/src/simics/simics-api-sys",
+    "modules/tsffs/src/simics/simics-macro",
+    "modules/tsffs/src/simics/simics-codegen",
+    "modules/tsffs/src/simics/simics",
 
-    "src/util/command-ext",
-    "src/util/ffi-macro",
-    "src/util/getters",
-    "src/util/raw-cstr",
-    "src/util/tmp-dir",
-    "src/util/version-tools",
+    "modules/tsffs/src/util/command-ext",
+    "modules/tsffs/src/util/ffi-macro",
+    "modules/tsffs/src/util/getters",
+    "modules/tsffs/src/util/raw-cstr",
+    "modules/tsffs/src/util/tmp-dir",
+    "modules/tsffs/src/util/version-tools",
 ]
 default-members = [
-    "src/tsffs",
-    "src/simics/ispm-wrapper",
-    "src/simics/simics-api-sys",
-    "src/simics/simics-macro",
-    "src/simics/simics-codegen",
-    "src/simics/simics",
+    "modules/tsffs/tests",
+    "modules/tsffs/src/tsffs",
+    "modules/tsffs/src/simics/ispm-wrapper",
+    "modules/tsffs/src/simics/simics-api-sys",
+    "modules/tsffs/src/simics/simics-macro",
+    "modules/tsffs/src/simics/simics-codegen",
+    "modules/tsffs/src/simics/simics",
 
-    "src/util/command-ext",
-    "src/util/ffi-macro",
-    "src/util/getters",
-    "src/util/raw-cstr",
-    "src/util/tmp-dir",
-    "src/util/version-tools",
+    "modules/tsffs/src/util/command-ext",
+    "modules/tsffs/src/util/ffi-macro",
+    "modules/tsffs/src/util/getters",
+    "modules/tsffs/src/util/raw-cstr",
+    "modules/tsffs/src/util/tmp-dir",
+    "modules/tsffs/src/util/version-tools",
 ]
 exclude = []
 
 [workspace.dependencies]
-simics-api-sys = { path = "src/simics/simics-api-sys" }
-simics-macro = { path = "src/simics/simics-macro" }
-simics-codegen = { path = "src/simics/simics-codegen" }
-simics = { path = "src/simics/simics" }
+tests = { path = "modules/tsffs/tests/" }
+simics-api-sys = { path = "modules/tsffs/src/simics/simics-api-sys" }
+simics-macro = { path = "modules/tsffs/src/simics/simics-macro" }
+simics-codegen = { path = "modules/tsffs/src/simics/simics-codegen" }
+simics = { path = "modules/tsffs/src/simics/simics" }
 
-command-ext = { path = "src/util/command-ext" }
-ffi-macro = { path = "src/util/ffi-macro" }
-getters = { path = "src/util/getters" }
-raw-cstr = { path = "src/util/raw-cstr" }
-tmp-dir = { path = "src/util/tmp-dir" }
-version-tools = { path = "src/util/version-tools" }
+command-ext = { path = "modules/tsffs/src/util/command-ext" }
+ffi-macro = { path = "modules/tsffs/src/util/ffi-macro" }
+getters = { path = "modules/tsffs/src/util/getters" }
+raw-cstr = { path = "modules/tsffs/src/util/raw-cstr" }
+tmp-dir = { path = "modules/tsffs/src/util/tmp-dir" }
+version-tools = { path = "modules/tsffs/src/util/version-tools" }
 
 anyhow = { version = "1.0.75" }
 libafl = { version = "0.11.1" }

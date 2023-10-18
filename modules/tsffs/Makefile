@@ -15,7 +15,7 @@ endif
 # Cargo generates a .d file as well as the library for us
 $(TARGET_DIR)/../obj/release/lib$(TARGET).a $(TARGET_DIR)/../obj/release/lib$(TARGET).d:
 	$(info CARGO $@)
-	cargo rustc -r --manifest-path $(SRC_BASE)/../src/tsffs/Cargo.toml --target-dir $(TARGET_DIR)/../obj/ -- -C link-args="-Wl,--disable-new-dtags -Wl,-rpath,$(SIMICS_BASE)/$(HOST_TYPE)/bin:$(dir $(PYTHON3_LDFLAGS))"
+	cargo rustc -r --manifest-path $(SRC_BASE)/tsffs/src/tsffs/Cargo.toml --target-dir $(TARGET_DIR)/../obj/ -- -C link-args="-Wl,--disable-new-dtags -Wl,-rpath,$(SIMICS_BASE)/$(HOST_TYPE)/bin:$(dir $(PYTHON3_LDFLAGS))"
 
 # We include the .d file that cargo generates, which includes lib$(TARGET).a: [the list of dependencies]
 include $(TARGET_DIR)/../obj/release/lib$(TARGET).d
