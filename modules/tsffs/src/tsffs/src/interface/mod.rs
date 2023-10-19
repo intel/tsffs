@@ -4,12 +4,15 @@
 use crate::{tracer::CoverageMode, Tsffs};
 use ffi_macro::ffi;
 use simics::{
-    api::{AsAttrValue, AsConfObject, AttrValue, AttrValueType, BreakpointId, GenericAddress},
+    api::{
+        AsAttrValue, AsAttrValueType, AsConfObject, AttrValue, AttrValueType, BreakpointId,
+        GenericAddress,
+    },
     error, info, Result,
 };
 use simics_macro::interface_impl;
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     ffi::{c_char, CStr},
     str::FromStr,
 };
@@ -175,7 +178,7 @@ impl Tsffs {
     pub fn set_timeout(&mut self, timeout: f64) {
         info!(self.as_conf_object_mut(), "set_timeout({timeout})");
 
-        *self.detector_mut().config_mut().timeout_mut() = timeout;
+        *self.detector_mut().configuration_mut().timeout_mut() = timeout;
     }
 
     /// Interface method to add an exception-type solution number to the set of
@@ -192,7 +195,7 @@ impl Tsffs {
         );
 
         self.detector_mut()
-            .config_mut()
+            .configuration_mut()
             .exceptions_mut()
             .insert(exception);
     }
@@ -208,7 +211,7 @@ impl Tsffs {
         );
 
         self.detector_mut()
-            .config_mut()
+            .configuration_mut()
             .exceptions_mut()
             .remove(&exception);
     }
@@ -224,7 +227,7 @@ impl Tsffs {
 
         *self
             .detector_mut()
-            .config_mut()
+            .configuration_mut()
             .all_exceptions_are_solutions_mut() = all_exceptions_are_solutions;
     }
 
@@ -237,7 +240,7 @@ impl Tsffs {
         );
 
         self.detector_mut()
-            .config_mut()
+            .configuration_mut()
             .breakpoints_mut()
             .insert(breakpoint);
     }
@@ -250,7 +253,7 @@ impl Tsffs {
             "remove_breakpoint_solution({breakpoint})"
         );
         self.detector_mut()
-            .config_mut()
+            .configuration_mut()
             .breakpoints_mut()
             .remove(&breakpoint);
     }
@@ -266,7 +269,7 @@ impl Tsffs {
 
         *self
             .detector_mut()
-            .config_mut()
+            .configuration_mut()
             .all_breakpoints_are_solutions_mut() = all_breakpoints_are_solutions;
     }
 
@@ -351,8 +354,21 @@ impl Tsffs {
     }
 
     pub fn get_configuration(&mut self) -> Result<AttrValue> {
-        let mut configuration = HashMap::new();
-        self.detector().config().to_dict(&mut configuration);
+        let configuration = BTreeMap::from_iter([
+            (
+                "detector".as_attr_value_type(),
+                self.detector().configuration().clone().as_attr_value_type(),
+            ),
+            (
+                "driver".as_attr_value_type(),
+                self.driver().configuration().clone().as_attr_value_type(),
+            ),
+            (
+                "tracer".as_attr_value_type(),
+                self.tracer().configuration().clone().as_attr_value_type(),
+            ),
+        ]);
+
         configuration.as_attr_value()
     }
 }

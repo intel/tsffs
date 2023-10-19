@@ -12,7 +12,11 @@ use std::{
     path::PathBuf,
 };
 
-use darling::{ast::NestedMeta, util::Flag, Error, FromDeriveInput, FromMeta, Result};
+use darling::{
+    ast::{Data, NestedMeta},
+    util::Flag,
+    Error, FromDeriveInput, FromField, FromMeta, Result,
+};
 use indoc::formatdoc;
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
@@ -1182,6 +1186,67 @@ pub fn simics_tests(args: TokenStream, _input: TokenStream) -> TokenStream {
         use command_ext::CommandExtCheck;
 
         #(#tests)*
+    }
+    .into()
+}
+
+#[derive(Debug, FromField)]
+#[darling(attributes(as_attr_value_type))]
+struct AsAttrValueTypeField {
+    ident: Option<Ident>,
+    #[allow(unused)]
+    ty: Type,
+}
+
+#[derive(Debug, FromDeriveInput)]
+#[darling(attributes(as_attr_value_type), supports(struct_named))]
+struct AsAttrValueTypeOpts {
+    ident: Ident,
+    generics: Generics,
+    data: Data<(), AsAttrValueTypeField>,
+}
+
+impl ToTokens for AsAttrValueTypeOpts {
+    fn to_tokens(&self, tokens: &mut TokenStream2) {
+        let ident = &self.ident;
+        let (impl_generics, ty_generics, where_clause) = self.generics.split_for_impl();
+        let Some(fields) = self.data.as_ref().take_struct() else {
+            panic!("Fields must be struct fields");
+        };
+        let dict_fields = fields
+            .iter()
+            .filter_map(|f| {
+                f.ident.clone().map(|i| {
+                    let ident_name = i.to_string();
+                    quote!((#ident_name.as_attr_value_type(), value.#i().clone().as_attr_value_type()))
+                })
+            })
+            .collect::<Vec<_>>();
+
+        tokens.extend(quote! {
+            impl #impl_generics From<#ident #ty_generics> for simics::api::AttrValueType #where_clause {
+                fn from(value: #ident #ty_generics) -> Self {
+                    Self::Dict(
+                        std::collections::BTreeMap::from_iter([
+                            #(#dict_fields),*
+                        ])
+                    )
+                }
+            }
+        });
+    }
+}
+
+#[proc_macro_derive(AsAttrValueType)]
+/// Derive macro for the [`Class`] trait.
+pub fn as_attr_value_type(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let args = match AsAttrValueTypeOpts::from_derive_input(&input) {
+        Ok(opts) => opts,
+        Err(e) => return e.write_errors().into(),
+    };
+    quote! {
+        #args
     }
     .into()
 }

@@ -1,17 +1,21 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::{anyhow, Error, Result};
+use anyhow::anyhow;
 use ffi_macro::ffi;
 use getters::Getters;
-use simics::api::{
-    sys::{cached_instruction_handle_t, instruction_handle_t},
-    ConfObject,
+use simics::{
+    api::{
+        sys::{cached_instruction_handle_t, instruction_handle_t},
+        AsAttrValue, AsAttrValueType, AttrValue, AttrValueType, ConfObject, FromAttrValue,
+    },
+    Error, Result,
 };
-use std::{collections::HashMap, ffi::c_void, str::FromStr};
+use simics_macro::AsAttrValueType;
+use std::{collections::HashMap, ffi::c_void, fmt::Display, str::FromStr};
 use typed_builder::TypedBuilder;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub enum CoverageMode {
     HitCount,
     Once,
@@ -31,10 +35,10 @@ impl Default for CoverageMode {
 impl FromStr for CoverageMode {
     type Err = Error;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self> {
         let as_string = Self::AS_STRING.iter().cloned().collect::<HashMap<_, _>>();
 
-        as_string.get(s).cloned().ok_or_else(|| {
+        Ok(as_string.get(s).cloned().ok_or_else(|| {
             anyhow!(
                 "Invalid coverage mode {}. Expected one of {}",
                 s,
@@ -44,11 +48,54 @@ impl FromStr for CoverageMode {
                     .collect::<Vec<_>>()
                     .join(", ")
             )
-        })
+        })?)
     }
 }
 
-#[derive(TypedBuilder, Getters, Debug)]
+impl Display for CoverageMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let to_string = Self::AS_STRING
+            .iter()
+            .map(|(k, v)| (v, k))
+            .collect::<HashMap<_, _>>();
+        if let Some(name) = to_string.get(self) {
+            write!(f, "{}", name)
+        } else {
+            panic!("Invalid state for enum");
+        }
+    }
+}
+
+impl AsAttrValue for CoverageMode {
+    fn as_attr_value(&self) -> Result<AttrValue> {
+        let to_string = Self::AS_STRING
+            .iter()
+            .map(|(k, v)| (v, k))
+            .collect::<HashMap<_, _>>();
+        Ok(to_string
+            .get(self)
+            .ok_or_else(|| Error::from(anyhow!("No matching coverage mode {self:?}")))
+            .and_then(|s| s.to_string().as_attr_value().map_err(Error::from))?)
+    }
+}
+
+impl FromAttrValue for CoverageMode {
+    fn from_attr_value(value: AttrValue) -> simics::Result<Self>
+    where
+        Self: Sized,
+    {
+        let s: String = String::from_attr_value(value)?;
+        Self::from_str(&s)
+    }
+}
+
+impl AsAttrValueType for CoverageMode {
+    fn as_attr_value_type(self) -> AttrValueType {
+        AttrValueType::String(self.to_string())
+    }
+}
+
+#[derive(TypedBuilder, Getters, Clone, Debug, AsAttrValueType)]
 #[getters(mutable)]
 pub struct TracingConfiguration {
     #[builder(default)]

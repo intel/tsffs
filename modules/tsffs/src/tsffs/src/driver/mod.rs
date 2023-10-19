@@ -4,14 +4,18 @@
 use anyhow::Result;
 use getters::Getters;
 use simics::{
-    api::{AsConfObject, ConfObject, CoreMagicInstructionHap, GenericAddress, Hap, HapHandle},
+    api::{
+        AsAttrValueType, AsConfObject, ConfObject, CoreMagicInstructionHap, GenericAddress, Hap,
+        HapHandle,
+    },
     info,
 };
+use simics_macro::AsAttrValueType;
 use typed_builder::TypedBuilder;
 
 use crate::Tsffs;
 
-#[derive(TypedBuilder, Getters, Debug)]
+#[derive(TypedBuilder, Getters, Clone, Debug, AsAttrValueType)]
 #[getters(mutable)]
 pub struct DriverConfiguration {
     #[builder(default = false)]
@@ -28,7 +32,7 @@ impl Default for DriverConfiguration {
     }
 }
 
-#[derive(TypedBuilder, Getters, Debug)]
+#[derive(TypedBuilder, Getters, Clone, Debug, AsAttrValueType)]
 #[getters(mutable)]
 pub struct BufferInformation {
     #[builder(default)]

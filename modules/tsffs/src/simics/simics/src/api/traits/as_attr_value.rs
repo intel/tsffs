@@ -4,9 +4,9 @@
 use crate::{
     api::{
         attr_boolean, attr_dict_key, attr_dict_size, attr_dict_value, attr_floating, attr_integer,
-        attr_list_item, attr_list_size, attr_string, make_attr_boolean, make_attr_dict,
-        make_attr_floating, make_attr_int64, make_attr_list, make_attr_string_adopt,
-        make_attr_uint64, AttrValue,
+        attr_is_nil, attr_list_item, attr_list_size, attr_string, make_attr_boolean,
+        make_attr_dict, make_attr_floating, make_attr_int64, make_attr_list, make_attr_nil,
+        make_attr_string_adopt, make_attr_uint64, AttrValue,
     },
     Error, Result,
 };
@@ -30,6 +30,13 @@ macro_rules! impl_from_unsigned {
                 make_attr_uint64(*self as u64)
             }
         }
+
+        impl AsAttrValue for &$t {
+            fn as_attr_value(&self) -> Result<AttrValue> {
+                #[allow(clippy::unnecessary_cast)]
+                make_attr_uint64(**self as u64)
+            }
+        }
     };
 }
 
@@ -39,6 +46,13 @@ macro_rules! impl_from_signed {
             fn as_attr_value(&self) -> Result<AttrValue> {
                 #[allow(clippy::unnecessary_cast)]
                 Ok(make_attr_int64(*self as i64))
+            }
+        }
+
+        impl AsAttrValue for &$t {
+            fn as_attr_value(&self) -> Result<AttrValue> {
+                #[allow(clippy::unnecessary_cast)]
+                Ok(make_attr_int64(**self as i64))
             }
         }
     };
@@ -52,6 +66,13 @@ macro_rules! impl_from_float {
                 Ok(make_attr_floating(*self as f64))
             }
         }
+
+        impl AsAttrValue for &$t {
+            fn as_attr_value(&self) -> Result<AttrValue> {
+                #[allow(clippy::unnecessary_cast)]
+                Ok(make_attr_floating(**self as f64))
+            }
+        }
     };
 }
 
@@ -59,11 +80,13 @@ impl_from_unsigned! { u8 }
 impl_from_unsigned! { u16 }
 impl_from_unsigned! { u32 }
 impl_from_unsigned! { u64 }
+impl_from_unsigned! { usize }
 
 impl_from_signed! { i8 }
 impl_from_signed! { i16 }
 impl_from_signed! { i32 }
 impl_from_signed! { i64 }
+impl_from_signed! { isize }
 
 impl_from_float! { f32 }
 impl_from_float! { f64 }
@@ -77,6 +100,19 @@ impl AsAttrValue for bool {
 impl AsAttrValue for String {
     fn as_attr_value(&self) -> Result<AttrValue> {
         make_attr_string_adopt(self)
+    }
+}
+
+impl<T> AsAttrValue for Option<T>
+where
+    T: AsAttrValue,
+{
+    fn as_attr_value(&self) -> Result<AttrValue> {
+        Ok(self
+            .as_ref()
+            .map(|s| s.as_attr_value())
+            .transpose()?
+            .unwrap_or_else(make_attr_nil))
     }
 }
 
@@ -191,11 +227,13 @@ impl_to_integer! { u8 }
 impl_to_integer! { u16 }
 impl_to_integer! { u32 }
 impl_to_integer! { u64 }
+impl_to_integer! { usize }
 
 impl_to_integer! { i8 }
 impl_to_integer! { i16 }
 impl_to_integer! { i32 }
 impl_to_integer! { i64 }
+impl_to_integer! { isize }
 
 impl_to_float! { f32 }
 impl_to_float! { f64 }
@@ -215,6 +253,22 @@ impl FromAttrValue for String {
         Self: Sized,
     {
         attr_string(value)
+    }
+}
+
+impl<T> FromAttrValue for Option<T>
+where
+    T: FromAttrValue,
+{
+    fn from_attr_value(value: AttrValue) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        Ok(if attr_is_nil(value) {
+            None
+        } else {
+            Some(T::from_attr_value(value)?)
+        })
     }
 }
 
@@ -314,8 +368,22 @@ where
     }
 }
 
+pub trait AsAttrValueType {
+    fn as_attr_value_type(self) -> AttrValueType;
+}
+
+impl<T> AsAttrValueType for T
+where
+    T: Into<AttrValueType> + Clone,
+{
+    fn as_attr_value_type(self) -> AttrValueType {
+        self.into()
+    }
+}
+
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub enum AttrValueType {
+    Nil,
     Bool(bool),
     U8(u8),
     U16(u16),
@@ -336,6 +404,7 @@ pub enum AttrValueType {
 impl AsAttrValue for AttrValueType {
     fn as_attr_value(&self) -> Result<AttrValue> {
         match self {
+            AttrValueType::Nil => Ok(make_attr_nil()),
             AttrValueType::Bool(v) => (*v).as_attr_value(),
             AttrValueType::U8(v) => (*v).as_attr_value(),
             AttrValueType::U16(v) => (*v).as_attr_value(),
@@ -352,5 +421,232 @@ impl AsAttrValue for AttrValueType {
             AttrValueType::Set(v) => v.clone().as_attr_value(),
             AttrValueType::Dict(v) => v.clone().as_attr_value(),
         }
+    }
+}
+
+impl<T> From<Option<T>> for AttrValueType
+where
+    T: AsAttrValueType,
+{
+    fn from(value: Option<T>) -> Self {
+        value
+            .map(|t| t.as_attr_value_type())
+            .unwrap_or(AttrValueType::Nil)
+    }
+}
+
+impl From<bool> for AttrValueType {
+    fn from(value: bool) -> Self {
+        AttrValueType::Bool(value)
+    }
+}
+
+impl From<u8> for AttrValueType {
+    fn from(value: u8) -> Self {
+        AttrValueType::U8(value)
+    }
+}
+
+impl From<u16> for AttrValueType {
+    fn from(value: u16) -> Self {
+        AttrValueType::U16(value)
+    }
+}
+
+impl From<u32> for AttrValueType {
+    fn from(value: u32) -> Self {
+        AttrValueType::U32(value)
+    }
+}
+
+impl From<u64> for AttrValueType {
+    fn from(value: u64) -> Self {
+        AttrValueType::U64(value)
+    }
+}
+
+impl From<usize> for AttrValueType {
+    fn from(value: usize) -> Self {
+        AttrValueType::U64(value as u64)
+    }
+}
+
+impl From<i8> for AttrValueType {
+    fn from(value: i8) -> Self {
+        AttrValueType::I8(value)
+    }
+}
+
+impl From<i16> for AttrValueType {
+    fn from(value: i16) -> Self {
+        AttrValueType::I16(value)
+    }
+}
+
+impl From<i32> for AttrValueType {
+    fn from(value: i32) -> Self {
+        AttrValueType::I32(value)
+    }
+}
+
+impl From<i64> for AttrValueType {
+    fn from(value: i64) -> Self {
+        AttrValueType::I64(value)
+    }
+}
+
+impl From<isize> for AttrValueType {
+    fn from(value: isize) -> Self {
+        AttrValueType::I64(value as i64)
+    }
+}
+
+impl From<f32> for AttrValueType {
+    fn from(value: f32) -> Self {
+        AttrValueType::F32(OrderedFloat(value))
+    }
+}
+
+impl From<f64> for AttrValueType {
+    fn from(value: f64) -> Self {
+        AttrValueType::F64(OrderedFloat(value))
+    }
+}
+
+impl From<&bool> for AttrValueType {
+    fn from(value: &bool) -> Self {
+        AttrValueType::Bool(*value)
+    }
+}
+
+impl From<&u8> for AttrValueType {
+    fn from(value: &u8) -> Self {
+        AttrValueType::U8(*value)
+    }
+}
+
+impl From<&u16> for AttrValueType {
+    fn from(value: &u16) -> Self {
+        AttrValueType::U16(*value)
+    }
+}
+
+impl From<&u32> for AttrValueType {
+    fn from(value: &u32) -> Self {
+        AttrValueType::U32(*value)
+    }
+}
+
+impl From<&u64> for AttrValueType {
+    fn from(value: &u64) -> Self {
+        AttrValueType::U64(*value)
+    }
+}
+
+impl From<&usize> for AttrValueType {
+    fn from(value: &usize) -> Self {
+        AttrValueType::U64(*value as u64)
+    }
+}
+
+impl From<&i8> for AttrValueType {
+    fn from(value: &i8) -> Self {
+        AttrValueType::I8(*value)
+    }
+}
+
+impl From<&i16> for AttrValueType {
+    fn from(value: &i16) -> Self {
+        AttrValueType::I16(*value)
+    }
+}
+
+impl From<&i32> for AttrValueType {
+    fn from(value: &i32) -> Self {
+        AttrValueType::I32(*value)
+    }
+}
+
+impl From<&i64> for AttrValueType {
+    fn from(value: &i64) -> Self {
+        AttrValueType::I64(*value)
+    }
+}
+
+impl From<&isize> for AttrValueType {
+    fn from(value: &isize) -> Self {
+        AttrValueType::I64(*value as i64)
+    }
+}
+
+impl From<&f32> for AttrValueType {
+    fn from(value: &f32) -> Self {
+        AttrValueType::F32(OrderedFloat(*value))
+    }
+}
+
+impl From<&f64> for AttrValueType {
+    fn from(value: &f64) -> Self {
+        AttrValueType::F64(OrderedFloat(*value))
+    }
+}
+
+impl From<String> for AttrValueType {
+    fn from(value: String) -> Self {
+        Self::String(value)
+    }
+}
+
+impl From<&str> for AttrValueType {
+    fn from(value: &str) -> Self {
+        Self::String(value.to_string())
+    }
+}
+
+impl<T> From<Vec<T>> for AttrValueType
+where
+    T: Into<AttrValueType> + Clone,
+{
+    fn from(value: Vec<T>) -> Self {
+        Self::List(
+            value
+                .into_iter()
+                .map(|v| Into::<AttrValueType>::into(v))
+                .collect::<Vec<_>>(),
+        )
+    }
+}
+
+impl<T> From<BTreeSet<T>> for AttrValueType
+where
+    T: Into<AttrValueType> + Clone,
+{
+    fn from(value: BTreeSet<T>) -> Self {
+        Self::Set(
+            value
+                .into_iter()
+                .map(|v| Into::<AttrValueType>::into(v))
+                .collect::<BTreeSet<_>>(),
+        )
+    }
+}
+
+impl<T, U> From<BTreeMap<T, U>> for AttrValueType
+where
+    T: Into<AttrValueType> + Clone,
+    U: Into<AttrValueType> + Clone,
+{
+    fn from(value: BTreeMap<T, U>) -> Self {
+        Self::Dict(
+            value
+                .into_iter()
+                .map(|(k, v)| {
+                    (
+                        Into::<AttrValueType>::into(k),
+                        Into::<AttrValueType>::into(v),
+                    )
+                })
+                .collect::<BTreeMap<_, _>>(),
+        )
     }
 }
