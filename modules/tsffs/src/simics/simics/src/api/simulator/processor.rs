@@ -5,11 +5,12 @@ use simics_macro::simics_exception;
 
 use crate::api::{
     sys::{
-        tuple_int_string_t, SIM_current_clock, SIM_current_processor, SIM_disassemble_address,
-        SIM_get_all_processors, SIM_get_processor, SIM_get_processor_number, SIM_number_processors,
-        SIM_object_is_processor, SIM_processor_privilege_level, SIM_reset_processor,
+        attr_value_t, tuple_int_string_t, SIM_current_clock, SIM_current_processor,
+        SIM_disassemble_address, SIM_get_all_processors, SIM_get_processor,
+        SIM_get_processor_number, SIM_number_processors, SIM_object_is_processor,
+        SIM_processor_privilege_level, SIM_reset_processor,
     },
-    AttrValue, ConfObject, GenericAddress,
+    ConfObject, GenericAddress,
 };
 
 pub type TupleIntString = tuple_int_string_t;
@@ -34,7 +35,7 @@ pub fn reset_processor(cpu: *mut ConfObject, hard_reset: i32) {
 
 #[simics_exception]
 /// Get the list of all processors in the simulation
-pub fn get_all_processors() -> AttrValue {
+pub fn get_all_processors() -> attr_value_t {
     unsafe { SIM_get_all_processors() }
 }
 

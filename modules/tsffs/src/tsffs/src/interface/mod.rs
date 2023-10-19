@@ -5,14 +5,13 @@ use crate::{tracer::CoverageMode, Tsffs};
 use ffi_macro::ffi;
 use simics::{
     api::{
-        AsAttrValue, AsAttrValueType, AsConfObject, AttrValue, AttrValueType, BreakpointId,
-        GenericAddress,
+        sys::attr_value_t, AsConfObject, AttrValue, AttrValueType, BreakpointId, GenericAddress,
     },
     error, info, Result,
 };
 use simics_macro::interface_impl;
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::BTreeMap,
     ffi::{c_char, CStr},
     str::FromStr,
 };
@@ -136,7 +135,7 @@ impl Tsffs {
     pub fn start_with_maximum_size(
         &mut self,
         testcase_address: GenericAddress,
-        maximum_size: usize,
+        maximum_size: u32,
         virt: bool,
     ) {
         info!(
@@ -353,22 +352,20 @@ impl Tsffs {
         Ok(())
     }
 
-    pub fn get_configuration(&mut self) -> Result<AttrValue> {
-        let configuration = BTreeMap::from_iter([
-            (
-                "detector".as_attr_value_type(),
-                self.detector().configuration().clone().as_attr_value_type(),
-            ),
-            (
-                "driver".as_attr_value_type(),
-                self.driver().configuration().clone().as_attr_value_type(),
-            ),
-            (
-                "tracer".as_attr_value_type(),
-                self.tracer().configuration().clone().as_attr_value_type(),
-            ),
-        ]);
+    pub fn get_configuration(&mut self) -> Result<attr_value_t> {
+        let configuration = AttrValue::try_from(
+            [
+                (
+                    "detector".into(),
+                    self.detector().configuration().try_into()?,
+                ),
+                ("driver".into(), self.driver().configuration().try_into()?),
+                ("tracer".into(), self.tracer().configuration().try_into()?),
+            ]
+            .into_iter()
+            .collect::<BTreeMap<AttrValueType, AttrValueType>>(),
+        )?;
 
-        configuration.as_attr_value()
+        Ok(configuration.into())
     }
 }

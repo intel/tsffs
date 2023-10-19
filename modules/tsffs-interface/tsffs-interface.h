@@ -15,7 +15,7 @@ SIM_INTERFACE(tsffs) {
     void (*set_start_on_harness)(conf_object_t * obj, bool start_on_harness);
     void (*set_stop_on_harness)(conf_object_t * obj, bool stop_on_harness);
     void (*start)(conf_object_t * obj, generic_address_t testcase_address, generic_address_t size_address, bool virt);
-    void (*start_with_maximum_size)(conf_object_t * obj, generic_address_t testcase_address, size_t maximum_size, bool virt);
+    void (*start_with_maximum_size)(conf_object_t * obj, generic_address_t testcase_address, uint32 maximum_size, bool virt);
     void (*stop)(conf_object_t * obj);
     void (*solution)(conf_object_t * obj, uint64 id, char * message);
     void (*set_use_snapshots)(conf_object_t * obj, bool use_snapshots);

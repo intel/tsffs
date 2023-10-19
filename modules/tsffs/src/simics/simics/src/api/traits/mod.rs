@@ -7,12 +7,10 @@
 //! - HAPs
 //! - Class and object interfaces
 
-pub mod as_attr_value;
 pub mod class;
 pub mod hap;
 pub mod interface;
 
-pub use as_attr_value::*;
 pub use class::*;
 pub use hap::*;
 pub use interface::*;

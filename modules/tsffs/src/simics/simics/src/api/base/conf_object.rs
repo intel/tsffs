@@ -21,11 +21,12 @@ use crate::{
             SIM_register_typed_class_attribute, SIM_require_object, SIM_set_class_data,
             SIM_set_object_configured, SIM_shallow_object_iterator,
         },
-        AttrValue, Interface,
+        Interface,
     },
     Error, Result,
 };
 use raw_cstr::{raw_cstr, AsRawCstr};
+use simics_api_sys::attr_value_t;
 use simics_macro::simics_exception;
 use std::{
     ffi::{c_void, CStr},
@@ -263,10 +264,10 @@ pub fn object_iterator_next(iter: *mut ObjectIter) -> Option<*mut ConfObject> {
 extern "C" fn get_typed_attr_handler<F>(
     cb: *mut c_void,
     obj: *mut ConfObject,
-    idx: *mut AttrValue,
-) -> AttrValue
+    idx: *mut attr_value_t,
+) -> attr_value_t
 where
-    F: FnOnce(*mut ConfObject, *mut AttrValue) -> AttrValue + 'static,
+    F: FnOnce(*mut ConfObject, *mut attr_value_t) -> attr_value_t + 'static,
 {
     let closure: Box<Box<F>> = unsafe { Box::from_raw(cb as *mut Box<F>) };
 
@@ -276,11 +277,11 @@ where
 extern "C" fn set_typed_attr_handler<F>(
     cb: *mut c_void,
     obj: *mut ConfObject,
-    val: *mut AttrValue,
-    idx: *mut AttrValue,
+    val: *mut attr_value_t,
+    idx: *mut attr_value_t,
 ) -> SetErr
 where
-    F: FnOnce(*mut ConfObject, *mut AttrValue, *mut AttrValue) -> SetErr + 'static,
+    F: FnOnce(*mut ConfObject, *mut attr_value_t, *mut attr_value_t) -> SetErr + 'static,
 {
     let closure: Box<Box<F>> = unsafe { Box::from_raw(cb as *mut Box<F>) };
 
@@ -290,10 +291,10 @@ where
 extern "C" fn get_typed_class_attr_handler<F>(
     cb: *mut c_void,
     cls: *mut ConfClass,
-    idx: *mut AttrValue,
-) -> AttrValue
+    idx: *mut attr_value_t,
+) -> attr_value_t
 where
-    F: FnOnce(*mut ConfClass, *mut AttrValue) -> AttrValue + 'static,
+    F: FnOnce(*mut ConfClass, *mut attr_value_t) -> attr_value_t + 'static,
 {
     let closure: Box<Box<F>> = unsafe { Box::from_raw(cb as *mut Box<F>) };
 
@@ -303,20 +304,20 @@ where
 extern "C" fn set_typed_class_attr_handler<F>(
     cb: *mut c_void,
     cls: *mut ConfClass,
-    val: *mut AttrValue,
-    idx: *mut AttrValue,
+    val: *mut attr_value_t,
+    idx: *mut attr_value_t,
 ) -> SetErr
 where
-    F: FnOnce(*mut ConfClass, *mut AttrValue, *mut AttrValue) -> SetErr + 'static,
+    F: FnOnce(*mut ConfClass, *mut attr_value_t, *mut attr_value_t) -> SetErr + 'static,
 {
     let closure: Box<Box<F>> = unsafe { Box::from_raw(cb as *mut Box<F>) };
 
     closure(cls, val, idx)
 }
 
-extern "C" fn get_attr_handler<F>(obj: *mut ConfObject, cb: *mut c_void) -> AttrValue
+extern "C" fn get_attr_handler<F>(obj: *mut ConfObject, cb: *mut c_void) -> attr_value_t
 where
-    F: FnOnce(*mut ConfObject) -> AttrValue + 'static,
+    F: FnOnce(*mut ConfObject) -> attr_value_t + 'static,
 {
     let closure: Box<Box<F>> = unsafe { Box::from_raw(cb as *mut Box<F>) };
 
@@ -325,20 +326,20 @@ where
 
 extern "C" fn set_attr_handler<F>(
     obj: *mut ConfObject,
-    val: *mut AttrValue,
+    val: *mut attr_value_t,
     cb: *mut c_void,
 ) -> SetErr
 where
-    F: FnOnce(*mut ConfObject, *mut AttrValue) -> SetErr + 'static,
+    F: FnOnce(*mut ConfObject, *mut attr_value_t) -> SetErr + 'static,
 {
     let closure: Box<Box<F>> = unsafe { Box::from_raw(cb as *mut Box<F>) };
 
     closure(obj, val)
 }
 
-extern "C" fn get_class_attr_handler<F>(cls: *mut ConfClass, cb: *mut c_void) -> AttrValue
+extern "C" fn get_class_attr_handler<F>(cls: *mut ConfClass, cb: *mut c_void) -> attr_value_t
 where
-    F: FnOnce(*mut ConfClass) -> AttrValue + 'static,
+    F: FnOnce(*mut ConfClass) -> attr_value_t + 'static,
 {
     let closure: Box<Box<F>> = unsafe { Box::from_raw(cb as *mut Box<F>) };
 
@@ -347,11 +348,11 @@ where
 
 extern "C" fn set_class_attr_handler<F>(
     cls: *mut ConfClass,
-    val: *mut AttrValue,
+    val: *mut attr_value_t,
     cb: *mut c_void,
 ) -> SetErr
 where
-    F: FnOnce(*mut ConfClass, *mut AttrValue) -> SetErr + 'static,
+    F: FnOnce(*mut ConfClass, *mut attr_value_t) -> SetErr + 'static,
 {
     let closure: Box<Box<F>> = unsafe { Box::from_raw(cb as *mut Box<F>) };
 
@@ -373,8 +374,8 @@ pub fn register_typed_attribute<S, GF, SF>(
 ) -> Result<()>
 where
     S: AsRef<str>,
-    GF: FnOnce(*mut ConfObject, *mut AttrValue) -> AttrValue + 'static,
-    SF: FnOnce(*mut ConfObject, *mut AttrValue, *mut AttrValue) -> SetErr + 'static,
+    GF: FnOnce(*mut ConfObject, *mut attr_value_t) -> attr_value_t + 'static,
+    SF: FnOnce(*mut ConfObject, *mut attr_value_t, *mut attr_value_t) -> SetErr + 'static,
 {
     let attr_type = if let Some(attr_type) = attr_type {
         raw_cstr(attr_type.to_string())?
@@ -427,8 +428,8 @@ pub fn register_typed_class_attribute<S, GF, SF>(
 ) -> Result<()>
 where
     S: AsRef<str>,
-    GF: FnOnce(*mut ConfClass, *mut AttrValue) -> AttrValue + 'static,
-    SF: FnOnce(*mut ConfClass, *mut AttrValue, *mut AttrValue) -> SetErr + 'static,
+    GF: FnOnce(*mut ConfClass, *mut attr_value_t) -> attr_value_t + 'static,
+    SF: FnOnce(*mut ConfClass, *mut attr_value_t, *mut attr_value_t) -> SetErr + 'static,
 {
     let attr_type = if let Some(attr_type) = attr_type {
         raw_cstr(attr_type.to_string())?
@@ -480,8 +481,8 @@ pub fn register_attribute<S, GF, SF>(
 ) -> Result<()>
 where
     S: AsRef<str>,
-    GF: FnOnce(*mut ConfObject) -> AttrValue + 'static,
-    SF: FnOnce(*mut ConfObject, *mut AttrValue) -> SetErr + 'static,
+    GF: FnOnce(*mut ConfObject) -> attr_value_t + 'static,
+    SF: FnOnce(*mut ConfObject, *mut attr_value_t) -> SetErr + 'static,
 {
     let attr_type = if let Some(attr_type) = attr_type {
         raw_cstr(attr_type.to_string())?
@@ -526,8 +527,8 @@ pub fn register_class_attribute<S, GF, SF>(
 ) -> Result<()>
 where
     S: AsRef<str>,
-    GF: FnOnce(*mut ConfClass) -> AttrValue + 'static,
-    SF: FnOnce(*mut ConfClass, *mut AttrValue) -> SetErr + 'static,
+    GF: FnOnce(*mut ConfClass) -> attr_value_t + 'static,
+    SF: FnOnce(*mut ConfClass, *mut attr_value_t) -> SetErr + 'static,
 {
     let attr_type = if let Some(attr_type) = attr_type {
         raw_cstr(attr_type.to_string())?

@@ -2,16 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use getters::Getters;
-use ordered_float::OrderedFloat;
-use simics::api::{AsAttrValueType, AttrValueType, BreakpointId};
-use simics_macro::AsAttrValueType;
-use std::collections::{BTreeMap, BTreeSet};
+use simics::api::BreakpointId;
+use simics_macro::TryIntoAttrValueType;
+use std::collections::BTreeSet;
 use typed_builder::TypedBuilder;
 
 /// The timeout runs in virtual time, so a typical 5 second timeout is acceptable
 pub const TIMEOUT_DEFAULT: f64 = 5.0;
 
-#[derive(TypedBuilder, Getters, Debug, Clone, AsAttrValueType)]
+#[derive(TypedBuilder, Getters, Debug, Clone, TryIntoAttrValueType)]
 #[getters(mutable)]
 /// Configuration of the fuzzer of each condition that can be treated as a fault
 pub struct DetectorConfiguration {

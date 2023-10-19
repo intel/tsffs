@@ -7,10 +7,10 @@ use crate::{
     api::{
         last_error,
         sys::{
-            pre_conf_object_set_t, save_flags_t, SIM_add_configuration, SIM_current_checkpoint_dir,
-            SIM_read_configuration, SIM_set_configuration, SIM_write_configuration_to_file,
+            attr_value_t, pre_conf_object_set_t, save_flags_t, SIM_add_configuration,
+            SIM_current_checkpoint_dir, SIM_read_configuration, SIM_set_configuration,
+            SIM_write_configuration_to_file,
         },
-        AttrValue,
     },
     Error, Result,
 };
@@ -44,7 +44,7 @@ where
 
 #[simics_exception]
 /// Set the current configuration from a value
-pub fn set_configuration(conf: AttrValue) {
+pub fn set_configuration(conf: attr_value_t) {
     unsafe { SIM_set_configuration(conf) }
 }
 

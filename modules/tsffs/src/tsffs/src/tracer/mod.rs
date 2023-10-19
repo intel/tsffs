@@ -7,11 +7,11 @@ use getters::Getters;
 use simics::{
     api::{
         sys::{cached_instruction_handle_t, instruction_handle_t},
-        AsAttrValue, AsAttrValueType, AttrValue, AttrValueType, ConfObject, FromAttrValue,
+        AttrValue, AttrValueType, ConfObject,
     },
     Error, Result,
 };
-use simics_macro::AsAttrValueType;
+use simics_macro::TryIntoAttrValueType;
 use std::{collections::HashMap, ffi::c_void, fmt::Display, str::FromStr};
 use typed_builder::TypedBuilder;
 
@@ -66,36 +66,21 @@ impl Display for CoverageMode {
     }
 }
 
-impl AsAttrValue for CoverageMode {
-    fn as_attr_value(&self) -> Result<AttrValue> {
-        let to_string = Self::AS_STRING
-            .iter()
-            .map(|(k, v)| (v, k))
-            .collect::<HashMap<_, _>>();
-        Ok(to_string
-            .get(self)
-            .ok_or_else(|| Error::from(anyhow!("No matching coverage mode {self:?}")))
-            .and_then(|s| s.to_string().as_attr_value().map_err(Error::from))?)
+impl TryFrom<AttrValue> for CoverageMode {
+    type Error = Error;
+
+    fn try_from(value: AttrValue) -> Result<Self> {
+        String::try_from(value)?.parse()
     }
 }
 
-impl FromAttrValue for CoverageMode {
-    fn from_attr_value(value: AttrValue) -> simics::Result<Self>
-    where
-        Self: Sized,
-    {
-        let s: String = String::from_attr_value(value)?;
-        Self::from_str(&s)
+impl From<CoverageMode> for AttrValueType {
+    fn from(value: CoverageMode) -> Self {
+        value.to_string().into()
     }
 }
 
-impl AsAttrValueType for CoverageMode {
-    fn as_attr_value_type(self) -> AttrValueType {
-        AttrValueType::String(self.to_string())
-    }
-}
-
-#[derive(TypedBuilder, Getters, Clone, Debug, AsAttrValueType)]
+#[derive(TypedBuilder, Getters, Clone, Debug, TryIntoAttrValueType)]
 #[getters(mutable)]
 pub struct TracingConfiguration {
     #[builder(default)]
@@ -129,9 +114,9 @@ impl Tracer {
     #[ffi(arg(rest), arg(self))]
     pub fn on_instruction_before(
         &mut self,
-        obj: *mut ConfObject,
-        cpu: *mut ConfObject,
-        handle: *mut instruction_handle_t,
+        _obj: *mut ConfObject,
+        _cpu: *mut ConfObject,
+        _handle: *mut instruction_handle_t,
     ) -> Result<()> {
         Ok(())
     }
@@ -139,10 +124,10 @@ impl Tracer {
     #[ffi(arg(self), arg(rest))]
     pub fn on_cached_instruction_before(
         &mut self,
-        obj: *mut ConfObject,
-        cpu: *mut ConfObject,
-        cached_instruction_data: *mut cached_instruction_handle_t,
-        handle: *mut instruction_handle_t,
+        _obj: *mut ConfObject,
+        _cpu: *mut ConfObject,
+        _cached_instruction_data: *mut cached_instruction_handle_t,
+        _handle: *mut instruction_handle_t,
     ) -> Result<()> {
         Ok(())
     }

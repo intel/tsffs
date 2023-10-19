@@ -8,12 +8,16 @@ pub enum Error {
         actual: crate::api::base::attr_value::AttrKind,
         expected: crate::api::base::attr_value::AttrKind,
     },
+    #[error("AttrValue type is unknown")]
+    AttrValueTypeUnknown,
     #[error("Index {index} out of bounds of list length {length}")]
-    AttrValueListIndexOutOfBounds { index: u32, length: u32 },
+    AttrValueListIndexOutOfBounds { index: usize, length: usize },
     #[error("Index {index} out of bounds of dictionary size {size}")]
-    AttrValueDictIndexOutOfBounds { index: u32, size: u32 },
+    AttrValueDictIndexOutOfBounds { index: usize, size: usize },
     #[error("Null data requires zero size")]
     InvalidNullDataSize,
+    #[error("Error converting to AttrValue")]
+    AttrValueConversionError,
 
     #[error("Failed to create class {name}: {message}")]
     CreateClass { name: String, message: String },

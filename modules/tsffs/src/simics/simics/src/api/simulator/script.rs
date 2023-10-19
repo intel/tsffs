@@ -2,12 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
-    api::{
-        sys::{
-            SIM_get_batch_mode, SIM_load_target, SIM_run_command, SIM_run_command_file,
-            SIM_run_command_file_params,
-        },
-        AttrValue,
+    api::sys::{
+        attr_value_t, SIM_get_batch_mode, SIM_load_target, SIM_run_command, SIM_run_command_file,
+        SIM_run_command_file_params,
     },
     Result,
 };
@@ -16,7 +13,7 @@ use simics_macro::simics_exception;
 
 #[simics_exception]
 /// Run a SIMICS CLI command
-pub fn run_command<S>(line: S) -> Result<AttrValue>
+pub fn run_command<S>(line: S) -> Result<attr_value_t>
 where
     S: AsRef<str>,
 {
@@ -35,7 +32,7 @@ where
 
 #[simics_exception]
 /// Run a SIMICS cli command file with a list of parameters
-pub fn run_command_file_params<S>(file: S, local: bool, params: AttrValue) -> Result<()>
+pub fn run_command_file_params<S>(file: S, local: bool, params: attr_value_t) -> Result<()>
 where
     S: AsRef<str>,
 {
@@ -45,7 +42,12 @@ where
 
 #[simics_exception]
 /// Load a target
-pub fn load_target<S>(target: S, ns: S, presets: AttrValue, cmdline_args: AttrValue) -> Result<()>
+pub fn load_target<S>(
+    target: S,
+    ns: S,
+    presets: attr_value_t,
+    cmdline_args: attr_value_t,
+) -> Result<()>
 where
     S: AsRef<str>,
 {

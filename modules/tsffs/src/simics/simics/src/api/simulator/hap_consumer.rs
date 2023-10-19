@@ -9,11 +9,11 @@
 use crate::{
     api::{
         sys::{
-            hap_handle_t, hap_type_t, SIM_get_all_hap_types, SIM_hap_add_type, SIM_hap_get_name,
-            SIM_hap_get_number, SIM_hap_is_active, SIM_hap_is_active_obj,
+            attr_value_t, hap_handle_t, hap_type_t, SIM_get_all_hap_types, SIM_hap_add_type,
+            SIM_hap_get_name, SIM_hap_get_number, SIM_hap_is_active, SIM_hap_is_active_obj,
             SIM_hap_is_active_obj_idx, SIM_hap_occurred_always, SIM_hap_remove_type,
         },
-        AttrValue, ConfObject,
+        ConfObject,
     },
     Result,
 };
@@ -28,7 +28,7 @@ pub type HapType = hap_type_t;
 
 #[simics_exception]
 /// Return an attribute list of all hap types.
-pub fn get_all_hap_types() -> AttrValue {
+pub fn get_all_hap_types() -> attr_value_t {
     unsafe { SIM_get_all_hap_types() }
 }
 
@@ -91,7 +91,7 @@ pub fn hap_occurred_always(
     hap: HapType,
     obj: Option<*mut ConfObject>,
     value: i64,
-    list: *mut AttrValue,
+    list: *mut attr_value_t,
 ) -> i32 {
     unsafe { SIM_hap_occurred_always(hap, obj.unwrap_or(null_mut()), value, list) }
 }

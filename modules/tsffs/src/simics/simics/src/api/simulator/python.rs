@@ -4,9 +4,9 @@
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 use crate::api::sys::{
-    SIM_call_python_function, SIM_run_python, SIM_source_python, VT_call_python_module_function,
+    attr_value_t, SIM_call_python_function, SIM_run_python, SIM_source_python,
+    VT_call_python_module_function,
 };
-use crate::api::AttrValue;
 use crate::error::Result;
 use raw_cstr::raw_cstr;
 use simics_macro::simics_exception;
@@ -24,7 +24,7 @@ where
 
 #[simics_exception]
 /// Run (by eval-ing) python code in the simulator context
-pub fn run_python<S>(line: S) -> Result<AttrValue>
+pub fn run_python<S>(line: S) -> Result<attr_value_t>
 where
     S: AsRef<str>,
 {
@@ -33,7 +33,7 @@ where
 
 #[simics_exception]
 /// Call a python function with a set of arguments
-pub fn call_python_function<S>(function: S, args: *mut AttrValue) -> Result<AttrValue>
+pub fn call_python_function<S>(function: S, args: *mut attr_value_t) -> Result<attr_value_t>
 where
     S: AsRef<str>,
 {
@@ -45,8 +45,8 @@ where
 pub fn call_python_module_function<S>(
     module: S,
     function: S,
-    args: *mut AttrValue,
-) -> Result<AttrValue>
+    args: *mut attr_value_t,
+) -> Result<attr_value_t>
 where
     S: AsRef<str>,
 {

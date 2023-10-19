@@ -1191,22 +1191,22 @@ pub fn simics_tests(args: TokenStream, _input: TokenStream) -> TokenStream {
 }
 
 #[derive(Debug, FromField)]
-#[darling(attributes(as_attr_value_type))]
-struct AsAttrValueTypeField {
+#[darling(attributes(into_attr_value_type))]
+struct TryIntoAttrValueTypeField {
     ident: Option<Ident>,
     #[allow(unused)]
     ty: Type,
 }
 
 #[derive(Debug, FromDeriveInput)]
-#[darling(attributes(as_attr_value_type), supports(struct_named))]
-struct AsAttrValueTypeOpts {
+#[darling(attributes(try_into_attr_value_type), supports(struct_named))]
+struct TryIntoAttrValueTypeOpts {
     ident: Ident,
     generics: Generics,
-    data: Data<(), AsAttrValueTypeField>,
+    data: Data<(), TryIntoAttrValueTypeField>,
 }
 
-impl ToTokens for AsAttrValueTypeOpts {
+impl ToTokens for TryIntoAttrValueTypeOpts {
     fn to_tokens(&self, tokens: &mut TokenStream2) {
         let ident = &self.ident;
         let (impl_generics, ty_generics, where_clause) = self.generics.split_for_impl();
@@ -1218,30 +1218,38 @@ impl ToTokens for AsAttrValueTypeOpts {
             .filter_map(|f| {
                 f.ident.clone().map(|i| {
                     let ident_name = i.to_string();
-                    quote!((#ident_name.as_attr_value_type(), value.#i().clone().as_attr_value_type()))
+                    quote!((#ident_name.try_into()?, value.#i().clone().try_into()?))
                 })
             })
             .collect::<Vec<_>>();
 
         tokens.extend(quote! {
-            impl #impl_generics From<#ident #ty_generics> for simics::api::AttrValueType #where_clause {
-                fn from(value: #ident #ty_generics) -> Self {
-                    Self::Dict(
+            impl #impl_generics TryFrom<#ident #ty_generics> for simics::api::AttrValueType #where_clause {
+                type Error = simics::Error;
+                fn try_from(value: #ident #ty_generics) -> simics::Result<Self> {
+                    Ok(Self::Dict(
                         std::collections::BTreeMap::from_iter([
                             #(#dict_fields),*
                         ])
-                    )
+                    ))
+                }
+            }
+
+            impl #impl_generics TryFrom<&#ident #ty_generics> for simics::api::AttrValueType #where_clause {
+                type Error = simics::Error;
+                fn try_from(value: &#ident #ty_generics) -> simics::Result<Self> {
+                    value.clone().try_into()
                 }
             }
         });
     }
 }
 
-#[proc_macro_derive(AsAttrValueType)]
+#[proc_macro_derive(TryIntoAttrValueType)]
 /// Derive macro for the [`Class`] trait.
-pub fn as_attr_value_type(input: TokenStream) -> TokenStream {
+pub fn try_into_attr_value_type(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    let args = match AsAttrValueTypeOpts::from_derive_input(&input) {
+    let args = match TryIntoAttrValueTypeOpts::from_derive_input(&input) {
         Ok(opts) => opts,
         Err(e) => return e.write_errors().into(),
     };
