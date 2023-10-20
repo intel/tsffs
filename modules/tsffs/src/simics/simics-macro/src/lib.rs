@@ -1288,7 +1288,7 @@ impl ToTokens for TryFromAttrValueTypeOpts {
                 f.ident.clone().map(|i| {
                     let ident_name = i.to_string();
                     quote! {
-                        #i: value.get(#ident_name)
+                        #i: value.get(&#ident_name.into())
                                 .ok_or_else(|| simics::Error::AttrValueDictMissingKey { key: #ident_name.to_string()})?
                                 .clone()
                                 .try_into()?
@@ -1328,7 +1328,7 @@ pub fn try_from_attr_value_type(input: TokenStream) -> TokenStream {
     }
     .into();
 
-    println!("{}", q);
+    // println!("{}", q);
 
     q
 }

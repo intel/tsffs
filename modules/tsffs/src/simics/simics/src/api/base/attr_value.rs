@@ -903,19 +903,93 @@ pub enum AttrValueType {
     Dict(BTreeMap<Self, Self>),
 }
 
-impl TryFrom<AttrValueType> for AttrValue {
-    type Error = Error;
+impl AttrValueType {
+    pub fn is_nil(&self) -> bool {
+        matches!(self, Self::Nil)
+    }
 
-    fn try_from(value: AttrValueType) -> Result<Self> {
-        match value {
-            AttrValueType::Nil => Ok(AttrValue::nil()),
-            AttrValueType::Bool(v) => v.try_into().map_err(|_| Error::AttrValueConversionError),
-            AttrValueType::Signed(v) => v.try_into().map_err(|_| Error::AttrValueConversionError),
-            AttrValueType::Unsigned(v) => v.try_into().map_err(|_| Error::AttrValueConversionError),
-            AttrValueType::Float(v) => v.try_into().map_err(|_| Error::AttrValueConversionError),
-            AttrValueType::String(v) => v.try_into().map_err(|_| Error::AttrValueConversionError),
-            AttrValueType::List(v) => v.try_into(),
-            AttrValueType::Dict(v) => v.try_into(),
+    pub fn is_boolean(&self) -> bool {
+        matches!(self, Self::Bool(_))
+    }
+
+    pub fn is_integer(&self) -> bool {
+        matches!(self, Self::Signed(_) | Self::Unsigned(_))
+    }
+
+    pub fn is_signed(&self) -> bool {
+        matches!(self, Self::Signed(_))
+    }
+
+    pub fn is_unsigned(&self) -> bool {
+        matches!(self, Self::Unsigned(_))
+    }
+
+    pub fn is_floating(&self) -> bool {
+        matches!(self, Self::Float(_))
+    }
+
+    pub fn is_string(&self) -> bool {
+        matches!(self, Self::String(_))
+    }
+
+    pub fn is_list(&self) -> bool {
+        matches!(self, Self::List(_))
+    }
+
+    pub fn is_dict(&self) -> bool {
+        matches!(self, Self::Dict(_))
+    }
+
+    pub fn as_nil(&self) -> Option<()> {
+        self.is_nil().then_some(())
+    }
+
+    pub fn as_boolean(&self) -> Option<bool> {
+        match self {
+            Self::Bool(b) => Some(*b),
+            _ => None,
+        }
+    }
+
+    pub fn as_unsigned(&self) -> Option<u64> {
+        match self {
+            Self::Unsigned(u) => Some(*u),
+            _ => None,
+        }
+    }
+
+    pub fn as_signed(&self) -> Option<i64> {
+        match self {
+            Self::Signed(i) => Some(*i),
+            _ => None,
+        }
+    }
+
+    pub fn as_float(&self) -> Option<f64> {
+        match self {
+            Self::Float(f) => Some(f.0),
+            _ => None,
+        }
+    }
+
+    pub fn as_string(&self) -> Option<String> {
+        match self {
+            Self::String(s) => Some(s.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn as_list(&self) -> Option<Vec<AttrValueType>> {
+        match self {
+            Self::List(l) => Some(l.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn as_dict(&self) -> Option<BTreeMap<AttrValueType, AttrValueType>> {
+        match self {
+            Self::Dict(d) => Some(d.clone()),
+            _ => None,
         }
     }
 }
@@ -1041,6 +1115,158 @@ impl TryFrom<AttrValue> for AttrValueType {
         } else {
             Err(Error::AttrValueTypeUnknown)
         }
+    }
+}
+
+impl TryFrom<AttrValueType> for AttrValue {
+    type Error = Error;
+
+    fn try_from(value: AttrValueType) -> Result<Self> {
+        match value {
+            AttrValueType::Nil => Ok(AttrValue::nil()),
+            AttrValueType::Bool(v) => v.try_into().map_err(|_| Error::AttrValueConversionError),
+            AttrValueType::Signed(v) => v.try_into().map_err(|_| Error::AttrValueConversionError),
+            AttrValueType::Unsigned(v) => v.try_into().map_err(|_| Error::AttrValueConversionError),
+            AttrValueType::Float(v) => v.try_into().map_err(|_| Error::AttrValueConversionError),
+            AttrValueType::String(v) => v.try_into().map_err(|_| Error::AttrValueConversionError),
+            AttrValueType::List(v) => v.try_into(),
+            AttrValueType::Dict(v) => v.try_into(),
+        }
+    }
+}
+
+macro_rules! impl_from_attr_value_type {
+    ($t:ty, $($variant:tt)+) => {
+        impl TryFrom<AttrValueType> for $t {
+            type Error = Error;
+
+            fn try_from(value: AttrValueType) -> Result<Self> {
+                if let $($variant)+(value) = value {
+                    value.try_into()
+                        .map_err(|_| Error::AttrValueConversionError)
+                } else {
+                    Err(Error::AttrValueTypeUnknown)
+                }
+            }
+        }
+    };
+}
+
+impl_from_attr_value_type! { u8, AttrValueType::Unsigned }
+impl_from_attr_value_type! { u16, AttrValueType::Unsigned }
+impl_from_attr_value_type! { u32, AttrValueType::Unsigned }
+impl_from_attr_value_type! { u64, AttrValueType::Unsigned }
+impl_from_attr_value_type! { i8, AttrValueType::Signed }
+impl_from_attr_value_type! { i16, AttrValueType::Signed }
+impl_from_attr_value_type! { i32, AttrValueType::Signed }
+impl_from_attr_value_type! { i64, AttrValueType::Signed }
+impl_from_attr_value_type! { f64, AttrValueType::Float }
+impl_from_attr_value_type! { bool, AttrValueType::Bool}
+impl_from_attr_value_type! { String, AttrValueType::String }
+
+impl<T> TryFrom<AttrValueType> for Vec<T>
+where
+    T: TryFrom<AttrValueType>,
+{
+    type Error = Error;
+
+    fn try_from(value: AttrValueType) -> Result<Self> {
+        value
+            .as_list()
+            .ok_or_else(|| Error::AttrValueConversionError)?
+            .into_iter()
+            .map(|e| e.try_into().map_err(|_| Error::AttrValueConversionError))
+            .collect::<Result<Vec<_>>>()
+    }
+}
+
+impl<T> TryFrom<AttrValueType> for HashSet<T>
+where
+    T: TryFrom<AttrValueType> + Eq + Hash,
+{
+    type Error = Error;
+
+    fn try_from(value: AttrValueType) -> Result<Self> {
+        Ok(value
+            .as_list()
+            .ok_or_else(|| Error::AttrValueConversionError)?
+            .into_iter()
+            .map(|e| e.try_into().map_err(|_| Error::AttrValueConversionError))
+            .collect::<Result<Vec<_>>>()?
+            .into_iter()
+            .collect::<HashSet<_>>())
+    }
+}
+
+impl<T> TryFrom<AttrValueType> for BTreeSet<T>
+where
+    T: TryFrom<AttrValueType> + Ord,
+{
+    type Error = Error;
+
+    fn try_from(value: AttrValueType) -> Result<Self> {
+        Ok(value
+            .as_list()
+            .ok_or_else(|| Error::AttrValueConversionError)?
+            .into_iter()
+            .map(|e| e.try_into().map_err(|_| Error::AttrValueConversionError))
+            .collect::<Result<Vec<_>>>()?
+            .into_iter()
+            .collect::<BTreeSet<_>>())
+    }
+}
+
+impl<T, U> TryFrom<AttrValueType> for HashMap<T, U>
+where
+    T: TryFrom<AttrValueType> + Eq + Hash,
+    U: TryFrom<AttrValueType>,
+{
+    type Error = Error;
+
+    fn try_from(value: AttrValueType) -> Result<Self> {
+        Ok(value
+            .as_dict()
+            .ok_or_else(|| Error::AttrValueConversionError)?
+            .into_iter()
+            .map(|(k, v)| {
+                k.try_into()
+                    .map_err(|_| Error::AttrValueConversionError)
+                    .and_then(|k| {
+                        v.try_into()
+                            .map_err(|_| Error::AttrValueConversionError)
+                            .map(|v| (k, v))
+                    })
+            })
+            .collect::<Result<Vec<(_, _)>>>()?
+            .into_iter()
+            .collect::<HashMap<_, _>>())
+    }
+}
+
+impl<T, U> TryFrom<AttrValueType> for BTreeMap<T, U>
+where
+    T: TryFrom<AttrValueType> + Ord,
+    U: TryFrom<AttrValueType>,
+{
+    type Error = Error;
+
+    fn try_from(value: AttrValueType) -> Result<Self> {
+        Ok(value
+            .as_dict()
+            .ok_or_else(|| Error::AttrValueConversionError)?
+            .into_iter()
+            .map(|(k, v)| {
+                k.try_into()
+                    .map_err(|_| Error::AttrValueConversionError)
+                    .and_then(|k| {
+                        v.try_into()
+                            .map_err(|_| Error::AttrValueConversionError)
+                            .map(|v| (k, v))
+                    })
+            })
+            .collect::<Result<Vec<(_, _)>>>()?
+            .into_iter()
+            .collect::<BTreeMap<_, _>>())
     }
 }
 
