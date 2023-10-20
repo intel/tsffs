@@ -18,6 +18,8 @@ pub enum Error {
     InvalidNullDataSize,
     #[error("Error converting to AttrValue")]
     AttrValueConversionError,
+    #[error("Key {key} not found")]
+    AttrValueDictMissingKey { key: String },
 
     #[error("Failed to create class {name}: {message}")]
     CreateClass { name: String, message: String },

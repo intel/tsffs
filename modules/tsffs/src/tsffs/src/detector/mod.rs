@@ -3,14 +3,14 @@
 
 use getters::Getters;
 use simics::api::BreakpointId;
-use simics_macro::TryIntoAttrValueType;
+use simics_macro::{TryFromAttrValueType, TryIntoAttrValueType};
 use std::collections::BTreeSet;
 use typed_builder::TypedBuilder;
 
 /// The timeout runs in virtual time, so a typical 5 second timeout is acceptable
 pub const TIMEOUT_DEFAULT: f64 = 5.0;
 
-#[derive(TypedBuilder, Getters, Debug, Clone, TryIntoAttrValueType)]
+#[derive(TypedBuilder, Getters, Debug, Clone, TryIntoAttrValueType, TryFromAttrValueType)]
 #[getters(mutable)]
 /// Configuration of the fuzzer of each condition that can be treated as a fault
 pub struct DetectorConfiguration {

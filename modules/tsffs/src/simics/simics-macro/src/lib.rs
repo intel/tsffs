@@ -1258,3 +1258,77 @@ pub fn try_into_attr_value_type(input: TokenStream) -> TokenStream {
     }
     .into()
 }
+
+#[derive(Debug, FromField)]
+#[darling(attributes(into_attr_value_type))]
+struct TryFromAttrValueTypeField {
+    ident: Option<Ident>,
+    #[allow(unused)]
+    ty: Type,
+}
+
+#[derive(Debug, FromDeriveInput)]
+#[darling(attributes(try_into_attr_value_type), supports(struct_named))]
+struct TryFromAttrValueTypeOpts {
+    ident: Ident,
+    generics: Generics,
+    data: Data<(), TryFromAttrValueTypeField>,
+}
+
+impl ToTokens for TryFromAttrValueTypeOpts {
+    fn to_tokens(&self, tokens: &mut TokenStream2) {
+        let ident = &self.ident;
+        let (impl_generics, ty_generics, where_clause) = self.generics.split_for_impl();
+        let Some(fields) = self.data.as_ref().take_struct() else {
+            panic!("Fields must be struct fields");
+        };
+        let dict_fields = fields
+            .iter()
+            .filter_map(|f| {
+                f.ident.clone().map(|i| {
+                    let ident_name = i.to_string();
+                    quote! {
+                        #i: value.get(#ident_name)
+                                .ok_or_else(|| simics::Error::AttrValueDictMissingKey { key: #ident_name.to_string()})?
+                                .clone()
+                                .try_into()?
+
+                    }
+                })
+            })
+            .collect::<Vec<_>>();
+
+        tokens.extend(quote! {
+            impl #impl_generics TryFrom<simics::api::AttrValueType> for #ident #ty_generics  #where_clause {
+                type Error = simics::Error;
+
+                fn try_from(value: simics::api::AttrValueType) -> simics::Result<Self> {
+                    let simics::api::AttrValueType::Dict(value) = value else {
+                        return Err(simics::Error::AttrValueTypeUnknown);
+                    };
+                    Ok(Self {
+                        #(#dict_fields),*
+                    })
+                }
+            }
+        });
+    }
+}
+
+#[proc_macro_derive(TryFromAttrValueType)]
+/// Derive macro for the [`Class`] trait.
+pub fn try_from_attr_value_type(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let args = match TryFromAttrValueTypeOpts::from_derive_input(&input) {
+        Ok(opts) => opts,
+        Err(e) => return e.write_errors().into(),
+    };
+    let q: TokenStream = quote! {
+        #args
+    }
+    .into();
+
+    println!("{}", q);
+
+    q
+}
