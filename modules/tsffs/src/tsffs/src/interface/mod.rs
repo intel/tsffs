@@ -5,7 +5,8 @@ use crate::{tracer::CoverageMode, Tsffs};
 use ffi_macro::ffi;
 use simics::{
     api::{
-        sys::attr_value_t, AsConfObject, AttrValue, AttrValueType, BreakpointId, GenericAddress,
+        call_python_function, sys::attr_value_t, AsConfObject, AttrValue, AttrValueType,
+        BreakpointId, GenericAddress,
     },
     error, info, Result,
 };
@@ -367,5 +368,11 @@ impl Tsffs {
         )?;
 
         Ok(configuration.into())
+    }
+
+    pub fn test_call_python_function(&mut self) -> Result<()> {
+        let res = call_python_function("print", ["a", "b", "c"])?;
+
+        Ok(())
     }
 }

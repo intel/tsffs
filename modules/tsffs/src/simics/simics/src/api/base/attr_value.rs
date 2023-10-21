@@ -1,11 +1,7 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
-//! Safe wrappers for attr_value_t operations
-//!
-//! `attr_value_t` instances are basically Python objects as tagged unions (like an `enum`), these
-//! functions convert the objects back and forth between anonymous `attr_value_t` and actual data
-//! types like `bool`, `String`, etc.
+//! Type-safe wrappers for operations on `AttrValue`s
 
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
@@ -33,9 +29,11 @@ use std::{
 pub type AttrKind = attr_kind_t;
 
 #[derive(Clone)]
+#[repr(C)]
 pub struct AttrValue(attr_value_t);
 
 impl AttrValue {
+    /// Construct a nil `AttrValue`
     pub fn nil() -> Self {
         Self(attr_value_t {
             private_kind: AttrKind::Sim_Val_Nil,
@@ -44,6 +42,7 @@ impl AttrValue {
         })
     }
 
+    /// Construct an intentionally invalid `AttrValue`
     pub fn invalid() -> Self {
         Self(attr_value_t {
             private_kind: AttrKind::Sim_Val_Invalid,
@@ -52,10 +51,16 @@ impl AttrValue {
         })
     }
 
+    /// Construct an empty `AttrValue` list of a certain length. This should typically not be
+    /// used, a `Vec<T> where T: TryInto<AttrValue>` can be converted to an `AttrValue` with
+    /// `try_into`.
     pub fn list(length: usize) -> Result<Self> {
         alloc_attr_list(length.try_into()?)
     }
 
+    /// Construct an empty `AttrValue` dict of a certain size. This should typically not
+    /// be used, a `BTreeMap<T, U> where T: TryInto<AttrValue>, U: TryInto<AttrValue>`
+    /// can be converted to an `AttrValue` with `try_into`.
     pub fn dict(size: usize) -> Result<Self> {
         alloc_attr_dict(size.try_into()?)
     }
@@ -1271,31 +1276,86 @@ where
 }
 
 /// Create a new invalid [`AttrValue`]
+///
+/// # Return Value
+///
+/// An owned [`AttrValue`] with invalid value
 pub fn make_attr_invalid() -> AttrValue {
     AttrValue::invalid()
 }
 
 /// Create a new nil [`AttrValue`]
+///
+/// # Return Value
+///
+/// An owned [`AttrValue`] with nil (Python `None`) value
 pub fn make_attr_nil() -> AttrValue {
     AttrValue::nil()
 }
 
-/// Create a new uint64 [`AttrValue`] with a value of `i`
-pub fn make_attr_uint64(i: u64) -> AttrValue {
-    i.into()
+/// Create a new uint64 [`AttrValue`]
+///
+/// # Arguments
+///
+/// * `u` - The unsigned value of the [`AttrValue`]
+///
+/// # Return Value
+///
+/// An owned [`AttrValue`] with unsigned integer (stored as u64) value
+///
+/// # Notes
+///
+/// `u.into()` may be preferred, and supports all sizes of unsigned integer
+/// types.
+pub fn make_attr_uint64(u: u64) -> AttrValue {
+    u.into()
 }
 
-/// Create a new int64 [`AttrValue`] with a value of `i`
+/// Create a new int64 [`AttrValue`]
+///
+/// # Arguments
+///
+/// * `i` - The signed value of the [`AttrValue`]
+///
+/// # Return Value
+///
+/// An owned [`AttrValue`] with signed integer (stored as i64) value
+///
+/// # Notes
+///
+/// `i.into()` may be preferred, and supports all sizes of unsigned integer
+/// types.
 pub fn make_attr_int64(i: i64) -> AttrValue {
     i.into()
 }
 
-/// Create a new boolean [`AttrValue`] with a value of `b`
+/// Create a new boolean [`AttrValue`]
+///
+/// # Arguments
+///
+/// * `b` - The boolean value of the [`AttrValue`]
+///
+/// # Return Value
+///
+/// An owned [`AttrValue`] with boolean value
 pub fn make_attr_boolean(b: bool) -> AttrValue {
     b.into()
 }
 
-/// Create a newly allocated string [`AttrValue`] with a value of `s`. The string is copied.
+/// Create a new string [`AttrValue`]. The string is copied, and the
+/// [`AttrValue`] owns the string.
+///
+/// # Arguments
+///
+/// * `s` - The string value of the [`AttrValue`]
+///
+/// # Return Value
+///
+/// An owned [`AttrValue`] with string value
+///
+/// # Notes
+///
+/// `s.into()` may be preferred.
 pub fn make_attr_string<S>(s: S) -> AttrValue
 where
     S: AsRef<str>,
@@ -1303,22 +1363,89 @@ where
     s.as_ref().into()
 }
 
-/// Create a new floating point [`AttrValue`] with a value of `d`
+/// Create a new floating point [`AttrValue`]
+///
+/// # Arguments
+///
+/// * `d` - The floating point value of the [`AttrValue`]
+///
+/// # Return Value
+///
+/// An owned [`AttrValue`] with floating point (stored as f64) value
+///
+/// # Notes
+///
+/// `d.into()` may be preferred, and supports all sizes of floating point types.
 pub fn make_attr_floating(d: f64) -> AttrValue {
     d.into()
 }
 
-/// Create a new object [`AttrValue`] with a value of `obj` The value is not copied, so the
-/// pointer must remain valid.
+/// Create a new object [`AttrValue`]
+///
+/// # Arguments
+///
+/// * `obj` - The object to store a pointer to in the [`AttrValue`]. The pointer must
+/// remain valid for the lifetime of the [`AttrValue`].
+///
+/// # Return Value
+///
+/// An [`AttrValue`] storing a pointer to the [`ConfObject`]
+///
+/// # Notes
+///
+/// `obj.into()` may be preferred
 pub fn make_attr_object(obj: *mut ConfObject) -> AttrValue {
     obj.into()
 }
 
-/// Create a new data [`AttrValue`], which is effectively a fat pointer to the data, with a given
-/// size. The data will be copied into a [`Box`], which will be converted to a raw pointer. Care
-/// must be taken to deallocate the data later either via Box::from_raw or by allowing SIMICS
-/// to free it.
-pub fn make_attr_data<T>(data: T) -> Result<AttrValue> {
+/// Create a new data [`AttrValue`]
+///
+/// # Arguments
+///
+/// * `data` - A reference to an object to copy into a new [`AttrValue`]
+///
+/// # Return Value
+///
+/// An [`AttrValue`] storing a raw pointer to a copy of the provided data. The data is
+/// owned by the [`AttrValue`]
+pub fn make_attr_data<T>(data: &T) -> Result<AttrValue>
+where
+    T: Clone,
+{
+    let data = Box::new(data.clone());
+    let data_raw = Box::into_raw(data);
+
+    debug_assert!(
+        std::mem::size_of_val(&data_raw) == std::mem::size_of::<*mut std::ffi::c_void>(),
+        "Pointer is not convertible to *mut c_void"
+    );
+
+    let data_size = u32::try_from(size_of::<*mut T>())?;
+
+    if !data_raw.is_null() || data_size == 0 {
+        Err(Error::InvalidNullDataSize)
+    } else {
+        Ok(AttrValue(attr_value_t {
+            private_kind: AttrKind::Sim_Val_Data,
+            private_size: data_size,
+            private_u: attr_value__bindgen_ty_1 {
+                data: data_raw as *mut u8,
+            },
+        }))
+    }
+}
+
+/// Create a new data [`AttrValue`]
+///
+/// # Arguments
+///
+/// * `data` - An object to move into a new [`AttrValue`]
+///
+/// # Return Value
+///
+/// An [`AttrValue`] storing a raw pointer to the provided data. The data is
+/// moved and is owned by the [`AttrValue`]
+pub fn make_attr_data_adopt<T>(data: T) -> Result<AttrValue> {
     let data = Box::new(data);
     let data_raw = Box::into_raw(data);
 
@@ -1342,76 +1469,287 @@ pub fn make_attr_data<T>(data: T) -> Result<AttrValue> {
     }
 }
 
-/// Create a new attribute list
+/// Create a new list [`AttrValue`]. The items are moved into the new list, which
+/// takes ownership of the input data.
+///
+/// # Arguments
+///
+/// * `attrs` - A vector whose elements can be converted to [`AttrValues`](AttrValue)
+///
+/// # Return Value
+///
+/// An [`AttrValue`] containing the provided `attrs`. The [`AttrValue`] owns the items
+/// in the list.
 pub fn make_attr_list<T>(attrs: Vec<T>) -> Result<AttrValue>
 where
-    T: Into<AttrValue>,
+    T: TryInto<AttrValue>,
 {
     attrs.try_into()
 }
 
 #[simics_exception]
-/// Allocate a new attribute list of a given length
+/// Allocate an [`AttrValue`] list with size `length`. The list elements are initialized
+/// to invalid [`AttrValues`](AttrValue)
+///
+/// # Arguments
+///
+/// * `length` - The length of list to allocate
+///
+/// # Return Value
+///
+/// A list [`AttrValue`] of the given length, with all uninitialized elements.
 pub fn alloc_attr_list(length: u32) -> AttrValue {
     AttrValue(unsafe { SIM_alloc_attr_list(length) })
 }
 
-/// Create a new attribute dict
+/// Create a new dictionary [`AttrValue`] from key value pairs.
 pub fn make_attr_dict(attrs: Vec<(AttrValue, AttrValue)>) -> Result<AttrValue> {
     attrs.try_into()
 }
 
 #[simics_exception]
-/// Allocate a new attribute dictionary of a given size
+/// Allocate an [`AttrValue`] dict with size `length`. The dictionary elements are
+/// initialized to invalid [`AttrValues`](AttrValue)
+///
+/// # Arguments
+///
+/// * `length` - The size of dict to allocate
+///
+/// # Return Value
+///
+/// A dict [`AttrValue`] of the given length, with all uninitialized elements.
 pub fn alloc_attr_dict(length: u32) -> AttrValue {
     AttrValue(unsafe { SIM_alloc_attr_dict(length) })
 }
 
 #[simics_exception]
-/// Set an element in an attribute list at a given index to a given value
+/// Set the element numbered index of the list attr to elem. The previous value at that
+/// position is freed. The ownership for elem is transferred from the caller to attr.
+///
+/// # Arguments
+///
+/// * `attr` - The attribute list to set an item in
+/// * `index` - The index in the list to set
+/// * `elem` - The value to set the item in the list at index `index` to
 pub fn attr_list_set_item(attr: &mut AttrValue, index: u32, elem: AttrValue) {
     unsafe { SIM_attr_list_set_item(attr.as_mut_ptr(), index, elem.into()) }
 }
 
 #[simics_exception]
-/// Resize an attribute list. Shrinking the list triggers destruction of the dropped items
+/// Resize attr, which must be of list type, to newsize elements. New elements are set
+/// to invalid value. Dropped elements are freed.
+///
+/// # Arguments
+///
+/// * `attr` - The attribute list to resize
+/// * `newsize` - The size to grow or shrink the list to
 pub fn attr_list_resize(attr: &mut AttrValue, newsize: u32) {
     unsafe { SIM_attr_list_resize(attr.as_mut_ptr(), newsize) };
 }
 
 #[simics_exception]
-/// Set an item at a key and index to a value in a given dictionary
+/// Set the element numbered index of the dict attr to key and value. The previous key
+/// and value at that position are freed. The ownership for key and value is transferred
+/// from the caller to attr. The key must be of integer, string or object type.
+///
+/// This function should generally not be used. Instead, values should be deserialized from
+/// the [`AttrValue`], modified in a type-safe way, and serialized back.
+///
+/// # Arguments
+///
+/// * `attr` - The attribute dictionary to set an item in
+/// * `index` -  The numbered index to set. [`AttrValue`](AttrValue) dictionaries are associative arrays
+/// * `key` - The value to set the key item of the dict to
+/// * `value` - The value to set the value item of the dict to
 pub fn attr_dict_set_item(attr: &mut AttrValue, index: u32, key: AttrValue, value: AttrValue) {
     unsafe { SIM_attr_dict_set_item(attr.as_mut_ptr(), index, key.into(), value.into()) };
 }
 
 #[simics_exception]
-/// Resize an attribute dictionary. Shrinking the list triggers destruction of the dropped items
+/// Resize attr, which must be of dict type, to newsize elements. New elements are marked invalid. Dropped elements are freed.
+///
+/// # Arguments
+///
+/// * `attr` - The attribute dictionary to resize
+/// * `newsize` - The size to grow or shrink the dict to
 pub fn attr_dict_resize(attr: &mut AttrValue, newsize: u32) {
     unsafe { SIM_attr_dict_resize(attr.as_mut_ptr(), newsize) };
 }
 
 /// Check whether an [`AttrValue`] is nil
+///
+/// # Arguments
+///
+/// * `attr` - The [`AttrValue`] to check the type of
+///
+/// # Return Value
+///
+/// Whether the [`AttrValue`] is nil
 pub fn attr_is_nil(attr: AttrValue) -> bool {
     attr.kind() == AttrKind::Sim_Val_Nil
 }
 
 /// Check whether an [`AttrValue`] is int64
+///
+/// # Arguments
+///
+/// * `attr` - The [`AttrValue`] to check the type of
+///
+/// # Return Value
+///
+/// Whether the [`AttrValue`] is a signed integer
 pub fn attr_is_int64(attr: AttrValue) -> bool {
-    attr.is_integer()
+    attr.is_integer() && (attr.size() == 0 || attr.as_integer().is_some_and(|i| i < 0))
 }
 
 /// Check whether an [`AttrValue`] is uint64
+///
+/// # Arguments
+///
+/// * `attr` - The [`AttrValue`] to check the type of
+///
+/// # Return Value
+///
+/// Whether the [`AttrValue`] is an unsigned integer
 pub fn attr_is_uint64(attr: AttrValue) -> bool {
     attr.is_integer() && (attr.size() != 0 || attr.as_integer().is_some_and(|i| i >= 0))
 }
 
 /// Check whether an [`AttrValue`] is an integer
+///
+/// # Arguments
+///
+/// * `attr` - The [`AttrValue`] to check the type of
+///
+/// # Return Value
+///
+/// Whether the [`AttrValue`] is an integer (signedness checks are not performed)
 pub fn attr_is_integer(attr: AttrValue) -> bool {
     attr.is_integer()
 }
 
-/// Get an [`AttrValue`] as an integer
+/// Check whether an [`AttrValue`] is a boolean
+///
+/// # Arguments
+///
+/// * `attr` - The [`AttrValue`] to check the type of
+///
+/// # Return Value
+///
+/// Whether the [`AttrValue`] is a boolean
+pub fn attr_is_boolean(attr: AttrValue) -> bool {
+    attr.is_boolean()
+}
+
+/// Check whether an [`AttrValue`] is a String
+///
+/// # Arguments
+///
+/// * `attr` - The [`AttrValue`] to check the type of
+///
+/// # Return Value
+///
+/// Whether the [`AttrValue`] is a string
+pub fn attr_is_string(attr: AttrValue) -> bool {
+    attr.is_string()
+}
+
+/// Check whether an [`AttrValue`] is a [`ConfObject`] pointer
+///
+/// # Arguments
+///
+/// * `attr` - The [`AttrValue`] to check the type of
+///
+/// # Return Value
+///
+/// Whether the [`AttrValue`] is a [`ConfObject`] pointer
+pub fn attr_is_object(attr: AttrValue) -> bool {
+    attr.is_object()
+}
+
+/// Check whether an [`AttrValue`] is invalid
+///
+/// # Arguments
+///
+/// * `attr` - The [`AttrValue`] to check the type of
+///
+/// # Return Value
+///
+/// Whether the [`AttrValue`] is invalid
+pub fn attr_is_invalid(attr: AttrValue) -> bool {
+    attr.is_invalid()
+}
+
+/// Check whether an [`AttrValue`] is data
+///
+/// # Arguments
+///
+/// * `attr` - The [`AttrValue`] to check the type of
+///
+/// # Return Value
+///
+/// Whether the [`AttrValue`] is data
+pub fn attr_is_data(attr: AttrValue) -> bool {
+    attr.is_data()
+}
+
+/// Check whether an [`AttrValue`] is a String
+///
+/// # Arguments
+///
+/// * `attr` - The [`AttrValue`] to check the type of
+///
+/// # Return Value
+///
+/// Whether the [`AttrValue`] is a floating point number
+pub fn attr_is_floating(attr: AttrValue) -> bool {
+    attr.is_floating()
+}
+
+/// Check whether an [`AttrValue`] is a dict
+///
+/// # Arguments
+///
+/// * `attr` - The [`AttrValue`] to check the type of
+///
+/// # Return Value
+///
+/// Whether the [`AttrValue`] is a dictionary
+pub fn attr_is_dict(attr: AttrValue) -> bool {
+    attr.is_dict()
+}
+
+/// Check whether an [`AttrValue`] is a list
+///
+/// # Arguments
+///
+/// * `attr` - The [`AttrValue`] to check the type of
+///
+/// # Return Value
+///
+/// Whether the [`AttrValue`] is a list
+pub fn attr_is_list(attr: AttrValue) -> bool {
+    attr.is_list()
+}
+
+/// Get an [`AttrValue`] as an integer if it is one, or return an error.
+///
+/// # Arguments
+///
+/// * `attr` - The [`AttrValue`] to attempt to get as `i64`
+///
+/// # Return Value
+///
+/// The contained integer value if the [`AttrValue`] is the correct type,
+/// or an error otherwise.
+///
+/// # Notes
+///
+/// Conversion via `TryInto` should be preferred. For example:
+///
+/// ```rust,ignore
+/// let x: i64 = a.try_into()?;
+/// ```
 pub fn attr_integer(attr: AttrValue) -> Result<i64> {
     attr.as_integer().ok_or_else(|| Error::AttrValueType {
         actual: attr.kind(),
@@ -1419,12 +1757,24 @@ pub fn attr_integer(attr: AttrValue) -> Result<i64> {
     })
 }
 
-/// Check whether an [`AttrValue`] is a boolean
-pub fn attr_is_boolean(attr: AttrValue) -> bool {
-    attr.is_boolean()
-}
-
-/// Get an [`AttrValue`] as a boolean
+/// Get an [`AttrValue`] as a boolean if it is one, or return an error
+///
+/// # Arguments
+///
+/// * `attr` - The [`AttrValue`] to attempt to get as `bool`
+///
+/// # Return Value
+///
+/// The contained boolean value if the [`AttrValue`] is the correct type,
+/// or an error otherwise.
+///
+/// # Notes
+///
+/// Conversion via `TryInto` should be preferred. For example:
+///
+/// ```rust,ignore
+/// let x: bool = a.try_into()?;
+/// ```
 pub fn attr_boolean(attr: AttrValue) -> Result<bool> {
     attr.as_boolean().ok_or_else(|| Error::AttrValueType {
         actual: attr.kind(),
@@ -1432,12 +1782,24 @@ pub fn attr_boolean(attr: AttrValue) -> Result<bool> {
     })
 }
 
-/// Check whether an [`AttrValue`] is a String
-pub fn attr_is_string(attr: AttrValue) -> bool {
-    attr.is_string()
-}
-
 /// Get an [`AttrValue`] as a String
+///
+/// # Arguments
+///
+/// * `attr` - The [`AttrValue`] to attempt to get as a `String`
+///
+/// # Return Value
+///
+/// The contained string value if the [`AttrValue`] is the correct type,
+/// or an error otherwise.
+///
+/// # Notes
+///
+/// Conversion via `TryInto` should be preferred. For example:
+///
+/// ```rust,ignore
+/// let x: String = a.try_into()?;
+/// ```
 pub fn attr_string(attr: AttrValue) -> Result<String> {
     attr.as_string().ok_or_else(|| Error::AttrValueType {
         actual: attr.kind(),
@@ -1445,12 +1807,24 @@ pub fn attr_string(attr: AttrValue) -> Result<String> {
     })
 }
 
-/// Check whether an [`AttrValue`] is a String
-pub fn attr_is_floating(attr: AttrValue) -> bool {
-    attr.is_floating()
-}
-
 /// Get an [`AttrValue`] as a f64
+///
+/// # Arguments
+///
+/// * `attr` - The [`AttrValue`] to attempt to get as a `f64`
+///
+/// # Return Value
+///
+/// The contained floating point value if the [`AttrValue`] is the correct type, or an
+/// error otherwise.
+///
+/// # Notes
+///
+/// Conversion via `TryInto` should be preferred. For example:
+///
+/// ```rust,ignore
+/// let x: f64 = a.try_into()?;
+/// ```
 pub fn attr_floating(attr: AttrValue) -> Result<f64> {
     attr.as_floating().ok_or_else(|| Error::AttrValueType {
         actual: attr.kind(),
@@ -1458,12 +1832,24 @@ pub fn attr_floating(attr: AttrValue) -> Result<f64> {
     })
 }
 
-/// Check whether an [`AttrValue`] is a String
-pub fn attr_is_object(attr: AttrValue) -> bool {
-    attr.is_object()
-}
-
-/// Get an [`AttrValue`] as an object
+/// Get an [`AttrValue`] as a [`ConfObject`] pointer
+///
+/// # Arguments
+///
+/// * `attr` - The [`AttrValue`] to attempt to get as a `*mut ConfObject`
+///
+/// # Return Value
+///
+/// The contained object value if the [`AttrValue`] is the correct type, or an
+/// error otherwise.
+///
+/// # Notes
+///
+/// Conversion via `TryInto` should be preferred. For example:
+///
+/// ```rust,ignore
+/// let x: *mut ConfObject = a.try_into()?;
+/// ```
 pub fn attr_object(attr: AttrValue) -> Result<*mut ConfObject> {
     attr.as_object().ok_or_else(|| Error::AttrValueType {
         actual: attr.kind(),
@@ -1471,22 +1857,49 @@ pub fn attr_object(attr: AttrValue) -> Result<*mut ConfObject> {
     })
 }
 
-/// Get an [`AttrValue`] as an object or nil if the object is a null pointer
+/// Get an [`AttrValue`] as a [`ConfObject`] pointer if it is one, or a null pointer
+/// otherwise. This function should typically not be used and is provided for
+/// compatibility only. Use [`attr_object`] instead.
+///
+/// # Arguments
+///
+/// * `attr` - The [`AttrValue`] to attempt to get as a `*mut ConfObject`
+///
+/// # Return Value
+///
+/// The contained [`ConfObject`] value if the [`AttrValue`] is the correct type, or a
+/// null pointer otherwise.
+///
+/// # Notes
+///
+/// Conversion via `TryInto` should be preferred. For example:
+///
+/// ```rust,ignore
+/// let x: *mut ConfObject = a.try_into()?;
+/// ```
 pub fn attr_object_or_nil(attr: AttrValue) -> *mut ConfObject {
     attr.as_object().unwrap_or(null_mut())
 }
 
-/// Check whether an [`AttrValue`] is invalid
-pub fn attr_is_invalid(attr: AttrValue) -> bool {
-    attr.is_invalid()
-}
-
-/// Check whether an [`AttrValue`] is data
-pub fn attr_is_data(attr: AttrValue) -> bool {
-    attr.is_data()
-}
-
-/// Get the size of an [`AttrValue`]'s data
+/// Get the size of an [`AttrValue`]'s data in bytes
+///
+/// # Arguments
+///
+/// * `attr` - The [`AttrValue`] to get the size of
+///
+/// # Return Value
+///
+/// The size of the [`AttrValue`] if it is the correct type, or an error otherwise
+///
+/// # Notes
+///
+/// This function should generally not be used. Instead, data should be obtained from
+/// the [`AttrValue`] with `TryInto` or with [`attr_data`] for example:
+///
+/// ```rust,ignore
+/// let x: YourType = a.as_data().ok_or_else(|| /* Error */)?;
+/// let x: YourType = attr_data(a)?;
+/// ```
 pub fn attr_data_size(attr: AttrValue) -> Result<u32> {
     attr.is_data()
         .then(|| attr.size())
@@ -1496,6 +1909,17 @@ pub fn attr_data_size(attr: AttrValue) -> Result<u32> {
         })
 }
 
+/// Get the contained data from an [`AttrValue`] if it is a data value,
+/// or return an error if it is not.
+///
+/// # Arguments
+///
+/// * `attr` - The [`AttrValue`] to get the data from
+///
+/// # Return Value
+///
+/// The contained data if the [`AttrValue`] is the correct type, or an error
+/// otherwise
 pub fn attr_data<T>(attr: AttrValue) -> Result<T>
 where
     T: Clone,
@@ -1506,12 +1930,16 @@ where
     })
 }
 
-/// Check whether an [`AttrValue`] is a list
-pub fn attr_is_list(attr: AttrValue) -> bool {
-    attr.is_list()
-}
-
-/// Get the size of an [`AttrValue`]'s list
+/// Get the size of an [`AttrValue`] list, in number of items or an error
+/// if the [`AttrValue`] is not a list
+///
+/// # Arguments
+///
+/// * `attr` - The [`AttrValue`] to get the list size of
+///
+/// # Return Value
+///
+/// The size of the list, if the [`AttrValue`] is a list, or an error if it is not
 pub fn attr_list_size(attr: AttrValue) -> Result<u32> {
     attr.is_list()
         .then(|| attr.size())
@@ -1521,7 +1949,15 @@ pub fn attr_list_size(attr: AttrValue) -> Result<u32> {
         })
 }
 
-/// Retrieve a list item from an attr list without converting the item to a specific type
+/// Retrieve a list item from an attr list without converting the item to a specific
+/// type
+///
+/// # Arguments
+///
+/// * `attr` - The list [`AttrValue`] to retrieve an item from
+/// * `index` - The index in the list to retrieve
+///
+/// # Return Value
 pub fn attr_list_item<T>(attr: AttrValue, index: usize) -> Result<AttrValue> {
     let list: Vec<AttrValue> = attr.as_list()?.ok_or_else(|| Error::AttrValueType {
         actual: attr.kind(),
@@ -1536,12 +1972,16 @@ pub fn attr_list_item<T>(attr: AttrValue, index: usize) -> Result<AttrValue> {
         })
 }
 
-/// Check whether an [`AttrValue`] is a dict
-pub fn attr_is_dict(attr: AttrValue) -> bool {
-    attr.is_dict()
-}
-
-/// Get the size of an an [`AttrValue`]'s dict
+/// Get the size of an [`AttrValue`] dict, in number of items or an error
+/// if the [`AttrValue`] is not a dict
+///
+/// # Arguments
+///
+/// * `attr` - The [`AttrValue`] to get the dict size of
+///
+/// # Return Value
+///
+/// The size of the dict, if the [`AttrValue`] is a dict, or an error if it is not
 pub fn attr_dict_size(attr: AttrValue) -> Result<u32> {
     attr.is_dict()
         .then(|| attr.size())
@@ -1551,7 +1991,17 @@ pub fn attr_dict_size(attr: AttrValue) -> Result<u32> {
         })
 }
 
-/// Get a key for an [`AttrValue`]'s dict
+/// Get a key from an [`AttrValue`] dict if it is one, or an error otherwise.
+///
+/// # Arguments
+///
+/// * `attr` - The [`AttrValue`] dictionary to get the key from
+/// * `index` - The index in the [`AttrValue`] associative array dictionary to get the
+/// key from
+///
+/// # Return Value
+///
+/// The key for the requested index in the dictionary, or an error otherwise
 pub fn attr_dict_key(attr: AttrValue, index: u32) -> Result<AttrValue> {
     if index < attr.size() {
         attr.is_dict()
@@ -1578,7 +2028,17 @@ pub fn attr_dict_key(attr: AttrValue, index: u32) -> Result<AttrValue> {
     }
 }
 
-/// Get a value for an [`AttrValue`]'s dict
+/// Get a value for an [`AttrValue`] dictionary
+///
+/// # Arguments
+///
+/// * `attr` - The [`AttrValue`] dictionary to get the value from
+/// * `index` - The index in the [`AttrValue`] associative array dictionary to get the
+/// value from
+///
+/// # Return Value
+///
+/// The value for the requested index in the dictionary, or an error otherwise
 pub fn attr_dict_value(attr: AttrValue, index: u32) -> Result<AttrValue> {
     if index < attr.size() {
         attr.is_dict()
@@ -1606,7 +2066,7 @@ pub fn attr_dict_value(attr: AttrValue, index: u32) -> Result<AttrValue> {
 }
 
 #[simics_exception]
-/// Free an attr value. [`attr_free`] should be used instead where possible.
+/// Free an attr value.
 pub fn free_attribute(attr: AttrValue) {
     unsafe { SIM_free_attribute(attr.0) }
 }

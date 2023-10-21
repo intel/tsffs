@@ -2,22 +2,25 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
-    api::sys::{
-        attr_value_t, SIM_get_batch_mode, SIM_load_target, SIM_run_command, SIM_run_command_file,
-        SIM_run_command_file_params,
+    api::{
+        sys::{
+            attr_value_t, SIM_get_batch_mode, SIM_load_target, SIM_run_command,
+            SIM_run_command_file, SIM_run_command_file_params,
+        },
+        AttrValue,
     },
-    Result,
+    Error, Result,
 };
 use raw_cstr::raw_cstr;
 use simics_macro::simics_exception;
 
 #[simics_exception]
 /// Run a SIMICS CLI command
-pub fn run_command<S>(line: S) -> Result<attr_value_t>
+pub fn run_command<S>(line: S) -> Result<AttrValue>
 where
     S: AsRef<str>,
 {
-    Ok(unsafe { SIM_run_command(raw_cstr(line)?) })
+    Ok(unsafe { SIM_run_command(raw_cstr(line)?) }.into())
 }
 
 #[simics_exception]
@@ -31,11 +34,29 @@ where
 }
 
 #[simics_exception]
-/// Run a SIMICS cli command file with a list of parameters
-pub fn run_command_file_params<S>(file: S, local: bool, params: attr_value_t) -> Result<()>
+/// Run a SIMICS cli command file with a list of parameters. Parameters are key-value pairs.
+pub fn run_command_file_params<S, I, T>(file: S, local: bool, params: I) -> Result<()>
 where
     S: AsRef<str>,
+    I: IntoIterator<Item = (S, T)>,
+    T: TryInto<AttrValue>,
 {
+    let params: Vec<AttrValue> = params
+        .into_iter()
+        .map(|a| {
+            a.1.try_into()
+                .map_err(|_| Error::AttrValueConversionError)
+                .and_then(|v| {
+                    [a.0.as_ref().into(), v]
+                        .into_iter()
+                        .collect::<Vec<_>>()
+                        .try_into()
+                        .map_err(|_| Error::AttrValueConversionError)
+                })
+        })
+        .collect::<Result<Vec<_>>>()?;
+    let params: AttrValue = params.try_into()?;
+    let params = params.into();
     unsafe { SIM_run_command_file_params(raw_cstr(file)?, local, params) };
     Ok(())
 }

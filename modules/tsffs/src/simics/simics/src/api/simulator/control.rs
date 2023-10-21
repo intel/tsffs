@@ -71,13 +71,37 @@ pub fn quit(exit_code: i32) {
 }
 
 #[simics_exception]
-/// Break at a certain number of cycles
+/// Insert a breakpoint event at cycles clock cycles from now, causing simulation to
+/// stop when reached by obj.
+///
+/// # Arguments
+///
+/// * `obj` - The object whose cycles will be monitored to break on
+/// * `cycles` - The number of cycles until the break occurs
+///
+/// # Context
+///
+/// _Cell Context_
 pub fn break_cycle(obj: *mut ConfObject, cycles: i64) {
     unsafe { SIM_break_cycle(obj, cycles) };
 }
 
 #[simics_exception]
-/// Break at a certain number of steps
+/// Sets a step breakpoint on a processor.
+///
+/// # Arguments
+///
+/// * `obj` - The object whose steps will be monitored to break on
+/// * `steps` - The number of instructions until the break occurs
+///
+/// # Exceptions
+///
+/// * [`SimException::SimExc_InterfaceNotFound`] - Thrown if the obj object doesn't implement the step
+/// interface.
+///
+/// # Context
+///
+/// _Cell Context_
 pub fn break_step(obj: *mut ConfObject, steps: i64) {
     unsafe { SIM_break_step(obj, steps) };
 }

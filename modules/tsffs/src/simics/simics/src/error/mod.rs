@@ -21,6 +21,9 @@ pub enum Error {
     #[error("Key {key} not found")]
     AttrValueDictMissingKey { key: String },
 
+    #[error("Could not convert to string")]
+    ToString,
+
     #[error("Failed to create class {name}: {message}")]
     CreateClass { name: String, message: String },
     #[error("Failed to register {name}: {message}")]
