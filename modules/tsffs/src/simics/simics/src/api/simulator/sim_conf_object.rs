@@ -125,7 +125,7 @@ pub fn set_attribute<S>(obj: *mut ConfObject, name: S, value: &mut AttrValue) ->
 where
     S: AsRef<str>,
 {
-    Ok(unsafe { SIM_set_attribute(obj, raw_cstr(name)?, value.as_mut_ptr()) }.into())
+    Ok(unsafe { SIM_set_attribute(obj, raw_cstr(name)?, value.as_mut_ptr()) })
 }
 
 #[simics_exception]

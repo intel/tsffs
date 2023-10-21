@@ -1,6 +1,16 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+//! SIMICS
+//!
+//! The SIMICS crate provides:
+//!
+//! * High level API bindings to the SIMICS API
+//! * Re-exports the low level API bindings to the SIMICS API
+//! * Utility and logging functionality relevant to the SIMICS API
+//! * A global allocator using the SIMICS allocation functionality for consistent memory
+//!   management when running code embedded in the SIMICS simulator
+
 #![deny(clippy::unwrap_used)]
 
 pub use api::alloc::SimicsAlloc;
