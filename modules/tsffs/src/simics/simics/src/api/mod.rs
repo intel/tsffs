@@ -1,6 +1,11 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+//! Safe bindings to the SIMICS API
+//!
+//! In most cases, the SIMICS API is wrapped lightly to provide an experience familiar to SIMICS
+//! model developers.
+
 pub mod base;
 pub mod interface;
 pub mod internal;

@@ -4,9 +4,12 @@
 //! Experimental snapshot APIs
 
 use crate::{
-    api::sys::{
-        attr_value_t, VT_delete_snapshot, VT_list_snapshots, VT_restore_snapshot, VT_save_snapshot,
-        VT_snapshot_size_used, VT_snapshots_ignore_class,
+    api::{
+        sys::{
+            VT_delete_snapshot, VT_list_snapshots, VT_restore_snapshot, VT_save_snapshot,
+            VT_snapshot_size_used, VT_snapshots_ignore_class,
+        },
+        AttrValue,
     },
     Result,
 };
@@ -42,14 +45,14 @@ where
 
 #[simics_exception]
 /// Get the total size used by all snapshots
-pub fn snapshot_size_used() -> attr_value_t {
-    unsafe { VT_snapshot_size_used() }
+pub fn snapshot_size_used() -> AttrValue {
+    unsafe { VT_snapshot_size_used() }.into()
 }
 
 #[simics_exception]
 /// Get the list of all snapshots
-pub fn list_snapshots() -> attr_value_t {
-    unsafe { VT_list_snapshots() }
+pub fn list_snapshots() -> AttrValue {
+    unsafe { VT_list_snapshots() }.into()
 }
 
 #[simics_exception]

@@ -5,14 +5,14 @@ use crate::{
     api::{
         last_error,
         sys::{
-            attr_value_t, SIM_class_has_attribute, SIM_class_port, SIM_create_object,
-            SIM_delete_object, SIM_delete_objects, SIM_get_all_classes, SIM_get_all_objects,
-            SIM_get_attribute, SIM_get_attribute_attributes, SIM_get_attribute_idx,
-            SIM_get_class_attribute, SIM_get_class_attribute_idx, SIM_get_object,
-            SIM_set_attribute, SIM_set_attribute_default, SIM_set_attribute_idx,
-            SIM_set_class_attribute, SIM_set_class_attribute_idx,
+            SIM_class_has_attribute, SIM_class_port, SIM_create_object, SIM_delete_object,
+            SIM_delete_objects, SIM_get_all_classes, SIM_get_all_objects, SIM_get_attribute,
+            SIM_get_attribute_attributes, SIM_get_attribute_idx, SIM_get_class_attribute,
+            SIM_get_class_attribute_idx, SIM_get_object, SIM_set_attribute,
+            SIM_set_attribute_default, SIM_set_attribute_idx, SIM_set_class_attribute,
+            SIM_set_class_attribute_idx,
         },
-        AttrAttr, ConfClass, ConfObject, SetErr,
+        AttrAttr, AttrValue, ConfClass, ConfObject, SetErr,
     },
     Error, Result,
 };
@@ -71,17 +71,17 @@ pub fn delete_object(obj: *mut ConfObject) {
 
 #[simics_exception]
 /// Delete the objects in the list or throw an exception if unsuccessful
-pub fn delete_objects(val: attr_value_t) {
-    unsafe { SIM_delete_objects(val) };
+pub fn delete_objects(val: AttrValue) {
+    unsafe { SIM_delete_objects(val.into()) };
 }
 
 #[simics_exception]
 /// Get the attribute of a given name from an object
-pub fn get_attribute<S>(obj: *mut ConfObject, name: S) -> Result<attr_value_t>
+pub fn get_attribute<S>(obj: *mut ConfObject, name: S) -> Result<AttrValue>
 where
     S: AsRef<str>,
 {
-    Ok(unsafe { SIM_get_attribute(obj, raw_cstr(name)?) })
+    Ok(unsafe { SIM_get_attribute(obj, raw_cstr(name)?) }.into())
 }
 
 #[simics_exception]
@@ -89,21 +89,21 @@ where
 pub fn get_attribute_idx<S>(
     obj: *mut ConfObject,
     name: S,
-    index: *mut attr_value_t,
-) -> Result<attr_value_t>
+    index: &mut AttrValue,
+) -> Result<AttrValue>
 where
     S: AsRef<str>,
 {
-    Ok(unsafe { SIM_get_attribute_idx(obj, raw_cstr(name)?, index) })
+    Ok(unsafe { SIM_get_attribute_idx(obj, raw_cstr(name)?, index.as_mut_ptr()) }.into())
 }
 
 #[simics_exception]
 /// Get the attribute of a given name from a class
-pub fn get_class_attribute<S>(obj: *mut ConfClass, name: S) -> Result<attr_value_t>
+pub fn get_class_attribute<S>(obj: *mut ConfClass, name: S) -> Result<AttrValue>
 where
     S: AsRef<str>,
 {
-    Ok(unsafe { SIM_get_class_attribute(obj, raw_cstr(name)?) })
+    Ok(unsafe { SIM_get_class_attribute(obj, raw_cstr(name)?) }.into())
 }
 
 #[simics_exception]
@@ -111,21 +111,21 @@ where
 pub fn get_class_attribute_idx<S>(
     obj: *mut ConfClass,
     name: S,
-    index: *mut attr_value_t,
-) -> Result<attr_value_t>
+    index: &mut AttrValue,
+) -> Result<AttrValue>
 where
     S: AsRef<str>,
 {
-    Ok(unsafe { SIM_get_class_attribute_idx(obj, raw_cstr(name)?, index) })
+    Ok(unsafe { SIM_get_class_attribute_idx(obj, raw_cstr(name)?, index.as_mut_ptr()) }.into())
 }
 
 #[simics_exception]
 /// Set an attribute value on an object
-pub fn set_attribute<S>(obj: *mut ConfObject, name: S, value: *mut attr_value_t) -> Result<SetErr>
+pub fn set_attribute<S>(obj: *mut ConfObject, name: S, value: &mut AttrValue) -> Result<SetErr>
 where
     S: AsRef<str>,
 {
-    Ok(unsafe { SIM_set_attribute(obj, raw_cstr(name)?, value) })
+    Ok(unsafe { SIM_set_attribute(obj, raw_cstr(name)?, value.as_mut_ptr()) }.into())
 }
 
 #[simics_exception]
@@ -133,39 +133,33 @@ where
 pub fn set_attribute_idx<S>(
     obj: *mut ConfObject,
     name: S,
-    index: *mut attr_value_t,
-    value: *mut attr_value_t,
+    index: &mut AttrValue,
+    value: &mut AttrValue,
 ) -> Result<SetErr>
 where
     S: AsRef<str>,
 {
-    Ok(unsafe { SIM_set_attribute_idx(obj, raw_cstr(name)?, index, value) })
+    Ok(unsafe {
+        SIM_set_attribute_idx(obj, raw_cstr(name)?, index.as_mut_ptr(), value.as_mut_ptr())
+    })
 }
 
 #[simics_exception]
 /// Set the default value of an attribute on an object
-pub fn set_attribute_default<S>(
-    obj: *mut ConfObject,
-    name: S,
-    value: attr_value_t,
-) -> Result<SetErr>
+pub fn set_attribute_default<S>(obj: *mut ConfObject, name: S, value: AttrValue) -> Result<SetErr>
 where
     S: AsRef<str>,
 {
-    Ok(unsafe { SIM_set_attribute_default(obj, raw_cstr(name)?, value) })
+    Ok(unsafe { SIM_set_attribute_default(obj, raw_cstr(name)?, value.into()) })
 }
 
 #[simics_exception]
 /// Set the default value of an attribute on a class
-pub fn set_class_attribute<S>(
-    cls: *mut ConfClass,
-    name: S,
-    value: *mut attr_value_t,
-) -> Result<SetErr>
+pub fn set_class_attribute<S>(cls: *mut ConfClass, name: S, value: &mut AttrValue) -> Result<SetErr>
 where
     S: AsRef<str>,
 {
-    Ok(unsafe { SIM_set_class_attribute(cls, raw_cstr(name)?, value) })
+    Ok(unsafe { SIM_set_class_attribute(cls, raw_cstr(name)?, value.as_mut_ptr()) })
 }
 
 #[simics_exception]
@@ -173,38 +167,36 @@ where
 pub fn set_class_attribute_idx<S>(
     cls: *mut ConfClass,
     name: S,
-    index: *mut attr_value_t,
-    value: *mut attr_value_t,
+    index: &mut AttrValue,
+    value: &mut AttrValue,
 ) -> Result<SetErr>
 where
     S: AsRef<str>,
 {
-    Ok(unsafe { SIM_set_class_attribute_idx(cls, raw_cstr(name)?, index, value) })
+    Ok(unsafe {
+        SIM_set_class_attribute_idx(cls, raw_cstr(name)?, index.as_mut_ptr(), value.as_mut_ptr())
+    })
 }
 
 #[simics_exception]
 /// Get an unordered list of all conf classes in the simulator
-pub fn get_all_classes() -> attr_value_t {
-    unsafe { SIM_get_all_classes() }
+pub fn get_all_classes() -> AttrValue {
+    unsafe { SIM_get_all_classes() }.into()
 }
 
 #[simics_exception]
 /// Get an unordered list of all conf objects in the simulator
-pub fn get_all_objects() -> attr_value_t {
-    unsafe { SIM_get_all_objects() }
+pub fn get_all_objects() -> AttrValue {
+    unsafe { SIM_get_all_objects() }.into()
 }
 
 #[simics_exception]
 /// Create a new instance of a configuration class
-pub fn create_object<S>(
-    cls: *mut ConfClass,
-    name: S,
-    attrs: attr_value_t,
-) -> Result<*mut ConfObject>
+pub fn create_object<S>(cls: *mut ConfClass, name: S, attrs: AttrValue) -> Result<*mut ConfObject>
 where
     S: AsRef<str>,
 {
-    let obj = unsafe { SIM_create_object(cls, raw_cstr(name)?, attrs) };
+    let obj = unsafe { SIM_create_object(cls, raw_cstr(name)?, attrs.into()) };
 
     if obj.is_null() {
         Err(Error::CreateObject {

@@ -1,6 +1,8 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+//! Logging macros wrapping the underlying SIMICS logging functionality
+
 #[macro_export]
 /// Log an error message via the SIMICS logging API. If an object is provided, the
 /// message will be logged through that object. If not, the message will be logged

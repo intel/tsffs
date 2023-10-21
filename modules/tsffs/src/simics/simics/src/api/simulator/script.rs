@@ -4,8 +4,8 @@
 use crate::{
     api::{
         sys::{
-            attr_value_t, SIM_get_batch_mode, SIM_load_target, SIM_run_command,
-            SIM_run_command_file, SIM_run_command_file_params,
+            SIM_get_batch_mode, SIM_load_target, SIM_run_command, SIM_run_command_file,
+            SIM_run_command_file_params,
         },
         AttrValue,
     },
@@ -63,16 +63,18 @@ where
 
 #[simics_exception]
 /// Load a target
-pub fn load_target<S>(
-    target: S,
-    ns: S,
-    presets: attr_value_t,
-    cmdline_args: attr_value_t,
-) -> Result<()>
+pub fn load_target<S>(target: S, ns: S, presets: AttrValue, cmdline_args: AttrValue) -> Result<()>
 where
     S: AsRef<str>,
 {
-    unsafe { SIM_load_target(raw_cstr(target)?, raw_cstr(ns)?, presets, cmdline_args) };
+    unsafe {
+        SIM_load_target(
+            raw_cstr(target)?,
+            raw_cstr(ns)?,
+            presets.into(),
+            cmdline_args.into(),
+        )
+    };
     Ok(())
 }
 

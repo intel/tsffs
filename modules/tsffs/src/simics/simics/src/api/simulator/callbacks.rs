@@ -95,6 +95,7 @@ where
 }
 
 #[simics_exception]
+/// Register a callback to be run in the simics thread
 pub fn register_work<F>(work: F)
 where
     F: FnOnce() + 'static,

@@ -2,9 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
-    api::sys::{
-        attr_value_t, SIM_add_module_dir, SIM_get_all_failed_modules, SIM_get_all_modules,
-        SIM_load_module, SIM_module_list_refresh,
+    api::{
+        sys::{
+            SIM_add_module_dir, SIM_get_all_failed_modules, SIM_get_all_modules, SIM_load_module,
+            SIM_module_list_refresh,
+        },
+        AttrValue,
     },
     Result,
 };
@@ -25,14 +28,14 @@ use std::path::Path;
 /// thread-safe - If the module is thread-safe.
 /// components - Components this module claims to implement.
 /// user path - Module was loaded from path provided by user.
-pub fn get_all_modules() -> attr_value_t {
-    unsafe { SIM_get_all_modules() }
+pub fn get_all_modules() -> AttrValue {
+    unsafe { SIM_get_all_modules() }.into()
 }
 
 #[simics_exception]
 /// Get the list of modules that failed to initialize
-pub fn get_all_failed_modules() -> attr_value_t {
-    unsafe { SIM_get_all_failed_modules() }
+pub fn get_all_failed_modules() -> AttrValue {
+    unsafe { SIM_get_all_failed_modules() }.into()
 }
 
 #[simics_exception]

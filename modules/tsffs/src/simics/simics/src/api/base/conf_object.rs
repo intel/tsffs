@@ -9,24 +9,23 @@ use crate::{
     api::{
         last_error,
         sys::{
-            attr_attr_t, class_data_t, class_info_t, class_kind_t, conf_class_t, conf_object_t,
-            get_attr_t, get_class_attr_t, object_iter_t, set_attr_t, set_class_attr_t, set_error_t,
-            SIM_attribute_error, SIM_copy_class, SIM_create_class, SIM_extend_class,
-            SIM_extension_data, SIM_get_class_data, SIM_get_class_interface, SIM_get_class_name,
-            SIM_get_interface, SIM_marked_for_deletion, SIM_object_data, SIM_object_descendant,
-            SIM_object_id, SIM_object_is_configured, SIM_object_iterator, SIM_object_iterator_next,
-            SIM_object_name, SIM_object_parent, SIM_register_attribute_with_user_data,
-            SIM_register_class_alias, SIM_register_class_attribute_with_user_data,
-            SIM_register_interface, SIM_register_typed_attribute,
-            SIM_register_typed_class_attribute, SIM_require_object, SIM_set_class_data,
-            SIM_set_object_configured, SIM_shallow_object_iterator,
+            attr_attr_t, attr_value_t, class_data_t, class_info_t, class_kind_t, conf_class_t,
+            conf_object_t, get_attr_t, get_class_attr_t, object_iter_t, set_attr_t,
+            set_class_attr_t, set_error_t, SIM_attribute_error, SIM_copy_class, SIM_create_class,
+            SIM_extend_class, SIM_extension_data, SIM_get_class_data, SIM_get_class_interface,
+            SIM_get_class_name, SIM_get_interface, SIM_marked_for_deletion, SIM_object_data,
+            SIM_object_descendant, SIM_object_id, SIM_object_is_configured, SIM_object_iterator,
+            SIM_object_iterator_next, SIM_object_name, SIM_object_parent,
+            SIM_register_attribute_with_user_data, SIM_register_class_alias,
+            SIM_register_class_attribute_with_user_data, SIM_register_interface,
+            SIM_register_typed_attribute, SIM_register_typed_class_attribute, SIM_require_object,
+            SIM_set_class_data, SIM_set_object_configured, SIM_shallow_object_iterator,
         },
         Interface,
     },
     Error, Result,
 };
 use raw_cstr::{raw_cstr, AsRawCstr};
-use simics_api_sys::attr_value_t;
 use simics_macro::simics_exception;
 use std::{
     ffi::{c_void, CStr},

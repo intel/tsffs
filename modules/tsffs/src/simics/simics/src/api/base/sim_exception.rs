@@ -13,19 +13,32 @@ use std::ffi::CStr;
 
 pub type SimException = sim_exception;
 
-/// Get the last SIMICS error message as a string
+/// Returns the error message associated with the most recently raised frontend
+/// exception, even if that exception has been cleared.
+///
+/// The returned string is only valid until the next use of the Simics API in the same
+/// thread.
 pub fn last_error() -> String {
     let error_str = unsafe { CStr::from_ptr(SIM_last_error()) };
     error_str.to_string_lossy().to_string()
 }
 
-/// Clear a SIMICS exception, if there is one, and return it. Returns
-/// [`SimException::Sim_No_Exception`] if none exists
+/// Clears the currently pending frontend exception and returns the value of it.
+///
+/// # Return Value
+///
+/// Returns the exception that was pending before the call, or SimExc_No_Exception.
 pub fn clear_exception() -> SimException {
     unsafe { SIM_clear_exception() }
 }
 
-/// Return a pending simics exception. Returns [`SimException::Sim_No_Excception`] if none exists
+/// This function returns the exception type of the current pending exception, or
+/// SimExc_No_Exception if none available.
+///
+/// # Return Value
+///
+/// The pending exception. This value is [`SimException::SimExc_No_Exception`] if there was
+/// none.
 pub fn get_pending_exception() -> SimException {
     unsafe { SIM_get_pending_exception() }
 }

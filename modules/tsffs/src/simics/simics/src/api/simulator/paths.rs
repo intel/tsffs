@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
-    api::sys::{
-        attr_value_t, SIM_add_directory, SIM_clear_directories, SIM_get_directories,
-        SIM_lookup_file,
+    api::{
+        sys::{SIM_add_directory, SIM_clear_directories, SIM_get_directories, SIM_lookup_file},
+        AttrValue,
     },
     Result,
 };
@@ -75,6 +75,6 @@ pub fn clear_directories() {
 
 #[simics_exception]
 /// Get the list of extra search directories
-pub fn get_directories() -> attr_value_t {
-    unsafe { SIM_get_directories() }
+pub fn get_directories() -> AttrValue {
+    unsafe { SIM_get_directories() }.into()
 }
