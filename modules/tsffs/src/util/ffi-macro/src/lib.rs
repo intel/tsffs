@@ -501,8 +501,41 @@ pub fn ffi(args: TokenStream, input: TokenStream) -> TokenStream {
         quote!(#maybe_not #path #f)
     });
 
-    let impl_item_name = &impl_item.self_ty;
-    let (impl_generics, ty_generics, where_clause) = impl_item.generics.split_for_impl();
+    let impl_generics = &impl_item.generics.params.iter().collect::<Vec<_>>();
+    let where_clause = &impl_item.generics.where_clause;
+
+    let (impl_item_name, self_ty_generics) = if let Type::Path(p) = &*impl_item.self_ty {
+        if let Some(last) = p.path.segments.last() {
+            match last.arguments {
+                PathArguments::None => {
+                    let name = &impl_item.self_ty;
+                    (quote!(#name), vec![])
+                }
+                PathArguments::AngleBracketed(ref a) => {
+                    let last_ident = &last.ident;
+                    let mut segments = p.path.segments.iter().cloned().collect::<Vec<_>>();
+                    segments.pop();
+                    let segments = segments.iter().map(|s| quote!(#s)).collect::<Vec<_>>();
+                    let impl_item_name = quote!(#(#segments)::*#last_ident);
+                    let ty_generics = a.args.clone().into_iter().collect::<Vec<_>>();
+                    (impl_item_name, ty_generics)
+                }
+                PathArguments::Parenthesized(_) => abort!(
+                    impl_item,
+                    "Parenthesized path arguments are not allowed here"
+                ),
+            }
+        } else {
+            abort!(impl_item, "Self type must have segments");
+        }
+    } else {
+        abort!(impl_item, "Self type must be path");
+    };
+
+    // println!(
+    //     "generics {:?} where {:?} name {:?} self generics {:?}",
+    //     impl_generics, where_clause, impl_item_name, self_ty_generics
+    // );
 
     let impl_methods = match FfiMethods::try_from((
         &impl_item,
@@ -546,31 +579,49 @@ pub fn ffi(args: TokenStream, input: TokenStream) -> TokenStream {
 
     let ffi_mod_methods = &impl_methods.ffi();
 
+    let mut impl_generics_from = self_ty_generics
+        .iter()
+        .map(|g| quote!(#g))
+        .collect::<Vec<_>>();
+    impl_generics_from.push(quote!(T));
+
     let maybe_from_ptr = impl_item_opts.from_ptr.is_present().then_some(quote! {
-        impl<T> From<*mut T> for &'static mut #impl_item_name {
+        impl<#(#impl_generics_from),*> From<*mut T> for &'static mut #impl_item_name<#(#self_ty_generics),*> {
             fn from(value: *mut T) -> Self {
-                let ptr: *mut #impl_item_name #ty_generics = value as *mut #impl_item_name #ty_generics;
+                let ptr: *mut #impl_item_name <#(#self_ty_generics),*>= value as *mut #impl_item_name <#(#self_ty_generics),*>;
                 unsafe { &mut *ptr }
             }
         }
 
-        impl<T> From<*mut T> for &'static #impl_item_name {
+        impl<#(#impl_generics_from),*> From<*mut T> for &'static #impl_item_name<#(#self_ty_generics),*> {
             fn from(value: *mut T) -> Self {
-                let ptr: *mut #impl_item_name #ty_generics = value as *mut #impl_item_name #ty_generics;
+                let ptr: *mut #impl_item_name <#(#self_ty_generics),*> = value as *mut #impl_item_name <#(#self_ty_generics),*>;
                 unsafe { &*ptr }
             }
         }
 
-        impl<T> From<*const T> for &'static #impl_item_name {
+        impl<#(#impl_generics_from),*> From<*const T> for &'static #impl_item_name<#(#self_ty_generics),*> {
             fn from(value: *const T) -> Self {
-                let ptr: *const #impl_item_name #ty_generics = value as *const #impl_item_name #ty_generics;
+                let ptr: *const #impl_item_name <#(#self_ty_generics),*> = value as *const #impl_item_name <#(#self_ty_generics),*>;
                 unsafe { &*ptr }
             }
         }
     }).unwrap_or_default();
 
+    let maybe_impl_generics = if impl_generics.is_empty() {
+        quote!()
+    } else {
+        quote!(<#(#impl_generics),*>)
+    };
+
+    let maybe_self_ty_generics = if self_ty_generics.is_empty() {
+        quote!()
+    } else {
+        quote!(<#(#self_ty_generics),*>)
+    };
+
     let q: TokenStream = quote! {
-        impl #impl_generics #maybe_trait #impl_item_name  #where_clause {
+        impl #maybe_impl_generics #maybe_trait #impl_item_name #maybe_self_ty_generics #where_clause {
             #impl_methods_original
         }
 

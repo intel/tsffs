@@ -29,10 +29,11 @@ impl Default for DriverConfiguration {
     }
 }
 
-#[derive(TypedBuilder, Getters, Clone, Debug, TryIntoAttrValueType)]
+#[derive(TypedBuilder, Default, Getters, Clone, Debug, TryIntoAttrValueType)]
 #[getters(mutable)]
 pub struct BufferInformation {
     #[builder(default)]
+    /// The address testcases should be written into.
     testcase_address: Option<GenericAddress>,
     #[builder(default)]
     size_address: Option<GenericAddress>,
@@ -40,12 +41,6 @@ pub struct BufferInformation {
     maximum_size: Option<u64>,
     #[builder(default)]
     virt: Option<bool>,
-}
-
-impl Default for BufferInformation {
-    fn default() -> Self {
-        Self::builder().build()
-    }
 }
 
 #[derive(TypedBuilder, Getters, Debug)]

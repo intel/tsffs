@@ -7,6 +7,8 @@ use simics_macro::{TryFromAttrValueType, TryIntoAttrValueType};
 use std::collections::BTreeSet;
 use typed_builder::TypedBuilder;
 
+use crate::Tsffs;
+
 /// The timeout runs in virtual time, so a typical 5 second timeout is acceptable
 pub const TIMEOUT_DEFAULT: f64 = 5.0;
 
@@ -40,14 +42,11 @@ impl Default for DetectorConfiguration {
 
 #[derive(TypedBuilder, Getters, Debug)]
 #[getters(mutable)]
-pub struct Detector {
+pub struct Detector<'a>
+where
+    'a: 'static,
+{
+    parent: &'a Tsffs,
+    #[builder(default)]
     configuration: DetectorConfiguration,
-}
-
-impl Default for Detector {
-    fn default() -> Self {
-        Self::builder()
-            .configuration(DetectorConfiguration::default())
-            .build()
-    }
 }

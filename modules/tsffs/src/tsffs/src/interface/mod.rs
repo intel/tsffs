@@ -5,8 +5,7 @@ use crate::{tracer::CoverageMode, Tsffs};
 use ffi_macro::ffi;
 use simics::{
     api::{
-        call_python_function, sys::attr_value_t, AsConfObject, AttrValue, AttrValueType,
-        BreakpointId, GenericAddress,
+        sys::attr_value_t, AsConfObject, AttrValue, AttrValueType, BreakpointId, GenericAddress,
     },
     error, info, Result,
 };
@@ -354,7 +353,7 @@ impl Tsffs {
     }
 
     pub fn get_configuration(&mut self) -> Result<attr_value_t> {
-        let configuration = AttrValue::try_from(
+        Ok(AttrValue::try_from(
             [
                 (
                     "detector".into(),
@@ -365,14 +364,7 @@ impl Tsffs {
             ]
             .into_iter()
             .collect::<BTreeMap<AttrValueType, AttrValueType>>(),
-        )?;
-
-        Ok(configuration.into())
-    }
-
-    pub fn test_call_python_function(&mut self) -> Result<()> {
-        let res = call_python_function("print", ["a", "b", "c"])?;
-
-        Ok(())
+        )?
+        .into())
     }
 }

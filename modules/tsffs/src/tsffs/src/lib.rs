@@ -56,9 +56,9 @@ pub const CLASS_NAME: &str = env!("CARGO_PKG_NAME");
 #[interface]
 pub struct Tsffs {
     driver: Driver<'static>,
-    fuzzer: Fuzzer,
-    detector: Detector,
-    tracer: Tracer,
+    fuzzer: Fuzzer<'static>,
+    detector: Detector<'static>,
+    tracer: Tracer<'static>,
 }
 
 impl Class for Tsffs {
@@ -70,9 +70,9 @@ impl Class for Tsffs {
         Ok(Tsffs::new(
             instance,
             Driver::builder().parent(instance.into()).build(),
-            Fuzzer::default(),
-            Detector::default(),
-            Tracer::default(),
+            Fuzzer::builder().parent(instance.into()).build(),
+            Detector::builder().parent(instance.into()).build(),
+            Tracer::builder().parent(instance.into()).build(),
         ))
     }
 }

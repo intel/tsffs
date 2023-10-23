@@ -20,6 +20,7 @@ extern crate num_traits;
 
 pub mod api;
 pub mod error;
+pub mod ispm;
 pub mod log;
 
 #[forbid(unsafe_code)]

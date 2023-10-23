@@ -15,6 +15,8 @@ use simics_macro::TryIntoAttrValueType;
 use std::{collections::HashMap, ffi::c_void, fmt::Display, str::FromStr};
 use typed_builder::TypedBuilder;
 
+use crate::Tsffs;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub enum CoverageMode {
     HitCount,
@@ -82,14 +84,14 @@ impl From<CoverageMode> for AttrValueType {
 
 #[derive(TypedBuilder, Getters, Clone, Debug, TryIntoAttrValueType)]
 #[getters(mutable)]
-pub struct TracingConfiguration {
+pub struct TracerConfiguration {
     #[builder(default)]
     coverage_mode: CoverageMode,
     #[builder(default = true)]
     cmplog: bool,
 }
 
-impl Default for TracingConfiguration {
+impl Default for TracerConfiguration {
     fn default() -> Self {
         Self::builder().build()
     }
@@ -97,20 +99,20 @@ impl Default for TracingConfiguration {
 
 #[derive(TypedBuilder, Getters, Debug)]
 #[getters(mutable)]
-pub struct Tracer {
-    configuration: TracingConfiguration,
-}
-
-impl Default for Tracer {
-    fn default() -> Self {
-        Self::builder()
-            .configuration(TracingConfiguration::default())
-            .build()
-    }
+pub struct Tracer<'a>
+where
+    'a: 'static,
+{
+    parent: &'a mut Tsffs,
+    #[builder(default)]
+    configuration: TracerConfiguration,
 }
 
 #[ffi(from_ptr, expect, self_ty = "*mut c_void")]
-impl Tracer {
+impl<'a> Tracer<'a>
+where
+    'a: 'static,
+{
     #[ffi(arg(rest), arg(self))]
     pub fn on_instruction_before(
         &mut self,

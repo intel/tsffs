@@ -4,12 +4,13 @@
 use getters::Getters;
 use typed_builder::TypedBuilder;
 
+use crate::Tsffs;
+
 #[derive(TypedBuilder, Getters, Debug)]
 #[getters(mutable)]
-pub struct Fuzzer {}
-
-impl Default for Fuzzer {
-    fn default() -> Self {
-        Self::builder().build()
-    }
+pub struct Fuzzer<'a>
+where
+    'a: 'static,
+{
+    parent: &'a mut Tsffs,
 }
