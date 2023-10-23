@@ -23,7 +23,7 @@
 
 use anyhow::{anyhow, bail, Error, Result};
 use serde::{de::Error as _, Deserialize, Deserializer};
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 pub use versions::*;
 
 #[non_exhaustive]
@@ -52,6 +52,25 @@ pub enum Op {
     Wildcard,
 }
 
+impl Display for Op {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Op::Exact => "==",
+                Op::Greater => ">",
+                Op::GreaterEq => ">=",
+                Op::Less => "<",
+                Op::LessEq => "<=",
+                Op::Tilde => "~",
+                Op::Caret => "^",
+                Op::Wildcard => "*",
+            }
+        )
+    }
+}
+
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 /// A version constraint with an operation and a version, unless the operation is a wildcard
 /// in which case the version is omitted.
@@ -67,6 +86,14 @@ impl VersionConstraint {
 
     pub fn version(&self) -> Option<&Versioning> {
         self.version.as_ref()
+    }
+}
+
+impl From<&str> for VersionConstraint {
+    fn from(value: &str) -> Self {
+        value
+            .parse()
+            .unwrap_or_else(|_| panic!("Invalid version constraint {}", value))
     }
 }
 
@@ -106,6 +133,20 @@ impl FromStr for VersionConstraint {
                 )
             },
         })
+    }
+}
+
+impl Display for VersionConstraint {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}{}",
+            self.op,
+            self.version
+                .as_ref()
+                .map(|v| v.to_string())
+                .unwrap_or_default()
+        )
     }
 }
 
@@ -224,7 +265,7 @@ impl Default for VersionConstraint {
     }
 }
 
-pub fn from_string<'de, D>(deserializer: D) -> Result<Versioning, D::Error>
+pub fn versioning_from_string<'de, D>(deserializer: D) -> Result<Versioning, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -233,6 +274,17 @@ where
     Versioning::new(&s)
         .ok_or_else(|| anyhow!("Unable to deserialize {} as versioning", s))
         .map_err(D::Error::custom)
+}
+
+pub fn version_constraint_from_string<'de, D>(
+    deserializer: D,
+) -> Result<VersionConstraint, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s: String = Deserialize::deserialize(deserializer)?;
+
+    s.parse().map_err(D::Error::custom)
 }
 
 #[cfg(test)]

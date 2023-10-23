@@ -3,17 +3,13 @@
 
 [package]
 name = "command-ext"
-authors.workspace = true
-categories.workspace = true
+authors = ["Rowan Hart <rowan.hart@intel.com>"]
 description = "Extension traits for std::process::Command"
-edition.workspace = true
-homepage.workspace = true
-keywords.workspace = true
-license.workspace = true
-publish.workspace = true
-readme.workspace = true
-repository.workspace = true
-version.workspace = true
+edition = "2021"
+license = "Apache-2.0"
+publish = false
+repository = "https://github.com/intel/tsffs"
+version = "0.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

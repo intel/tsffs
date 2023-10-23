@@ -1,10 +1,14 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+use ffi_macro::ffi;
 use getters::Getters;
-use simics::api::BreakpointId;
+use simics::{
+    api::{BreakpointId, ConfObject, GenericTransaction},
+    Result,
+};
 use simics_macro::{TryFromAttrValueType, TryIntoAttrValueType};
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, ffi::c_void};
 use typed_builder::TypedBuilder;
 
 use crate::Tsffs;
@@ -49,4 +53,26 @@ where
     parent: &'a Tsffs,
     #[builder(default)]
     configuration: DetectorConfiguration,
+}
+
+#[ffi(from_ptr, expect, self_ty = "*mut c_void")]
+impl<'a> Detector<'a>
+where
+    'a: 'static,
+{
+    // NOTE: Core_External_Interrupt also exists, but is only for SPARC, so we do not support it
+    #[ffi(arg(self), arg(rest))]
+    pub fn on_core_exception(&mut self, _obj: *mut ConfObject, _exception: i64) -> Result<()> {
+        Ok(())
+    }
+
+    #[ffi(arg(self), arg(rest))]
+    pub fn on_core_breakpoint(
+        &mut self,
+        _obj: *mut ConfObject,
+        _breakpoint: i64,
+        _transaction: *mut GenericTransaction,
+    ) -> Result<()> {
+        Ok(())
+    }
 }

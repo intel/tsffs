@@ -45,5 +45,3 @@ getters.workspace = true
 ordered-float = "4.1.1"
 
 [dev-dependencies]
-ispm-wrapper = { path = "../simics/ispm-wrapper" }
-tmp-dir.workspace = true

@@ -55,11 +55,11 @@ default-members = [
 exclude = []
 
 [workspace.dependencies]
-tests = { path = "modules/tsffs/tests/" }
 simics-api-sys = { path = "modules/tsffs/src/simics/simics-api-sys" }
 simics-macro = { path = "modules/tsffs/src/simics/simics-macro" }
 simics-codegen = { path = "modules/tsffs/src/simics/simics-codegen" }
 simics = { path = "modules/tsffs/src/simics/simics" }
+ispm-wrapper = { path = "modules/tsffs/src/simics/ispm-wrapper" }
 
 command-ext = { path = "modules/tsffs/src/util/command-ext" }
 ffi-macro = { path = "modules/tsffs/src/util/ffi-macro" }

@@ -69,12 +69,115 @@ pub trait ToArgs {
 
 /// Wrappers for ISPM commands
 pub mod ispm {
+    use std::{iter::repeat, path::PathBuf};
+
+    use derive_getters::Getters;
+    use typed_builder::TypedBuilder;
+
+    use crate::{ToArgs, NON_INTERACTIVE_FLAG};
+
+    #[derive(TypedBuilder, Getters, Clone, Debug)]
+    pub struct GlobalOptions {
+        #[builder(default, setter(into))]
+        package_repo: Vec<String>,
+        #[builder(default, setter(into, strip_option))]
+        install_dir: Option<PathBuf>,
+        #[builder(default, setter(into, strip_option))]
+        https_proxy: Option<String>,
+        #[builder(default, setter(into, strip_option))]
+        no_proxy: Option<String>,
+        #[builder(default = true)]
+        non_interactive: bool,
+        #[builder(default = false)]
+        trust_insecure_packages: bool,
+        #[builder(default, setter(into, strip_option))]
+        config_file: Option<PathBuf>,
+        #[builder(default = false)]
+        no_config_file: bool,
+        #[builder(default, setter(into, strip_option))]
+        temp_dir: Option<PathBuf>,
+        #[builder(default, setter(into, strip_option))]
+        auth_file: Option<PathBuf>,
+    }
+
+    impl ToArgs for GlobalOptions {
+        fn to_args(&self) -> Vec<String> {
+            let mut args = Vec::new();
+
+            args.extend(
+                repeat("--package-repo".to_string())
+                    .zip(self.package_repo.iter())
+                    .flat_map(|(flag, arg)| [flag, arg.to_string()]),
+            );
+            args.extend(self.install_dir.as_ref().iter().flat_map(|id| {
+                [
+                    "--install-dir".to_string(),
+                    id.to_string_lossy().to_string(),
+                ]
+            }));
+            args.extend(
+                self.https_proxy
+                    .as_ref()
+                    .iter()
+                    .flat_map(|p| ["--https-proxy".to_string(), p.to_string()]),
+            );
+            args.extend(
+                self.no_proxy
+                    .as_ref()
+                    .iter()
+                    .flat_map(|p| ["--no-proxy".to_string(), p.to_string()]),
+            );
+            if self.non_interactive {
+                args.push(NON_INTERACTIVE_FLAG.to_string())
+            }
+            if self.trust_insecure_packages {
+                args.push("--trust-insecure-packages".to_string())
+            }
+            args.extend(self.config_file.as_ref().iter().flat_map(|cf| {
+                [
+                    "--config-file".to_string(),
+                    cf.to_string_lossy().to_string(),
+                ]
+            }));
+            if self.no_config_file {
+                args.push("--no-config-file".to_string());
+            }
+            args.extend(
+                self.temp_dir
+                    .as_ref()
+                    .iter()
+                    .flat_map(|td| ["--temp-dir".to_string(), td.to_string_lossy().to_string()]),
+            );
+            args.extend(
+                self.auth_file
+                    .as_ref()
+                    .iter()
+                    .flat_map(|af| ["--auth-file".to_string(), af.to_string_lossy().to_string()]),
+            );
+
+            args
+        }
+    }
+
+    impl Default for GlobalOptions {
+        fn default() -> Self {
+            Self::builder().build()
+        }
+    }
+
     pub mod packages {
-        use crate::{data::Packages, ISPM_NAME, NON_INTERACTIVE_FLAG};
+        use crate::{
+            data::{Packages, ProjectPackage},
+            ToArgs, ISPM_NAME, NON_INTERACTIVE_FLAG,
+        };
         use anyhow::Result;
         use command_ext::CommandExtCheck;
+        use derive_getters::Getters;
         use serde_json::from_slice;
-        use std::process::Command;
+        use std::{iter::repeat, path::PathBuf, process::Command};
+        use typed_builder::TypedBuilder;
+
+        use super::GlobalOptions;
 
         const PACKAGES_SUBCOMMAND: &str = "packages";
 
@@ -94,6 +197,71 @@ pub mod ispm {
                     .stdout,
             )?)
         }
+
+        #[derive(TypedBuilder, Getters, Clone, Debug)]
+        pub struct InstallOptions {
+            #[builder(default, setter(into))]
+            /// Packages to install by number/version
+            packages: Vec<ProjectPackage>,
+            #[builder(default, setter(into))]
+            /// Packages to install by local path
+            package_paths: Vec<PathBuf>,
+            #[builder(default)]
+            global: GlobalOptions,
+        }
+
+        impl ToArgs for InstallOptions {
+            fn to_args(&self) -> Vec<String> {
+                repeat("-i".to_string())
+                    .zip(
+                        self.packages.iter().map(|p| p.to_string()).chain(
+                            self.package_paths
+                                .iter()
+                                .map(|p| p.to_string_lossy().to_string()),
+                        ),
+                    )
+                    .flat_map(|(flag, arg)| [flag, arg])
+                    .chain(self.global.to_args().iter().cloned())
+                    .collect::<Vec<_>>()
+            }
+        }
+
+        pub fn install(install_options: &InstallOptions) -> Result<()> {
+            Command::new(ISPM_NAME)
+                .arg(PACKAGES_SUBCOMMAND)
+                .args(install_options.to_args())
+                .arg(NON_INTERACTIVE_FLAG)
+                .check()?;
+            Ok(())
+        }
+
+        #[derive(TypedBuilder, Getters, Clone, Debug)]
+        pub struct UninstallOptions {
+            #[builder(default, setter(into))]
+            /// Packages to install by number/version
+            packages: Vec<ProjectPackage>,
+            #[builder(default)]
+            global: GlobalOptions,
+        }
+
+        impl ToArgs for UninstallOptions {
+            fn to_args(&self) -> Vec<String> {
+                repeat("-u".to_string())
+                    .zip(self.packages.iter().map(|p| p.to_string()))
+                    .flat_map(|(flag, arg)| [flag, arg])
+                    .chain(self.global.to_args().iter().cloned())
+                    .collect::<Vec<_>>()
+            }
+        }
+
+        pub fn uninstall(uninstall_options: &UninstallOptions) -> Result<()> {
+            Command::new(ISPM_NAME)
+                .arg(PACKAGES_SUBCOMMAND)
+                .args(uninstall_options.to_args())
+                .arg(NON_INTERACTIVE_FLAG)
+                .check()?;
+            Ok(())
+        }
     }
 
     pub mod projects {
@@ -108,6 +276,8 @@ pub mod ispm {
         use std::{iter::once, path::Path, process::Command};
         use typed_builder::TypedBuilder;
 
+        use super::GlobalOptions;
+
         const IGNORE_EXISTING_FILES_FLAG: &str = "--ignore-existing-files";
         const CREATE_PROJECT_FLAG: &str = "--create";
         const PROJECTS_SUBCOMMAND: &str = "projects";
@@ -118,6 +288,8 @@ pub mod ispm {
             packages: Vec<ProjectPackage>,
             #[builder(default = false)]
             ignore_existing_files: bool,
+            #[builder(default)]
+            global: GlobalOptions,
         }
 
         impl ToArgs for CreateOptions {
@@ -130,6 +302,7 @@ pub mod ispm {
                             .then_some(IGNORE_EXISTING_FILES_FLAG.to_string()),
                     ))
                     .flatten()
+                    .chain(self.global.to_args().iter().cloned())
                     .collect::<Vec<_>>()
             }
         }

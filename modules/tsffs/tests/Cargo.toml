@@ -17,8 +17,8 @@ version.workspace = true
 [dependencies]
 anyhow = { workspace = true }
 command-ext.workspace = true
-simics-macro = { workspace = true }
-
+ispm-wrapper = { version = "0.1.0", path = "../src/simics/ispm-wrapper" }
+tmp-dir.workspace = true
 
 [dev-dependencies]
 

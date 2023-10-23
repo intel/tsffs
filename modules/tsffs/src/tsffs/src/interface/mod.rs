@@ -5,7 +5,8 @@ use crate::{tracer::CoverageMode, Tsffs};
 use ffi_macro::ffi;
 use simics::{
     api::{
-        sys::attr_value_t, AsConfObject, AttrValue, AttrValueType, BreakpointId, GenericAddress,
+        sys::attr_value_t, AsConfObject, AttrValue, AttrValueType, BreakpointId, ConfObject,
+        GenericAddress,
     },
     error, info, Result,
 };
@@ -31,50 +32,50 @@ impl Tsffs {
     /// # x86_64
     ///
     /// - Magic instruction executed with `n=1`
-    /// - `rsi` set to the address the fuzzer should write the testcase to each execution
-    /// - `rdi` set to the address of a variable containing the maximum size of a testcase,
+    /// * `rsi` - set to the address the fuzzer should write the testcase to each execution
+    /// * `rdi` - set to the address of a variable containing the maximum size of a testcase,
     ///   which will be overwritten each execution with the current actual size of the testcase
     ///
     /// # x86_32
     ///
     /// - Magic instruction executed with `n=1`
-    /// - `esi` set to the address the fuzzer should write the testcase to each execution
-    /// - `edi` set to the address of a variable containing the maximum size of a testcase,
+    /// * `esi` - set to the address the fuzzer should write the testcase to each execution
+    /// * `edi` - set to the address of a variable containing the maximum size of a testcase,
     ///   which will be overwritten each execution with the current actual size of the testcase
     ///
     /// # RISC-V
     ///
     /// - Magic instruction executed with `n=1`
-    /// - `x10` set to the address the fuzzer should write the testcase to each execution
-    /// - `x11` set to the address of a variable containing the maximum size of a testcase,
+    /// * `x10` - set to the address the fuzzer should write the testcase to each execution
+    /// * `x11` - set to the address of a variable containing the maximum size of a testcase,
     ///   which will be overwritten each execution with the current actual size of the testcase
     ///
     /// # ARM
     ///
     /// - Magic instruction executed with `n=1`
-    /// - `r0` set to the address the fuzzer should write the testcase to each execution
-    /// - `r1` set to the address of a variable containing the maximum size of a testcase,
+    /// * `r0` - set to the address the fuzzer should write the testcase to each execution
+    /// * `r1` - set to the address of a variable containing the maximum size of a testcase,
     ///   which will be overwritten each execution with the current actual size of the testcase
     ///
     /// # ARM Thumb-2
     ///
     /// - Magic instruction executed with `n=1`
-    /// - `r0` set to the address the fuzzer should write the testcase to each execution
-    /// - `r1` set to the address of a variable containing the maximum size of a testcase,
+    /// * `r0` - set to the address the fuzzer should write the testcase to each execution
+    /// * `r1` - set to the address of a variable containing the maximum size of a testcase,
     ///   which will be overwritten each execution with the current actual size of the testcase
     ///
     /// # ARMv8
     ///
     /// - Magic instruction executed with `n=1`
-    /// - `x0` set to the address the fuzzer should write the testcase to each execution
-    /// - `x1` set to the address of a variable containing the maximum size of a testcase,
+    /// * `x0` - set to the address the fuzzer should write the testcase to each execution
+    /// * `x1` - set to the address of a variable containing the maximum size of a testcase,
     ///   which will be overwritten each execution with the current actual size of the testcase
     ///
     /// # ARC
     ///
     /// - Magic instruction executed with `n=1`
-    /// - `r0` set to the address the fuzzer should write the testcase to each execution
-    /// - `r1` set to the address of a variable containing the maximum size of a testcase,
+    /// * `r0` - set to the address the fuzzer should write the testcase to each execution
+    /// * `r1` - set to the address of a variable containing the maximum size of a testcase,
     ///   which will be overwritten each execution with the current actual size of the testcase
     pub fn set_start_on_harness(&mut self, start_on_harness: bool) {
         info!(
@@ -83,6 +84,18 @@ impl Tsffs {
         );
 
         *self.driver_mut().configuration_mut().start_on_harness_mut() = start_on_harness;
+    }
+
+    /// Interface method to set the magic value the fuzzer will wait for when
+    /// `set_start_on_harness` has ben configured. This allows you to place multiple harnesses in
+    /// a single binary and selectively enable one of them.
+    pub fn set_start_magic_number(&mut self, magic_number: i64) {
+        info!(
+            self.as_conf_object_mut(),
+            "set_start_magic_number({magic_number})"
+        );
+
+        *self.driver_mut().configuration_mut().magic_start_mut() = magic_number;
     }
 
     /// Interface method to enable or disable the fuzzer to stop automatically when it
@@ -99,20 +112,35 @@ impl Tsffs {
         *self.driver_mut().configuration_mut().stop_on_harness_mut() = stop_on_harness;
     }
 
+    /// Interface method to set the magic value the fuzzer will wait for when
+    /// `set_start_on_harness` has ben configured. This allows you to place multiple harnesses in
+    /// a single binary and selectively enable one of them.
+    pub fn set_stop_magic_number(&mut self, magic_number: i64) {
+        info!(
+            self.as_conf_object_mut(),
+            "set_stop_magic_number({magic_number})"
+        );
+
+        *self.driver_mut().configuration_mut().magic_stop_mut() = magic_number;
+    }
+
     /// Interface method to manually start the fuzzing loop by taking a snapshot, saving the
-    /// testcase and size address and resuming execution of the simulation.
+    /// testcase and size address and resuming execution of the simulation. This method does
+    /// not need to be called if `set_start_on_harness` is enabled.
     ///
     /// # Arguments
     ///
-    /// - `testcase_address`: The address to write test cases to
-    /// - `size_address`: The address to write the size of each test case to (optional,
+    /// * `cpu` - The CPU whose memory space should be written
+    /// * `testcase_address` - The address to write test cases to
+    /// * `size_address` - The address to write the size of each test case to (optional,
     /// `max_size` must be given if not provided).
-    /// - `virt`: Whether the provided addresses should be interpreted as virtual or physical
+    /// * `virt` - Whether the provided addresses should be interpreted as virtual or physical
     ///
     /// If your target cannot take advantage of the written-back size pointer, use
     /// `start_with_max_size` instead.
     pub fn start(
         &mut self,
+        _cpu: *mut ConfObject,
         testcase_address: GenericAddress,
         size_address: GenericAddress,
         virt: bool,
@@ -124,16 +152,19 @@ impl Tsffs {
     }
 
     /// Interface method to manually start the fuzzing loop by taking a snapshot, saving the
-    /// testcase and size address and resuming execution of the simulation.
+    /// testcase and size address and resuming execution of the simulation. This method does
+    /// not need to be called if `set_start_on_harness` is enabled.
     ///
     /// # Arguments
     ///
-    /// - `testcase_address`: The address to write test cases to
-    /// - `maximum_size`: The maximum size of the test case. The actual size of each test case will
+    /// * `cpu` - The CPU whose memory space should be written
+    /// * `testcase_address` - The address to write test cases to
+    /// * `maximum_size` - The maximum size of the test case. The actual size of each test case will
     ///   not be written back to the target software
-    /// - `virt`: Whether the provided addresses should be interpreted as virtual or physical
+    /// * `virt` - Whether the provided addresses should be interpreted as virtual or physical
     pub fn start_with_maximum_size(
         &mut self,
+        _cpu: *mut ConfObject,
         testcase_address: GenericAddress,
         maximum_size: u32,
         virt: bool,
@@ -148,7 +179,8 @@ impl Tsffs {
     /// method is called, the current testcase execution will be stopped as if it had
     /// finished executing normally, and the state will be restored to the state at the
     /// initial snapshot. This method is particularly useful in callbacks triggered on
-    /// breakpoints or other complex conditions.
+    /// breakpoints or other complex conditions. This method does
+    /// not need to be called if `set_stop_on_harness` is enabled.
     pub fn stop(&mut self) {
         info!(self.as_conf_object_mut(), "stop");
     }

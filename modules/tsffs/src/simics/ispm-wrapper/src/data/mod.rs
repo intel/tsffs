@@ -4,8 +4,7 @@ use serde::Deserialize;
 use serde_json::from_slice;
 use std::{fmt::Display, fs::read, path::PathBuf};
 use typed_builder::TypedBuilder;
-use version_tools::from_string;
-use versions::Versioning;
+use version_tools::{version_constraint_from_string, VersionConstraint};
 
 use crate::Internal;
 
@@ -150,8 +149,8 @@ impl Settings {
 pub struct InstalledPackage {
     #[serde(rename = "pkgNumber")]
     package_number: isize,
-    #[serde(deserialize_with = "from_string")]
-    version: Versioning,
+    #[serde(deserialize_with = "version_constraint_from_string")]
+    version: VersionConstraint,
     #[builder(setter(into))]
     name: String,
     #[builder(default, setter(into))]
@@ -162,8 +161,8 @@ pub struct InstalledPackage {
 pub struct AvailablePackage {
     #[serde(rename = "pkgNumber")]
     package_number: isize,
-    #[serde(deserialize_with = "from_string")]
-    version: Versioning,
+    #[serde(deserialize_with = "version_constraint_from_string")]
+    version: VersionConstraint,
     #[builder(setter(into))]
     name: String,
     installed: bool,
@@ -182,14 +181,22 @@ pub struct Packages {
 pub struct ProjectPackage {
     #[serde(rename = "pkgNumber")]
     package_number: isize,
-    #[serde(deserialize_with = "from_string")]
+    #[serde(deserialize_with = "version_constraint_from_string")]
     #[builder(setter(into))]
-    version: Versioning,
+    version: VersionConstraint,
 }
 
 impl Display for ProjectPackage {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}-{}", self.package_number, self.version)
+        write!(
+            f,
+            "{}-{}",
+            self.package_number,
+            self.version
+                .version()
+                .map(|v| v.to_string())
+                .unwrap_or_default()
+        )
     }
 }
 

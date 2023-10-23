@@ -20,8 +20,9 @@ serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 simics-macro = { workspace = true, optional = true }
 simics-api-sys = { workspace = true }
-tmp-dir.workspace = true
-version-tools.workspace = true
+tmp-dir = { workspace = true }
+version-tools = { workspace = true }
+ispm-wrapper = { workspace = true }
 
 cargo_metadata = "0.18.0"
 clap = { version = "4.3.0", features = ["derive"] }
@@ -40,9 +41,8 @@ versions = "5.0.0"
 walkdir = "2.3.3"
 thiserror = "1.0.49"
 anyhow.workspace = true
-typed-builder = "0.17.0"
+typed-builder = "0.18.0"
 ordered-float = "4.1.1"
-ispm-wrapper = { version = "0.1.0", path = "../ispm-wrapper" }
 
 [features]
 default = ["derive", "link"]
