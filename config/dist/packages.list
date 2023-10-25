@@ -137,5 +137,5 @@ Make: tsffs
 
 Group: tsffs-interface
 Make: tsffs-interface
-    $(HOST)/lib/tsffs$(SO)
+    $(HOST)/lib/tsffs-interface$(SO)
     @tsffs-interface-src

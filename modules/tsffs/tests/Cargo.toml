@@ -17,11 +17,15 @@ version.workspace = true
 [dependencies]
 anyhow = { workspace = true }
 command-ext.workspace = true
+getters.workspace = true
+indoc = "2.0.4"
 ispm-wrapper = { version = "0.1.0", path = "../src/simics/ispm-wrapper" }
 tmp-dir.workspace = true
+typed-builder = "0.18.0"
 
 [dev-dependencies]
 
 [build-dependencies]
 anyhow.workspace = true
+command-ext.workspace = true
 simics-codegen.workspace = true

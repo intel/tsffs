@@ -277,7 +277,7 @@ where
         .group("tsffs-interface")
         .make(["tsffs-interface".to_string()])
         .data([
-            "$(HOST)/lib/tsffs$(SO)".to_string(),
+            "$(HOST)/lib/tsffs-interface$(SO)".to_string(),
             tsffs_interface_src_group.group_ref(),
         ])
         .build();
