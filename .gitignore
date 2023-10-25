@@ -6,3 +6,4 @@
 .mypy_cache
 simics-api-sys/packages
 paper
+*restricted*

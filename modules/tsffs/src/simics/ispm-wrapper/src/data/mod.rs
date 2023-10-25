@@ -177,7 +177,7 @@ pub struct Packages {
     available_packages: Option<Vec<AvailablePackage>>,
 }
 
-#[derive(TypedBuilder, Getters, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(TypedBuilder, Getters, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ProjectPackage {
     #[serde(rename = "pkgNumber")]
     package_number: isize,

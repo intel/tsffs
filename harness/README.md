@@ -1,6 +1,8 @@
 # Harness Collection for TSFFS
 
-This directory contains a selection of provided (and tested) harness header files.
+This directory contains a selection of provided (and tested) harness header files. All
+harnesses are tested automatically at project test time for correct passing of the
+testcase and size addresses.
 
 All headers define the following:
 

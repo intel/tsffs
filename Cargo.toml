@@ -22,6 +22,7 @@ version = "0.1.0"
 resolver = "2"
 members = [
     "modules/tsffs/tests",
+    "modules/tsffs/tests-restricted",
     "modules/tsffs/src/tsffs",
     "modules/tsffs/src/simics/ispm-wrapper",
     "modules/tsffs/src/simics/simics-api-sys",
@@ -38,6 +39,7 @@ members = [
 ]
 default-members = [
     "modules/tsffs/tests",
+    "modules/tsffs/tests-restricted",
     "modules/tsffs/src/tsffs",
     "modules/tsffs/src/simics/ispm-wrapper",
     "modules/tsffs/src/simics/simics-api-sys",

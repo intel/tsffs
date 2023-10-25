@@ -182,7 +182,7 @@ pub mod ispm {
         const PACKAGES_SUBCOMMAND: &str = "packages";
 
         /// Get the currently installed and available packages
-        pub fn list() -> Result<Packages> {
+        pub fn list(options: &GlobalOptions) -> Result<Packages> {
             Ok(from_slice(
                 &Command::new(ISPM_NAME)
                     .arg(PACKAGES_SUBCOMMAND)
@@ -193,6 +193,7 @@ pub mod ispm {
                     // PIPE_BUF. For now, we mitigate this by passing `--list-installed` only.
                     .arg("--list-installed")
                     .arg("--json")
+                    .args(options.to_args())
                     .check()?
                     .stdout,
             )?)
@@ -208,6 +209,8 @@ pub mod ispm {
             package_paths: Vec<PathBuf>,
             #[builder(default)]
             global: GlobalOptions,
+            #[builder(default = false)]
+            install_all: bool,
         }
 
         impl ToArgs for InstallOptions {
@@ -222,6 +225,7 @@ pub mod ispm {
                     )
                     .flat_map(|(flag, arg)| [flag, arg])
                     .chain(self.global.to_args().iter().cloned())
+                    .chain(self.install_all.then_some("--install-all".to_string()))
                     .collect::<Vec<_>>()
             }
         }
@@ -269,11 +273,11 @@ pub mod ispm {
             data::{ProjectPackage, Projects},
             ToArgs, ISPM_NAME, NON_INTERACTIVE_FLAG,
         };
-        use anyhow::Result;
+        use anyhow::{anyhow, Result};
         use command_ext::CommandExtCheck;
         use derive_getters::Getters;
         use serde_json::from_slice;
-        use std::{iter::once, path::Path, process::Command};
+        use std::{collections::HashSet, iter::once, path::Path, process::Command};
         use typed_builder::TypedBuilder;
 
         use super::GlobalOptions;
@@ -285,7 +289,7 @@ pub mod ispm {
         #[derive(TypedBuilder, Getters, Clone, Debug)]
         pub struct CreateOptions {
             #[builder(default, setter(into))]
-            packages: Vec<ProjectPackage>,
+            packages: HashSet<ProjectPackage>,
             #[builder(default = false)]
             ignore_existing_files: bool,
             #[builder(default)]
@@ -312,19 +316,24 @@ pub mod ispm {
         where
             P: AsRef<Path>,
         {
-            Command::new(ISPM_NAME)
-                .arg(PROJECTS_SUBCOMMAND)
-                .arg(project_path.as_ref())
-                .arg(NON_INTERACTIVE_FLAG)
-                .arg(CREATE_PROJECT_FLAG)
-                .args(create_options.to_args())
-                .check()?;
+            let mut args = vec![
+                PROJECTS_SUBCOMMAND.to_string(),
+                project_path
+                    .as_ref()
+                    .to_str()
+                    .ok_or_else(|| anyhow!("Could not convert to string"))?
+                    .to_string(),
+                CREATE_PROJECT_FLAG.to_string(),
+            ];
+            args.extend(create_options.to_args());
+            println!("{:?}", args);
+            Command::new(ISPM_NAME).args(args).check()?;
 
             Ok(())
         }
 
         /// Get existing projects
-        pub fn list() -> Result<Projects> {
+        pub fn list(options: &GlobalOptions) -> Result<Projects> {
             Ok(from_slice(
                 &Command::new(ISPM_NAME)
                     .arg(PROJECTS_SUBCOMMAND)
@@ -335,6 +344,7 @@ pub mod ispm {
                     // PIPE_BUF. For now, we mitigate this by passing `--list-installed` only.
                     .arg("--list")
                     .arg("--json")
+                    .args(options.to_args())
                     .check()?
                     .stdout,
             )?)
@@ -402,7 +412,7 @@ mod test {
 
     use crate::{
         data::{IPathObject, ProxySettingTypes, RepoPath, Settings},
-        ispm,
+        ispm::{self, GlobalOptions},
     };
     use serde_json::from_str;
 
@@ -472,7 +482,7 @@ mod test {
 
     #[test]
     fn test_packages() -> Result<()> {
-        ispm::packages::list()?;
+        ispm::packages::list(&GlobalOptions::default())?;
         Ok(())
     }
 }
