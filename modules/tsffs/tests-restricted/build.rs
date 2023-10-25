@@ -26,7 +26,9 @@ fn main() -> Result<()> {
         var(CARGO_MANIFEST_DIR)
             .map_err(|e| anyhow!("No environment variable {OUT_DIR_ENV} found: {e}"))?,
     );
+
     let targets_dir = manifest_dir.join("targets");
+
     read_dir(targets_dir)?
         .filter_map(|d| d.ok())
         .filter(|d| d.path().is_dir())

@@ -24,7 +24,7 @@ pub enum CoverageMode {
 }
 
 impl CoverageMode {
-    const AS_STRING: &[(&'static str, Self)] =
+    const AS_STRING: &'static [(&'static str, Self)] =
         &[("hit-count", Self::HitCount), ("once", Self::Once)];
 }
 

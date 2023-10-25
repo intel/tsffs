@@ -32,10 +32,10 @@ pub struct Internal {}
 
 impl Internal {
     // NOTE: Can be found in package.json in extracted ispm application
-    const PRODUCT_NAME: &str = "Intel Simics Package Manager";
+    const PRODUCT_NAME: &'static str = "Intel Simics Package Manager";
 
     // NOTE: Can be found in `AppInfo` class in extracted ispm application
-    const CFG_FILENAME: &str = "simics-package-manager.cfg";
+    const CFG_FILENAME: &'static str = "simics-package-manager.cfg";
 
     // NOTE: Can be found in `constructAppDataPath` in extracted ispm application
     /// Retrieve the path to the directory containing ISPM's application data, in particular the

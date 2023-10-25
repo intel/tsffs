@@ -139,12 +139,17 @@ fn hap_name_and_type_to_struct(
                                 inputs.iter().skip(1).map(|a| &a.ty).collect::<Vec<_>>();
                             let closure_param_names =
                                 input_names.iter().skip(1).collect::<Vec<_>>();
+                            let callback_ty = quote!(FnMut(#(#closure_params),*) -> #output + 'static);
 
                             let add_callback_methods = quote! {
-                                fn add_callback(callback: Self::Callback) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle> {
+                                pub fn add_callback<F>(callback: F) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle> 
+                                where
+                                    F: #callback_ty,
+                                {
+                                    let callback = Box::new(callback);
                                     let callback_box = Box::new(callback);
                                     let callback_raw = Box::into_raw(callback_box);
-                                    let handler: unsafe extern "C" fn() = unsafe { std::mem::transmute(Self::HANDLER) };
+                                    let handler: unsafe extern "C" fn() = unsafe { std::mem::transmute(#handler_name::<F> as usize) };
                                     Ok(unsafe {
                                         crate::api::sys::SIM_hap_add_callback(
                                             Self::NAME.as_raw_cstr()?,
@@ -154,10 +159,14 @@ fn hap_name_and_type_to_struct(
                                     })
                                 }
 
-                                fn add_callback_object(callback: Self::Callback, obj: *mut crate::api::ConfObject) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle> {
+                                pub fn add_callback_object<F>(callback: F, obj: *mut crate::api::ConfObject) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle> 
+                                where
+                                    F: #callback_ty
+                                {
+                                    let callback = Box::new(callback);
                                     let callback_box = Box::new(callback);
                                     let callback_raw = Box::into_raw(callback_box);
-                                    let handler: unsafe extern "C" fn() = unsafe { std::mem::transmute(Self::HANDLER) };
+                                    let handler: unsafe extern "C" fn() = unsafe { std::mem::transmute(#handler_name::<F> as usize) };
                                     Ok(unsafe {
                                         crate::api::sys::SIM_hap_add_callback_obj(
                                             Self::NAME.as_raw_cstr()?,
@@ -171,10 +180,14 @@ fn hap_name_and_type_to_struct(
                             };
 
                             let maybe_index_callback_methods = supports_index_callbacks.then_some(quote! {
-                                fn add_callback_index(callback: Self::Callback, index: i64) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle> {
+                                pub fn add_callback_index<F>(callback: F, index: i64) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle> 
+                                where
+                                    F: #callback_ty
+                                {
+                                    let callback = Box::new(callback);
                                     let callback_box = Box::new(callback);
                                     let callback_raw = Box::into_raw(callback_box);
-                                    let handler: unsafe extern "C" fn() = unsafe { std::mem::transmute(Self::HANDLER) };
+                                    let handler: unsafe extern "C" fn() = unsafe { std::mem::transmute(#handler_name::<F> as usize) };
                                     Ok(unsafe {
                                         crate::api::sys::SIM_hap_add_callback_index(
                                             Self::NAME.as_raw_cstr()?,
@@ -185,10 +198,14 @@ fn hap_name_and_type_to_struct(
                                     })
                                 }
 
-                                fn add_callback_range(callback: Self::Callback, start: i64, end: i64) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle> {
+                                pub fn add_callback_range<F>(callback: F, start: i64, end: i64) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle> 
+                                where
+                                    F: #callback_ty
+                                {
+                                    let callback = Box::new(callback);
                                     let callback_box = Box::new(callback);
                                     let callback_raw = Box::into_raw(callback_box);
-                                    let handler: unsafe extern "C" fn() = unsafe { std::mem::transmute(Self::HANDLER) };
+                                    let handler: unsafe extern "C" fn() = unsafe { std::mem::transmute(#handler_name::<F> as usize) };
                                     Ok(unsafe {
                                         crate::api::sys::SIM_hap_add_callback_range(
                                             Self::NAME.as_raw_cstr()?,
@@ -200,10 +217,14 @@ fn hap_name_and_type_to_struct(
                                     })
                                 }
 
-                                fn add_callback_object_index(callback: Self::Callback, obj: *mut crate::api::ConfObject, index: i64) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle> {
+                                pub fn add_callback_object_index<F>(callback: F, obj: *mut crate::api::ConfObject, index: i64) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle> 
+                                where
+                                    F: #callback_ty
+                                {
+                                    let callback = Box::new(callback);
                                     let callback_box = Box::new(callback);
                                     let callback_raw = Box::into_raw(callback_box);
-                                    let handler: unsafe extern "C" fn() = unsafe { std::mem::transmute(Self::HANDLER) };
+                                    let handler: unsafe extern "C" fn() = unsafe { std::mem::transmute(#handler_name::<F> as usize) };
                                     Ok(unsafe {
                                         crate::api::sys::SIM_hap_add_callback_obj_index(
                                             Self::NAME.as_raw_cstr()?,
@@ -216,10 +237,14 @@ fn hap_name_and_type_to_struct(
                                     })
                                 }
 
-                                fn add_callback_object_range(callback: Self::Callback, obj: *mut crate::api::ConfObject, start: i64, end: i64) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle> {
+                                pub fn add_callback_object_range<F>(callback: F, obj: *mut crate::api::ConfObject, start: i64, end: i64) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle>
+                                where
+                                    F: #callback_ty
+                                {
+                                    let callback = Box::new(callback);
                                     let callback_box = Box::new(callback);
                                     let callback_raw = Box::into_raw(callback_box);
-                                    let handler: unsafe extern "C" fn() = unsafe { std::mem::transmute(Self::HANDLER) };
+                                    let handler: unsafe extern "C" fn() = unsafe { std::mem::transmute(#handler_name::<F> as usize) };
                                     Ok(unsafe {
                                         crate::api::sys::SIM_hap_add_callback_obj_range(
                                             Self::NAME.as_raw_cstr()?,
@@ -236,25 +261,28 @@ fn hap_name_and_type_to_struct(
 
                             });
 
+                            let struct_name_string = struct_name.to_string();
+
                             let struct_and_impl = quote! {
                                 #(#callback_doc)*
                                 pub struct #struct_name {}
 
                                 impl crate::api::traits::hap::Hap for #struct_name {
-                                    type Handler = #proto;
                                     type Name =  &'static [u8];
-                                    type Callback = Box<dyn FnMut(#(#closure_params),*) -> #output + 'static>;
                                     const NAME: Self::Name = crate::api::sys::#name_name;
-                                    const HANDLER: Self::Handler = #handler_name::<Self::Callback>;
+                                }
 
+                                impl #struct_name {
                                     #add_callback_methods
                                     #maybe_index_callback_methods
                                 }
 
                                 extern "C" fn #handler_name<F>(#inputs) -> #output
-                                    where F: FnMut(#(#closure_params),*) -> #output + 'static
+                                    where F: #callback_ty
                                 {
-                                    let mut closure: Box<Box<F>> = unsafe { Box::from_raw(#userdata_name as *mut Box<F>) };
+                                    // NOTE: This box must be leaked, because we may call this closure again, we cannot drop it
+                                    let mut closure = Box::leak(unsafe { Box::from_raw(#userdata_name as *mut Box<F>) });
+                                    println!("HAP handler callback for HAP {} with callback {:#x}", #struct_name_string, #userdata_name as usize);
                                     closure(#(#closure_param_names),*)
                                 }
 
@@ -603,6 +631,7 @@ pub fn simics_hap_codegen(bindings: &str) -> TokenStream2 {
         #[allow(dead_code, non_snake_case)]
         pub mod haps {
             use crate::api::sys::*;
+            use crate::api::traits::hap::Hap;
             use raw_cstr::AsRawCstr;
 
             #(#hap_structs)*

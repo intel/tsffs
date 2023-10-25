@@ -77,13 +77,15 @@ impl Tsffs {
     /// * `r0` - set to the address the fuzzer should write the testcase to each execution
     /// * `r1` - set to the address of a variable containing the maximum size of a testcase,
     ///   which will be overwritten each execution with the current actual size of the testcase
-    pub fn set_start_on_harness(&mut self, start_on_harness: bool) {
+    pub fn set_start_on_harness(&mut self, start_on_harness: bool) -> Result<()> {
         info!(
             self.as_conf_object_mut(),
             "set_start_on_harness({start_on_harness})"
         );
 
-        *self.driver_mut().configuration_mut().start_on_harness_mut() = start_on_harness;
+        self.driver_mut().set_start_on_harness(start_on_harness)?;
+
+        Ok(())
     }
 
     /// Interface method to set the magic value the fuzzer will wait for when
@@ -103,13 +105,15 @@ impl Tsffs {
     /// running when the default stop condition occurs. Note that this method will not
     /// resume or run the simulation, the SIMICS script containing this call should
     /// resume execution afterward.
-    pub fn set_stop_on_harness(&mut self, stop_on_harness: bool) {
+    pub fn set_stop_on_harness(&mut self, stop_on_harness: bool) -> Result<()> {
         info!(
             self.as_conf_object_mut(),
             "set_stop_on_harness({stop_on_harness})"
         );
 
-        *self.driver_mut().configuration_mut().stop_on_harness_mut() = stop_on_harness;
+        self.driver_mut().set_stop_on_harness(stop_on_harness)?;
+
+        Ok(())
     }
 
     /// Interface method to set the magic value the fuzzer will wait for when

@@ -60,7 +60,7 @@ pub struct Driver<'a>
 where
     'a: 'static,
 {
-    parent: &'a Tsffs,
+    parent: &'a mut Tsffs,
     #[builder(default)]
     /// The driver configuration settings
     configuration: DriverConfiguration,
@@ -88,21 +88,33 @@ where
     /// Adds the magic hap callback if it is needed and not installed, or remove it if it is
     /// installed and not needed
     fn add_or_remove_magic_hap_if_needed(&mut self) -> Result<()> {
+        let parent = self.parent_mut();
+        let parent_conf_object = parent.as_conf_object_mut();
+
         if self.needs_magic_hap() && self.magic_hap_handle().is_none() {
-            let parent = self.parent().as_conf_object();
+            info!("Parent pointer {:#x}", parent_conf_object as usize);
 
-            let callback = Box::new(move |trigger_obj, magic_number| {
-                let tsffs: &'static mut Tsffs = (parent as *mut ConfObject).into();
+            *self.magic_hap_handle_mut() = Some(CoreMagicInstructionHap::add_callback(
+                move |trigger_obj, magic_number| {
+                    println!(
+                        "HAP callback triggered with trigger_obj({:#x}) magic_number({:#x})",
+                        trigger_obj as usize, magic_number
+                    );
+                    let tsffs: &'static mut Tsffs = parent_conf_object.into();
 
-                tsffs
-                    .driver_mut()
-                    .on_magic_instruction(trigger_obj, magic_number)
-                    .expect("Error calling magic instruction callback");
-            });
-
-            *self.magic_hap_handle_mut() = Some(CoreMagicInstructionHap::add_callback(callback)?);
+                    tsffs
+                        .driver_mut()
+                        .on_magic_instruction(trigger_obj, magic_number)
+                        .expect("Error calling magic instruction callback");
+                },
+            )?);
+            info!(self.parent().as_conf_object(), "Adding magic HAP");
         } else if !self.needs_magic_hap() {
             if let Some(handle) = self.magic_hap_handle_mut().take() {
+                info!(
+                    self.parent().as_conf_object(),
+                    "Removing magic HAP with ID {handle}"
+                );
                 CoreMagicInstructionHap::delete_callback_id(handle)?;
             }
         }
