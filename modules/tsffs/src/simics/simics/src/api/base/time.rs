@@ -27,6 +27,10 @@ use simics_macro::simics_exception;
 /// # Return Value
 ///
 /// The number of cycles for the object
+///
+/// # Context
+///
+/// Cell Context
 pub fn cycle_count(obj: *mut ConfObject) -> Cycles {
     unsafe { SIM_cycle_count(obj) }
 }
@@ -41,6 +45,10 @@ pub fn cycle_count(obj: *mut ConfObject) -> Cycles {
 /// # Return Value
 ///
 /// The current time of the object
+///
+/// # Context
+///
+/// Unknown
 pub fn current_time(obj: *mut ConfObject) -> f64 {
     unsafe { SIM_time(obj) }
 }
@@ -48,24 +56,40 @@ pub fn current_time(obj: *mut ConfObject) -> f64 {
 #[simics_exception]
 /// Stall an object's execution for a number of cycles. `obj` must implement the cycle and
 /// stall interfaces
+///
+/// # Cycle
+///
+/// Unknown
 pub fn stall_cycle(obj: *mut ConfObject, cycles: Cycles) {
     unsafe { SIM_stall_cycle(obj, cycles) }
 }
 
 #[simics_exception]
 /// Stall an object's execution for a number of seconds. Must implement stall and cycle interfaces
+///
+/// # Cycle
+///
+/// Unknown
 pub fn stall(obj: *mut ConfObject, seconds: f64) {
     unsafe { SIM_stall(obj, seconds) }
 }
 
 #[simics_exception]
 /// Return the cycle number an object is stalled until
+///
+/// # Context
+///
+/// Cell Context
 pub fn stalled_until(obj: *mut ConfObject) -> Cycles {
     unsafe { SIM_stalled_until(obj) }
 }
 
 #[simics_exception]
 /// Return the number of cycles an object has been stalled
+///
+/// # Context
+///
+/// Cell Context
 pub fn stall_count(obj: *mut ConfObject) -> Cycles {
     unsafe { SIM_stall_count(obj) }
 }
@@ -77,6 +101,10 @@ pub fn stall_count(obj: *mut ConfObject) -> Cycles {
 /// # Arguments
 ///
 /// * `obj` - The object to get the clock for
+///
+/// # Context
+///
+/// All Contexts
 pub fn object_clock(obj: *const ConfObject) -> *mut ConfObject {
     unsafe { SIM_object_clock(obj as *const ConfObject) }
 }
@@ -95,6 +123,10 @@ pub fn object_clock(obj: *const ConfObject) -> *mut ConfObject {
 /// # Arguments
 ///
 /// * `obj` - The object to get the clock for
+///
+/// # Context
+///
+/// All Contexts
 pub fn picosecond_clock(obj: *mut ConfObject) -> *mut ConfObject {
     unsafe { SIM_picosecond_clock(obj) }
 }

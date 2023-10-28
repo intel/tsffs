@@ -115,6 +115,10 @@ where
 /// * `name` - The name of the event to register for
 /// * `cls` - The class events will be posted for objects of
 /// * `flags` - Flags describing the events
+///
+/// # Context
+///
+/// Global Context
 pub fn register_event<S, C, D, DE>(
     name: S,
     cls: *mut ConfClass,
@@ -168,6 +172,10 @@ where
 /// * `obj` - The object the event is being posted on
 /// * `seconds` - The number of seconds until this event expires
 /// * `callbacks` - Callbacks to run for this event
+///
+/// # Context
+///
+/// Cell Context
 pub fn event_post_time<C, D, DE>(
     clock: *mut ConfObject,
     event: *mut EventClass,
@@ -211,6 +219,10 @@ pub fn event_post_time<C, D, DE>(
 /// * `obj` - The object the event is being posted on
 /// * `cycles` - The number of seconds until this event expires
 /// * `callbacks` - Callbacks to run for this event
+///
+/// # Context
+///
+/// Cell Context
 pub fn event_post_cycle<C, D, DE>(
     clock: *mut ConfObject,
     event: *mut EventClass,
@@ -254,6 +266,10 @@ pub fn event_post_cycle<C, D, DE>(
 /// * `obj` - The object the event is being posted on
 /// * `cycles` - The number of seconds until this event expires
 /// * `callbacks` - Callbacks to run for this event
+///
+/// # Context
+///
+/// Cell Context
 pub fn event_post_step<C, D, DE>(
     clock: *mut ConfObject,
     event: *mut EventClass,
@@ -294,6 +310,10 @@ where
 /// * `clock` - The clock the event to cancel was posted on
 /// * `event` - The event to cancel
 /// * `obj` - The object the event was posted on
+///
+/// # Context
+///
+/// Cell Context
 pub fn event_cancel_time<F>(
     clock: *mut ConfObject,
     event: *mut EventClass,
@@ -332,6 +352,10 @@ pub fn event_cancel_time<F>(
 /// * `filter` - An optional closure to filter events that returns nonzero if an event
 /// should be canceled or zero if it should not be canceled. If not provided, all events for class
 /// `event` will be canceled.
+///
+/// # Context
+///
+/// Cell Context
 pub fn event_cancel_step<F>(
     clock: *mut ConfObject,
     event: *mut EventClass,
@@ -375,6 +399,10 @@ pub fn event_cancel_step<F>(
 /// # Return Value
 ///
 /// If found, the cycle number the event will next trigger on
+///
+/// # Context
+///
+/// Cell Context
 pub fn event_find_next_cycle(
     clock: *mut ConfObject,
     event: *mut EventClass,
@@ -411,6 +439,10 @@ pub fn event_find_next_cycle(
 /// # Return Value
 ///
 /// If found, the cycle number the event will next trigger on
+///
+/// # Context
+///
+/// Cell Context
 pub fn event_find_next_time(
     clock: *mut ConfObject,
     event: *mut EventClass,
@@ -447,6 +479,10 @@ pub fn event_find_next_time(
 /// # Return Value
 ///
 /// If found, the cycle number the event will next trigger on
+///
+/// # Context
+///
+/// Cell Context
 pub fn event_find_next_step(
     clock: *mut ConfObject,
     event: *mut EventClass,

@@ -48,21 +48,55 @@ fn interface_field_to_method(field: &Field) -> Option<TokenStream2> {
                             // NOTE: We `use crate::api::sys::*;` at the top of the module, otherwise
                             // we would need to rewrite all of the types on `inputs` here.
                             let inputs = &proto.inputs;
+                            let first_input = inputs.iter().next();
+                            let has_obj = if let Some(first) = first_input {
+                                quote!(#first).to_string().ends_with("conf_object_t")
+                            } else {
+                                false
+                            };
                             let input_names = inputs
                                 .iter()
+                                .skip(if has_obj { 1 } else { 0 })
                                 .filter_map(|a| a.name.clone().map(|n| n.0))
                                 .collect::<Vec<_>>();
-                            let output = match &proto.output {
-                                ReturnType::Default => quote!(()),
-                                ReturnType::Type(_, t) => quote!(#t),
+                            let wrapper_inputs = inputs.iter().skip(if has_obj { 1 } else { 0 }).collect::<Vec<_>>();
+                            let (is_attr_value, output) = match &proto.output {
+                                ReturnType::Default => (false, quote!(())),
+                                ReturnType::Type(_, t) => {
+                                    match &**t {
+                                        Type::Path(p) => {
+                                            if let Some(last) = p.path.get_ident() {
+                                                if last == "attr_value_t" {
+                                                    (true, quote!(crate::api::AttrValue))
+                                                } else {
+                                                    (false, quote!(#t))
+                                                }
+                                            } else {
+                                                (false, quote!(#t))
+                                            }
+
+
+                                        },
+                                        _ => (false, quote!(#t)),
+                                    }
+                                },
                             };
                             // NOTE: We need to make a new name because in some cases the fn ptr name is the same as one of the parameter
                             // names
                             let some_name = format_ident!("{}_fn", name);
+                            let maybe_self_obj = has_obj.then_some(quote!(self.obj,)).unwrap_or_default();
+
+
+                            let ok_value = if is_attr_value {
+                                quote!(Ok(unsafe { #some_name(#maybe_self_obj #(#input_names),*) }.into()))
+                            } else {
+                                quote!(Ok(unsafe { #some_name(#maybe_self_obj #(#input_names),*) }))
+                            };
+
                             return Some(quote! {
-                                #vis fn #name(&mut self, #inputs) -> crate::Result<#output> {
+                                #vis fn #name(&mut self, #(#wrapper_inputs),*) -> crate::Result<#output> {
                                     if let Some(#some_name) = unsafe { *self.interface}.#name {
-                                        Ok(unsafe { #some_name(#(#input_names),*) })
+                                        #ok_value
                                     } else {
                                         Err(crate::Error::NoInterfaceMethod { method: #name_string.to_string() })
                                     }
@@ -84,19 +118,23 @@ fn hap_name_and_type_to_struct(
     let name_name = &name.ident;
     let callback_type = name_callback_type.1;
     let callback_doc = &callback_type.attrs;
-    let supports_index_callbacks = callback_type.attrs.iter().any(|a| {
+    let supports_index_callbacks = callback_type.attrs.iter().find_map(|a| {
         if let Meta::NameValue(ref meta) = a.meta {
             if let Expr::Lit(ref lit) = meta.value {
                 if let Lit::Str(ref str_lit) = lit.lit {
-                    str_lit.value().contains("Index: Indices not supported")
+                    if !str_lit.value().contains("Index: Indices not supported") {
+                        Some(str_lit.value())
+                    } else {
+                        None
+                    }
                 } else {
-                    false
+                    None
                 }
             } else {
-                false
+                None
             }
         } else {
-            false
+            None
         }
     });
 
@@ -142,6 +180,13 @@ fn hap_name_and_type_to_struct(
                             let callback_ty = quote!(FnMut(#(#closure_params),*) -> #output + 'static);
 
                             let add_callback_methods = quote! {
+                                /// Add a callback to be called on each occurrence of this HAP. The callback may capture its environment.
+                                /// 
+                                /// # Arguments
+                                /// 
+                                /// * `callback` - The closure to fire as a callback. The closure will be doubly boxed. Any program state accessed inside
+                                ///   the closure must have the static lifetime. This is not enforced by the compiler, it is up to the programmer to ensure
+                                ///   the soundness of their callback code.
                                 pub fn add_callback<F>(callback: F) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle> 
                                 where
                                     F: #callback_ty,
@@ -159,6 +204,15 @@ fn hap_name_and_type_to_struct(
                                     })
                                 }
 
+                                /// Add a callback to be called on each occurrence of this HAP for a specific object. The callback may capture its environment.
+                                /// 
+                                /// # Arguments
+                                /// 
+                                /// * `callback` - The closure to fire as a callback. The closure will be doubly boxed. Any program state accessed inside
+                                ///   the closure must have the static lifetime. This is not enforced by the compiler, it is up to the programmer to ensure
+                                ///   the soundness of their callback code.
+                                /// * `obj` - The object to fire this callback for. This HAP will not trigger the callback when firing on any object other than
+                                ///   this one.
                                 pub fn add_callback_object<F>(callback: F, obj: *mut crate::api::ConfObject) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle> 
                                 where
                                     F: #callback_ty
@@ -179,7 +233,22 @@ fn hap_name_and_type_to_struct(
                                 }
                             };
 
-                            let maybe_index_callback_methods = supports_index_callbacks.then_some(quote! {
+                            let maybe_index_callback_methods = supports_index_callbacks.map(|index| {
+                                let index_doc = format!("* `index` - The index value for this HAP: {}", index);
+                                let range_start_doc = format!("* `start` - The start of the range of index values for this HAP: {}", index);
+                                let range_end_doc = format!("* `end` - The start of the range of index values for this HAP: {}", index);
+                                quote! {
+                                    /// Add a callback to be called on each occurrence of this HAP for a specific index value. The callback may capture its environment.
+                                    /// 
+                                    /// Only HAPs which support an index may add a callback in this manner, and the index varies for each HAP. For example, the
+                                    /// [`CoreMagicInstructionHap`] supports an index equal to the magic value.
+                                    /// 
+                                    /// # Arguments
+                                    /// 
+                                    /// * `callback` - The closure to fire as a callback. The closure will be doubly boxed. Any program state accessed inside
+                                    ///   the closure must have the static lifetime. This is not enforced by the compiler, it is up to the programmer to ensure
+                                    ///   the soundness of their callback code.
+                                #[doc = #index_doc]
                                 pub fn add_callback_index<F>(callback: F, index: i64) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle> 
                                 where
                                     F: #callback_ty
@@ -198,6 +267,18 @@ fn hap_name_and_type_to_struct(
                                     })
                                 }
 
+                                    /// Add a callback to be called on each occurrence of this HAP for a specific index value range. The callback may capture its environment.
+                                    /// 
+                                    /// Only HAPs which support an index may add a callback in this manner, and the index varies for each HAP. For example, the
+                                    /// [`CoreMagicInstructionHap`] supports an index equal to the magic value.
+                                    /// 
+                                    /// # Arguments
+                                    /// 
+                                    /// * `callback` - The closure to fire as a callback. The closure will be doubly boxed. Any program state accessed inside
+                                    ///   the closure must have the static lifetime. This is not enforced by the compiler, it is up to the programmer to ensure
+                                    ///   the soundness of their callback code.
+                                #[doc = #range_start_doc]
+                                #[doc = #range_end_doc]
                                 pub fn add_callback_range<F>(callback: F, start: i64, end: i64) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle> 
                                 where
                                     F: #callback_ty
@@ -217,6 +298,19 @@ fn hap_name_and_type_to_struct(
                                     })
                                 }
 
+                                    /// Add a callback to be called on each occurrence of this HAP on a specific object for a specific index value. The callback may capture its environment.
+                                    /// 
+                                    /// Only HAPs which support an index may add a callback in this manner, and the index varies for each HAP. For example, the
+                                    /// [`CoreMagicInstructionHap`] supports an index equal to the magic value.
+                                    /// 
+                                    /// # Arguments
+                                    /// 
+                                    /// * `callback` - The closure to fire as a callback. The closure will be doubly boxed. Any program state accessed inside
+                                    ///   the closure must have the static lifetime. This is not enforced by the compiler, it is up to the programmer to ensure
+                                    ///   the soundness of their callback code.
+                                    /// * `obj` - The object to fire this callback for. This HAP will not trigger the callback when firing on any object other than
+                                    ///   this one.
+                                #[doc = #index_doc]
                                 pub fn add_callback_object_index<F>(callback: F, obj: *mut crate::api::ConfObject, index: i64) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle> 
                                 where
                                     F: #callback_ty
@@ -237,6 +331,20 @@ fn hap_name_and_type_to_struct(
                                     })
                                 }
 
+                                    /// Add a callback to be called on each occurrence of this HAP on a specific object for a specific index value range. The callback may capture its environment.
+                                    /// 
+                                    /// Only HAPs which support an index may add a callback in this manner, and the index varies for each HAP. For example, the
+                                    /// [`CoreMagicInstructionHap`] supports an index equal to the magic value.
+                                    /// 
+                                    /// # Arguments
+                                    /// 
+                                    /// * `callback` - The closure to fire as a callback. The closure will be doubly boxed. Any program state accessed inside
+                                    ///   the closure must have the static lifetime. This is not enforced by the compiler, it is up to the programmer to ensure
+                                    ///   the soundness of their callback code.
+                                    /// * `obj` - The object to fire this callback for. This HAP will not trigger the callback when firing on any object other than
+                                    ///   this one.
+                                #[doc = #range_start_doc]
+                                #[doc = #range_end_doc]
                                 pub fn add_callback_object_range<F>(callback: F, obj: *mut crate::api::ConfObject, start: i64, end: i64) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle>
                                 where
                                     F: #callback_ty
@@ -259,7 +367,7 @@ fn hap_name_and_type_to_struct(
                                 }
 
 
-                            });
+                            }}).unwrap_or_default();
 
                             let struct_name_string = struct_name.to_string();
 
@@ -277,12 +385,13 @@ fn hap_name_and_type_to_struct(
                                     #maybe_index_callback_methods
                                 }
 
+                                /// The handler for HAPs of a specific type. Unboxes a boxed
+                                /// closure and calls it with the correct HAP callback arguments
                                 extern "C" fn #handler_name<F>(#inputs) -> #output
                                     where F: #callback_ty
                                 {
                                     // NOTE: This box must be leaked, because we may call this closure again, we cannot drop it
-                                    let mut closure = Box::leak(unsafe { Box::from_raw(#userdata_name as *mut Box<F>) });
-                                    println!("HAP handler callback for HAP {} with callback {:#x}", #struct_name_string, #userdata_name as usize);
+                                    let closure = Box::leak(unsafe { Box::from_raw(#userdata_name as *mut Box<F>) });
                                     closure(#(#closure_param_names),*)
                                 }
 
@@ -452,6 +561,7 @@ pub fn simics_interface_codegen(bindings: &str) -> TokenStream2 {
                 .collect::<Vec<_>>();
             let q = quote! {
                 pub struct #struct_name {
+                    obj: *mut crate::api::ConfObject,
                     interface: *mut crate::api::sys::#interface_ident,
                 }
 
@@ -465,8 +575,8 @@ pub fn simics_interface_codegen(bindings: &str) -> TokenStream2 {
 
                     const NAME: &'static [u8] = crate::api::sys::#name_ident;
 
-                    fn new(interface: *mut Self::InternalInterface) -> Self {
-                        Self { interface }
+                    fn new(obj: *mut crate::api::ConfObject, interface: *mut Self::InternalInterface) -> Self {
+                        Self { obj, interface }
                     }
 
                     fn register(cls: *mut crate::api::ConfClass) -> crate::Result<()> {

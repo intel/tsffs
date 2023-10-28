@@ -3,7 +3,9 @@
 
 use anyhow::Result;
 
+use crate::state::StopReason;
+
 pub trait Component {
     /// Called after the initial snapshot is taken
-    fn on_start(&mut self) -> Result<()>;
+    fn on_simulation_stopped(&mut self, reason: &StopReason) -> Result<()>;
 }

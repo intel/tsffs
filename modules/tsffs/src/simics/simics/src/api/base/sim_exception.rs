@@ -18,6 +18,10 @@ pub type SimException = sim_exception;
 ///
 /// The returned string is only valid until the next use of the Simics API in the same
 /// thread.
+///
+/// # Context
+///
+/// Cell Context
 pub fn last_error() -> String {
     let error_str = unsafe { CStr::from_ptr(SIM_last_error()) };
     error_str.to_string_lossy().to_string()
@@ -28,6 +32,10 @@ pub fn last_error() -> String {
 /// # Return Value
 ///
 /// Returns the exception that was pending before the call, or SimExc_No_Exception.
+///
+/// # Context
+///
+/// Cell Context
 pub fn clear_exception() -> SimException {
     unsafe { SIM_clear_exception() }
 }
@@ -39,6 +47,10 @@ pub fn clear_exception() -> SimException {
 ///
 /// The pending exception. This value is [`SimException::SimExc_No_Exception`] if there was
 /// none.
+///
+/// # Context
+///
+/// Cell Context
 pub fn get_pending_exception() -> SimException {
     unsafe { SIM_get_pending_exception() }
 }

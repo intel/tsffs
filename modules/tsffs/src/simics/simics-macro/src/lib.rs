@@ -498,6 +498,7 @@ pub fn simics_exception(args: TokenStream, input: TokenStream) -> TokenStream {
 
     let inner_ident = format_ident!("_{}", input.sig.ident);
     input.sig.ident = inner_ident.clone();
+    let input_name = input.sig.ident.to_string();
     input.vis = Visibility::Inherited;
 
     let ok_return = sig
@@ -550,7 +551,7 @@ pub fn simics_exception(args: TokenStream, input: TokenStream) -> TokenStream {
                     crate::api::base::sim_exception::clear_exception();
                     Err(crate::error::Error::SimicsException {
                         exception,
-                        msg: crate::api::base::sim_exception::last_error()
+                        msg: crate::api::base::sim_exception::last_error() + "(" + #input_name + ")"
                     })
                 }
             }
@@ -633,6 +634,7 @@ pub fn interface(args: TokenStream, input: TokenStream) -> TokenStream {
         #input
 
         #vis struct #interface_ident {
+            obj: *mut simics::api::ConfObject,
             interface: *mut #interface_internal_ident,
         }
 
@@ -648,8 +650,8 @@ pub fn interface(args: TokenStream, input: TokenStream) -> TokenStream {
 
             const NAME: &'static [u8] = #interface_name_literal;
 
-            fn new(interface: *mut Self::InternalInterface) -> Self {
-                Self { interface }
+            fn new(obj: *mut simics::api::ConfObject, interface: *mut Self::InternalInterface) -> Self {
+                Self { obj, interface }
             }
 
             fn register(cls: *mut simics::api::ConfClass) -> simics::Result<()> {
@@ -1216,14 +1218,13 @@ struct TryIntoAttrValueTypeField {
 
 #[derive(Debug, FromDeriveInput)]
 #[darling(attributes(try_into_attr_value_type), supports(struct_named))]
-struct TryIntoAttrValueTypeOpts {
+struct TryIntoAttrValueTypeDictOpts {
     ident: Ident,
     generics: Generics,
     data: Data<(), TryIntoAttrValueTypeField>,
-    list: Flag,
 }
 
-impl TryIntoAttrValueTypeOpts {
+impl TryIntoAttrValueTypeDictOpts {
     fn to_tokens_dict(&self, tokens: &mut TokenStream2) {
         let ident = &self.ident;
         let (impl_generics, ty_generics, where_clause) = self.generics.split_for_impl();
@@ -1261,6 +1262,37 @@ impl TryIntoAttrValueTypeOpts {
         });
     }
 
+}
+
+impl ToTokens for TryIntoAttrValueTypeDictOpts {
+    fn to_tokens(&self, tokens: &mut TokenStream2) {
+        self.to_tokens_dict(tokens)
+    }
+}
+
+#[proc_macro_derive(TryIntoAttrValueTypeDict)]
+/// Derive macro for the [`Class`] trait.
+pub fn try_into_attr_value_type_dict(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let args = match TryIntoAttrValueTypeDictOpts::from_derive_input(&input) {
+        Ok(opts) => opts,
+        Err(e) => return e.write_errors().into(),
+    };
+    quote! {
+        #args
+    }
+    .into()
+}
+
+#[derive(Debug, FromDeriveInput)]
+#[darling(attributes(try_into_attr_value_type), supports(struct_named))]
+struct TryIntoAttrValueTypeListOpts {
+    ident: Ident,
+    generics: Generics,
+    data: Data<(), TryIntoAttrValueTypeField>,
+}
+
+impl TryIntoAttrValueTypeListOpts {
     fn to_tokens_list(&self, tokens: &mut TokenStream2) {
         let ident = &self.ident;
         let (impl_generics, ty_generics, where_clause) = self.generics.split_for_impl();
@@ -1300,21 +1332,17 @@ impl TryIntoAttrValueTypeOpts {
     }
 }
 
-impl ToTokens for TryIntoAttrValueTypeOpts {
+impl ToTokens for TryIntoAttrValueTypeListOpts {
     fn to_tokens(&self, tokens: &mut TokenStream2) {
-        if self.list.is_present() {
             self.to_tokens_list(tokens)
-        } else {
-            self.to_tokens_dict(tokens)
-        }
     }
 }
 
-#[proc_macro_derive(TryIntoAttrValueType)]
+#[proc_macro_derive(TryIntoAttrValueTypeList)]
 /// Derive macro for the [`Class`] trait.
-pub fn try_into_attr_value_type(input: TokenStream) -> TokenStream {
+pub fn try_into_attr_value_type_list(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    let args = match TryIntoAttrValueTypeOpts::from_derive_input(&input) {
+    let args = match TryIntoAttrValueTypeListOpts::from_derive_input(&input) {
         Ok(opts) => opts,
         Err(e) => return e.write_errors().into(),
     };
@@ -1325,7 +1353,7 @@ pub fn try_into_attr_value_type(input: TokenStream) -> TokenStream {
 }
 
 #[derive(Debug, FromField)]
-#[darling(attributes(into_attr_value_type))]
+#[darling(attributes(try_from_attr_value_type))]
 struct TryFromAttrValueTypeField {
     ident: Option<Ident>,
     #[allow(unused)]
@@ -1333,55 +1361,14 @@ struct TryFromAttrValueTypeField {
 }
 
 #[derive(Debug, FromDeriveInput)]
-#[darling(attributes(try_into_attr_value_type), supports(struct_named))]
-struct TryFromAttrValueTypeOpts {
+#[darling(attributes(try_from_attr_value_type), supports(struct_named))]
+struct TryFromAttrValueTypeListOpts {
     ident: Ident,
     generics: Generics,
     data: Data<(), TryFromAttrValueTypeField>,
-    /// If set, instead of deserializing from an attribute value dict
-    /// deserialize from a list, taking each element of the list.
-    list: Flag,
 }
 
-impl TryFromAttrValueTypeOpts {
-    fn to_tokens_dict(&self, tokens: &mut TokenStream2) {
-        let ident = &self.ident;
-        let (impl_generics, ty_generics, where_clause) = self.generics.split_for_impl();
-        let Some(fields) = self.data.as_ref().take_struct() else {
-            panic!("Fields must be struct fields");
-        };
-
-        let dict_fields = fields
-            .iter()
-            .filter_map(|f| {
-                f.ident.clone().map(|i| {
-                    let ident_name = i.to_string();
-                    quote! {
-                        #i: value.get(&#ident_name.into())
-                                .ok_or_else(|| simics::Error::AttrValueDictMissingKey { key: #ident_name.to_string()})?
-                                .clone()
-                                .try_into()?
-
-                    }
-                })
-            })
-            .collect::<Vec<_>>();
-
-        tokens.extend(quote! {
-            impl #impl_generics TryFrom<simics::api::AttrValueType> for #ident #ty_generics  #where_clause {
-                type Error = simics::Error;
-
-                fn try_from(value: simics::api::AttrValueType) -> simics::Result<Self> {
-                    let simics::api::AttrValueType::Dict(value) = value else {
-                        return Err(simics::Error::AttrValueTypeUnknown);
-                    };
-                    Ok(Self {
-                        #(#dict_fields),*
-                    })
-                }
-            }
-        });
-    }
+impl TryFromAttrValueTypeListOpts {
 
     fn to_tokens_list(&self, tokens: &mut TokenStream2) {
         let ident = &self.ident;
@@ -1412,8 +1399,27 @@ impl TryFromAttrValueTypeOpts {
 
                 fn try_from(value: simics::api::AttrValueType) -> simics::Result<Self> {
                     let simics::api::AttrValueType::List(value) = value else {
-                        return Err(simics::Error::AttrValueTypeUnknown);
+                        return Err(simics::Error::FromAttrValueTypeConversionError {
+                            ty: std::any::type_name::<#ident #ty_generics>().to_string(),
+                        });
                     };
+
+                    Ok(Self {
+                        #(#dict_fields),*
+                    })
+                }
+            }
+            
+            impl #impl_generics TryFrom<simics::api::AttrValue> for #ident #ty_generics  #where_clause {
+                type Error = simics::Error;
+
+                fn try_from(value: simics::api::AttrValue) -> simics::Result<Self> {
+                    // NOTE: We cannot use AttrValueType here, because we are most likely
+                    // converting from a non-homogeneous list.
+                    let value: Vec<simics::api::AttrValueType> = value.as_heterogeneous_list()?.ok_or_else(|| simics::Error::AttrValueType {
+                        actual: value.kind(),
+                        expected: simics::api::AttrKind::Sim_Val_List,
+                    })?;
 
                     Ok(Self {
                         #(#dict_fields),*
@@ -1424,21 +1430,108 @@ impl TryFromAttrValueTypeOpts {
     }
 }
 
-impl ToTokens for TryFromAttrValueTypeOpts {
+impl ToTokens for TryFromAttrValueTypeListOpts {
     fn to_tokens(&self, tokens: &mut TokenStream2) {
-        if self.list.is_present() {
-            self.to_tokens_list(tokens)
-        } else {
-            self.to_tokens_dict(tokens)
-        }
+        self.to_tokens_list(tokens)
     }
 }
 
-#[proc_macro_derive(TryFromAttrValueType)]
+#[proc_macro_derive(TryFromAttrValueTypeList)]
 /// Derive macro that allows deserialization from an attrvalue
-pub fn try_from_attr_value_type(input: TokenStream) -> TokenStream {
+pub fn try_from_attr_value_type_list(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    let args = match TryFromAttrValueTypeOpts::from_derive_input(&input) {
+    let args = match TryFromAttrValueTypeListOpts::from_derive_input(&input) {
+        Ok(opts) => opts,
+        Err(e) => return e.write_errors().into(),
+    };
+    let q: TokenStream = quote! {
+        #args
+    }
+    .into();
+
+    // println!("{}", q);
+
+    q
+}
+
+#[derive(Debug, FromDeriveInput)]
+#[darling(attributes(try_from_attr_value_type), supports(struct_named))]
+struct TryFromAttrValueTypeDictOpts {
+    ident: Ident,
+    generics: Generics,
+    data: Data<(), TryFromAttrValueTypeField>,
+}
+
+impl TryFromAttrValueTypeDictOpts {
+    fn to_tokens_dict(&self, tokens: &mut TokenStream2) {
+        let ident = &self.ident;
+        let (impl_generics, ty_generics, where_clause) = self.generics.split_for_impl();
+        let Some(fields) = self.data.as_ref().take_struct() else {
+            panic!("Fields must be struct fields");
+        };
+
+        let dict_fields = fields
+            .iter()
+            .filter_map(|f| {
+                f.ident.clone().map(|i| {
+                    let ident_name = i.to_string();
+                    quote! {
+                        #i: value.get(&#ident_name.into())
+                                .ok_or_else(|| simics::Error::AttrValueDictMissingKey { key: #ident_name.to_string()})?
+                                .clone()
+                                .try_into()?
+
+                    }
+                })
+            })
+            .collect::<Vec<_>>();
+
+        tokens.extend(quote! {
+            impl #impl_generics TryFrom<simics::api::AttrValueType> for #ident #ty_generics  #where_clause {
+                type Error = simics::Error;
+
+                fn try_from(value: simics::api::AttrValueType) -> simics::Result<Self> {
+                    let simics::api::AttrValueType::Dict(value) = value else {
+                        return Err(simics::Error::FromAttrValueTypeConversionError {
+                            ty: std::any::type_name::<#ident #ty_generics>().to_string(),
+                        });
+                    };
+                    Ok(Self {
+                        #(#dict_fields),*
+                    })
+                }
+            }
+
+            impl #impl_generics TryFrom<simics::api::AttrValue> for #ident #ty_generics  #where_clause {
+                type Error = simics::Error;
+
+                fn try_from(value: simics::api::AttrValue) -> simics::Result<Self> {
+                    let value = value.as_heterogeneous_dict()?.ok_or_else(|| simics::Error::AttrValueType {
+                        actual: value.kind(),
+                        expected: simics::api::AttrKind::Sim_Val_Dict,
+                    })?;
+
+                    Ok(Self {
+                        #(#dict_fields),*
+                    })
+                }
+            }
+        });
+    }
+
+}
+
+impl ToTokens for TryFromAttrValueTypeDictOpts {
+    fn to_tokens(&self, tokens: &mut TokenStream2) {
+        self.to_tokens_dict(tokens)
+    }
+}
+
+#[proc_macro_derive(TryFromAttrValueTypeDict)]
+/// Derive macro that allows deserialization from an attrvalue
+pub fn try_from_attr_value_type_dict(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let args = match TryFromAttrValueTypeDictOpts::from_derive_input(&input) {
         Ok(opts) => opts,
         Err(e) => return e.write_errors().into(),
     };

@@ -7,6 +7,10 @@ use crate::api::{sys::SIM_register_context_handler, ConfClass, ContextHandlerInt
 
 #[simics_exception]
 /// Register `cls` as a class for context handler objects
+///
+/// # Context
+///
+/// Unknown
 pub fn register_context_handler(cls: *mut ConfClass, iface: *const ContextHandlerInterface) -> i32 {
     unsafe { SIM_register_context_handler(cls, iface as *const _) }
 }

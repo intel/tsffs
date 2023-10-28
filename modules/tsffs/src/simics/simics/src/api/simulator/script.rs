@@ -1,6 +1,8 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+use std::any::type_name;
+
 use crate::{
     api::{
         sys::{
@@ -45,13 +47,17 @@ where
         .into_iter()
         .map(|a| {
             a.1.try_into()
-                .map_err(|_| Error::AttrValueConversionError)
+                .map_err(|_| Error::ToAttrValueConversionError {
+                    ty: type_name::<T>().to_string(),
+                })
                 .and_then(|v| {
                     [a.0.as_ref().into(), v]
                         .into_iter()
                         .collect::<Vec<_>>()
                         .try_into()
-                        .map_err(|_| Error::AttrValueConversionError)
+                        .map_err(|_| Error::ToAttrValueConversionError {
+                            ty: type_name::<T>().to_string(),
+                        })
                 })
         })
         .collect::<Result<Vec<_>>>()?;

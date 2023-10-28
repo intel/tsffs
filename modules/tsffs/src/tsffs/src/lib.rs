@@ -29,14 +29,18 @@
 
 use crate::{
     detector::Detector, driver::Driver, fuzzer::Fuzzer, interface::TsffsInterfaceInternal,
-    tracer::Tracer,
+    tracer::Tracer, traits::Component,
 };
 use getters::Getters;
 use simics::{
-    api::{set_log_level, Class, ConfObject, LogLevel},
+    api::{
+        break_simulation, AsConfObject, Class, ConfObject, CoreSimulationStoppedHap, HapHandle,
+        LogLevel,
+    },
     info, Result,
 };
 use simics_macro::{class, interface, AsConfObject};
+use state::StopReason;
 
 pub mod arch;
 pub mod detector;
@@ -44,6 +48,7 @@ pub mod driver;
 pub mod fuzzer;
 pub mod init;
 pub mod interface;
+pub mod state;
 pub mod tracer;
 pub mod traits;
 
@@ -59,11 +64,31 @@ pub struct Tsffs {
     fuzzer: Fuzzer<'static>,
     detector: Detector<'static>,
     tracer: Tracer<'static>,
+    stop_hap_handle: HapHandle,
+    stop_reason: Option<StopReason>,
 }
 
 impl Class for Tsffs {
     fn init(instance: *mut ConfObject) -> Result<*mut ConfObject> {
-        set_log_level(instance, LogLevel::Trace)?;
+        let stop_hap_instance = instance;
+
+        let stop_hap_handle = CoreSimulationStoppedHap::add_callback(
+            // NOTE: Core_Simulation_Stopped is called with an object, exception and
+            // error string, but the exception is always
+            // SimException::SimExc_No_Exception and the error string is always
+            // null_mut.
+            move |_, _, _| {
+                // On stops, call the module's stop callback method, which will in turn call the
+                // stop callback methods on each of the module's components. The stop reason will
+                // be retrieved from the module, if one is set. It is an error for the module to
+                // stop itself without setting a reason
+                let tsffs: &'static mut Tsffs = stop_hap_instance.into();
+
+                tsffs
+                    .on_simulation_stopped()
+                    .expect("Error calling simulation stopped callback");
+            },
+        )?;
 
         info!(instance, "Initialized instance");
 
@@ -73,6 +98,33 @@ impl Class for Tsffs {
             Fuzzer::builder().parent(instance.into()).build(),
             Detector::builder().parent(instance.into()).build(),
             Tracer::builder().parent(instance.into()).build(),
+            stop_hap_handle,
+            None,
         ))
+    }
+}
+
+impl Tsffs {
+    pub fn on_simulation_stopped(&mut self) -> Result<()> {
+        if let Some(reason) = self.stop_reason_mut().take() {
+            info!(
+                self.as_conf_object_mut(),
+                "on_simulation_stopped({reason:?})"
+            );
+
+            self.driver.on_simulation_stopped(&reason)?;
+            self.fuzzer.on_simulation_stopped(&reason)?;
+            self.detector.on_simulation_stopped(&reason)?;
+            self.tracer.on_simulation_stopped(&reason)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn stop_simulation(&mut self, reason: StopReason) -> Result<()> {
+        *self.stop_reason_mut() = Some(reason);
+        break_simulation(reason.to_string())?;
+
+        Ok(())
     }
 }

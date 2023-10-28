@@ -267,6 +267,10 @@ pub fn extend_class(cls: *mut ConfClass, ext: *mut ConfClass) {
 /// # Return Value
 ///
 /// The new copied class
+///
+/// # Context
+///
+/// Global Context
 pub fn copy_class<S>(name: S, src_cls: *mut ConfClass, desc: S) -> Result<*mut ConfClass>
 where
     S: AsRef<str>,
@@ -285,6 +289,10 @@ where
 /// # Return Value
 ///
 /// The name of the class
+///
+/// # Context
+///
+/// Cell Context
 pub fn get_class_name(cls: *mut ConfClass) -> Result<String> {
     Ok(unsafe { CStr::from_ptr(SIM_get_class_name(cls)) }
         .to_str()
@@ -301,6 +309,10 @@ pub fn get_class_name(cls: *mut ConfClass) -> Result<String> {
 ///
 /// * `cls` - The class to set extra data for
 /// * `data` - Extra data to store
+///
+/// # Context
+///
+/// Global Context
 pub fn set_class_data<T>(cls: *mut ConfClass, data: T) {
     unsafe { SIM_set_class_data(cls, Box::into_raw(Box::new(data)) as *mut c_void) }
 }
@@ -317,6 +329,10 @@ pub fn set_class_data<T>(cls: *mut ConfClass, data: T) {
 ///
 /// The class data. Ownership of the data is not transferred to the caller. If `T`
 /// implements `Clone`, clone the data to obtain an owned object.
+///
+/// # Context
+///
+/// Cell Context
 pub fn get_class_data<'a, T>(cls: *mut ConfClass) -> &'a mut T {
     unsafe { Box::leak(Box::from_raw(SIM_get_class_data(cls) as *mut T)) }
 }
@@ -342,6 +358,10 @@ pub fn get_class_data<'a, T>(cls: *mut ConfClass) -> &'a mut T {
 /// # Arguments
 ///
 /// * `obj` - The object to require finalization for
+///
+/// # Context
+///
+/// Global Context
 pub fn require_object(obj: *mut ConfObject) {
     unsafe { SIM_require_object(obj) };
 }
@@ -360,6 +380,10 @@ pub fn require_object(obj: *mut ConfObject) {
 /// # Return Value
 ///
 /// The unique name of the object
+///
+/// # Context
+///
+/// All Contexts
 pub fn object_name(obj: *mut ConfObject) -> Result<String> {
     Ok(unsafe { CStr::from_ptr(SIM_object_name(obj)) }
         .to_str()
@@ -381,6 +405,10 @@ pub fn object_name(obj: *mut ConfObject) -> Result<String> {
 /// # Return Value
 ///
 /// The unique id of the object
+///
+/// # Context
+///
+/// All Contexts
 pub fn object_id(obj: *mut ConfObject) -> Result<String> {
     Ok(unsafe { CStr::from_ptr(SIM_object_id(obj)) }
         .to_str()
@@ -402,6 +430,10 @@ pub fn object_id(obj: *mut ConfObject) -> Result<String> {
 /// # Return Value
 ///
 /// Whether the object is configured
+///
+/// # Context
+///
+/// All Contexts
 pub fn object_is_configured(obj: *mut ConfObject) -> bool {
     unsafe { SIM_object_is_configured(obj) }
 }
@@ -416,6 +448,10 @@ pub fn object_is_configured(obj: *mut ConfObject) -> bool {
 /// # Arguments
 ///
 /// * `obj` - The object to set as configured
+///
+/// # Context
+///
+/// Global Context
 pub fn set_object_configured(obj: *mut ConfObject) {
     unsafe { SIM_set_object_configured(obj) }
 }
@@ -444,6 +480,10 @@ pub fn set_object_configured(obj: *mut ConfObject) {
 /// # Return value
 ///
 /// A reference to the object's inner data
+///
+/// # Context
+///
+/// All Contexts
 pub fn object_data<'a, T>(obj: *mut ConfObject) -> &'a mut T {
     unsafe { Box::leak(Box::from_raw(SIM_object_data(obj) as *mut T)) }
 }
@@ -464,6 +504,10 @@ pub fn object_data<'a, T>(obj: *mut ConfObject) -> &'a mut T {
 /// # Return value
 ///
 /// A reference to the object's inner data
+///
+/// # Context
+///
+/// Cell Context
 pub fn extension_data<'a, T>(obj: *mut ConfObject, cls: *mut ConfClass) -> &'a mut T {
     unsafe { Box::leak(Box::from_raw(SIM_extension_data(obj, cls) as *mut T)) }
 }
@@ -478,6 +522,10 @@ pub fn extension_data<'a, T>(obj: *mut ConfObject, cls: *mut ConfClass) -> &'a m
 /// # Return Value
 ///
 /// A pointer to the parent object if there is one, or None otherwise
+///
+/// # Context
+///
+/// Unknown
 pub fn object_parent(obj: *mut ConfObject) -> Option<*mut ConfObject> {
     let ptr = unsafe { SIM_object_parent(obj) };
 
@@ -499,6 +547,10 @@ pub fn object_parent(obj: *mut ConfObject) -> Option<*mut ConfObject> {
 /// # Return Value
 ///
 /// The descendant of the object with a name, if one exists
+///
+/// # Context
+///
+/// Unknown
 pub fn object_descendant<S>(obj: *mut ConfObject, relname: S) -> Result<Option<*mut ConfObject>>
 where
     S: AsRef<str>,
@@ -521,6 +573,10 @@ where
 /// # Return Value
 ///
 /// The iterator over the object's children
+///
+/// # Context
+///
+/// Unknown
 pub fn object_iterator(obj: *mut ConfObject) -> ObjectIter {
     unsafe { SIM_object_iterator(obj) }
 }
@@ -535,6 +591,10 @@ pub fn object_iterator(obj: *mut ConfObject) -> ObjectIter {
 /// # Return Value
 ///
 /// An iterator over the object's children, non-recursively
+///
+/// # Context
+///
+/// Unknown
 pub fn shallow_object_iterator(obj: *mut ConfObject) -> ObjectIter {
     unsafe { SIM_shallow_object_iterator(obj) }
 }
@@ -550,6 +610,10 @@ pub fn shallow_object_iterator(obj: *mut ConfObject) -> ObjectIter {
 /// # Return Value
 ///
 /// The next element in the iteration, or `None` if the iterator has been exhausted
+///
+/// # Context
+///
+/// Unknown
 pub fn object_iterator_next(iter: *mut ObjectIter) -> Option<*mut ConfObject> {
     let obj = unsafe { SIM_object_iterator_next(iter) };
 
@@ -702,6 +766,10 @@ where
 /// * `attr` - The attributes of the attribute
 /// * `attr_type` - The types allowed for the attribute
 /// * `idx_type` - The types allowed to index the attribute
+///
+/// # Context
+///
+/// Global Context
 pub fn register_typed_attribute<S, GF, SF>(
     cls: *mut ConfClass,
     name: S,
@@ -814,6 +882,10 @@ where
 /// * `attr` - The attributes of the attribute
 /// * `attr_type` - The types allowed for the attribute
 /// * `idx_type` - The types allowed to index the attribute
+///
+/// # Context
+///
+/// Global Context
 pub fn register_typed_class_attribute<S, GF, SF>(
     cls: *mut ConfClass,
     name: S,
@@ -925,6 +997,10 @@ where
 /// `cls`, the value to set, and the value to set it to
 /// * `attr` - The attributes of the attribute
 /// * `attr_type` - The types allowed for the attribute
+///
+/// # Context
+///
+/// Global Context
 pub fn register_attribute<S, GF, SF>(
     cls: *mut ConfClass,
     name: S,
@@ -1028,6 +1104,10 @@ where
 /// `cls`, the value to set, and the value to set it to
 /// * `attr` - The attributes of the attribute
 /// * `attr_type` - The types allowed for the attribute
+///
+/// # Context
+///
+/// Global Context
 pub fn register_class_attribute<S, GF, SF>(
     cls: *mut ConfClass,
     name: S,
@@ -1102,6 +1182,10 @@ where
 /// # Arguments
 ///
 /// * `msg` - The message to set on an attribute error
+///
+/// # Context
+///
+/// Cell Context
 pub fn attribute_error<S>(msg: S) -> Result<()>
 where
     S: AsRef<str>,
@@ -1132,6 +1216,10 @@ where
 ///
 /// * [`SimException::SimExc_General`] Thrown if the interface name is illegal, or if
 /// this interface has already been registered for this class.
+///
+/// # Context
+///
+/// Global Context
 pub fn register_interface<I>(cls: *mut ConfClass) -> Result<i32>
 where
     I: Interface,
@@ -1162,11 +1250,22 @@ where
 /// # Return Value
 ///
 /// The interface requested, or an error if invalid.
+///
+/// # Performance
+///
+/// * `SIM_get_interface` - Calls [`SIM_object_class`] which is extremely cheap ((&obj->sobj)->isa)
+///   then canonicalizes (replace - with _) the interface name, then does a hashtable lookup with
+///   the interface name. This shouldn't be called in an extreme tight loop (e.g. each instruction)
+///   but is OK to call on rarer events (e.g. on magic instructions).
+///
+/// # Context
+///
+/// All Contexts
 pub fn get_interface<I>(obj: *mut ConfObject) -> Result<I>
 where
     I: Interface,
 {
-    Ok(I::new(unsafe {
+    Ok(I::new(obj, unsafe {
         SIM_get_interface(obj as *const ConfObject, I::NAME.as_raw_cstr()?)
             as *mut I::InternalInterface
     }))
@@ -1182,6 +1281,10 @@ where
 /// # Return Value
 ///
 /// The interface requested, or an error if invalid.
+///
+/// # Context
+///
+/// All Contexts
 pub fn get_class_interface<I>(cls: *mut ConfClass) -> Result<*mut I::InternalInterface>
 where
     I: Interface,
@@ -1201,6 +1304,10 @@ where
 /// # Return Value
 ///
 /// Whether the object is being deleted
+///
+/// # Context
+///
+/// Global Context
 pub fn marked_for_deletion(obj: *mut ConfObject) -> bool {
     unsafe { SIM_marked_for_deletion(obj) }
 }

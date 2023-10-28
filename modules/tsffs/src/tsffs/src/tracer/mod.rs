@@ -1,21 +1,18 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::anyhow;
+use anyhow::{anyhow, Error, Result};
 use ffi_macro::ffi;
 use getters::Getters;
-use simics::{
-    api::{
-        sys::{cached_instruction_handle_t, instruction_handle_t},
-        AttrValue, AttrValueType, ConfObject,
-    },
-    Error, Result,
+use simics::api::{
+    sys::{cached_instruction_handle_t, instruction_handle_t},
+    AttrValue, AttrValueType, ConfObject,
 };
-use simics_macro::TryIntoAttrValueType;
+use simics_macro::TryIntoAttrValueTypeDict;
 use std::{collections::HashMap, ffi::c_void, fmt::Display, str::FromStr};
 use typed_builder::TypedBuilder;
 
-use crate::Tsffs;
+use crate::{state::StopReason, traits::Component, Tsffs};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub enum CoverageMode {
@@ -40,7 +37,7 @@ impl FromStr for CoverageMode {
     fn from_str(s: &str) -> Result<Self> {
         let as_string = Self::AS_STRING.iter().cloned().collect::<HashMap<_, _>>();
 
-        Ok(as_string.get(s).cloned().ok_or_else(|| {
+        as_string.get(s).cloned().ok_or_else(|| {
             anyhow!(
                 "Invalid coverage mode {}. Expected one of {}",
                 s,
@@ -50,7 +47,7 @@ impl FromStr for CoverageMode {
                     .collect::<Vec<_>>()
                     .join(", ")
             )
-        })?)
+        })
     }
 }
 
@@ -82,7 +79,7 @@ impl From<CoverageMode> for AttrValueType {
     }
 }
 
-#[derive(TypedBuilder, Getters, Clone, Debug, TryIntoAttrValueType)]
+#[derive(TypedBuilder, Getters, Clone, Debug, TryIntoAttrValueTypeDict)]
 #[getters(mutable)]
 pub struct TracerConfiguration {
     #[builder(default)]
@@ -131,6 +128,12 @@ where
         _cached_instruction_data: *mut cached_instruction_handle_t,
         _handle: *mut instruction_handle_t,
     ) -> Result<()> {
+        Ok(())
+    }
+}
+
+impl<'a> Component for Tracer<'a> {
+    fn on_simulation_stopped(&mut self, reason: &StopReason) -> Result<()> {
         Ok(())
     }
 }

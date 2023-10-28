@@ -16,7 +16,7 @@
   unsigned int _a __attribute__((unused)) = 0;                          \
   __asm__ __volatile__("cpuid"                                          \
                        : "=a"(_a)                                       \
-                       : "a"(value), "S"(inout_ptr_0), "D"(inout_ptr_1) \
+                       : "a"(value), "D"(inout_ptr_0), "S"(inout_ptr_1) \
                        : "rbx", "rcx", "rdx");
 
 /// Trigger a CPUID instruction

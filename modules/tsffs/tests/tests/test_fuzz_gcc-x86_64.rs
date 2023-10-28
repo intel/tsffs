@@ -16,11 +16,14 @@ fn test_fuzz_gcc_x86_64() -> Result<()> {
         load-module tsffs
 
         @tsffs = SIM_create_object(SIM_get_class("tsffs"), "tsffs", [])
+        tsffs.log-level 1
         @tsffs.iface.tsffs.set_start_on_harness(True)
         @tsffs.iface.tsffs.set_stop_on_harness(True)
         @tsffs.iface.tsffs.set_timeout(3.0)
         @tsffs.iface.tsffs.add_exception_solution(14)
         @tsffs.iface.tsffs.set_generate_random_corpus(True)
+        @tsffs.iface.tsffs.set_iterations(1000)
+        @tsffs.iface.tsffs.set_use_snapshots(True)
 
         load-target "qsp-x86/uefi-shell" namespace = qsp machine:hardware:storage:disk0:image = "minimal_boot_disk.craff"
 
@@ -37,7 +40,7 @@ fn test_fuzz_gcc_x86_64() -> Result<()> {
         }
 
         script-branch {
-            bp.time.wait-for seconds = 120
+            bp.time.wait-for seconds = 30
             echo "Exiting..."
             exit 0
         }

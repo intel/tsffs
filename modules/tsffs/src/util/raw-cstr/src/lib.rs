@@ -79,3 +79,15 @@ impl AsRawCstr for *mut i8 {
         Ok(*self)
     }
 }
+
+impl AsRawCstr for &str {
+    fn as_raw_cstr(&self) -> Result<*mut i8> {
+        raw_cstr(self)
+    }
+}
+
+impl AsRawCstr for String {
+    fn as_raw_cstr(&self) -> Result<*mut i8> {
+        raw_cstr(self)
+    }
+}

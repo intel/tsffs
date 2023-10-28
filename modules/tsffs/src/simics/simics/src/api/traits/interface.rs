@@ -11,7 +11,7 @@ pub trait Interface {
     type Name: AsRawCstr;
     const NAME: Self::Name;
     /// Create a new instance of this interface
-    fn new(interface: *mut Self::InternalInterface) -> Self;
+    fn new(obj: *mut ConfObject, interface: *mut Self::InternalInterface) -> Self;
     /// Register this interface for a type
     fn register(cls: *mut ConfClass) -> Result<()>;
     /// Get this interface for an object that implements it

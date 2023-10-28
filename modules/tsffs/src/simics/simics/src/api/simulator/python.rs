@@ -17,7 +17,7 @@ use crate::{
 };
 use raw_cstr::raw_cstr;
 use simics_macro::simics_exception;
-use std::path::Path;
+use std::{any::type_name, path::Path};
 
 #[simics_exception]
 /// Source a python file of SIMICS python code
@@ -62,7 +62,11 @@ where
 {
     let args: Vec<AttrValue> = args
         .into_iter()
-        .map(|a| a.try_into().map_err(|_| Error::AttrValueConversionError))
+        .map(|a| {
+            a.try_into().map_err(|_| Error::ToAttrValueConversionError {
+                ty: type_name::<T>().to_string(),
+            })
+        })
         .collect::<Result<Vec<_>>>()?;
     let args: AttrValue = args.try_into()?;
     let mut args = args.into();
@@ -95,7 +99,11 @@ where
 {
     let args: Vec<AttrValue> = args
         .into_iter()
-        .map(|a| a.try_into().map_err(|_| Error::AttrValueConversionError))
+        .map(|a| {
+            a.try_into().map_err(|_| Error::ToAttrValueConversionError {
+                ty: type_name::<T>().to_string(),
+            })
+        })
         .collect::<Result<Vec<_>>>()?;
     let args: AttrValue = args.try_into()?;
     let mut args = args.into();

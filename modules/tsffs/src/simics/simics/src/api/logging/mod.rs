@@ -44,6 +44,10 @@ pub enum LogLevel {
 ///
 /// The macros [`simics::error`], [`simics::warn`], [`simics::info`], [`simics::debug`],
 /// and [`simics::trace`] are more flexible and user friendly. They should be used instead.
+///
+/// # Context
+///
+/// All Contexts
 pub fn log_info<S>(level: LogLevel, device: *mut ConfObject, msg: S) -> Result<()>
 where
     S: AsRef<str>,
@@ -69,6 +73,10 @@ where
 ///
 /// The macros [`simics::error`], [`simics::warn`], [`simics::info`], [`simics::debug`],
 /// and [`simics::trace`] are more flexible and user friendly. They should be used instead.
+///
+/// # Context
+///
+/// All Contexts
 pub fn log_error<S>(device: *mut ConfObject, msg: S) -> Result<()>
 where
     S: AsRef<str>,
@@ -93,6 +101,10 @@ where
 /// # Notes
 ///
 /// This function causes a frontend exception. Only use it if the error is truly critical.
+///
+/// # Context
+///
+/// All Contexts
 pub fn log_critical<S>(device: *mut ConfObject, msg: S) -> Result<()>
 where
     S: AsRef<str>,
@@ -108,6 +120,10 @@ where
 
 #[simics_exception]
 /// Log an error-level message through the SIMICS logging functions
+///
+/// # Context
+///
+/// All Contexts
 pub fn log_spec_violation(level: LogLevel, device: *mut ConfObject, msg: String) -> Result<()> {
     let msg_cstring = CString::new(msg)?;
 
@@ -120,6 +136,10 @@ pub fn log_spec_violation(level: LogLevel, device: *mut ConfObject, msg: String)
 
 #[simics_exception]
 /// Log an error-level message through the SIMICS logging functions
+///
+/// # Context
+///
+/// All Contexts
 pub fn log_unimplemented(level: LogLevel, device: *mut ConfObject, msg: String) -> Result<()> {
     let msg_cstring = CString::new(msg)?;
 
@@ -136,6 +156,10 @@ pub fn log_unimplemented(level: LogLevel, device: *mut ConfObject, msg: String) 
 /// # Arguments
 ///
 /// * `obj` - The object to get the log level for
+///
+/// # Context
+///
+/// Cell Context
 pub fn log_level(obj: *mut ConfObject) -> u32 {
     unsafe { SIM_log_level(obj as *const ConfObject) }
 }
@@ -147,12 +171,20 @@ pub fn log_level(obj: *mut ConfObject) -> u32 {
 ///
 /// * `obj` - The object to set the log level for
 /// * `level` - The level to set the log level to
+///
+/// # Context
+///
+/// Cell Context
 pub fn set_log_level(obj: *mut ConfObject, level: LogLevel) {
     unsafe { SIM_set_log_level(obj, level as u32) };
 }
 
 #[simics_exception]
 /// Register one or more groups for the class
+///
+/// # Context
+///
+/// Global Context
 pub fn log_register_groups<S>(cls: *mut ConfClass, names: &[S]) -> Result<()>
 where
     S: AsRef<str>,

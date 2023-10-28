@@ -16,6 +16,10 @@ macro_rules! simics_alloc {
 }
 
 /// Allocate using the SIMICS zalloc implementation
+///
+/// # Context
+///
+/// All Contexts
 pub fn alloc<T, S: AsRef<str>>(
     size: usize,
     typename: S,
@@ -35,6 +39,10 @@ pub fn alloc<T, S: AsRef<str>>(
 }
 
 /// Free a pointer that was allocated with [`alloc`]
+///
+/// # Context
+///
+/// All Contexts
 pub fn free<T>(ptr: *mut T) {
     unsafe { mm_free(ptr as *mut c_void) };
 }

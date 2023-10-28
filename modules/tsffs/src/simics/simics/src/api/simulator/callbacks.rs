@@ -27,6 +27,11 @@ where
 #[simics_exception]
 /// Set a callback whenever a specific IO event occurs on the host on a given file descriptor.
 /// If `callback` is `None`, the callback is removed.
+///
+/// # Context
+///
+/// Cell Context
+/// Callback: Threaded Context if `run_in_thread`, Global Context otherwise
 pub fn notify_on_descriptor<C>(fd: i32, mode: NotifyMode, run_in_thread: bool, callback: Option<C>)
 where
     C: Fn() + 'static,
@@ -58,6 +63,11 @@ where
 #[simics_exception]
 /// Set a callback whenever a specific IO event occurs on the host on a given file descriptor.
 /// If `callback` is `None`, the callback is removed.
+///
+/// # Context
+///
+/// Cell Context
+/// Callback: Threaded Context if `run_in_thread`, Global Context otherwise
 pub fn notify_on_socket<C>(sock: Socket, mode: NotifyMode, run_in_thread: bool, callback: Option<C>)
 where
     C: Fn() + 'static,
@@ -96,6 +106,11 @@ where
 
 #[simics_exception]
 /// Register a callback to be run in the simics thread
+///
+/// # Context
+///
+/// Cell Context
+/// Callback: Global Context
 pub fn register_work<F>(work: F)
 where
     F: FnOnce() + 'static,
@@ -119,6 +134,28 @@ where
 }
 
 #[simics_exception]
+/// process_work and process_pending_work processes work posted by
+/// thread_safe_callback and realtime_event. These process work functions are
+/// typically called when embedding Simics in another application to allow periodic and
+/// asynchronous Simics work to run while the simulation is not advancing.
+/// process_pending_work runs all work that has been queued up since the last call
+/// and returns immediately after.
+///
+/// process_work is similar but waits for new work to arrive. Each time some work
+/// has been processed, the supplied done callback is called with done_data as its only
+/// argument. A return value of 1 tells process_work to stop processing work and
+/// return control to the caller again while 0 tells it to continue.
+///
+/// The done predicate is only evaluated between callbacks that are run in Global
+/// Context, that is, not registered with the run_in_thread parameter set).
+///
+/// The process work functions return -1 if the user has pressed the interrupt key
+/// before or while they were running, provided that the simulator core was initialized
+/// to catch signals. Otherwise the return value is 0.
+///
+/// # Context
+///
+/// Global Context
 pub fn process_work<F>(work: F)
 where
     F: FnOnce() -> i32 + 'static,
@@ -134,6 +171,28 @@ where
 }
 
 #[simics_exception]
+/// process_work and process_pending_work processes work posted by
+/// thread_safe_callback and realtime_event. These process work functions are
+/// typically called when embedding Simics in another application to allow periodic and
+/// asynchronous Simics work to run while the simulation is not advancing.
+/// process_pending_work runs all work that has been queued up since the last call
+/// and returns immediately after.
+///
+/// process_work is similar but waits for new work to arrive. Each time some work
+/// has been processed, the supplied done callback is called with done_data as its only
+/// argument. A return value of 1 tells process_work to stop processing work and
+/// return control to the caller again while 0 tells it to continue.
+///
+/// The done predicate is only evaluated between callbacks that are run in Global
+/// Context, that is, not registered with the run_in_thread parameter set).
+///
+/// The process work functions return -1 if the user has pressed the interrupt key
+/// before or while they were running, provided that the simulator core was initialized
+/// to catch signals. Otherwise the return value is 0.
+///
+/// # Context
+///
+/// Global Context
 pub fn process_pending_work() {
     unsafe { SIM_process_pending_work() };
 }
@@ -147,6 +206,9 @@ where
 }
 
 #[simics_exception]
+/// # Context
+///
+/// Cell Context
 pub fn realtime_event<F, S>(
     delay_ms: u32,
     callback: F,
@@ -171,6 +233,9 @@ where
 }
 
 #[simics_exception]
+/// # Context
+///
+/// Cell Context
 pub fn cancel_realtime_event(id: i64) {
     unsafe { SIM_cancel_realtime_event(id) };
 }
@@ -179,10 +244,10 @@ pub fn cancel_realtime_event(id: i64) {
 
 extern "C" fn handle_run_alone_callback<F>(cb: *mut c_void)
 where
-    F: FnOnce() + 'static,
+    F: FnOnce() -> Result<()> + 'static,
 {
     let closure: Box<Box<F>> = unsafe { Box::from_raw(cb as *mut Box<F>) };
-    closure()
+    closure().expect("Failed while running run_alone callback");
 }
 
 #[simics_exception]
@@ -190,9 +255,28 @@ where
 ///
 /// If posted while an instruction is being executed, the callback will be invoked after the
 /// current instruction has completed.
+///
+/// will make sure that the callback f, passed as argument, will be run in a context
+/// where all execution threads are stopped and the full Simics API is available (Global
+/// Context). This is useful for temporarily stopping the simulation to run API
+/// functions not allowed in Cell Context.
+///
+/// If the callback is posted while an instruction is being emulated then the callback
+/// be invoked when the current instruction has completed and before the next
+/// instruction is dispatched.
+///
+/// Although no other execution threads are running when the callback is invoked, their
+/// exact position in simulated time may vary between runs. If the callback accesses
+/// objects in cells other than the one that run_alone was called from, then care
+/// must be taken to preserve determinism.
+///
+/// # Context
+///
+/// All Contexts
+/// Callback: Global Context
 pub fn run_alone<F>(cb: F)
 where
-    F: FnOnce() + 'static,
+    F: FnOnce() -> Result<()> + 'static,
 {
     let cb = Box::new(cb);
     let cb_box = Box::new(cb);
@@ -224,6 +308,21 @@ where
 ///
 /// If posted while an instruction is being executed, the callback will be invoked after the
 /// current instruction has completed.
+///
+/// This is the function in the Simics API that can be called from threads that are not
+/// created by Simics (i.e., from Threaded context).
+///
+/// When the callback is run, it is executed in Global Context, which means that it is
+/// safe to call any API functions from it. Another thread in the module may at this
+/// time also call API functions, if it synchronizes correctly with the callback
+/// function. For example, the callback function might just signal to the foreign thread
+/// to do its Simics API calls, wait for the thread to signal that it has finished, and
+/// then return.
+///
+/// # Context
+///
+/// Threaded Context
+/// Callback: Global Context
 pub fn thread_safe_callback<F>(cb: F)
 where
     F: FnOnce() + 'static,
@@ -255,6 +354,20 @@ where
 
 #[simics_exception]
 /// Run a closure in a new thread.
+///
+/// run_in_thread schedules the callback f to run on a separate thread. The callback
+/// will run in Threaded Context and must observe the associated restrictions.  Simics
+/// maintains a pool of worker threads used by this function, and hence the callback can
+/// typically be started quickly.
+///
+/// The callback is allowed to block or otherwise run for a long time.
+///
+/// The user supplied arg parameter is passed unmodified to the callback.
+///
+/// # Context
+///
+/// Any Context
+/// Callback: Threaded Context
 pub fn run_in_thread<F>(cb: F)
 where
     F: FnOnce() + 'static,

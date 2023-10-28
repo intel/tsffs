@@ -90,6 +90,22 @@ int UefiMain(void *imageHandle, EfiSystemTable *SystemTable) {
   size_t size = sizeof(buffer);
   HARNESS_START(buffer, &size);
 
+  for (size_t i = 0; i < size; i++) {
+    if (i != 0 && !(i % 8)) {
+      SystemTable->conOut->output_string(SystemTable->conOut,
+                                         (int16_t *)L"\r\n");
+    }
+    uint8_t chr = buffer[i];
+    int16_t buf[3];
+    buf[0] = hex[(chr >> 4) & 0xf];
+    buf[1] = hex[chr & 0xf];
+    buf[2] = 0;
+
+    SystemTable->conOut->output_string(SystemTable->conOut, (int16_t *)&buf[0]);
+  }
+
+  SystemTable->conOut->output_string(SystemTable->conOut, (int16_t *)L"\r\n");
+
   Check(buffer, SystemTable);
 
   HARNESS_STOP();

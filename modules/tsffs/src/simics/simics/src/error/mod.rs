@@ -3,6 +3,10 @@
 
 //! SIMICS Result and error types
 
+#![allow(unused)]
+
+use crate::api::AttrValue;
+
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(thiserror::Error, Debug)]
@@ -21,10 +25,32 @@ pub enum Error {
     AttrValueDictIndexOutOfBounds { index: usize, size: usize },
     #[error("Null data requires zero size")]
     InvalidNullDataSize,
-    #[error("Error converting to AttrValue")]
-    AttrValueConversionError,
+    #[error("Error converting to from {ty} to AttrValue")]
+    ToAttrValueConversionError { ty: String },
+    #[error("Error converting from {value:?} to {ty}")]
+    FromAttrValueConversionError { value: AttrValue, ty: String },
+    #[error("Error converting to from {ty} to AttrValueType")]
+    ToAttrValueTypeConversionError { ty: String },
+    #[error("Error converting to from AttrValueType to {ty}")]
+    FromAttrValueTypeConversionError { ty: String },
+    #[error("Error converting to from {ty} to AttrValue")]
+    NestedToAttrValueConversionError { ty: String, source: Box<Error> },
+    #[error("Error converting from AttrValue {value:?} to {ty}")]
+    NestedFromAttrValueConversionError {
+        value: AttrValue,
+        ty: String,
+        source: Box<Error>,
+    },
+    #[error("Error converting to from {ty} to AttrValueType")]
+    NestedToAttrValueTypeConversionError { ty: String, source: Box<Error> },
+    #[error("Error converting to from AttrValueType to {ty}")]
+    NestedFromAttrValueTypeConversionError { ty: String, source: Box<Error> },
     #[error("Key {key} not found")]
     AttrValueDictMissingKey { key: String },
+    #[error("AttrValue list is non-homogeneous")]
+    NonHomogeneousList,
+    #[error("AttrValue dictionary is non-homogeneous")]
+    NonHomogeneousDict,
 
     #[error("Could not convert to string")]
     ToString,

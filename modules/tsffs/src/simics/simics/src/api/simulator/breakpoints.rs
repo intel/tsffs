@@ -92,12 +92,20 @@ pub fn breakpoint(
 /// # Exceptions
 ///
 /// - SimExc_Index Thrown if no breakpoint with the id is found.
+///
+/// # Context
+///
+/// Cell Context
 pub fn delete_breakpoint(id: BreakpointId) {
     unsafe { SIM_delete_breakpoint(id) };
 }
 
 #[simics_exception]
 /// Enable a breakpoint
+///
+/// # Context
+///
+/// Cell Context
 pub fn enable_breakpoint(id: BreakpointId) {
     unsafe { SIM_enable_breakpoint(id) };
 }
@@ -112,6 +120,10 @@ pub fn enable_breakpoint(id: BreakpointId) {
 /// # Exceptions
 ///
 /// - SimExc_Index Thrown if no breakpoint with the id is found.
+///
+/// # Context
+///
+/// Cell Context
 pub fn disable_breakpoint(id: BreakpointId) {
     unsafe { SIM_disable_breakpoint(id) };
 }
@@ -132,6 +144,10 @@ pub fn disable_breakpoint(id: BreakpointId) {
 /// # Exceptions
 ///
 /// - SimExc_Index Thrown if illegal breakpoint
+///
+/// # Context
+///
+/// Cell Context
 pub fn breakpoint_remove(
     id: BreakpointId,
     access: Access,

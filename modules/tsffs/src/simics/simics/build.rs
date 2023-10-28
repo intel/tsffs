@@ -1,5 +1,7 @@
 use anyhow::{anyhow, Result};
+use prettyplease::unparse;
 use std::{env::var, fs::write, path::PathBuf, str::FromStr};
+use syn::parse_file;
 use version_tools::{VersionConstraint, Versioning};
 
 /// The name of the environment variable set by cargo containing the path to the out directory
@@ -26,8 +28,14 @@ fn main() -> Result<()> {
     let interfaces_tokens = simics_interface_codegen(SIMICS_API_BINDINGS);
     let haps_tokens = simics_hap_codegen(SIMICS_API_BINDINGS);
 
-    write(interfaces_out_file, interfaces_tokens.to_string())?;
-    write(haps_out_file, haps_tokens.to_string())?;
+    write(
+        interfaces_out_file,
+        unparse(&parse_file(&interfaces_tokens.to_string())?),
+    )?;
+    write(
+        haps_out_file,
+        unparse(&parse_file(&haps_tokens.to_string())?),
+    )?;
 
     // Set configurations to conditionally enable experimental features that aren't
     // compatible with all supported SIMICS versions, based on the SIMICS version of the

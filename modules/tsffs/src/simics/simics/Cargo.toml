@@ -51,7 +51,9 @@ link = ["simics-api-sys/link"]
 
 [build-dependencies]
 anyhow.workspace = true
+prettyplease = "0.2.15"
 simics-api-sys.workspace = true
 simics-codegen.workspace = true
 simics-macro.workspace = true
+syn = "2.0.38"
 version-tools.workspace = true

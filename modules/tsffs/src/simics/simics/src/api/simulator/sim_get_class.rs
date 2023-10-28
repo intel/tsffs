@@ -10,6 +10,12 @@ use simics_macro::simics_exception;
 
 #[simics_exception]
 /// Get a class by name
+///
+/// # Performance
+///
+/// * `SIM_get_class` - Performs a hashtable lookup of `name`. Loads the module containing
+///   the class named `name` if it is not loaded. This can be expensive once, but is cheap
+///   every time thereafter.
 pub fn get_class<S>(name: S) -> Result<*mut ConfClass>
 where
     S: AsRef<str>,

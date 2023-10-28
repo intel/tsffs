@@ -19,8 +19,10 @@ use crate::{
 use ordered_float::OrderedFloat;
 use simics_macro::simics_exception;
 use std::{
+    any::type_name,
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     ffi::{CStr, CString},
+    fmt::Debug,
     hash::Hash,
     mem::size_of,
     ptr::null_mut,
@@ -28,9 +30,22 @@ use std::{
 
 pub type AttrKind = attr_kind_t;
 
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 #[repr(C)]
 pub struct AttrValue(attr_value_t);
+
+// NOTE: Safety for AttrValue types must be obeyed
+unsafe impl Send for AttrValue {}
+unsafe impl Sync for AttrValue {}
+
+impl Debug for AttrValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("AttrValue")
+            .field(&self.0.private_kind)
+            .field(&self.0.private_size)
+            .finish()
+    }
+}
 
 impl AttrValue {
     /// Construct a nil `AttrValue`
@@ -175,7 +190,7 @@ impl AttrValue {
 
     /// Get the value as an integer, if it is one, or `None` otherwise.
     pub fn as_string(&self) -> Option<String> {
-        self.is_boolean()
+        self.is_string()
             .then(|| {
                 unsafe { CStr::from_ptr(self.0.private_u.string) }
                     .to_str()
@@ -220,8 +235,9 @@ impl AttrValue {
     pub fn as_list<T>(&self) -> Result<Option<Vec<T>>>
     where
         T: TryFrom<AttrValue> + Clone,
+        Error: From<<T as TryFrom<AttrValue>>::Error>,
     {
-        Ok(if self.is_list() {
+        if self.is_list() {
             let size = self.size() as isize;
 
             // Rust vectors cannot be heterogeneous
@@ -237,22 +253,62 @@ impl AttrValue {
                 .iter()
                 .all(|i| Some(i.private_kind) == items.first().map(|f| f.private_kind))
             {
-                Some(
+                Ok(Some(
                     items
                         .into_iter()
                         .map(|i| {
-                            AttrValue(*i)
-                                .try_into()
-                                .map_err(|_| Error::AttrValueConversionError)
+                            let value = AttrValue(*i);
+                            value.try_into().map_err(|e| {
+                                Error::NestedFromAttrValueConversionError {
+                                    value,
+                                    ty: type_name::<T>().to_string(),
+                                    source: Box::new(Error::from(e)),
+                                }
+                            })
                         })
                         .collect::<Result<Vec<_>>>()?,
-                )
+                ))
             } else {
-                None
+                Err(Error::NonHomogeneousList)
             }
         } else {
-            None
-        })
+            Ok(None)
+        }
+    }
+
+    /// Get the value as a list, if it is one, or `None` otherwise. Data is copied, the
+    /// `AttrValue` maintains ownership.
+    pub fn as_heterogeneous_list(&self) -> Result<Option<Vec<AttrValueType>>> {
+        if self.is_list() {
+            let size = self.size() as isize;
+
+            // Rust vectors cannot be heterogeneous
+
+            let items = (0..size)
+                // NOTE: These are leaked because the semantics of data ownership are that
+                // returned data is owned by the attr and ownership is *not* returned to the
+                // caller. It must be freed elsewhere.
+                .map(|i| Box::leak(unsafe { Box::from_raw(self.0.private_u.list.offset(i)) }))
+                .collect::<Vec<_>>();
+
+            Ok(Some(
+                items
+                    .into_iter()
+                    .map(|i| {
+                        let value = AttrValue(*i);
+                        value
+                            .try_into()
+                            .map_err(|e| Error::NestedFromAttrValueConversionError {
+                                value,
+                                ty: type_name::<AttrValueType>().to_string(),
+                                source: Box::new(e),
+                            })
+                    })
+                    .collect::<Result<Vec<_>>>()?,
+            ))
+        } else {
+            Ok(None)
+        }
     }
 
     /// Get the value as a dict, if it is one, or `None` otherwise. Data is copied, the
@@ -261,8 +317,10 @@ impl AttrValue {
     where
         T: TryFrom<AttrValue> + Ord,
         U: TryFrom<AttrValue>,
+        Error: From<<T as TryFrom<AttrValue>>::Error>,
+        Error: From<<U as TryFrom<AttrValue>>::Error>,
     {
-        Ok(if self.is_dict() {
+        if self.is_dict() {
             let size = self.size() as isize;
 
             let items = (0..size)
@@ -281,27 +339,86 @@ impl AttrValue {
                 Some(k.private_kind) == items.first().map(|f| f.0.private_kind)
                     && Some(v.private_kind) == items.first().map(|f| f.1.private_kind)
             }) {
-                Some(
+                Ok(Some(
                     items
                         .into_iter()
                         .map(|(k, v)| {
-                            AttrValue(k)
-                                .try_into()
-                                .map_err(|_| Error::AttrValueConversionError)
+                            let key = AttrValue(k);
+                            key.try_into()
+                                .map_err(|e| Error::NestedFromAttrValueConversionError {
+                                    value: key,
+                                    ty: type_name::<T>().to_string(),
+                                    source: Box::new(Error::from(e)),
+                                })
                                 .and_then(|k| {
-                                    AttrValue(v)
+                                    let value = AttrValue(v);
+                                    value
                                         .try_into()
-                                        .map_err(|_| Error::AttrValueConversionError)
+                                        .map_err(|e| Error::NestedFromAttrValueConversionError {
+                                            value,
+                                            ty: type_name::<U>().to_string(),
+                                            source: Box::new(Error::from(e)),
+                                        })
                                         .map(|v| (k, v))
                                 })
                         })
                         .collect::<Result<Vec<_>>>()?
                         .into_iter()
                         .collect::<BTreeMap<_, _>>(),
-                )
+                ))
             } else {
-                None
+                Err(Error::NonHomogeneousDict)
             }
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Get the value as a dict, if it is one, or `None` otherwise. Data is copied, the
+    /// `AttrValue` maintains ownership.
+    pub fn as_heterogeneous_dict(&self) -> Result<Option<BTreeMap<AttrValueType, AttrValueType>>> {
+        Ok(if self.is_dict() {
+            let size = self.size() as isize;
+
+            let items = (0..size)
+                .map(|i| {
+                    // NOTE: These are leaked because the semantics of data ownership are that
+                    // returned data is owned by the attr and ownership is *not* returned to the
+                    // caller. It must be freed elsewhere.
+                    (
+                        Box::leak(unsafe { Box::from_raw(self.0.private_u.dict.offset(i)) }).key,
+                        Box::leak(unsafe { Box::from_raw(self.0.private_u.dict.offset(i)) }).value,
+                    )
+                })
+                .collect::<Vec<_>>();
+
+            Some(
+                items
+                    .into_iter()
+                    .map(|(k, v)| {
+                        let key = AttrValue(k);
+                        key.try_into()
+                            .map_err(|e| Error::NestedFromAttrValueConversionError {
+                                value: key,
+                                ty: type_name::<AttrValueType>().to_string(),
+                                source: Box::new(e),
+                            })
+                            .and_then(|k| {
+                                let value = AttrValue(v);
+                                value
+                                    .try_into()
+                                    .map_err(|e| Error::NestedFromAttrValueConversionError {
+                                        value,
+                                        ty: type_name::<AttrValueType>().to_string(),
+                                        source: Box::new(e),
+                                    })
+                                    .map(|v| (k, v))
+                            })
+                    })
+                    .collect::<Result<Vec<_>>>()?
+                    .into_iter()
+                    .collect::<BTreeMap<_, _>>(),
+            )
         } else {
             None
         })
@@ -502,13 +619,19 @@ impl From<*mut ConfObject> for AttrValue {
 
 impl<T> TryFrom<Option<T>> for AttrValue
 where
-    AttrValue: TryFrom<T>,
+    T: TryInto<AttrValue>,
+    Error: From<<T as TryInto<AttrValue>>::Error>,
 {
     type Error = Error;
 
     fn try_from(value: Option<T>) -> Result<Self> {
         if let Some(value) = value {
-            AttrValue::try_from(value).map_err(|_| Error::AttrValueConversionError)
+            value
+                .try_into()
+                .map_err(|e| Error::NestedToAttrValueConversionError {
+                    ty: type_name::<T>().to_string(),
+                    source: Box::new(Error::from(e)),
+                })
         } else {
             Ok(AttrValue::nil())
         }
@@ -518,6 +641,7 @@ where
 impl<T> TryFrom<&[T]> for AttrValue
 where
     T: TryInto<AttrValue> + Clone,
+    Error: From<<T as TryInto<AttrValue>>::Error>,
 {
     type Error = Error;
 
@@ -526,7 +650,10 @@ where
         value.iter().enumerate().try_for_each(|(i, a)| {
             a.clone()
                 .try_into()
-                .map_err(|_| Error::AttrValueConversionError)
+                .map_err(|e| Error::NestedToAttrValueConversionError {
+                    ty: type_name::<T>().to_string(),
+                    source: Box::new(Error::from(e)),
+                })
                 .and_then(|a| attr_list_set_item(&mut list, i as u32, a))
         })?;
         Ok(list)
@@ -536,6 +663,7 @@ where
 impl<T> TryFrom<Vec<T>> for AttrValue
 where
     T: TryInto<AttrValue>,
+    Error: From<<T as TryInto<AttrValue>>::Error>,
 {
     type Error = Error;
 
@@ -543,7 +671,10 @@ where
         let mut list = AttrValue::list(value.len())?;
         value.into_iter().enumerate().try_for_each(|(i, a)| {
             a.try_into()
-                .map_err(|_| Error::AttrValueConversionError)
+                .map_err(|e| Error::NestedToAttrValueConversionError {
+                    ty: type_name::<T>().to_string(),
+                    source: Box::new(Error::from(e)),
+                })
                 .and_then(|a| attr_list_set_item(&mut list, i as u32, a))
         })?;
         Ok(list)
@@ -553,6 +684,7 @@ where
 impl<T> TryFrom<HashSet<T>> for AttrValue
 where
     T: TryInto<AttrValue>,
+    Error: From<<T as TryInto<AttrValue>>::Error>,
 {
     type Error = Error;
 
@@ -560,7 +692,10 @@ where
         let mut list = AttrValue::list(value.len())?;
         value.into_iter().enumerate().try_for_each(|(i, a)| {
             a.try_into()
-                .map_err(|_| Error::AttrValueConversionError)
+                .map_err(|e| Error::NestedToAttrValueConversionError {
+                    ty: type_name::<T>().to_string(),
+                    source: Box::new(Error::from(e)),
+                })
                 .and_then(|a| attr_list_set_item(&mut list, i as u32, a))
         })?;
 
@@ -571,6 +706,7 @@ where
 impl<T> TryFrom<BTreeSet<T>> for AttrValue
 where
     T: TryInto<AttrValue>,
+    Error: From<<T as TryInto<AttrValue>>::Error>,
 {
     type Error = Error;
 
@@ -578,7 +714,10 @@ where
         let mut list = AttrValue::list(value.len())?;
         value.into_iter().enumerate().try_for_each(|(i, a)| {
             a.try_into()
-                .map_err(|_| Error::AttrValueConversionError)
+                .map_err(|e| Error::NestedToAttrValueConversionError {
+                    ty: type_name::<T>().to_string(),
+                    source: Box::new(Error::from(e)),
+                })
                 .and_then(|a| attr_list_set_item(&mut list, i as u32, a))
         })?;
         Ok(list)
@@ -589,6 +728,8 @@ impl<T, U> TryFrom<HashMap<T, U>> for AttrValue
 where
     T: TryInto<AttrValue>,
     U: TryInto<AttrValue>,
+    Error: From<<T as TryInto<AttrValue>>::Error>,
+    Error: From<<U as TryInto<AttrValue>>::Error>,
 {
     type Error = Error;
 
@@ -596,10 +737,16 @@ where
         let mut dict = AttrValue::dict(value.len())?;
         value.into_iter().enumerate().try_for_each(|(i, (k, v))| {
             k.try_into()
-                .map_err(|_| Error::AttrValueConversionError)
+                .map_err(|e| Error::NestedToAttrValueConversionError {
+                    ty: type_name::<T>().to_string(),
+                    source: Box::new(Error::from(e)),
+                })
                 .and_then(|k| {
                     v.try_into()
-                        .map_err(|_| Error::AttrValueConversionError)
+                        .map_err(|e| Error::NestedToAttrValueConversionError {
+                            ty: type_name::<U>().to_string(),
+                            source: Box::new(Error::from(e)),
+                        })
                         .map(|v| (k, v))
                 })
                 .and_then(|(k, v)| attr_dict_set_item(&mut dict, i as u32, k, v))
@@ -612,6 +759,8 @@ impl<T, U> TryFrom<BTreeMap<T, U>> for AttrValue
 where
     T: TryInto<AttrValue>,
     U: TryInto<AttrValue>,
+    Error: From<<T as TryInto<AttrValue>>::Error>,
+    Error: From<<U as TryInto<AttrValue>>::Error>,
 {
     type Error = Error;
 
@@ -619,10 +768,16 @@ where
         let mut dict = AttrValue::dict(value.len())?;
         value.into_iter().enumerate().try_for_each(|(i, (k, v))| {
             k.try_into()
-                .map_err(|_| Error::AttrValueConversionError)
+                .map_err(|e| Error::NestedToAttrValueConversionError {
+                    ty: type_name::<T>().to_string(),
+                    source: Box::new(Error::from(e)),
+                })
                 .and_then(|k| {
                     v.try_into()
-                        .map_err(|_| Error::AttrValueConversionError)
+                        .map_err(|e| Error::NestedToAttrValueConversionError {
+                            ty: type_name::<U>().to_string(),
+                            source: Box::new(Error::from(e)),
+                        })
                         .map(|v| (k, v))
                 })
                 .and_then(|(k, v)| attr_dict_set_item(&mut dict, i as u32, k, v))
@@ -635,6 +790,8 @@ impl<T, U> TryFrom<&[(T, U)]> for AttrValue
 where
     T: TryInto<AttrValue> + Clone,
     U: TryInto<AttrValue> + Clone,
+    Error: From<<T as TryInto<AttrValue>>::Error>,
+    Error: From<<U as TryInto<AttrValue>>::Error>,
 {
     type Error = Error;
 
@@ -643,11 +800,17 @@ where
         value.iter().enumerate().try_for_each(|(i, (k, v))| {
             k.clone()
                 .try_into()
-                .map_err(|_| Error::AttrValueConversionError)
+                .map_err(|e| Error::NestedToAttrValueConversionError {
+                    ty: type_name::<T>().to_string(),
+                    source: Box::new(Error::from(e)),
+                })
                 .and_then(|k| {
                     v.clone()
                         .try_into()
-                        .map_err(|_| Error::AttrValueConversionError)
+                        .map_err(|e| Error::NestedToAttrValueConversionError {
+                            ty: type_name::<U>().to_string(),
+                            source: Box::new(Error::from(e)),
+                        })
                         .map(|v| (k, v))
                 })
                 .and_then(|(k, v)| attr_dict_set_item(&mut dict, i as u32, k, v))
@@ -660,6 +823,8 @@ impl<T, U> TryFrom<Vec<(T, U)>> for AttrValue
 where
     T: TryInto<AttrValue>,
     U: TryInto<AttrValue>,
+    Error: From<<T as TryInto<AttrValue>>::Error>,
+    Error: From<<U as TryInto<AttrValue>>::Error>,
 {
     type Error = Error;
 
@@ -667,10 +832,16 @@ where
         let mut dict = AttrValue::dict(value.len())?;
         value.into_iter().enumerate().try_for_each(|(i, (k, v))| {
             k.try_into()
-                .map_err(|_| Error::AttrValueConversionError)
+                .map_err(|e| Error::NestedToAttrValueConversionError {
+                    ty: type_name::<T>().to_string(),
+                    source: Box::new(Error::from(e)),
+                })
                 .and_then(|k| {
                     v.try_into()
-                        .map_err(|_| Error::AttrValueConversionError)
+                        .map_err(|e| Error::NestedToAttrValueConversionError {
+                            ty: type_name::<U>().to_string(),
+                            source: Box::new(Error::from(e)),
+                        })
                         .map(|v| (k, v))
                 })
                 .and_then(|(k, v)| attr_dict_set_item(&mut dict, i as u32, k, v))
@@ -683,6 +854,8 @@ impl<T, U> TryFrom<HashSet<(T, U)>> for AttrValue
 where
     T: TryInto<AttrValue>,
     U: TryInto<AttrValue>,
+    Error: From<<T as TryInto<AttrValue>>::Error>,
+    Error: From<<U as TryInto<AttrValue>>::Error>,
 {
     type Error = Error;
 
@@ -690,10 +863,16 @@ where
         let mut dict = AttrValue::dict(value.len())?;
         value.into_iter().enumerate().try_for_each(|(i, (k, v))| {
             k.try_into()
-                .map_err(|_| Error::AttrValueConversionError)
+                .map_err(|e| Error::NestedToAttrValueConversionError {
+                    ty: type_name::<T>().to_string(),
+                    source: Box::new(Error::from(e)),
+                })
                 .and_then(|k| {
                     v.try_into()
-                        .map_err(|_| Error::AttrValueConversionError)
+                        .map_err(|e| Error::NestedToAttrValueConversionError {
+                            ty: type_name::<U>().to_string(),
+                            source: Box::new(Error::from(e)),
+                        })
                         .map(|v| (k, v))
                 })
                 .and_then(|(k, v)| attr_dict_set_item(&mut dict, i as u32, k, v))
@@ -706,6 +885,8 @@ impl<T, U> TryFrom<BTreeSet<(T, U)>> for AttrValue
 where
     T: TryInto<AttrValue>,
     U: TryInto<AttrValue>,
+    Error: From<<T as TryInto<AttrValue>>::Error>,
+    Error: From<<U as TryInto<AttrValue>>::Error>,
 {
     type Error = Error;
 
@@ -713,10 +894,16 @@ where
         let mut dict = AttrValue::dict(value.len())?;
         value.into_iter().enumerate().try_for_each(|(i, (k, v))| {
             k.try_into()
-                .map_err(|_| Error::AttrValueConversionError)
+                .map_err(|e| Error::NestedToAttrValueConversionError {
+                    ty: type_name::<T>().to_string(),
+                    source: Box::new(Error::from(e)),
+                })
                 .and_then(|k| {
                     v.try_into()
-                        .map_err(|_| Error::AttrValueConversionError)
+                        .map_err(|e| Error::NestedToAttrValueConversionError {
+                            ty: type_name::<U>().to_string(),
+                            source: Box::new(Error::from(e)),
+                        })
                         .map(|v| (k, v))
                 })
                 .and_then(|(k, v)| attr_dict_set_item(&mut dict, i as u32, k, v))
@@ -740,7 +927,13 @@ macro_rules! impl_try_into_unsigned {
                         actual: value.kind(),
                         expected: AttrKind::Sim_Val_Integer,
                     })
-                    .and_then(|i| i.try_into().map_err(|_| Error::AttrValueConversionError))
+                    .and_then(|i| {
+                        i.try_into()
+                            .map_err(|_| Error::FromAttrValueConversionError {
+                                value,
+                                ty: type_name::<$t>().to_string(),
+                            })
+                    })
             }
         }
     };
@@ -758,7 +951,13 @@ macro_rules! impl_try_into_signed {
                         actual: value.kind(),
                         expected: AttrKind::Sim_Val_Integer,
                     })
-                    .and_then(|i| i.try_into().map_err(|_| Error::AttrValueConversionError))
+                    .and_then(|i| {
+                        i.try_into()
+                            .map_err(|_| Error::FromAttrValueConversionError {
+                                value,
+                                ty: type_name::<$t>().to_string(),
+                            })
+                    })
             }
         }
     };
@@ -776,7 +975,13 @@ macro_rules! impl_try_into_float {
                         actual: value.kind(),
                         expected: AttrKind::Sim_Val_Floating,
                     })
-                    .and_then(|f| f.try_into().map_err(|_| Error::AttrValueConversionError))
+                    .and_then(|f| {
+                        f.try_into()
+                            .map_err(|_| Error::FromAttrValueConversionError {
+                                value,
+                                ty: type_name::<$t>().to_string(),
+                            })
+                    })
             }
         }
     };
@@ -818,6 +1023,7 @@ impl TryFrom<AttrValue> for String {
 impl<T> TryFrom<AttrValue> for Vec<T>
 where
     T: TryFrom<AttrValue> + Clone,
+    Error: From<<T as TryFrom<AttrValue>>::Error>,
 {
     type Error = Error;
 
@@ -832,6 +1038,7 @@ where
 impl<T> TryFrom<AttrValue> for HashSet<T>
 where
     T: TryFrom<AttrValue> + Eq + Hash + Clone,
+    Error: From<<T as TryFrom<AttrValue>>::Error>,
 {
     type Error = Error;
 
@@ -849,6 +1056,7 @@ where
 impl<T> TryFrom<AttrValue> for BTreeSet<T>
 where
     T: TryFrom<AttrValue> + Ord + Clone,
+    Error: From<<T as TryFrom<AttrValue>>::Error>,
 {
     type Error = Error;
 
@@ -867,6 +1075,8 @@ impl<T, U> TryFrom<AttrValue> for HashMap<T, U>
 where
     T: TryFrom<AttrValue> + Eq + Hash + Ord,
     U: TryFrom<AttrValue>,
+    Error: From<<T as TryFrom<AttrValue>>::Error>,
+    Error: From<<U as TryFrom<AttrValue>>::Error>,
 {
     type Error = Error;
 
@@ -885,6 +1095,8 @@ impl<T, U> TryFrom<AttrValue> for BTreeMap<T, U>
 where
     T: TryFrom<AttrValue> + Ord,
     U: TryFrom<AttrValue>,
+    Error: From<<T as TryFrom<AttrValue>>::Error>,
+    Error: From<<U as TryFrom<AttrValue>>::Error>,
 {
     type Error = Error;
 
@@ -1021,6 +1233,20 @@ impl_attr_value_type_from! { f64, Self::Float }
 impl_attr_value_type_from! { bool, Self::Bool}
 impl_attr_value_type_from! { String, Self::String }
 
+impl From<usize> for AttrValueType {
+    fn from(value: usize) -> Self {
+        // NOTE: This is ok, because SIMICS does not support 128-bit native address machines
+        Self::Unsigned(value as u64)
+    }
+}
+
+impl From<isize> for AttrValueType {
+    fn from(value: isize) -> Self {
+        // NOTE: This is ok, because SIMICS does not support 128-bit native address machines
+        Self::Signed(value as i64)
+    }
+}
+
 impl<T> From<Vec<T>> for AttrValueType
 where
     T: Into<AttrValueType>,
@@ -1113,12 +1339,15 @@ impl TryFrom<AttrValue> for AttrValueType {
             Ok(Self::Float(OrderedFloat(f)))
         } else if let Some(s) = value.as_string() {
             Ok(Self::String(s))
-        } else if let Ok(Some(l)) = value.as_list() {
+        } else if let Some(l) = value.as_list()? {
             Ok(Self::List(l))
-        } else if let Ok(Some(d)) = value.as_dict() {
+        } else if let Some(d) = value.as_dict()? {
             Ok(Self::Dict(d))
         } else {
-            Err(Error::AttrValueTypeUnknown)
+            Err(Error::FromAttrValueConversionError {
+                value,
+                ty: type_name::<AttrValueType>().to_string(),
+            })
         }
     }
 }
@@ -1129,11 +1358,41 @@ impl TryFrom<AttrValueType> for AttrValue {
     fn try_from(value: AttrValueType) -> Result<Self> {
         match value {
             AttrValueType::Nil => Ok(AttrValue::nil()),
-            AttrValueType::Bool(v) => v.try_into().map_err(|_| Error::AttrValueConversionError),
-            AttrValueType::Signed(v) => v.try_into().map_err(|_| Error::AttrValueConversionError),
-            AttrValueType::Unsigned(v) => v.try_into().map_err(|_| Error::AttrValueConversionError),
-            AttrValueType::Float(v) => v.try_into().map_err(|_| Error::AttrValueConversionError),
-            AttrValueType::String(v) => v.try_into().map_err(|_| Error::AttrValueConversionError),
+            AttrValueType::Bool(v) => {
+                v.try_into()
+                    .map_err(|e| Error::NestedFromAttrValueTypeConversionError {
+                        ty: type_name::<AttrValue>().to_string(),
+                        source: Box::new(Error::from(e)),
+                    })
+            }
+            AttrValueType::Signed(v) => {
+                v.try_into()
+                    .map_err(|e| Error::NestedFromAttrValueTypeConversionError {
+                        ty: type_name::<AttrValue>().to_string(),
+                        source: Box::new(Error::from(e)),
+                    })
+            }
+            AttrValueType::Unsigned(v) => {
+                v.try_into()
+                    .map_err(|e| Error::NestedFromAttrValueTypeConversionError {
+                        ty: type_name::<AttrValue>().to_string(),
+                        source: Box::new(Error::from(e)),
+                    })
+            }
+            AttrValueType::Float(v) => {
+                v.try_into()
+                    .map_err(|e| Error::NestedFromAttrValueTypeConversionError {
+                        ty: type_name::<AttrValue>().to_string(),
+                        source: Box::new(Error::from(e)),
+                    })
+            }
+            AttrValueType::String(v) => {
+                v.try_into()
+                    .map_err(|e| Error::NestedFromAttrValueTypeConversionError {
+                        ty: type_name::<AttrValue>().to_string(),
+                        source: Box::new(Error::from(e)),
+                    })
+            }
             AttrValueType::List(v) => v.try_into(),
             AttrValueType::Dict(v) => v.try_into(),
         }
@@ -1148,7 +1407,10 @@ macro_rules! impl_from_attr_value_type {
             fn try_from(value: AttrValueType) -> Result<Self> {
                 if let $($variant)+(value) = value {
                     value.try_into()
-                        .map_err(|_| Error::AttrValueConversionError)
+                        .map_err(|e| Error::NestedFromAttrValueTypeConversionError {
+                            ty: type_name::<$t>().to_string(),
+                            source: Box::new(Error::from(e))
+                        })
                 } else {
                     Err(Error::AttrValueTypeUnknown)
                 }
@@ -1172,15 +1434,24 @@ impl_from_attr_value_type! { String, AttrValueType::String }
 impl<T> TryFrom<AttrValueType> for Vec<T>
 where
     T: TryFrom<AttrValueType>,
+    Error: From<<T as TryFrom<AttrValueType>>::Error>,
 {
     type Error = Error;
 
     fn try_from(value: AttrValueType) -> Result<Self> {
         value
             .as_list()
-            .ok_or_else(|| Error::AttrValueConversionError)?
+            .ok_or_else(|| Error::FromAttrValueTypeConversionError {
+                ty: type_name::<Vec<AttrValueType>>().to_string(),
+            })?
             .into_iter()
-            .map(|e| e.try_into().map_err(|_| Error::AttrValueConversionError))
+            .map(|a| {
+                a.try_into()
+                    .map_err(|e| Error::NestedFromAttrValueTypeConversionError {
+                        ty: type_name::<T>().to_string(),
+                        source: Box::new(Error::from(e)),
+                    })
+            })
             .collect::<Result<Vec<_>>>()
     }
 }
@@ -1188,15 +1459,24 @@ where
 impl<T> TryFrom<AttrValueType> for HashSet<T>
 where
     T: TryFrom<AttrValueType> + Eq + Hash,
+    Error: From<<T as TryFrom<AttrValueType>>::Error>,
 {
     type Error = Error;
 
     fn try_from(value: AttrValueType) -> Result<Self> {
         Ok(value
             .as_list()
-            .ok_or_else(|| Error::AttrValueConversionError)?
+            .ok_or_else(|| Error::FromAttrValueTypeConversionError {
+                ty: type_name::<Vec<AttrValueType>>().to_string(),
+            })?
             .into_iter()
-            .map(|e| e.try_into().map_err(|_| Error::AttrValueConversionError))
+            .map(|e| {
+                e.try_into()
+                    .map_err(|e| Error::NestedFromAttrValueTypeConversionError {
+                        ty: type_name::<T>().to_string(),
+                        source: Box::new(Error::from(e)),
+                    })
+            })
             .collect::<Result<Vec<_>>>()?
             .into_iter()
             .collect::<HashSet<_>>())
@@ -1206,15 +1486,24 @@ where
 impl<T> TryFrom<AttrValueType> for BTreeSet<T>
 where
     T: TryFrom<AttrValueType> + Ord,
+    Error: From<<T as TryFrom<AttrValueType>>::Error>,
 {
     type Error = Error;
 
     fn try_from(value: AttrValueType) -> Result<Self> {
         Ok(value
             .as_list()
-            .ok_or_else(|| Error::AttrValueConversionError)?
+            .ok_or_else(|| Error::FromAttrValueTypeConversionError {
+                ty: type_name::<Vec<AttrValueType>>().to_string(),
+            })?
             .into_iter()
-            .map(|e| e.try_into().map_err(|_| Error::AttrValueConversionError))
+            .map(|e| {
+                e.try_into()
+                    .map_err(|e| Error::NestedFromAttrValueTypeConversionError {
+                        ty: type_name::<T>().to_string(),
+                        source: Box::new(Error::from(e)),
+                    })
+            })
             .collect::<Result<Vec<_>>>()?
             .into_iter()
             .collect::<BTreeSet<_>>())
@@ -1225,20 +1514,30 @@ impl<T, U> TryFrom<AttrValueType> for HashMap<T, U>
 where
     T: TryFrom<AttrValueType> + Eq + Hash,
     U: TryFrom<AttrValueType>,
+    Error: From<<T as TryFrom<AttrValueType>>::Error>,
+    Error: From<<U as TryFrom<AttrValueType>>::Error>,
 {
     type Error = Error;
 
     fn try_from(value: AttrValueType) -> Result<Self> {
         Ok(value
             .as_dict()
-            .ok_or_else(|| Error::AttrValueConversionError)?
+            .ok_or_else(|| Error::FromAttrValueTypeConversionError {
+                ty: type_name::<Vec<AttrValueType>>().to_string(),
+            })?
             .into_iter()
             .map(|(k, v)| {
                 k.try_into()
-                    .map_err(|_| Error::AttrValueConversionError)
+                    .map_err(|e| Error::NestedFromAttrValueTypeConversionError {
+                        ty: type_name::<T>().to_string(),
+                        source: Box::new(Error::from(e)),
+                    })
                     .and_then(|k| {
                         v.try_into()
-                            .map_err(|_| Error::AttrValueConversionError)
+                            .map_err(|e| Error::NestedFromAttrValueTypeConversionError {
+                                ty: type_name::<U>().to_string(),
+                                source: Box::new(Error::from(e)),
+                            })
                             .map(|v| (k, v))
                     })
             })
@@ -1252,20 +1551,30 @@ impl<T, U> TryFrom<AttrValueType> for BTreeMap<T, U>
 where
     T: TryFrom<AttrValueType> + Ord,
     U: TryFrom<AttrValueType>,
+    Error: From<<T as TryFrom<AttrValueType>>::Error>,
+    Error: From<<U as TryFrom<AttrValueType>>::Error>,
 {
     type Error = Error;
 
     fn try_from(value: AttrValueType) -> Result<Self> {
         Ok(value
             .as_dict()
-            .ok_or_else(|| Error::AttrValueConversionError)?
+            .ok_or_else(|| Error::FromAttrValueTypeConversionError {
+                ty: type_name::<Vec<AttrValueType>>().to_string(),
+            })?
             .into_iter()
             .map(|(k, v)| {
                 k.try_into()
-                    .map_err(|_| Error::AttrValueConversionError)
+                    .map_err(|e| Error::NestedFromAttrValueTypeConversionError {
+                        ty: type_name::<T>().to_string(),
+                        source: Box::new(Error::from(e)),
+                    })
                     .and_then(|k| {
                         v.try_into()
-                            .map_err(|_| Error::AttrValueConversionError)
+                            .map_err(|e| Error::NestedFromAttrValueTypeConversionError {
+                                ty: type_name::<U>().to_string(),
+                                source: Box::new(Error::from(e)),
+                            })
                             .map(|v| (k, v))
                     })
             })
@@ -1280,6 +1589,10 @@ where
 /// # Return Value
 ///
 /// An owned [`AttrValue`] with invalid value
+///
+/// # Context
+///
+/// Cell Context
 pub fn make_attr_invalid() -> AttrValue {
     AttrValue::invalid()
 }
@@ -1289,6 +1602,10 @@ pub fn make_attr_invalid() -> AttrValue {
 /// # Return Value
 ///
 /// An owned [`AttrValue`] with nil (Python `None`) value
+///
+/// # Context
+///
+/// Cell Context
 pub fn make_attr_nil() -> AttrValue {
     AttrValue::nil()
 }
@@ -1307,6 +1624,10 @@ pub fn make_attr_nil() -> AttrValue {
 ///
 /// `u.into()` may be preferred, and supports all sizes of unsigned integer
 /// types.
+///
+/// # Context
+///
+/// Cell Context
 pub fn make_attr_uint64(u: u64) -> AttrValue {
     u.into()
 }
@@ -1325,6 +1646,10 @@ pub fn make_attr_uint64(u: u64) -> AttrValue {
 ///
 /// `i.into()` may be preferred, and supports all sizes of unsigned integer
 /// types.
+///
+/// # Context
+///
+/// Cell Context
 pub fn make_attr_int64(i: i64) -> AttrValue {
     i.into()
 }
@@ -1338,6 +1663,10 @@ pub fn make_attr_int64(i: i64) -> AttrValue {
 /// # Return Value
 ///
 /// An owned [`AttrValue`] with boolean value
+///
+/// # Context
+///
+/// Cell Context
 pub fn make_attr_boolean(b: bool) -> AttrValue {
     b.into()
 }
@@ -1356,6 +1685,10 @@ pub fn make_attr_boolean(b: bool) -> AttrValue {
 /// # Notes
 ///
 /// `s.into()` may be preferred.
+///
+/// # Context
+///
+/// Cell Context
 pub fn make_attr_string<S>(s: S) -> AttrValue
 where
     S: AsRef<str>,
@@ -1376,6 +1709,10 @@ where
 /// # Notes
 ///
 /// `d.into()` may be preferred, and supports all sizes of floating point types.
+///
+/// # Context
+///
+/// Cell Context
 pub fn make_attr_floating(d: f64) -> AttrValue {
     d.into()
 }
@@ -1394,6 +1731,10 @@ pub fn make_attr_floating(d: f64) -> AttrValue {
 /// # Notes
 ///
 /// `obj.into()` may be preferred
+///
+/// # Context
+///
+/// Cell Context
 pub fn make_attr_object(obj: *mut ConfObject) -> AttrValue {
     obj.into()
 }
@@ -1408,6 +1749,10 @@ pub fn make_attr_object(obj: *mut ConfObject) -> AttrValue {
 ///
 /// An [`AttrValue`] storing a raw pointer to a copy of the provided data. The data is
 /// owned by the [`AttrValue`]
+///
+/// # Context
+///
+/// Cell Context
 pub fn make_attr_data<T>(data: &T) -> Result<AttrValue>
 where
     T: Clone,
@@ -1445,6 +1790,10 @@ where
 ///
 /// An [`AttrValue`] storing a raw pointer to the provided data. The data is
 /// moved and is owned by the [`AttrValue`]
+///
+/// # Context
+///
+/// Cell Context
 pub fn make_attr_data_adopt<T>(data: T) -> Result<AttrValue> {
     let data = Box::new(data);
     let data_raw = Box::into_raw(data);
@@ -1480,9 +1829,14 @@ pub fn make_attr_data_adopt<T>(data: T) -> Result<AttrValue> {
 ///
 /// An [`AttrValue`] containing the provided `attrs`. The [`AttrValue`] owns the items
 /// in the list.
+///
+/// # Context
+///
+/// Cell Context
 pub fn make_attr_list<T>(attrs: Vec<T>) -> Result<AttrValue>
 where
     T: TryInto<AttrValue>,
+    Error: From<<T as TryInto<AttrValue>>::Error>,
 {
     attrs.try_into()
 }
@@ -1498,11 +1852,19 @@ where
 /// # Return Value
 ///
 /// A list [`AttrValue`] of the given length, with all uninitialized elements.
+///
+/// # Context
+///
+/// Cell Context
 pub fn alloc_attr_list(length: u32) -> AttrValue {
     AttrValue(unsafe { SIM_alloc_attr_list(length) })
 }
 
 /// Create a new dictionary [`AttrValue`] from key value pairs.
+///
+/// # Context
+///
+/// Cell Context
 pub fn make_attr_dict(attrs: Vec<(AttrValue, AttrValue)>) -> Result<AttrValue> {
     attrs.try_into()
 }
@@ -1518,6 +1880,10 @@ pub fn make_attr_dict(attrs: Vec<(AttrValue, AttrValue)>) -> Result<AttrValue> {
 /// # Return Value
 ///
 /// A dict [`AttrValue`] of the given length, with all uninitialized elements.
+///
+/// # Context
+///
+/// Cell Context
 pub fn alloc_attr_dict(length: u32) -> AttrValue {
     AttrValue(unsafe { SIM_alloc_attr_dict(length) })
 }
@@ -1531,6 +1897,10 @@ pub fn alloc_attr_dict(length: u32) -> AttrValue {
 /// * `attr` - The attribute list to set an item in
 /// * `index` - The index in the list to set
 /// * `elem` - The value to set the item in the list at index `index` to
+///
+/// # Context
+///
+/// Cell Context
 pub fn attr_list_set_item(attr: &mut AttrValue, index: u32, elem: AttrValue) {
     unsafe { SIM_attr_list_set_item(attr.as_mut_ptr(), index, elem.into()) }
 }
@@ -1543,6 +1913,10 @@ pub fn attr_list_set_item(attr: &mut AttrValue, index: u32, elem: AttrValue) {
 ///
 /// * `attr` - The attribute list to resize
 /// * `newsize` - The size to grow or shrink the list to
+///
+/// # Context
+///
+/// Cell Context
 pub fn attr_list_resize(attr: &mut AttrValue, newsize: u32) {
     unsafe { SIM_attr_list_resize(attr.as_mut_ptr(), newsize) };
 }
@@ -1561,6 +1935,10 @@ pub fn attr_list_resize(attr: &mut AttrValue, newsize: u32) {
 /// * `index` -  The numbered index to set. [`AttrValue`](AttrValue) dictionaries are associative arrays
 /// * `key` - The value to set the key item of the dict to
 /// * `value` - The value to set the value item of the dict to
+///
+/// # Context
+///
+/// Cell Context
 pub fn attr_dict_set_item(attr: &mut AttrValue, index: u32, key: AttrValue, value: AttrValue) {
     unsafe { SIM_attr_dict_set_item(attr.as_mut_ptr(), index, key.into(), value.into()) };
 }
@@ -1572,6 +1950,10 @@ pub fn attr_dict_set_item(attr: &mut AttrValue, index: u32, key: AttrValue, valu
 ///
 /// * `attr` - The attribute dictionary to resize
 /// * `newsize` - The size to grow or shrink the dict to
+///
+/// # Context
+///
+/// Cell Context
 pub fn attr_dict_resize(attr: &mut AttrValue, newsize: u32) {
     unsafe { SIM_attr_dict_resize(attr.as_mut_ptr(), newsize) };
 }
@@ -1585,6 +1967,10 @@ pub fn attr_dict_resize(attr: &mut AttrValue, newsize: u32) {
 /// # Return Value
 ///
 /// Whether the [`AttrValue`] is nil
+///
+/// # Context
+///
+/// All Contexts
 pub fn attr_is_nil(attr: AttrValue) -> bool {
     attr.kind() == AttrKind::Sim_Val_Nil
 }
@@ -1598,6 +1984,10 @@ pub fn attr_is_nil(attr: AttrValue) -> bool {
 /// # Return Value
 ///
 /// Whether the [`AttrValue`] is a signed integer
+///
+/// # Context
+///
+/// All Contexts
 pub fn attr_is_int64(attr: AttrValue) -> bool {
     attr.is_integer() && (attr.size() == 0 || attr.as_integer().is_some_and(|i| i < 0))
 }
@@ -1611,6 +2001,10 @@ pub fn attr_is_int64(attr: AttrValue) -> bool {
 /// # Return Value
 ///
 /// Whether the [`AttrValue`] is an unsigned integer
+///
+/// # Context
+///
+/// All Contexts
 pub fn attr_is_uint64(attr: AttrValue) -> bool {
     attr.is_integer() && (attr.size() != 0 || attr.as_integer().is_some_and(|i| i >= 0))
 }
@@ -1624,6 +2018,10 @@ pub fn attr_is_uint64(attr: AttrValue) -> bool {
 /// # Return Value
 ///
 /// Whether the [`AttrValue`] is an integer (signedness checks are not performed)
+///
+/// # Context
+///
+/// All Contexts
 pub fn attr_is_integer(attr: AttrValue) -> bool {
     attr.is_integer()
 }
@@ -1637,6 +2035,10 @@ pub fn attr_is_integer(attr: AttrValue) -> bool {
 /// # Return Value
 ///
 /// Whether the [`AttrValue`] is a boolean
+///
+/// # Context
+///
+/// All Contexts
 pub fn attr_is_boolean(attr: AttrValue) -> bool {
     attr.is_boolean()
 }
@@ -1650,6 +2052,10 @@ pub fn attr_is_boolean(attr: AttrValue) -> bool {
 /// # Return Value
 ///
 /// Whether the [`AttrValue`] is a string
+///
+/// # Context
+///
+/// All Contexts
 pub fn attr_is_string(attr: AttrValue) -> bool {
     attr.is_string()
 }
@@ -1663,6 +2069,10 @@ pub fn attr_is_string(attr: AttrValue) -> bool {
 /// # Return Value
 ///
 /// Whether the [`AttrValue`] is a [`ConfObject`] pointer
+///
+/// # Context
+///
+/// All Contexts
 pub fn attr_is_object(attr: AttrValue) -> bool {
     attr.is_object()
 }
@@ -1676,6 +2086,10 @@ pub fn attr_is_object(attr: AttrValue) -> bool {
 /// # Return Value
 ///
 /// Whether the [`AttrValue`] is invalid
+///
+/// # Context
+///
+/// All Contexts
 pub fn attr_is_invalid(attr: AttrValue) -> bool {
     attr.is_invalid()
 }
@@ -1689,6 +2103,10 @@ pub fn attr_is_invalid(attr: AttrValue) -> bool {
 /// # Return Value
 ///
 /// Whether the [`AttrValue`] is data
+///
+/// # Context
+///
+/// All Contexts
 pub fn attr_is_data(attr: AttrValue) -> bool {
     attr.is_data()
 }
@@ -1702,6 +2120,10 @@ pub fn attr_is_data(attr: AttrValue) -> bool {
 /// # Return Value
 ///
 /// Whether the [`AttrValue`] is a floating point number
+///
+/// # Context
+///
+/// All Contexts
 pub fn attr_is_floating(attr: AttrValue) -> bool {
     attr.is_floating()
 }
@@ -1715,6 +2137,10 @@ pub fn attr_is_floating(attr: AttrValue) -> bool {
 /// # Return Value
 ///
 /// Whether the [`AttrValue`] is a dictionary
+///
+/// # Context
+///
+/// All Contexts
 pub fn attr_is_dict(attr: AttrValue) -> bool {
     attr.is_dict()
 }
@@ -1728,6 +2154,10 @@ pub fn attr_is_dict(attr: AttrValue) -> bool {
 /// # Return Value
 ///
 /// Whether the [`AttrValue`] is a list
+///
+/// # Context
+///
+/// All Contexts
 pub fn attr_is_list(attr: AttrValue) -> bool {
     attr.is_list()
 }
@@ -1750,6 +2180,10 @@ pub fn attr_is_list(attr: AttrValue) -> bool {
 /// ```rust,ignore
 /// let x: i64 = a.try_into()?;
 /// ```
+///
+/// # Context
+///
+/// All Contexts
 pub fn attr_integer(attr: AttrValue) -> Result<i64> {
     attr.as_integer().ok_or_else(|| Error::AttrValueType {
         actual: attr.kind(),
@@ -1775,6 +2209,10 @@ pub fn attr_integer(attr: AttrValue) -> Result<i64> {
 /// ```rust,ignore
 /// let x: bool = a.try_into()?;
 /// ```
+///
+/// # Context
+///
+/// All Contexts
 pub fn attr_boolean(attr: AttrValue) -> Result<bool> {
     attr.as_boolean().ok_or_else(|| Error::AttrValueType {
         actual: attr.kind(),
@@ -1800,6 +2238,10 @@ pub fn attr_boolean(attr: AttrValue) -> Result<bool> {
 /// ```rust,ignore
 /// let x: String = a.try_into()?;
 /// ```
+///
+/// # Context
+///
+/// All Contexts
 pub fn attr_string(attr: AttrValue) -> Result<String> {
     attr.as_string().ok_or_else(|| Error::AttrValueType {
         actual: attr.kind(),
@@ -1825,6 +2267,10 @@ pub fn attr_string(attr: AttrValue) -> Result<String> {
 /// ```rust,ignore
 /// let x: f64 = a.try_into()?;
 /// ```
+///
+/// # Context
+///
+/// All Contexts
 pub fn attr_floating(attr: AttrValue) -> Result<f64> {
     attr.as_floating().ok_or_else(|| Error::AttrValueType {
         actual: attr.kind(),
@@ -1850,6 +2296,10 @@ pub fn attr_floating(attr: AttrValue) -> Result<f64> {
 /// ```rust,ignore
 /// let x: *mut ConfObject = a.try_into()?;
 /// ```
+///
+/// # Context
+///
+/// All Contexts
 pub fn attr_object(attr: AttrValue) -> Result<*mut ConfObject> {
     attr.as_object().ok_or_else(|| Error::AttrValueType {
         actual: attr.kind(),
@@ -1877,6 +2327,10 @@ pub fn attr_object(attr: AttrValue) -> Result<*mut ConfObject> {
 /// ```rust,ignore
 /// let x: *mut ConfObject = a.try_into()?;
 /// ```
+///
+/// # Context
+///
+/// All Contexts
 pub fn attr_object_or_nil(attr: AttrValue) -> *mut ConfObject {
     attr.as_object().unwrap_or(null_mut())
 }
@@ -1900,6 +2354,10 @@ pub fn attr_object_or_nil(attr: AttrValue) -> *mut ConfObject {
 /// let x: YourType = a.as_data().ok_or_else(|| /* Error */)?;
 /// let x: YourType = attr_data(a)?;
 /// ```
+///
+/// # Context
+///
+/// All Contexts
 pub fn attr_data_size(attr: AttrValue) -> Result<u32> {
     attr.is_data()
         .then(|| attr.size())
@@ -1920,6 +2378,10 @@ pub fn attr_data_size(attr: AttrValue) -> Result<u32> {
 ///
 /// The contained data if the [`AttrValue`] is the correct type, or an error
 /// otherwise
+///
+/// # Context
+///
+/// All Contexts
 pub fn attr_data<T>(attr: AttrValue) -> Result<T>
 where
     T: Clone,
@@ -1940,6 +2402,10 @@ where
 /// # Return Value
 ///
 /// The size of the list, if the [`AttrValue`] is a list, or an error if it is not
+///
+/// # Context
+///
+/// All Contexts
 pub fn attr_list_size(attr: AttrValue) -> Result<u32> {
     attr.is_list()
         .then(|| attr.size())
@@ -1958,6 +2424,10 @@ pub fn attr_list_size(attr: AttrValue) -> Result<u32> {
 /// * `index` - The index in the list to retrieve
 ///
 /// # Return Value
+///
+/// # Context
+///
+/// All Contexts
 pub fn attr_list_item<T>(attr: AttrValue, index: usize) -> Result<AttrValue> {
     let list: Vec<AttrValue> = attr.as_list()?.ok_or_else(|| Error::AttrValueType {
         actual: attr.kind(),
@@ -1982,6 +2452,10 @@ pub fn attr_list_item<T>(attr: AttrValue, index: usize) -> Result<AttrValue> {
 /// # Return Value
 ///
 /// The size of the dict, if the [`AttrValue`] is a dict, or an error if it is not
+///
+/// # Context
+///
+/// All Contexts
 pub fn attr_dict_size(attr: AttrValue) -> Result<u32> {
     attr.is_dict()
         .then(|| attr.size())
@@ -2002,6 +2476,10 @@ pub fn attr_dict_size(attr: AttrValue) -> Result<u32> {
 /// # Return Value
 ///
 /// The key for the requested index in the dictionary, or an error otherwise
+///
+/// # Context
+///
+/// All Contexts
 pub fn attr_dict_key(attr: AttrValue, index: u32) -> Result<AttrValue> {
     if index < attr.size() {
         attr.is_dict()
@@ -2039,6 +2517,10 @@ pub fn attr_dict_key(attr: AttrValue, index: u32) -> Result<AttrValue> {
 /// # Return Value
 ///
 /// The value for the requested index in the dictionary, or an error otherwise
+///
+/// # Context
+///
+/// All Contexts
 pub fn attr_dict_value(attr: AttrValue, index: u32) -> Result<AttrValue> {
     if index < attr.size() {
         attr.is_dict()
@@ -2067,6 +2549,10 @@ pub fn attr_dict_value(attr: AttrValue, index: u32) -> Result<AttrValue> {
 
 #[simics_exception]
 /// Free an attr value.
+///
+/// # Context
+///
+/// Cell Context
 pub fn free_attribute(attr: AttrValue) {
     unsafe { SIM_free_attribute(attr.0) }
 }

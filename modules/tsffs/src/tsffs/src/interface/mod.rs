@@ -388,6 +388,15 @@ impl Tsffs {
         Ok(())
     }
 
+    /// Set the number of iterations to run the fuzzer for. This is the number of actual testcases
+    /// executed, and includes all stages (e.g. calibration). This should typically not be used
+    /// to limit the time of a fuzzing campaign, and is only useful for demonstration purposes.
+    pub fn set_iterations(&mut self, iterations: usize) -> Result<()> {
+        *self.driver_mut().configuration_mut().iterations_mut() = Some(iterations);
+
+        Ok(())
+    }
+
     pub fn get_configuration(&mut self) -> Result<attr_value_t> {
         Ok(AttrValue::try_from(
             [

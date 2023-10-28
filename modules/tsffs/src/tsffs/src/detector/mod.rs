@@ -1,22 +1,22 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+use anyhow::Result;
 use ffi_macro::ffi;
 use getters::Getters;
-use simics::{
-    api::{BreakpointId, ConfObject, GenericTransaction},
-    Result,
-};
-use simics_macro::{TryFromAttrValueType, TryIntoAttrValueType};
+use simics::api::{BreakpointId, ConfObject, GenericTransaction};
+use simics_macro::{TryFromAttrValueTypeDict, TryIntoAttrValueTypeDict};
 use std::{collections::BTreeSet, ffi::c_void};
 use typed_builder::TypedBuilder;
 
-use crate::Tsffs;
+use crate::{state::StopReason, traits::Component, Tsffs};
 
 /// The timeout runs in virtual time, so a typical 5 second timeout is acceptable
 pub const TIMEOUT_DEFAULT: f64 = 5.0;
 
-#[derive(TypedBuilder, Getters, Debug, Clone, TryIntoAttrValueType, TryFromAttrValueType)]
+#[derive(
+    TypedBuilder, Getters, Debug, Clone, TryIntoAttrValueTypeDict, TryFromAttrValueTypeDict,
+)]
 #[getters(mutable)]
 /// Configuration of the fuzzer of each condition that can be treated as a fault
 pub struct DetectorConfiguration {
@@ -73,6 +73,12 @@ where
         _breakpoint: i64,
         _transaction: *mut GenericTransaction,
     ) -> Result<()> {
+        Ok(())
+    }
+}
+
+impl<'a> Component for Detector<'a> {
+    fn on_simulation_stopped(&mut self, reason: &StopReason) -> Result<()> {
         Ok(())
     }
 }

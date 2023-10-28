@@ -47,6 +47,7 @@ impl ToTokens for Getters {
                 let mutable = f.mutable.is_present() || self.mutable.is_present();
 
                 let immutable = quote! {
+                    #[inline(always)]
                     /// Return a reference to the #ident field
                     pub fn #ident(&self) -> &#ty {
                         &self.#ident
@@ -58,6 +59,7 @@ impl ToTokens for Getters {
                     quote! {
                         #immutable
 
+                        #[inline(always)]
                         /// Return a mutable reference to the #ident field
                         pub fn #ident_mut(&mut self) -> &mut #ty {
                             &mut self.#ident
