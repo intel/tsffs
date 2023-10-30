@@ -106,6 +106,7 @@ fn test_fuzz_gcc_x86_64_manual() -> Result<()> {
         cli.sb_create(startup_script_branch)
 
         simics.SIM_continue(0)
+        simics.SIM_main_loop()
     "#};
 
     let env = TestEnvSpec::builder()
