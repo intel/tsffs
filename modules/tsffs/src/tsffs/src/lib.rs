@@ -33,10 +33,7 @@ use crate::{
 };
 use getters::Getters;
 use simics::{
-    api::{
-        break_simulation, AsConfObject, Class, ConfObject, CoreSimulationStoppedHap, HapHandle,
-        LogLevel,
-    },
+    api::{break_simulation, AsConfObject, Class, ConfObject, CoreSimulationStoppedHap, HapHandle},
     info, Result,
 };
 use simics_macro::{class, interface, AsConfObject};

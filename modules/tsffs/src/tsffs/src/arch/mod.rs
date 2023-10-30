@@ -5,12 +5,14 @@
 
 use anyhow::{anyhow, bail, Result};
 use simics::{
-    api::{get_interface, ConfObject, IntRegisterInterface, ProcessorInfoV2Interface},
+    api::{
+        get_interface, ConfObject, GenericAddress, IntRegisterInterface, ProcessorInfoV2Interface,
+    },
     debug,
 };
 use std::{ffi::CStr, fmt::Debug};
 
-use crate::driver::{MagicStartBuffer, MagicStartSize};
+use crate::driver::{StartBuffer, StartSize};
 
 use self::x86_64::X86_64ArchitectureOperations;
 
@@ -46,16 +48,19 @@ pub trait ArchitectureOperations {
         Self: Sized;
     /// Returns the address and whether the address is virtual for the testcase buffer used by
     /// the magic start functionality
-    fn get_magic_start_buffer(&mut self) -> Result<MagicStartBuffer>;
+    fn get_magic_start_buffer(&mut self) -> Result<StartBuffer>;
     /// Returns the memory pointed to by the magic start functionality containing the maximum
     /// size of an input testcase
-    fn get_magic_start_size(&mut self) -> Result<MagicStartSize>;
-    /// Writes the magic buffer with a testcase of a certain size
-    fn write_magic_start(
+    fn get_magic_start_size(&mut self) -> Result<StartSize>;
+    /// Returns the initial start size for non-magic instructions by reading it from a given
+    /// (possibly virtual) address
+    fn get_start_size(&mut self, size_address: GenericAddress, virt: bool) -> Result<StartSize>;
+    /// Writes the buffer with a testcase of a certain size
+    fn write_start(
         &mut self,
         testcase: &[u8],
-        buffer: &MagicStartBuffer,
-        size: &MagicStartSize,
+        buffer: &StartBuffer,
+        size: &StartSize,
     ) -> Result<()>;
 }
 
@@ -137,28 +142,35 @@ impl ArchitectureOperations for Architecture {
         Self::get(cpu)
     }
 
-    fn get_magic_start_buffer(&mut self) -> Result<MagicStartBuffer> {
+    fn get_magic_start_buffer(&mut self) -> Result<StartBuffer> {
         match self {
             Architecture::X86_64(x86_64) => x86_64.get_magic_start_buffer(),
             Architecture::I386 => todo!(),
         }
     }
 
-    fn get_magic_start_size(&mut self) -> Result<MagicStartSize> {
+    fn get_magic_start_size(&mut self) -> Result<StartSize> {
         match self {
             Architecture::X86_64(x86_64) => x86_64.get_magic_start_size(),
             Architecture::I386 => todo!(),
         }
     }
 
-    fn write_magic_start(
+    fn get_start_size(&mut self, size_address: GenericAddress, virt: bool) -> Result<StartSize> {
+        match self {
+            Architecture::X86_64(x86_64) => x86_64.get_start_size(size_address, virt),
+            Architecture::I386 => todo!(),
+        }
+    }
+
+    fn write_start(
         &mut self,
         testcase: &[u8],
-        buffer: &MagicStartBuffer,
-        size: &MagicStartSize,
+        buffer: &StartBuffer,
+        size: &StartSize,
     ) -> Result<()> {
         match self {
-            Architecture::X86_64(x86_64) => x86_64.write_magic_start(testcase, buffer, size),
+            Architecture::X86_64(x86_64) => x86_64.write_start(testcase, buffer, size),
             Architecture::I386 => todo!(),
         }
     }

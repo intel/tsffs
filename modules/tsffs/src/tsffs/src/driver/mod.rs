@@ -10,8 +10,8 @@ use simics::{
     api::{
         continue_simulation, discard_future, get_attribute, get_object, object_is_processor, quit,
         restore_micro_checkpoint, restore_snapshot, run_alone, save_micro_checkpoint,
-        save_snapshot, set_log_level, AsConfObject, ConfObject, CoreMagicInstructionHap, Hap,
-        HapHandle, LogLevel, MicroCheckpointFlags,
+        save_snapshot, set_log_level, AsConfObject, ConfObject, CoreMagicInstructionHap,
+        GenericAddress, Hap, HapHandle, LogLevel, MicroCheckpointFlags,
     },
     info,
 };
@@ -57,7 +57,7 @@ impl Default for DriverConfiguration {
 }
 
 #[derive(TypedBuilder, Getters, Clone, Debug)]
-pub struct MagicStartBuffer {
+pub struct StartBuffer {
     /// The physical address of the buffer
     pub physical_address: u64,
     /// Whether the address that translated to this physical address was virtual
@@ -65,9 +65,10 @@ pub struct MagicStartBuffer {
 }
 
 #[derive(TypedBuilder, Getters, Clone, Debug)]
-pub struct MagicStartSize {
+pub struct StartSize {
+    #[builder(default, setter(strip_option))]
     /// The address of the magic start size value
-    pub physical_address: u64,
+    pub physical_address: Option<u64>,
     // NOTE: There is no need to save the size fo the size, it must be pointer-sized.
     /// The initial size of the magic start size
     pub initial_size: u64,
@@ -77,11 +78,11 @@ pub struct MagicStartSize {
 
 #[derive(TypedBuilder, Default, Getters, Clone, Debug)]
 #[getters(mutable)]
-pub struct MagicStartInformation {
+pub struct StartInformation {
     #[builder(default)]
-    buffer: Option<MagicStartBuffer>,
+    buffer: Option<StartBuffer>,
     #[builder(default)]
-    size: Option<MagicStartSize>,
+    size: Option<StartSize>,
 }
 #[derive(TypedBuilder, Getters, Debug)]
 #[getters(mutable)]
@@ -94,7 +95,7 @@ where
     /// The driver configuration settings
     configuration: DriverConfiguration,
     #[builder(default)]
-    magic_core_architecture: Option<Architecture>,
+    start_core_architecture: Option<Architecture>,
     #[builder(default)]
     /// The name of the fuzz snapshot, if saved
     snapshot_name: Option<String>,
@@ -104,7 +105,7 @@ where
     micro_checkpoint_index: Option<i32>,
     #[builder(default)]
     /// The buffer and size information, if saved
-    magic_start_information: MagicStartInformation,
+    start_information: StartInformation,
     #[builder(default)]
     /// The handle for the registered magic HAP, used to
     /// listen for magic start and stop if `start_on_harness`
@@ -175,6 +176,27 @@ where
 }
 
 impl<'a> Driver<'a> {
+    pub fn write_testcase(&mut self, testcase: Vec<u8>) -> Result<()> {
+        match (
+            self.start_information().buffer().clone(),
+            self.start_information().size().clone(),
+        ) {
+            (Some(b), Some(s)) => {
+                self.start_core_architecture_mut()
+                    .as_mut()
+                    .ok_or_else(|| {
+                        anyhow!("No magic core architecture set but magic instruction received")
+                    })?
+                    .write_start(&testcase, &b, &s)?;
+            }
+            _ => bail!("No buffer or no size set but magic instruction received"),
+        }
+
+        Ok(())
+    }
+}
+
+impl<'a> Driver<'a> {
     pub fn save_initial_snapshot(&mut self) -> Result<()> {
         if *self.configuration().use_snapshots() {
             save_snapshot(SNAPSHOT_NAME)?;
@@ -214,38 +236,36 @@ impl<'a> Driver<'a> {
         Ok(())
     }
 
-    /// Called on the first magic start if the driver is configured to use the magic start
-    /// harness.
-    ///
-    /// We will:
-    /// * Save the passed buffer information (architecture dependent)
-    /// * Save a snapshot or micro checkpoint
-    pub fn on_first_magic_start(&mut self, cpu: *mut ConfObject) -> Result<()> {
-        // Collect the architecture for the triggering CPU. This is saved, as we presume
-        // we will not have the cpu running this code change architectures from under us
-        let mut arch = Architecture::get(cpu)?;
-        let magic_start_buffer = arch.get_magic_start_buffer()?;
-        let magic_start_size = arch.get_magic_start_size()?;
-
-        info!(
-            self.parent_mut().as_conf_object_mut(),
-            "Completed first magic start setup with architecture {arch:?}: {magic_start_buffer:?} {magic_start_size:?}"
-        );
-
-        *self.magic_start_information_mut().buffer_mut() = Some(magic_start_buffer);
-        *self.magic_start_information_mut().size_mut() = Some(magic_start_size);
-
-        *self.magic_core_architecture_mut() = Some(arch);
-        *self.start_time_mut() = SystemTime::now();
-
-        Ok(())
+    pub fn have_initial_snapshot(&self) -> bool {
+        (self.snapshot_name().is_some() && *self.configuration().use_snapshots())
+            || (self.snapshot_name().is_some()
+                && self.micro_checkpoint_index().is_some()
+                && !self.configuration().use_snapshots())
     }
+}
 
+impl<'a> Driver<'a> {
     /// Called on magic start if the driver is configured to use the magic start harness
-    ///
     pub fn on_magic_start(&mut self, cpu: *mut ConfObject) -> Result<()> {
-        if self.snapshot_name().is_none() {
-            self.on_first_magic_start(cpu)?;
+        if !self.have_initial_snapshot() {
+            let mut arch = Architecture::get(cpu)?;
+            let magic_start_buffer = arch.get_magic_start_buffer()?;
+            let magic_start_size = arch.get_magic_start_size()?;
+
+            info!(
+                self.parent_mut().as_conf_object_mut(),
+                "Completed first magic start setup with architecture {arch:?}: {magic_start_buffer:?} {magic_start_size:?}"
+            );
+
+            *self.start_information_mut().buffer_mut() = Some(magic_start_buffer);
+            *self.start_information_mut().size_mut() = Some(magic_start_size);
+
+            *self.start_core_architecture_mut() = Some(arch);
+            *self.start_time_mut() = SystemTime::now();
+
+            // NOTE: We do *not* actually capture the snapshot here, because we may be in cell
+            // context. Instead, after gathering information and setting up the buffer, we
+            // trigger a simulation stop and capture a snapshot in the resulting callback.
         }
 
         // TODO: get a new testcase from the fuzzer
@@ -255,20 +275,7 @@ impl<'a> Driver<'a> {
             .map(u8::from)
             .collect();
 
-        match (
-            self.magic_start_information().buffer().clone(),
-            self.magic_start_information().size().clone(),
-        ) {
-            (Some(b), Some(s)) => {
-                self.magic_core_architecture_mut()
-                    .as_mut()
-                    .ok_or_else(|| {
-                        anyhow!("No magic core architecture set but magic instruction received")
-                    })?
-                    .write_magic_start(&testcase, &b, &s)?;
-            }
-            _ => bail!("No buffer or no size set but magic instruction received"),
-        }
+        self.write_testcase(testcase)?;
 
         info!(
             self.parent_mut().as_conf_object_mut(),
@@ -311,39 +318,6 @@ impl<'a> Driver<'a> {
         Ok(())
     }
 
-    pub fn on_simulation_stopped_magic_start(&mut self) -> Result<()> {
-        if self.snapshot_name().is_none() {
-            self.save_initial_snapshot()?;
-        }
-
-        run_alone(|| {
-            continue_simulation(0)?;
-            Ok(())
-        })?;
-
-        Ok(())
-    }
-
-    /// The simulation has stopped, with the stop triggered by the driver catching a magic
-    /// stop callback. This allows
-    pub fn on_simulation_stopped_magic_stop(&mut self) -> Result<()> {
-        // On a magic stop, we restore our initial snapshot and resume execution
-        self.restore_initial_snapshot()?;
-
-        info!(
-            self.parent_mut().as_conf_object_mut(),
-            "Iterations: {}",
-            self.iterations()
-        );
-
-        run_alone(|| {
-            continue_simulation(0)?;
-            Ok(())
-        })?;
-
-        Ok(())
-    }
-
     /// Callback on magic instruction HAP. Checks whether the received magic number is registered
     /// as the start or stop number and acts accordingly by
     pub fn on_magic_instruction(
@@ -365,7 +339,6 @@ impl<'a> Driver<'a> {
                 && magic_number == *self.configuration().magic_stop()
             {
                 self.on_magic_stop(trigger_obj)?;
-                self.parent_mut().stop_simulation(StopReason::MagicStop)?;
             }
         }
 
@@ -373,15 +346,165 @@ impl<'a> Driver<'a> {
     }
 }
 
+impl<'a> Driver<'a> {
+    pub fn on_start(
+        &mut self,
+        cpu: *mut ConfObject,
+        testcase_address: GenericAddress,
+        size_address: GenericAddress,
+        virt: bool,
+    ) -> Result<()> {
+        if self.snapshot_name().is_none() {
+            // NOTE: This is the first time start is being triggered. We need to go through
+            // the whole buffer/size collection and snapshot process
+            let mut arch = Architecture::get(cpu)?;
+            *self.start_information_mut().buffer_mut() = Some(
+                StartBuffer::builder()
+                    .physical_address(testcase_address)
+                    .virt(virt)
+                    .build(),
+            );
+            *self.start_information_mut().size_mut() =
+                Some(arch.get_start_size(size_address, virt)?);
+            *self.start_core_architecture_mut() = Some(arch);
+            *self.start_time_mut() = SystemTime::now();
+        }
+
+        // TODO: get a new testcase from the fuzzer
+        let testcase: Vec<u8> = thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(thread_rng().gen_range(0..8))
+            .map(u8::from)
+            .collect();
+
+        self.write_testcase(testcase)?;
+
+        info!(
+            self.parent_mut().as_conf_object_mut(),
+            "Completed start setup"
+        );
+
+        self.parent_mut().stop_simulation(StopReason::Start)?;
+
+        Ok(())
+    }
+
+    pub fn on_start_with_maximum_size(
+        &mut self,
+        cpu: *mut ConfObject,
+        testcase_address: GenericAddress,
+        maximum_size: u32,
+        virt: bool,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn on_stop(&mut self) -> Result<()> {
+        *self.iterations_mut() += 1;
+
+        if self
+            .configuration()
+            .iterations()
+            .is_some_and(|i| *self.iterations() >= i)
+        {
+            let duration = SystemTime::now().duration_since(*self.start_time())?;
+
+            // Set the log level so this message always prints
+            set_log_level(self.parent_mut().as_conf_object_mut(), LogLevel::Info)?;
+
+            info!(
+                self.parent_mut().as_conf_object_mut(),
+                "Configured iteration count {} reached. Stopping after {} seconds ({} exec/s).",
+                self.iterations(),
+                duration.as_secs_f32(),
+                *self.iterations() as f32 / duration.as_secs_f32()
+            );
+            quit(0)?;
+        }
+
+        self.parent_mut().stop_simulation(StopReason::Stop)?;
+
+        Ok(())
+    }
+}
+
+impl<'a> Driver<'a> {
+    /// Triggered when the simulation is stopped with a [`StopReason::MagicStart`] reason
+    pub fn on_simulation_stopped_magic_start(&mut self) -> Result<()> {
+        if !self.have_initial_snapshot() {
+            self.save_initial_snapshot()?;
+        }
+
+        run_alone(|| {
+            continue_simulation(0)?;
+            Ok(())
+        })?;
+
+        Ok(())
+    }
+
+    /// Triggered when the simulation is stopped with a [`StopReason::MagicStop`] reason
+    /// The simulation has stopped, with the stop triggered by the driver catching a magic
+    /// stop callback. This allows
+    pub fn on_simulation_stopped_magic_stop(&mut self) -> Result<()> {
+        // On a magic stop, we restore our initial snapshot and resume execution
+        self.restore_initial_snapshot()?;
+
+        info!(
+            self.parent_mut().as_conf_object_mut(),
+            "Iterations: {}",
+            self.iterations()
+        );
+
+        run_alone(|| {
+            continue_simulation(0)?;
+            Ok(())
+        })?;
+
+        Ok(())
+    }
+
+    /// Triggered when the simulation is stopped with a [`StopReason::Start`] reason
+    pub fn on_simulation_stopped_start(&mut self) -> Result<()> {
+        if !self.have_initial_snapshot() {
+            self.save_initial_snapshot()?;
+        }
+
+        run_alone(|| {
+            continue_simulation(0)?;
+            Ok(())
+        })?;
+
+        Ok(())
+    }
+
+    /// Triggered when the simulation is stopped with a [`StopReason::Stop`] reason
+    pub fn on_simulation_stopped_stop(&mut self) -> Result<()> {
+        self.restore_initial_snapshot()?;
+
+        info!(
+            self.parent_mut().as_conf_object_mut(),
+            "Iterations: {}",
+            self.iterations()
+        );
+
+        run_alone(|| {
+            continue_simulation(0)?;
+            Ok(())
+        })?;
+
+        Ok(())
+    }
+}
+
 impl<'a> Component for Driver<'a> {
+    /// Triggered when the simulation is stopped, with the reason it was stopped.
     fn on_simulation_stopped(&mut self, reason: &StopReason) -> Result<()> {
         match reason {
-            StopReason::MagicStart => {
-                self.on_simulation_stopped_magic_start()?;
-            }
-            StopReason::MagicStop => {
-                self.on_simulation_stopped_magic_stop()?;
-            }
+            StopReason::MagicStart => self.on_simulation_stopped_magic_start()?,
+            StopReason::MagicStop => self.on_simulation_stopped_magic_stop()?,
+            StopReason::Start => self.on_simulation_stopped_start()?,
+            StopReason::Stop => self.on_simulation_stopped_stop()?,
         }
         Ok(())
     }
@@ -390,7 +513,9 @@ impl<'a> Component for Driver<'a> {
 #[derive(Debug, Clone, TryFromAttrValueTypeList)]
 struct MicroCheckpointInfo {
     pub name: String,
+    #[allow(unused)]
     pub pages: u64,
+    #[allow(unused)]
     pub zero: u64,
 }
 

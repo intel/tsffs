@@ -369,8 +369,6 @@ fn hap_name_and_type_to_struct(
 
                             }}).unwrap_or_default();
 
-                            let struct_name_string = struct_name.to_string();
-
                             let struct_and_impl = quote! {
                                 #(#callback_doc)*
                                 pub struct #struct_name {}

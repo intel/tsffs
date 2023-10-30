@@ -144,15 +144,18 @@ impl Tsffs {
     /// `start_with_max_size` instead.
     pub fn start(
         &mut self,
-        _cpu: *mut ConfObject,
+        cpu: *mut ConfObject,
         testcase_address: GenericAddress,
         size_address: GenericAddress,
         virt: bool,
-    ) {
+    ) -> Result<()> {
         info!(
             self.as_conf_object_mut(),
             "start({testcase_address:#x}, {size_address:#x}, {virt})"
         );
+        self.driver_mut()
+            .on_start(cpu, testcase_address, size_address, virt)?;
+        Ok(())
     }
 
     /// Interface method to manually start the fuzzing loop by taking a snapshot, saving the
@@ -168,15 +171,18 @@ impl Tsffs {
     /// * `virt` - Whether the provided addresses should be interpreted as virtual or physical
     pub fn start_with_maximum_size(
         &mut self,
-        _cpu: *mut ConfObject,
+        cpu: *mut ConfObject,
         testcase_address: GenericAddress,
         maximum_size: u32,
         virt: bool,
-    ) {
+    ) -> Result<()> {
         info!(
             self.as_conf_object_mut(),
             "start_with_maximum_size({testcase_address:#x}, {maximum_size:#x}, {virt})"
         );
+        self.driver_mut()
+            .on_start_with_maximum_size(cpu, testcase_address, maximum_size, virt)?;
+        Ok(())
     }
 
     /// Interface method to manually signal to stop a testcase execution. When this
@@ -185,8 +191,12 @@ impl Tsffs {
     /// initial snapshot. This method is particularly useful in callbacks triggered on
     /// breakpoints or other complex conditions. This method does
     /// not need to be called if `set_stop_on_harness` is enabled.
-    pub fn stop(&mut self) {
+    pub fn stop(&mut self) -> Result<()> {
         info!(self.as_conf_object_mut(), "stop");
+
+        self.driver_mut().on_stop()?;
+
+        Ok(())
     }
 
     /// Interface method to manually signal to stop execution with a solution condition.
