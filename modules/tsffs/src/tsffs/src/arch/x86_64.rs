@@ -177,9 +177,10 @@ impl ArchitectureOperations for X86_64ArchitectureOperations {
         let mut testcase = testcase.to_vec();
         testcase.truncate(size.initial_size as usize);
 
-        testcase
-            .chunks(8)
-            .try_for_each(|c| write_phys_memory(self.cpu, buffer.physical_address, c))?;
+        testcase.chunks(8).try_for_each(|c| {
+            println!("Writing {:#x} <- {:?}", buffer.physical_address, c);
+            write_phys_memory(self.cpu, buffer.physical_address, c)
+        })?;
 
         let value = testcase
             .len()
@@ -190,6 +191,11 @@ impl ArchitectureOperations for X86_64ArchitectureOperations {
             .collect::<Vec<_>>();
 
         if let Some(ref physical_address) = size.physical_address {
+            println!(
+                "Writing size {:#x} <- {:?}",
+                *physical_address,
+                value.as_slice()
+            );
             write_phys_memory(self.cpu, *physical_address, value.as_slice())?;
         }
 

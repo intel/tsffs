@@ -25,8 +25,8 @@ fn test_fuzz_gcc_x86_64_manual() -> Result<()> {
             []
         )
         simics.SIM_set_log_level(tsffs, 1)
-        tsffs.iface.tsffs.set_start_on_harness(True)
-        tsffs.iface.tsffs.set_stop_on_harness(True)
+        tsffs.iface.tsffs.set_start_on_harness(False)
+        tsffs.iface.tsffs.set_stop_on_harness(False)
         tsffs.iface.tsffs.set_timeout(3.0)
         tsffs.iface.tsffs.add_exception_solution(14)
         tsffs.iface.tsffs.set_generate_random_corpus(True)

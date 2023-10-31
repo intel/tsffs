@@ -354,7 +354,7 @@ impl<'a> Driver<'a> {
         size_address: GenericAddress,
         virt: bool,
     ) -> Result<()> {
-        if self.snapshot_name().is_none() {
+        if !self.have_initial_snapshot() {
             // NOTE: This is the first time start is being triggered. We need to go through
             // the whole buffer/size collection and snapshot process
             let mut arch = Architecture::get(cpu)?;
@@ -396,6 +396,45 @@ impl<'a> Driver<'a> {
         maximum_size: u32,
         virt: bool,
     ) -> Result<()> {
+        if self.snapshot_name().is_none() {
+            // NOTE: This is the first time start is being triggered. We need to go through
+            // the whole buffer/size collection and snapshot process
+            let arch = Architecture::get(cpu)?;
+
+            *self.start_information_mut().buffer_mut() = Some(
+                StartBuffer::builder()
+                    .physical_address(testcase_address)
+                    .virt(virt)
+                    .build(),
+            );
+
+            *self.start_information_mut().size_mut() = Some(
+                StartSize::builder()
+                    .initial_size(maximum_size as u64)
+                    .virt(virt)
+                    .build(),
+            );
+
+            *self.start_core_architecture_mut() = Some(arch);
+            *self.start_time_mut() = SystemTime::now();
+        }
+
+        // TODO: get a new testcase from the fuzzer
+        let testcase: Vec<u8> = thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(thread_rng().gen_range(0..8))
+            .map(u8::from)
+            .collect();
+
+        self.write_testcase(testcase)?;
+
+        info!(
+            self.parent_mut().as_conf_object_mut(),
+            "Completed start setup"
+        );
+
+        self.parent_mut().stop_simulation(StopReason::Start)?;
+
         Ok(())
     }
 
@@ -487,6 +526,18 @@ impl<'a> Driver<'a> {
             "Iterations: {}",
             self.iterations()
         );
+
+        // NOTE: for un-harnessed fuzzing, we need to write a new testcase on stop every iteration
+        // except the first, because we do not have a `start` call each time. Make this clear in
+        // the documentation.
+        // TODO: get a new testcase from the fuzzer
+        let testcase: Vec<u8> = thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(thread_rng().gen_range(0..8))
+            .map(u8::from)
+            .collect();
+
+        self.write_testcase(testcase)?;
 
         run_alone(|| {
             continue_simulation(0)?;
