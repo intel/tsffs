@@ -78,7 +78,7 @@ where
 }
 
 impl<'a> Component for Detector<'a> {
-    fn on_simulation_stopped(&mut self, reason: &StopReason) -> Result<()> {
+    fn on_simulation_stopped(&mut self, _reason: &StopReason) -> Result<()> {
         Ok(())
     }
 }

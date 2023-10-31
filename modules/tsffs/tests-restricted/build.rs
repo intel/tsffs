@@ -38,6 +38,7 @@ fn main() -> Result<()> {
                 .current_dir(&d)
                 .check()
                 .expect("failed to build");
+            println!("cargo:rerun-if-changed={}", d.display());
         });
 
     Ok(())

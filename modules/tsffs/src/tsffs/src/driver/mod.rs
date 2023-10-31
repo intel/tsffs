@@ -248,7 +248,7 @@ impl<'a> Driver<'a> {
     /// Called on magic start if the driver is configured to use the magic start harness
     pub fn on_magic_start(&mut self, cpu: *mut ConfObject) -> Result<()> {
         if !self.have_initial_snapshot() {
-            let mut arch = Architecture::get(cpu)?;
+            let mut arch = Architecture::new(cpu)?;
             let magic_start_buffer = arch.get_magic_start_buffer()?;
             let magic_start_size = arch.get_magic_start_size()?;
 
@@ -357,7 +357,7 @@ impl<'a> Driver<'a> {
         if !self.have_initial_snapshot() {
             // NOTE: This is the first time start is being triggered. We need to go through
             // the whole buffer/size collection and snapshot process
-            let mut arch = Architecture::get(cpu)?;
+            let mut arch = Architecture::new(cpu)?;
             *self.start_information_mut().buffer_mut() = Some(
                 StartBuffer::builder()
                     .physical_address(testcase_address)
@@ -399,7 +399,7 @@ impl<'a> Driver<'a> {
         if self.snapshot_name().is_none() {
             // NOTE: This is the first time start is being triggered. We need to go through
             // the whole buffer/size collection and snapshot process
-            let arch = Architecture::get(cpu)?;
+            let arch = Architecture::new(cpu)?;
 
             *self.start_information_mut().buffer_mut() = Some(
                 StartBuffer::builder()

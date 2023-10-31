@@ -1,7 +1,9 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::{bail, Result};
+use std::ffi::CStr;
+
+use anyhow::{anyhow, bail, Result};
 use raw_cstr::AsRawCstr;
 use simics::api::{
     get_interface, read_phys_memory, write_phys_memory, Access, ConfObject, GenericAddress,
@@ -113,11 +115,58 @@ pub struct X86_64ArchitectureOperations {
 
 impl ArchitectureOperations for X86_64ArchitectureOperations {
     fn new(cpu: *mut ConfObject) -> Result<Self> {
-        Ok(Self {
-            cpu,
-            int_register: get_interface(cpu)?,
-            processor_info_v2: get_interface(cpu)?,
-        })
+        let mut processor_info_v2: ProcessorInfoV2Interface = get_interface(cpu)?;
+
+        let arch = unsafe { CStr::from_ptr(processor_info_v2.architecture()?) }
+            .to_str()?
+            .to_string();
+
+        if arch == "x86-64" {
+            // Check if the arch is actually x86-64, some x86-64 processors are actually
+            // i386 under the hood
+            let mut int_register: IntRegisterInterface = get_interface(cpu)?;
+            let regs: Vec<u32> = int_register.all_registers()?.try_into()?;
+            let reg_names: Vec<String> = regs
+                .iter()
+                .map(|r| {
+                    int_register
+                        .get_name(*r as i32)
+                        .map_err(|e| anyhow!("Failed to get register name: {e}"))
+                        .and_then(|n| {
+                            unsafe { CStr::from_ptr(n) }
+                                .to_str()
+                                .map(|s| s.to_string())
+                                .map_err(|e| anyhow!("Failed to convert string: {e}"))
+                        })
+                })
+                .collect::<Result<Vec<_>>>()?;
+
+            if reg_names.iter().any(|n| {
+                [
+                    "rax", "rbx", "rcx", "rdx", "rdi", "rsi", "rip", "rsp", "rbp", "r8", "r9",
+                    "r10", "r11", "r12", "r14", "r15",
+                ]
+                .contains(&n.to_ascii_lowercase().as_str())
+            }) {
+                Ok(Self {
+                    cpu,
+                    int_register,
+                    processor_info_v2,
+                })
+            } else if reg_names.iter().all(|n| {
+                ![
+                    "rax", "rbx", "rcx", "rdx", "rdi", "rsi", "rip", "rsp", "rbp", "r8", "r9",
+                    "r10", "r11", "r12", "r14", "r15",
+                ]
+                .contains(&n.to_ascii_lowercase().as_str())
+            }) {
+                bail!("Architecture reports x86-64 but is not actually x86-64")
+            } else {
+                unreachable!("Register set must either contain a 64-bit register or no registers may be 64-bit");
+            }
+        } else {
+            bail!("Architecture {arch} is not x86-64");
+        }
     }
 
     fn get_magic_start_buffer(&mut self) -> Result<StartBuffer> {

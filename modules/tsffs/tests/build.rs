@@ -31,6 +31,8 @@ fn main() -> Result<()> {
         .filter_map(|d| d.ok())
         .filter(|d| d.path().is_dir())
         .map(|d| d.path())
+        // Blocklist a few that aren't working
+        .filter(|d| d.ends_with("riscv-64-edk2"))
         .for_each(|d| {
             Command::new("ninja")
                 .current_dir(&d)

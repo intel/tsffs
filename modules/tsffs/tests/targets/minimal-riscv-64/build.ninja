@@ -4,4 +4,4 @@
 rule runbuild
     command = bash build.sh
 
-build HelloWorld.efi: runbuild
+build test: runbuild

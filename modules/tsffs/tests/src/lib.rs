@@ -1,6 +1,6 @@
 //! Runs the SIMICS tests for the project
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use getters::Getters;
 use ispm_wrapper::{
     data::ProjectPackage,
@@ -13,7 +13,7 @@ use ispm_wrapper::{
 };
 use std::{
     collections::HashSet,
-    fs::{create_dir_all, remove_dir_all, write},
+    fs::{create_dir_all, read_dir, remove_dir_all, write},
     path::{Path, PathBuf},
 };
 use typed_builder::TypedBuilder;
@@ -111,6 +111,20 @@ pub struct TestEnv {
 }
 
 impl TestEnv {
+    pub fn simics_base_dir(&self) -> Result<PathBuf> {
+        read_dir(self.simics_home_dir())?
+            .filter_map(|d| d.ok())
+            .filter(|d| d.path().is_dir())
+            .map(|d| d.path())
+            .find(|d| {
+                d.file_name()
+                    .is_some_and(|n| n.to_string_lossy().starts_with("simics-6."))
+            })
+            .ok_or_else(|| anyhow!("No simics base"))
+    }
+}
+
+impl TestEnv {
     fn install_tsffs<P, S>(simics_home_dir: P, cargo_manifest_dir: S) -> Result<()>
     where
         P: AsRef<Path>,
@@ -152,12 +166,19 @@ impl TestEnv {
         Ok(())
     }
 
-    fn install_files<P>(project_dir: P, files: &Vec<(String, Vec<u8>)>) -> Result<()>
+    pub fn install_files<P>(project_dir: P, files: &Vec<(String, Vec<u8>)>) -> Result<()>
     where
         P: AsRef<Path>,
     {
         for (name, content) in files {
-            write(project_dir.as_ref().join(name), content)?;
+            let target = project_dir.as_ref().join(name);
+
+            if let Some(target_parent) = target.parent() {
+                if target_parent != project_dir.as_ref() {
+                    create_dir_all(target_parent)?;
+                }
+            }
+            write(target, content)?;
         }
 
         Ok(())
