@@ -1,0 +1,1 @@
+source "$BR2_EXTERNAL_TEST_KERNEL_MODULES_PATH/package/kernel-modules/Config.in"

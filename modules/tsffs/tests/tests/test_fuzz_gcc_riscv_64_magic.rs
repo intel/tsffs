@@ -43,7 +43,6 @@ fn test_fuzz_gcc_riscv_64_magic() -> Result<()> {
         script-branch {
             bp.time.wait-for seconds = 30
             echo "Exiting..."
-            !cat out.txt
             exit 0
         }
 

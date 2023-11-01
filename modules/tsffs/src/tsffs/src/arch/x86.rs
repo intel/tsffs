@@ -233,27 +233,22 @@ impl ArchitectureOperations for X86ArchitectureOperations {
         size: &StartSize,
     ) -> Result<()> {
         let mut testcase = testcase.to_vec();
+        let addr_width = self.processor_info_v2.get_logical_address_width()? as usize;
         testcase.truncate(size.initial_size as usize);
 
-        testcase.chunks(8).try_for_each(|c| {
-            println!("Writing {:#x} <- {:?}", buffer.physical_address, c);
-            write_phys_memory(self.cpu, buffer.physical_address, c)
-        })?;
+        testcase
+            .chunks(addr_width)
+            .try_for_each(|c| write_phys_memory(self.cpu, buffer.physical_address, c))?;
 
         let value = testcase
             .len()
             .to_le_bytes()
             .iter()
-            .take(self.processor_info_v2.get_logical_address_width()? as usize)
+            .take(addr_width)
             .cloned()
             .collect::<Vec<_>>();
 
         if let Some(ref physical_address) = size.physical_address {
-            println!(
-                "Writing size {:#x} <- {:?}",
-                *physical_address,
-                value.as_slice()
-            );
             write_phys_memory(self.cpu, *physical_address, value.as_slice())?;
         }
 
@@ -276,6 +271,7 @@ impl ArchitectureOperations for X86ArchitectureOperations {
         } else {
             size_address
         };
+
         let size_size = self.processor_info_v2.get_logical_address_width()? / u8::BITS as i32;
         let size = read_phys_memory(self.cpu, size_address, size_size)?;
 

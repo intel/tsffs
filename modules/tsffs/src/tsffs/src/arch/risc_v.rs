@@ -14,12 +14,14 @@ use crate::driver::{StartBuffer, StartSize};
 use super::ArchitectureOperations;
 
 /// The default register the fuzzer expects to contain a pointer to an area to write
-/// each testcase into when using an in-target harness
+/// each testcase into when using an in-target harness. This is AKA a0 but we use x10 as the
+/// canonical name
 pub const DEFAULT_TESTCASE_AREA_REGISTER_NAME: &str = "x10";
 /// The default register the fuzzer expects to contain a pointer to a variable,
 /// initially containing the maximum size of the area pointed to by
 /// `DEFAULT_TESTCASE_AREA_REGISTER_NAME`, which will be written each fuzzer execution
-/// to contain the actual size of the current testcase.
+/// to contain the actual size of the current testcase. This is AKA a1 but we use x11 as the
+/// canonical name
 pub const DEFAULT_TESTCASE_SIZE_REGISTER_NAME: &str = "x11";
 
 pub struct RISCVArchitectureOperations {
@@ -102,12 +104,14 @@ impl ArchitectureOperations for RISCVArchitectureOperations {
         size: &StartSize,
     ) -> Result<()> {
         let mut testcase = testcase.to_vec();
+        // NOTE: We have to handle both riscv64 and riscv32 here
+        let addr_size = self.processor_info_v2.get_logical_address_width()? as usize;
+
         testcase.truncate(size.initial_size as usize);
 
-        testcase.chunks(8).try_for_each(|c| {
-            println!("Writing {:#x} <- {:?}", buffer.physical_address, c);
-            write_phys_memory(self.cpu, buffer.physical_address, c)
-        })?;
+        testcase
+            .chunks(addr_size)
+            .try_for_each(|c| write_phys_memory(self.cpu, buffer.physical_address, c))?;
 
         let value = testcase
             .len()
@@ -118,11 +122,6 @@ impl ArchitectureOperations for RISCVArchitectureOperations {
             .collect::<Vec<_>>();
 
         if let Some(ref physical_address) = size.physical_address {
-            println!(
-                "Writing size {:#x} <- {:?}",
-                *physical_address,
-                value.as_slice()
-            );
             write_phys_memory(self.cpu, *physical_address, value.as_slice())?;
         }
 
