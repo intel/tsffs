@@ -19,24 +19,24 @@
 #define __srai(value) \
   __asm__ __volatile__("srai zero, zero, %0" : : "I"(value) :)
 
-#define __arch_harness_start(testcase_ptr, size_ptr)      \
-  do {                                                    \
-    __srai_extended(MAGIC_START, testcase_ptr, size_ptr); \
+#define __arch_harness_start(start, testcase_ptr, size_ptr) \
+  do {                                                      \
+    __srai_extended(start, testcase_ptr, size_ptr);         \
   } while (0)
 
-#define __arch_harness_stop() \
-  do {                        \
-    __srai(MAGIC_STOP);       \
+#define __arch_harness_stop(stop) \
+  do {                            \
+    __srai(stop);                 \
   } while (0)
 
-#define HARNESS_START(testcase_ptr, size_ptr)     \
-  do {                                            \
-    __arch_harness_start(testcase_ptr, size_ptr); \
+#define HARNESS_START(testcase_ptr, size_ptr)                  \
+  do {                                                         \
+    __arch_harness_start(MAGIC_START, testcase_ptr, size_ptr); \
   } while (0)
 
-#define HARNESS_STOP()     \
-  do {                     \
-    __arch_harness_stop(); \
+#define HARNESS_STOP()               \
+  do {                               \
+    __arch_harness_stop(MAGIC_STOP); \
   } while (0)
 
 #endif  // TSFFS_H

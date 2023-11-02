@@ -27,26 +27,26 @@
                        : "a"(value)            \
                        : "rbx", "rcx", "rdx")
 
-#define __arch_harness_start(testcase_ptr, size_ptr)     \
-  do {                                                   \
-    unsigned int magic = (MAGIC_START << 0x10U) | MAGIC; \
-    __cpuid_extended2(magic, testcase_ptr, size_ptr);    \
+#define __arch_harness_start(start, testcase_ptr, size_ptr) \
+  do {                                                      \
+    unsigned int magic = (start << 0x10U) | MAGIC;          \
+    __cpuid_extended2(magic, testcase_ptr, size_ptr);       \
   } while (0)
 
-#define __arch_harness_stop()                           \
-  do {                                                  \
-    unsigned int magic = (MAGIC_STOP << 0x10U) | MAGIC; \
-    __cpuid(magic);                                     \
-  } while (0)
-
-#define HARNESS_START(testcase_ptr, size_ptr)     \
+#define __arch_harness_stop(stop)                 \
   do {                                            \
-    __arch_harness_start(testcase_ptr, size_ptr); \
+    unsigned int magic = (stop << 0x10U) | MAGIC; \
+    __cpuid(magic);                               \
   } while (0)
 
-#define HARNESS_STOP()     \
-  do {                     \
-    __arch_harness_stop(); \
+#define HARNESS_START(testcase_ptr, size_ptr)                  \
+  do {                                                         \
+    __arch_harness_start(MAGIC_START, testcase_ptr, size_ptr); \
+  } while (0)
+
+#define HARNESS_STOP()               \
+  do {                               \
+    __arch_harness_stop(MAGIC_STOP); \
   } while (0)
 
 #endif  // TSFFS_H

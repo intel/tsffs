@@ -29,6 +29,9 @@ docker cp \
     "${CONTAINER_NAME}:/test/usr/test-mod" \
     "${SCRIPT_DIR}/test-mod"
 docker cp \
+    "${CONTAINER_NAME}:/test/usr/test-mod-userspace" \
+    "${SCRIPT_DIR}/test-mod-userspace"
+docker cp \
     "${CONTAINER_NAME}:/buildroot/output/build/test-mod-1.0/test-mod.ko" \
     "${SCRIPT_DIR}/test-mod.ko"
 docker rm -f "${CONTAINER_NAME}"

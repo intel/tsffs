@@ -33,8 +33,10 @@ RUN mkdir -p /test/usr/
 
 COPY test.c /test/usr/test.c
 COPY test-mod.c /test/usr/test-mod.c
+COPY test-mod-userspace.c /test/usr/test-mod-userspace.c
 
 COPY tsffs-gcc-riscv64.h /test/usr/tsffs-gcc-riscv64.h
 
 RUN /buildroot/output/host/bin/riscv64-buildroot-linux-gnu-gcc -o /test/usr/test /test/usr/test.c
 RUN /buildroot/output/host/bin/riscv64-buildroot-linux-gnu-gcc -o /test/usr/test-mod /test/usr/test-mod.c
+RUN /buildroot/output/host/bin/riscv64-buildroot-linux-gnu-gcc -o /test/usr/test-mod-userspace /test/usr/test-mod-userspace.c

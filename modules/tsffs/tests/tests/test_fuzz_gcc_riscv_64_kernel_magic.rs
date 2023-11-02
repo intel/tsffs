@@ -11,10 +11,11 @@ use tests::{Architecture, TestEnvSpec};
 const IMAGE: &[u8] = include_bytes!("../targets/minimal-riscv-64/Image");
 const ROOTFS: &[u8] = include_bytes!("../targets/minimal-riscv-64/rootfs.ext2");
 const FW_JUMP: &[u8] = include_bytes!("../targets/minimal-riscv-64/fw_jump.elf");
-const TEST: &[u8] = include_bytes!("../targets/minimal-riscv-64/test");
+const TEST_MOD: &[u8] = include_bytes!("../targets/minimal-riscv-64/test-mod");
+const TEST_KO: &[u8] = include_bytes!("../targets/minimal-riscv-64/test-mod.ko");
 
 #[test]
-fn test_fuzz_gcc_riscv_64_magic() -> Result<()> {
+fn test_fuzz_gcc_riscv_64_kernel_magic() -> Result<()> {
     let script = indoc! {r#"
         load-module tsffs
 
@@ -36,8 +37,9 @@ fn test_fuzz_gcc_riscv_64_magic() -> Result<()> {
             bp.time.wait-for seconds = 1.0
             board.console.con.input "mount /dev/vdb /mnt/disk0\r\n"
             bp.time.wait-for seconds = 1.0
-            board.console.con.capture-start out.txt
-            board.console.con.input "/mnt/disk0/test\r\n"
+            board.console.con.input "insmod /mnt/disk0/test-mod.ko\r\n"
+            bp.time.wait-for seconds = 1.0
+            board.console.con.input "/mnt/disk0/test-mod\r\n"
         }
 
         script-branch {
@@ -50,7 +52,7 @@ fn test_fuzz_gcc_riscv_64_magic() -> Result<()> {
     "#};
 
     let env = TestEnvSpec::builder()
-        .name("fuzz_gcc_riscv_64_magic")
+        .name("fuzz_gcc_riscv_64_kernel_magic")
         .cargo_manifest_dir(env!("CARGO_MANIFEST_DIR"))
         .cargo_target_tmpdir(env!("CARGO_TARGET_TMPDIR"))
         .files([
@@ -68,38 +70,58 @@ fn test_fuzz_gcc_riscv_64_magic() -> Result<()> {
                 FW_JUMP.to_vec(),
             ),
             (
-                "targets/risc-v-simple/images/linux/test".to_string(),
-                TEST.to_vec(),
+                "targets/risc-v-simple/images/linux/test-mod".to_string(),
+                TEST_MOD.to_vec(),
+            ),
+            (
+                "targets/risc-v-simple/images/linux/test-mod.ko".to_string(),
+                TEST_KO.to_vec(),
             ),
         ])
         .arch(Architecture::Riscv)
         .build()
         .to_env()?;
+    println!("Set up env");
 
     let base = env.simics_base_dir()?;
     let craff = base.join("linux64").join("bin").join("craff");
 
+    println!("dd");
     Command::new("dd")
         .arg("if=/dev/zero")
         .arg(format!(
             "of={}",
             env.project_dir().join("test.fs").display()
         ))
+        // Create a 128MB disk
         .arg("bs=1024")
-        .arg("count=4194304")
+        .arg("count=131072")
         .check()?;
+    println!("mkfs");
     Command::new("mkfs.fat")
         .arg(env.project_dir().join("test.fs"))
         .check()?;
+    println!("mcopy");
     Command::new("mcopy")
         .arg("-i")
         .arg(env.project_dir().join("test.fs"))
         .arg(
             env.project_dir()
-                .join("targets/risc-v-simple/images/linux/test"),
+                .join("targets/risc-v-simple/images/linux/test-mod"),
         )
-        .arg("::test")
+        .arg("::test-mod")
         .check()?;
+    println!("mcopy");
+    Command::new("mcopy")
+        .arg("-i")
+        .arg(env.project_dir().join("test.fs"))
+        .arg(
+            env.project_dir()
+                .join("targets/risc-v-simple/images/linux/test-mod.ko"),
+        )
+        .arg("::test-mod.ko")
+        .check()?;
+    println!("craff");
     Command::new(craff)
         .arg("-o")
         .arg(env.project_dir().join("test.fs.craff"))
@@ -117,6 +139,7 @@ fn test_fuzz_gcc_riscv_64_magic() -> Result<()> {
     // mkfs.fat fat.fs
     // /path/to/craff -o fat.fs.craff fat.fs
     //
+    println!("Running simics");
 
     let output = Command::new("./simics")
         .current_dir(env.project_dir())

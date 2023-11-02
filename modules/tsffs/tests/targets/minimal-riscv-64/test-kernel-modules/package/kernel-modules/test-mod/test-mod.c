@@ -90,9 +90,9 @@ static ssize_t device_write(struct file *file, const char __user *buffer,
   }
 
   size_t size = BUF_LEN;
-  size_t size_ptr = &size;
+  size_t *size_ptr = &size;
 
-  HARNESS_START(buffer, size_ptr);
+  HARNESS_START(message, size_ptr);
 
   check(message);
 
