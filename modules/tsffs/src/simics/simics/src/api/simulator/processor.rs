@@ -5,8 +5,8 @@ use simics_macro::simics_exception;
 
 use crate::api::{
     sys::{
-        tuple_int_string_t, SIM_current_clock, SIM_current_processor, SIM_disassemble_address,
-        SIM_get_all_processors, SIM_get_processor, SIM_get_processor_number, SIM_number_processors,
+        tuple_int_string_t, SIM_current_clock, SIM_disassemble_address, SIM_get_all_processors,
+        SIM_get_processor, SIM_get_processor_number, SIM_number_processors,
         SIM_object_is_processor, SIM_processor_privilege_level, SIM_reset_processor,
     },
     AttrValue, ConfObject, GenericAddress,
@@ -48,12 +48,6 @@ pub fn get_processor(number: i32) -> *mut ConfObject {
 /// Get the number of a particular processor
 pub fn get_processor_number(cpu: *mut ConfObject) -> i32 {
     unsafe { SIM_get_processor_number(cpu as *const ConfObject) }
-}
-
-#[simics_exception]
-/// Get the current processor
-pub fn current_processor() -> *mut ConfObject {
-    unsafe { SIM_current_processor() }
 }
 
 #[simics_exception]

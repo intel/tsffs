@@ -109,18 +109,19 @@ impl Tsffs {
                 "on_simulation_stopped({reason:?})"
             );
 
-            self.driver.on_simulation_stopped(&reason)?;
             self.fuzzer.on_simulation_stopped(&reason)?;
             self.detector.on_simulation_stopped(&reason)?;
             self.tracer.on_simulation_stopped(&reason)?;
+            self.driver.on_simulation_stopped(&reason)?;
         }
 
         Ok(())
     }
 
     pub fn stop_simulation(&mut self, reason: StopReason) -> Result<()> {
+        let break_string = reason.to_string();
         *self.stop_reason_mut() = Some(reason);
-        break_simulation(reason.to_string())?;
+        break_simulation(break_string)?;
 
         Ok(())
     }

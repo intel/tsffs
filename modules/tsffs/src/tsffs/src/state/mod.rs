@@ -4,19 +4,45 @@
 //! Definitions for tracking the state of the fuzzer
 
 use anyhow::{anyhow, Error, Result};
+use getters::Getters;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, to_string};
-use std::str::FromStr;
+use simics::api::ConfObject;
+use std::{ptr::null_mut, str::FromStr};
+use typed_builder::TypedBuilder;
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(TypedBuilder, Getters, Serialize, Deserialize, Debug, Clone)]
+#[getters(mutable)]
+pub struct Start {
+    #[builder(default = null_mut())]
+    #[serde(skip, default = "null_mut")]
+    processor: *mut ConfObject,
+}
+
+impl Default for Start {
+    fn default() -> Self {
+        Self::builder().build()
+    }
+}
+
+#[derive(TypedBuilder, Getters, Serialize, Deserialize, Debug, Clone, Default)]
+#[getters(mutable)]
+pub struct Stop {}
+
+#[derive(TypedBuilder, Getters, Serialize, Deserialize, Debug, Clone, Default)]
+#[getters(mutable)]
+pub struct Solution {}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 /// Definition of all the reasons the simulator could be stopped by the fuzzer. In general,
 /// callbacks in the fuzzer, for example [`Driver::on_magic_instruction`] may be called
 /// asynchronously and stop the simulation.
 pub enum StopReason {
-    MagicStart,
-    MagicStop,
-    Start,
-    Stop,
+    MagicStart(Start),
+    MagicStop(Stop),
+    Start(Start),
+    Stop(Stop),
+    Solution(Solution),
 }
 
 impl ToString for StopReason {

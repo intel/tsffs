@@ -208,6 +208,8 @@ impl Tsffs {
 
         info!(self.as_conf_object_mut(), "solution({id:#x}, {message})");
 
+        self.detector_mut().on_solution(id, &message)?;
+
         Ok(())
     }
 

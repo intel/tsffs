@@ -20,7 +20,7 @@ use typed_builder::TypedBuilder;
 
 use crate::{
     arch::{Architecture, ArchitectureOperations},
-    state::StopReason,
+    state::{Start, Stop, StopReason},
     traits::Component,
     Tsffs,
 };
@@ -242,6 +242,32 @@ impl<'a> Driver<'a> {
                 && self.micro_checkpoint_index().is_some()
                 && !self.configuration().use_snapshots())
     }
+
+    pub fn increment_iterations_and_maybe_exit(&mut self) -> Result<()> {
+        *self.iterations_mut() += 1;
+
+        if self
+            .configuration()
+            .iterations()
+            .is_some_and(|i| *self.iterations() >= i)
+        {
+            let duration = SystemTime::now().duration_since(*self.start_time())?;
+
+            // Set the log level so this message always prints
+            set_log_level(self.parent_mut().as_conf_object_mut(), LogLevel::Info)?;
+
+            info!(
+                self.parent_mut().as_conf_object_mut(),
+                "Configured iteration count {} reached. Stopping after {} seconds ({} exec/s).",
+                self.iterations(),
+                duration.as_secs_f32(),
+                *self.iterations() as f32 / duration.as_secs_f32()
+            );
+            quit(0)?;
+        }
+
+        Ok(())
+    }
 }
 
 impl<'a> Driver<'a> {
@@ -268,21 +294,9 @@ impl<'a> Driver<'a> {
             // trigger a simulation stop and capture a snapshot in the resulting callback.
         }
 
-        // TODO: get a new testcase from the fuzzer
-        let testcase: Vec<u8> = thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(thread_rng().gen_range(0..8))
-            .map(u8::from)
-            .collect();
-
-        self.write_testcase(testcase)?;
-
-        info!(
-            self.parent_mut().as_conf_object_mut(),
-            "Completed magic start setup"
-        );
-
-        self.parent_mut().stop_simulation(StopReason::MagicStart)?;
+        self.parent_mut().stop_simulation(StopReason::MagicStart(
+            Start::builder().processor(cpu).build(),
+        ))?;
 
         Ok(())
     }
@@ -291,29 +305,8 @@ impl<'a> Driver<'a> {
     ///
     /// This method only performs actions that do not require global context. The
     pub fn on_magic_stop(&mut self, _cpu: *mut ConfObject) -> Result<()> {
-        *self.iterations_mut() += 1;
-
-        if self
-            .configuration()
-            .iterations()
-            .is_some_and(|i| *self.iterations() >= i)
-        {
-            let duration = SystemTime::now().duration_since(*self.start_time())?;
-
-            // Set the log level so this message always prints
-            set_log_level(self.parent_mut().as_conf_object_mut(), LogLevel::Info)?;
-
-            info!(
-                self.parent_mut().as_conf_object_mut(),
-                "Configured iteration count {} reached. Stopping after {} seconds ({} exec/s).",
-                self.iterations(),
-                duration.as_secs_f32(),
-                *self.iterations() as f32 / duration.as_secs_f32()
-            );
-            quit(0)?;
-        }
-
-        self.parent_mut().stop_simulation(StopReason::MagicStop)?;
+        self.parent_mut()
+            .stop_simulation(StopReason::MagicStop(Stop::default()))?;
 
         Ok(())
     }
@@ -384,7 +377,8 @@ impl<'a> Driver<'a> {
             "Completed start setup"
         );
 
-        self.parent_mut().stop_simulation(StopReason::Start)?;
+        self.parent_mut()
+            .stop_simulation(StopReason::Start(Start::builder().processor(cpu).build()))?;
 
         Ok(())
     }
@@ -433,35 +427,15 @@ impl<'a> Driver<'a> {
             "Completed start setup"
         );
 
-        self.parent_mut().stop_simulation(StopReason::Start)?;
+        self.parent_mut()
+            .stop_simulation(StopReason::Start(Start::builder().processor(cpu).build()))?;
 
         Ok(())
     }
 
     pub fn on_stop(&mut self) -> Result<()> {
-        *self.iterations_mut() += 1;
-
-        if self
-            .configuration()
-            .iterations()
-            .is_some_and(|i| *self.iterations() >= i)
-        {
-            let duration = SystemTime::now().duration_since(*self.start_time())?;
-
-            // Set the log level so this message always prints
-            set_log_level(self.parent_mut().as_conf_object_mut(), LogLevel::Info)?;
-
-            info!(
-                self.parent_mut().as_conf_object_mut(),
-                "Configured iteration count {} reached. Stopping after {} seconds ({} exec/s).",
-                self.iterations(),
-                duration.as_secs_f32(),
-                *self.iterations() as f32 / duration.as_secs_f32()
-            );
-            quit(0)?;
-        }
-
-        self.parent_mut().stop_simulation(StopReason::Stop)?;
+        self.parent_mut()
+            .stop_simulation(StopReason::Stop(Stop::default()))?;
 
         Ok(())
     }
@@ -474,25 +448,18 @@ impl<'a> Driver<'a> {
             self.save_initial_snapshot()?;
         }
 
-        run_alone(|| {
-            continue_simulation(0)?;
-            Ok(())
-        })?;
+        // TODO: get a new testcase from the fuzzer
+        let testcase: Vec<u8> = thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(thread_rng().gen_range(0..8))
+            .map(u8::from)
+            .collect();
 
-        Ok(())
-    }
-
-    /// Triggered when the simulation is stopped with a [`StopReason::MagicStop`] reason
-    /// The simulation has stopped, with the stop triggered by the driver catching a magic
-    /// stop callback. This allows
-    pub fn on_simulation_stopped_magic_stop(&mut self) -> Result<()> {
-        // On a magic stop, we restore our initial snapshot and resume execution
-        self.restore_initial_snapshot()?;
+        self.write_testcase(testcase)?;
 
         info!(
             self.parent_mut().as_conf_object_mut(),
-            "Iterations: {}",
-            self.iterations()
+            "Completed magic start setup"
         );
 
         run_alone(|| {
@@ -517,8 +484,62 @@ impl<'a> Driver<'a> {
         Ok(())
     }
 
+    /// Triggered when the simulation is stopped with a [`StopReason::MagicStop`] reason
+    /// The simulation has stopped, with the stop triggered by the driver catching a magic
+    /// stop callback. This allows
+    pub fn on_simulation_stopped_magic_stop(&mut self) -> Result<()> {
+        self.increment_iterations_and_maybe_exit()?;
+        // On a magic stop, we restore our initial snapshot and resume execution
+        self.restore_initial_snapshot()?;
+
+        info!(
+            self.parent_mut().as_conf_object_mut(),
+            "Iterations: {}",
+            self.iterations()
+        );
+
+        run_alone(|| {
+            continue_simulation(0)?;
+            Ok(())
+        })?;
+
+        Ok(())
+    }
+
     /// Triggered when the simulation is stopped with a [`StopReason::Stop`] reason
     pub fn on_simulation_stopped_stop(&mut self) -> Result<()> {
+        self.increment_iterations_and_maybe_exit()?;
+        self.restore_initial_snapshot()?;
+
+        info!(
+            self.parent_mut().as_conf_object_mut(),
+            "Iterations: {}",
+            self.iterations()
+        );
+
+        // NOTE: for un-harnessed fuzzing, we need to write a new testcase on stop every iteration
+        // except the first, because we do not have a `start` call each time. Make this clear in
+        // the documentation.
+        // TODO: get a new testcase from the fuzzer
+        let testcase: Vec<u8> = thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(thread_rng().gen_range(0..8))
+            .map(u8::from)
+            .collect();
+
+        self.write_testcase(testcase)?;
+
+        run_alone(|| {
+            continue_simulation(0)?;
+            Ok(())
+        })?;
+
+        Ok(())
+    }
+
+    /// Triggered when the simulation is stopped with a [`StopReason::Solution`] reason
+    pub fn on_simulation_stopped_solution(&mut self) -> Result<()> {
+        self.increment_iterations_and_maybe_exit()?;
         self.restore_initial_snapshot()?;
 
         info!(
@@ -552,10 +573,11 @@ impl<'a> Component for Driver<'a> {
     /// Triggered when the simulation is stopped, with the reason it was stopped.
     fn on_simulation_stopped(&mut self, reason: &StopReason) -> Result<()> {
         match reason {
-            StopReason::MagicStart => self.on_simulation_stopped_magic_start()?,
-            StopReason::MagicStop => self.on_simulation_stopped_magic_stop()?,
-            StopReason::Start => self.on_simulation_stopped_start()?,
-            StopReason::Stop => self.on_simulation_stopped_stop()?,
+            StopReason::MagicStart(_) => self.on_simulation_stopped_magic_start()?,
+            StopReason::MagicStop(_) => self.on_simulation_stopped_magic_stop()?,
+            StopReason::Start(_) => self.on_simulation_stopped_start()?,
+            StopReason::Stop(_) => self.on_simulation_stopped_stop()?,
+            StopReason::Solution(_) => self.on_simulation_stopped_solution()?,
         }
         Ok(())
     }

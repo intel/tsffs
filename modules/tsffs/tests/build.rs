@@ -27,6 +27,7 @@ fn main() -> Result<()> {
             .map_err(|e| anyhow!("No environment variable {OUT_DIR_ENV} found: {e}"))?,
     );
     let targets_dir = manifest_dir.join("targets");
+
     read_dir(targets_dir)?
         .filter_map(|d| d.ok())
         .filter(|d| d.path().is_dir())
@@ -34,11 +35,13 @@ fn main() -> Result<()> {
         // Blocklist a few that aren't working
         .filter(|d| d.ends_with("riscv-64-edk2"))
         .for_each(|d| {
+            println!("cargo:rerun-if-changed={}", d.to_string_lossy());
             Command::new("ninja")
                 .current_dir(&d)
                 .check()
                 .expect("failed to build");
         });
+    println!("cargo:rerun-if-changed=build.rs");
 
     Ok(())
 }
