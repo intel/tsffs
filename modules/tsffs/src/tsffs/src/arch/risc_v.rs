@@ -117,7 +117,8 @@ impl ArchitectureOperations for RISCVArchitectureOperations {
     ) -> Result<()> {
         let mut testcase = testcase.to_vec();
         // NOTE: We have to handle both riscv64 and riscv32 here
-        let addr_size = self.processor_info_v2.get_logical_address_width()? as usize;
+        let addr_size =
+            self.processor_info_v2.get_logical_address_width()? as usize / u8::BITS as usize;
 
         testcase.truncate(size.initial_size as usize);
 
@@ -129,7 +130,7 @@ impl ArchitectureOperations for RISCVArchitectureOperations {
             .len()
             .to_le_bytes()
             .iter()
-            .take(self.processor_info_v2.get_logical_address_width()? as usize)
+            .take(addr_size)
             .cloned()
             .collect::<Vec<_>>();
 
@@ -285,7 +286,7 @@ impl RISCVArchitectureOperations {
             CmpExpr::Reg((n, _)) => {
                 let regno = self.int_register.get_number(n.as_raw_cstr()?)?;
                 let value = self.int_register.read(regno)?;
-                if self.processor_info_v2.get_logical_address_width()? == 8 {
+                if self.processor_info_v2.get_logical_address_width()? as u32 / u8::BITS == 8 {
                     Ok(CmpValue::U64(value))
                 } else {
                     Ok(CmpValue::U32(value as u32))

@@ -40,11 +40,6 @@ fn test_fuzz_gcc_x86_64_edk2() -> Result<()> {
             qsp.serconsole.con.input "test.efi\n"
         }
 
-        script-branch {
-            bp.time.wait-for seconds = 120
-            exit 0
-        }
-
         run
 
     "#};

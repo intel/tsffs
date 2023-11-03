@@ -235,16 +235,18 @@ impl ArchitectureOperations for X86_64ArchitectureOperations {
     ) -> Result<()> {
         let mut testcase = testcase.to_vec();
         testcase.truncate(size.initial_size as usize);
+        let addr_size =
+            self.processor_info_v2.get_logical_address_width()? as usize / u8::BITS as usize;
 
         testcase
-            .chunks(8)
+            .chunks(addr_size)
             .try_for_each(|c| write_phys_memory(self.cpu, buffer.physical_address, c))?;
 
         let value = testcase
             .len()
             .to_le_bytes()
             .iter()
-            .take(self.processor_info_v2.get_logical_address_width()? as usize)
+            .take(addr_size)
             .cloned()
             .collect::<Vec<_>>();
 

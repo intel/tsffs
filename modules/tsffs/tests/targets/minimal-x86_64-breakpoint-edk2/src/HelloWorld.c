@@ -31,7 +31,7 @@ EFIAPI
 UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable) {
   UINTN input_max_size = 0x1000;
   UINTN input_size = input_max_size;
-  EFI_PHYSICAL_ADDRESS address = 0x400000;
+  EFI_PHYSICAL_ADDRESS address = 0x4000000;
   EFI_STATUS status;
   status = gBS->AllocatePages(AllocateAddress, EfiRuntimeServicesCode,
                               EFI_SIZE_TO_PAGES(input_max_size), &address);
@@ -42,8 +42,11 @@ UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable) {
 
   HARNESS_START(input, &input_size);
 
-  // Trigger RW breakpoint
-  SetMem((VOID *)input, input_size, 0x44);
+  if (*input == 0x41) {
+    // Trigger RW breakpoint
+    SetMem((VOID *)input, input_size, 0x44);
+  }
+
 
   HARNESS_STOP();
 

@@ -8,20 +8,20 @@ use getters::Getters;
 use libafl::{
     feedback_or, feedback_or_fast,
     prelude::{
-        havoc_mutations, ondisk::OnDiskMetadataFormat, tokens_mutations, AFLppCmpMap,
-        AFLppCmpObserver, AFLppRedQueen, BytesInput, CachedOnDiskCorpus, Corpus, CorpusId,
-        CrashFeedback, ExitKind, HasTargetBytes, HitcountsMapObserver, I2SRandReplace,
-        InProcessExecutor, MaxMapFeedback, OnDiskCorpus, RandBytesGenerator, SimpleEventManager,
-        SimpleMonitor, StdCmpObserver, StdCmpValuesObserver, StdMOptMutator, StdMapObserver,
-        StdScheduledMutator, TimeFeedback, TimeObserver, TimeoutExecutor, Tokens,
+        havoc_mutations, ondisk::OnDiskMetadataFormat, tokens_mutations, AFLppRedQueen, BytesInput,
+        CachedOnDiskCorpus, Corpus, CorpusId, CrashFeedback, ExitKind, HasTargetBytes,
+        HitcountsMapObserver, I2SRandReplace, InProcessExecutor, MaxMapFeedback, OnDiskCorpus,
+        RandBytesGenerator, SimpleEventManager, SimpleMonitor, StdCmpValuesObserver,
+        StdMOptMutator, StdMapObserver, StdScheduledMutator, TimeFeedback, TimeObserver,
+        TimeoutExecutor, Tokens,
     },
     schedulers::{
         powersched::PowerSchedule, IndexesLenTimeMinimizerScheduler, StdWeightedScheduler,
     },
     stages::{
-        mutational::MultiMutationalStage, tracing::AFLppCmplogTracingStage, CalibrationStage,
-        ColorizationStage, DumpToDiskStage, GeneralizationStage, IfStage, StdMutationalStage,
-        StdPowerMutationalStage, SyncFromDiskStage, TracingStage,
+        mutational::MultiMutationalStage, CalibrationStage, ColorizationStage, DumpToDiskStage,
+        GeneralizationStage, IfStage, StdMutationalStage, StdPowerMutationalStage,
+        SyncFromDiskStage, TracingStage,
     },
     state::{HasCorpus, HasMetadata, StdState},
     Fuzzer, StdFuzzer,
@@ -33,16 +33,16 @@ use libafl_bolts::{
     tuples::{tuple_list, Merge},
     AsMutSlice, AsSlice,
 };
+use libafl_targets::{AFLppCmpLogObserver, AFLppCmplogTracingStage};
 use simics::{
-    api::{log_critical, lookup_file, AsConfObject},
+    api::{lookup_file, AsConfObject},
     info,
 };
 use simics_macro::TryIntoAttrValueTypeDict;
 use std::{
     cell::RefCell,
     path::{Path, PathBuf},
-    ptr::null_mut,
-    slice::{from_raw_parts, from_raw_parts_mut},
+    slice::from_raw_parts_mut,
     sync::mpsc::{channel, Receiver, Sender},
     thread::{spawn, JoinHandle},
     time::Duration,
@@ -98,13 +98,6 @@ pub enum ModuleMessage {
 pub enum FuzzerMessage {
     Testcase { testcase: Vec<u8>, cmplog: bool },
 }
-
-struct U8Box(*mut u8);
-unsafe impl Send for U8Box {}
-unsafe impl Sync for U8Box {}
-struct AFLppCmpMapBox(*mut AFLppCmpMap);
-unsafe impl Send for AFLppCmpMapBox {}
-unsafe impl Sync for AFLppCmpMapBox {}
 
 #[derive(TypedBuilder, Getters)]
 #[getters(mutable)]
@@ -176,7 +169,7 @@ impl<'a> TsffsFuzzer<'a> {
     const AFLPP_CMP_OBSERVER_NAME: &'static str = "aflpp_cmplog";
     const CMPLOG_OBSERVER_NAME: &'static str = "cmplog";
     const TIME_OBSERVER_NAME: &'static str = "time";
-    const TIMEOUT_FEEDBACK_NAME: &'static str = "timeout";
+    const TIMEOUT_FEEDBACK_NAME: &'static str = "time";
     const CORPUS_CACHE_SIZE: usize = 4096;
 
     /// Start the fuzzing thread.
@@ -291,7 +284,7 @@ impl<'a> TsffsFuzzer<'a> {
                 OwnedMutSlice::from(coverage_map),
             ));
             let aflpp_cmp_observer =
-                AFLppCmpObserver::new(Self::AFLPP_CMP_OBSERVER_NAME, aflpp_cmp_map, true);
+                AFLppCmpLogObserver::new(Self::AFLPP_CMP_OBSERVER_NAME, aflpp_cmp_map, true);
             let cmplog_observer =
                 StdCmpValuesObserver::new(Self::CMPLOG_OBSERVER_NAME, aflpp_cmp_map_dup, true);
             let time_observer = TimeObserver::new(Self::TIME_OBSERVER_NAME);
@@ -519,7 +512,7 @@ impl<'a> Component for TsffsFuzzer<'a> {
         );
         match reason {
             StopReason::MagicStart(_) | StopReason::Start(_) => {
-                if !self.fuzz_thread().is_some() {
+                if self.fuzz_thread().is_none() {
                     self.start()?;
                 }
             }

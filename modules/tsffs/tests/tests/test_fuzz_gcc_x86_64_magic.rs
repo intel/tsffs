@@ -39,12 +39,6 @@ fn test_fuzz_gcc_x86_64_magic() -> Result<()> {
             qsp.serconsole.con.input "test.efi\n"
         }
 
-        script-branch {
-            bp.time.wait-for seconds = 30
-            echo "Exiting..."
-            exit 0
-        }
-
         run
 
     "#};

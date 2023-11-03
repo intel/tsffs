@@ -42,18 +42,12 @@ fn test_fuzz_gcc_x86_64_edk2_breakpoint() -> Result<()> {
         }
 
         script-branch {
-            local $BP_BUFFER_ADDRESS = 0x400000
+            local $BP_BUFFER_ADDRESS = 0x4000000
             local $MAGIC_START = 1
             bp.magic.wait-for $MAGIC_START
             local $ctx = (new-context)
             qsp.mb.cpu0.core[0][0].set-context $ctx
-            $ctx.break -r -w $BP_BUFFER_ADDRESS 0x1000
-        }
-
-        script-branch {
-            bp.time.wait-for seconds = 30
-            echo "Exiting..."
-            exit 0
+            $ctx.break -w $BP_BUFFER_ADDRESS 0x1000
         }
 
         run

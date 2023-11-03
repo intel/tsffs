@@ -244,7 +244,8 @@ impl ArchitectureOperations for X86ArchitectureOperations {
         size: &StartSize,
     ) -> Result<()> {
         let mut testcase = testcase.to_vec();
-        let addr_width = self.processor_info_v2.get_logical_address_width()? as usize;
+        let addr_width =
+            self.processor_info_v2.get_logical_address_width()? as usize / u8::BITS as usize;
         testcase.truncate(size.initial_size as usize);
 
         testcase

@@ -4,8 +4,9 @@
 use anyhow::{anyhow, bail, Error, Result};
 use ffi_macro::ffi;
 use getters::Getters;
-use libafl::prelude::{AFLppCmpMap, AFLppCmpOperands, CmpValues, AFL_CMP_MAP_H, AFL_CMP_TYPE_INS};
+use libafl::prelude::CmpValues;
 use libafl_bolts::{prelude::OwnedMutSlice, AsMutSlice, AsSlice};
+use libafl_targets::{AFLppCmpLogMap, AFLppCmpLogOperands, AFLPP_CMPLOG_MAP_H, AFL_CMP_TYPE_INS};
 use simics::api::{
     get_interface, get_processor_number,
     sys::{cached_instruction_handle_t, instruction_handle_t},
@@ -245,13 +246,13 @@ where
     /// Coverage map owned by the tracer
     coverage_map: OwnedMutSlice<'a, u8>,
     #[builder(default = unsafe {
-        let layout = Layout::new::<AFLppCmpMap>();
-        alloc_zeroed(layout) as *mut AFLppCmpMap
+        let layout = Layout::new::<AFLppCmpLogMap>();
+        alloc_zeroed(layout) as *mut AFLppCmpLogMap
     })]
     /// Comparison logging map owned by the tracer
-    aflpp_cmp_map_ptr: *mut AFLppCmpMap,
+    aflpp_cmp_map_ptr: *mut AFLppCmpLogMap,
     #[builder(default = unsafe { &mut *aflpp_cmp_map_ptr})]
-    aflpp_cmp_map: &'a mut AFLppCmpMap,
+    aflpp_cmp_map: &'a mut AFLppCmpLogMap,
     #[builder(default = false)]
     /// Whether cmplog is currently enabled
     cmplog_enabled: bool,
@@ -301,7 +302,7 @@ impl<'a> Tracer<'a> {
         // NOTE: overflow isn't used by aflppredqueen
 
         self.aflpp_cmp_map_mut().values_mut().operands_mut()[pc_index as usize]
-            [hits as usize % AFL_CMP_MAP_H] = AFLppCmpOperands::new(operands.0, operands.1);
+            [hits as usize % AFLPP_CMPLOG_MAP_H] = AFLppCmpLogOperands::new(operands.0, operands.1);
 
         Ok(())
     }

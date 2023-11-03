@@ -269,6 +269,7 @@ impl<'a> Driver<'a> {
                 duration.as_secs_f32(),
                 *self.iterations() as f32 / duration.as_secs_f32()
             );
+
             quit(0)?;
         }
 
@@ -454,20 +455,6 @@ impl<'a> Driver<'a> {
             self.save_initial_snapshot()?;
         }
 
-        if let FuzzerMessage::Testcase { testcase, cmplog } =
-            self.parent_mut().fuzzer_mut().get_message()?
-        {
-            *self.parent_mut().tracer_mut().cmplog_enabled_mut() = cmplog;
-            self.write_testcase(testcase)?;
-        } else {
-            bail!("Expected testcase");
-        }
-
-        info!(
-            self.parent_mut().as_conf_object_mut(),
-            "Completed magic start setup"
-        );
-
         run_alone(|| {
             continue_simulation(0)?;
             Ok(())
@@ -503,6 +490,15 @@ impl<'a> Driver<'a> {
             "Iterations: {}",
             self.iterations()
         );
+
+        if let FuzzerMessage::Testcase { testcase, cmplog } =
+            self.parent_mut().fuzzer_mut().get_message()?
+        {
+            *self.parent_mut().tracer_mut().cmplog_enabled_mut() = cmplog;
+            self.write_testcase(testcase)?;
+        } else {
+            bail!("Expected testcase");
+        }
 
         run_alone(|| {
             continue_simulation(0)?;

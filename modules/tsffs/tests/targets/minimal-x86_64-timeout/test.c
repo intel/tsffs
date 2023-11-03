@@ -108,8 +108,10 @@ int UefiMain(void *imageHandle, EfiSystemTable *SystemTable) {
 
   Check(buffer, SystemTable);
 
-  while (1) {
-    /* loop */
+  if (*buffer == 0x41) {
+    while (1) {
+      /* loop */
+    }
   }
 
   HARNESS_STOP();

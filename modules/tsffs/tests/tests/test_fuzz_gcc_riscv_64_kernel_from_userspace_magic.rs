@@ -45,16 +45,15 @@ fn test_fuzz_gcc_riscv_64_kernel_from_userspace_magic() -> Result<()> {
         }
 
         script-branch {
-            bp.time.wait-for seconds = 30
-            echo "Exiting..."
-            exit 0
+            bp.time.wait-for seconds = 240
+            quit 1
         }
 
         run
     "#};
 
     let env = TestEnvSpec::builder()
-        .name("fuzz_gcc_riscv_64_kernel_magic")
+        .name("fuzz_gcc_riscv_64_kernel_from_user_magic")
         .cargo_manifest_dir(env!("CARGO_MANIFEST_DIR"))
         .cargo_target_tmpdir(env!("CARGO_TARGET_TMPDIR"))
         .files([

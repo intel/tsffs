@@ -40,12 +40,6 @@ fn test_fuzz_gcc_riscv_64_user_magic() -> Result<()> {
             board.console.con.input "/mnt/disk0/test\r\n"
         }
 
-        script-branch {
-            bp.time.wait-for seconds = 30
-            echo "Exiting..."
-            exit 0
-        }
-
         run
     "#};
 

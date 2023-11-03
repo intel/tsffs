@@ -71,8 +71,9 @@ tmp-dir = { path = "modules/tsffs/src/util/tmp-dir" }
 version-tools = { path = "modules/tsffs/src/util/version-tools" }
 
 anyhow = { version = "1.0.75" }
-libafl = { version = "0.11.1" }
-libafl_bolts = { version = "0.11.1" }
+libafl = { git = "https://github.com/novafacing/LibAFL", branch = "no-assert-normal" }
+libafl_bolts = { git = "https://github.com/novafacing/LibAFL", branch = "no-assert-normal" }
+libafl_targets = { git = "https://github.com/novafacing/LibAFL", branch = "no-assert-normal" }
 serde = { version = "1.0.188", features = ["derive"] }
 serde_json = { version = "1.0.107" }
 versions = { version = "5.0.1", features = ["serde"] }
