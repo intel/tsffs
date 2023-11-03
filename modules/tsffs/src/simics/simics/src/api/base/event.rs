@@ -68,6 +68,14 @@ pub struct Event {
 }
 
 impl Event {
+    pub fn cls(&self) -> *mut ConfClass {
+        self.cls
+    }
+
+    pub fn event_class(&self) -> *mut EventClass {
+        self.event_class
+    }
+
     /// Register a new event to be posted for objects of class cl, and
     /// returns the event class to be used in other calls.
     ///

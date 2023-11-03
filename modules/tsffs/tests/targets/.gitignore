@@ -1,0 +1,15 @@
+*.efi
+*.o
+Image
+.ninja_log
+*.ext2
+*.tar.gz
+*.ko
+*.elf
+*.lib
+test*
+!test.[ch]
+!test-/
+
+# We always copy the header from the root headers directory so it is up to date
+tsffs*.h

@@ -5,8 +5,8 @@ use anyhow::Result;
 use getters::Getters;
 use simics::{
     api::{
-        get_class, object_clock, AsConfObject, BreakpointId, ConfObject, CoreBreakpointMemopHap,
-        CoreExceptionHap, Event, GenericTransaction, HapHandle,
+        event_find_next_time, get_class, object_clock, AsConfObject, BreakpointId, ConfObject,
+        CoreBreakpointMemopHap, CoreExceptionHap, Event, GenericTransaction, HapHandle,
     },
     info,
 };
@@ -197,6 +197,12 @@ impl<'a> Component for Detector<'a> {
             StopReason::MagicStop(_stop) | StopReason::Stop(_stop) => {
                 // On stop, we clear the timeout event
                 if let Some(timeout_event_processor) = self.timeout_event_processor() {
+                    let next_time = event_find_next_time(
+                        object_clock(*timeout_event_processor)?,
+                        self.timeout_event().event_class(),
+                        *timeout_event_processor,
+                        None,
+                    )?;
                     self.timeout_event().cancel_time(
                         *timeout_event_processor,
                         object_clock(*timeout_event_processor)?,
