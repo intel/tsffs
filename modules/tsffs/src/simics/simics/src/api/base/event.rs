@@ -323,6 +323,201 @@ impl Event {
     {
         event_post_cycle(clock, self.event_class, obj, cycles, callback)
     }
+
+    /// Return the number of cycles/seconds/steps to the first event of evclass of obj posted
+    /// on clock for which pred is true, or −1 if no event matched. pred will be called with
+    /// the data associated with the event and the supplied match_data. If pred is null (None
+    /// in Python), the first evclass event for obj on clock will be used.
+    ///
+    /// There are separate calls of events posted at a point in time (cycle or seconds) and
+    /// on a specific step. Note that the return value of SIM_event_find_next_cycle is only a
+    /// preliminary estimate; the number of remaining cycles will change if the clock's
+    /// frequency changes dynamically. To handle dynamically changing clock frequencies
+    /// correctly, subscribe to the frequency changes via the clock's simple_dispatcher
+    /// interface.
+    ///
+    /// # Arguments
+    ///
+    /// * `clock` - The clock for the posted event
+    /// * `obj` - The object posted on
+    ///
+    /// # Return Value
+    ///
+    /// If found, the cycle number the event will next trigger on
+    ///
+    /// # Context
+    ///
+    /// Cell Context
+    pub fn find_next_time(&self, clock: *mut ConfObject, obj: *mut ConfObject) -> Result<f64> {
+        event_find_next_time::<Box<dyn Fn(*mut c_void) -> i32>>(clock, self.event_class, obj, None)
+    }
+
+    /// Return the number of cycles/seconds/steps to the first event of evclass of obj posted
+    /// on clock for which pred is true, or −1 if no event matched. pred will be called with
+    /// the data associated with the event and the supplied match_data. If pred is null (None
+    /// in Python), the first evclass event for obj on clock will be used.
+    ///
+    /// There are separate calls of events posted at a point in time (cycle or seconds) and
+    /// on a specific step. Note that the return value of SIM_event_find_next_cycle is only a
+    /// preliminary estimate; the number of remaining cycles will change if the clock's
+    /// frequency changes dynamically. To handle dynamically changing clock frequencies
+    /// correctly, subscribe to the frequency changes via the clock's simple_dispatcher
+    /// interface.
+    ///
+    /// # Arguments
+    ///
+    /// * `clock` - The clock for the posted event
+    /// * `obj` - The object posted on
+    /// * `filter` - A function to filter objects by returning true or false
+    ///
+    /// # Return Value
+    ///
+    /// If found, the cycle number the event will next trigger on
+    ///
+    /// # Context
+    ///
+    /// Cell Context
+    pub fn find_next_time_filter<F>(
+        &self,
+        clock: *mut ConfObject,
+        obj: *mut ConfObject,
+        filter: F,
+    ) -> Result<f64>
+    where
+        F: Fn(*mut c_void) -> i32 + 'static,
+    {
+        event_find_next_time(clock, self.event_class, obj, Some(filter))
+    }
+
+    /// Return the number of cycles/seconds/steps to the first event of evclass of obj posted
+    /// on clock for which pred is true, or −1 if no event matched. pred will be called with
+    /// the data associated with the event and the supplied match_data. If pred is null (None
+    /// in Python), the first evclass event for obj on clock will be used.
+    ///
+    /// There are separate calls of events posted at a point in time (cycle or seconds) and
+    /// on a specific step. Note that the return value of SIM_event_find_next_cycle is only a
+    /// preliminary estimate; the number of remaining cycles will change if the clock's
+    /// frequency changes dynamically. To handle dynamically changing clock frequencies
+    /// correctly, subscribe to the frequency changes via the clock's simple_dispatcher
+    /// interface.
+    ///
+    /// # Arguments
+    ///
+    /// * `clock` - The clock for the posted event
+    /// * `obj` - The object posted on
+    ///
+    /// # Return Value
+    ///
+    /// If found, the cycle number the event will next trigger on
+    ///
+    /// # Context
+    ///
+    /// Cell Context
+    pub fn find_next_cycle(&self, clock: *mut ConfObject, obj: *mut ConfObject) -> Result<Cycles> {
+        event_find_next_cycle::<Box<dyn Fn(*mut c_void) -> i32>>(clock, self.event_class, obj, None)
+    }
+
+    /// Return the number of cycles/seconds/steps to the first event of evclass of obj posted
+    /// on clock for which pred is true, or −1 if no event matched. pred will be called with
+    /// the data associated with the event and the supplied match_data. If pred is null (None
+    /// in Python), the first evclass event for obj on clock will be used.
+    ///
+    /// There are separate calls of events posted at a point in time (cycle or seconds) and
+    /// on a specific step. Note that the return value of SIM_event_find_next_cycle is only a
+    /// preliminary estimate; the number of remaining cycles will change if the clock's
+    /// frequency changes dynamically. To handle dynamically changing clock frequencies
+    /// correctly, subscribe to the frequency changes via the clock's simple_dispatcher
+    /// interface.
+    ///
+    /// # Arguments
+    ///
+    /// * `clock` - The clock for the posted event
+    /// * `obj` - The object posted on
+    /// * `filter` - A function to filter objects by returning true or false
+    ///
+    /// # Return Value
+    ///
+    /// If found, the cycle number the event will next trigger on
+    ///
+    /// # Context
+    ///
+    /// Cell Context
+    pub fn find_next_cycle_filter<F>(
+        &self,
+        clock: *mut ConfObject,
+        obj: *mut ConfObject,
+        filter: F,
+    ) -> Result<Cycles>
+    where
+        F: Fn(*mut c_void) -> i32 + 'static,
+    {
+        event_find_next_cycle(clock, self.event_class, obj, Some(filter))
+    }
+
+    /// Return the number of cycles/seconds/steps to the first event of evclass of obj posted
+    /// on clock for which pred is true, or −1 if no event matched. pred will be called with
+    /// the data associated with the event and the supplied match_data. If pred is null (None
+    /// in Python), the first evclass event for obj on clock will be used.
+    ///
+    /// There are separate calls of events posted at a point in time (cycle or seconds) and
+    /// on a specific step. Note that the return value of SIM_event_find_next_cycle is only a
+    /// preliminary estimate; the number of remaining cycles will change if the clock's
+    /// frequency changes dynamically. To handle dynamically changing clock frequencies
+    /// correctly, subscribe to the frequency changes via the clock's simple_dispatcher
+    /// interface.
+    ///
+    /// # Arguments
+    ///
+    /// * `clock` - The clock for the posted event
+    /// * `obj` - The object posted on
+    ///
+    /// # Return Value
+    ///
+    /// If found, the cycle number the event will next trigger on
+    ///
+    /// # Context
+    ///
+    /// Cell Context
+    pub fn find_next_step(&self, clock: *mut ConfObject, obj: *mut ConfObject) -> Result<PcStep> {
+        event_find_next_step::<Box<dyn Fn(*mut c_void) -> i32>>(clock, self.event_class, obj, None)
+    }
+
+    /// Return the number of cycles/seconds/steps to the first event of evclass of obj posted
+    /// on clock for which pred is true, or −1 if no event matched. pred will be called with
+    /// the data associated with the event and the supplied match_data. If pred is null (None
+    /// in Python), the first evclass event for obj on clock will be used.
+    ///
+    /// There are separate calls of events posted at a point in time (cycle or seconds) and
+    /// on a specific step. Note that the return value of SIM_event_find_next_cycle is only a
+    /// preliminary estimate; the number of remaining cycles will change if the clock's
+    /// frequency changes dynamically. To handle dynamically changing clock frequencies
+    /// correctly, subscribe to the frequency changes via the clock's simple_dispatcher
+    /// interface.
+    ///
+    /// # Arguments
+    ///
+    /// * `clock` - The clock for the posted event
+    /// * `obj` - The object posted on
+    /// * `filter` - A function to filter objects by returning true or false
+    ///
+    /// # Return Value
+    ///
+    /// If found, the cycle number the event will next trigger on
+    ///
+    /// # Context
+    ///
+    /// Cell Context
+    pub fn find_next_step_filter<F>(
+        &self,
+        clock: *mut ConfObject,
+        obj: *mut ConfObject,
+        filter: F,
+    ) -> Result<PcStep>
+    where
+        F: Fn(*mut c_void) -> i32 + 'static,
+    {
+        event_find_next_step(clock, self.event_class, obj, Some(filter))
+    }
 }
 
 #[simics_exception]

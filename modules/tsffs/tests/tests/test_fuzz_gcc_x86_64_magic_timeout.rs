@@ -22,7 +22,7 @@ fn test_fuzz_gcc_x86_64_magic_timeout() -> Result<()> {
         @tsffs.iface.tsffs.set_timeout(3.0)
         @tsffs.iface.tsffs.add_exception_solution(14)
         @tsffs.iface.tsffs.set_generate_random_corpus(True)
-        @tsffs.iface.tsffs.set_iterations(50)
+        @tsffs.iface.tsffs.set_iterations(1000)
         @tsffs.iface.tsffs.set_use_snapshots(True)
 
         load-target "qsp-x86/uefi-shell" namespace = qsp machine:hardware:storage:disk0:image = "minimal_boot_disk.craff"
@@ -37,6 +37,11 @@ fn test_fuzz_gcc_x86_64_magic_timeout() -> Result<()> {
             qsp.serconsole.con.input ("SimicsAgent.efi --download " + (lookup-file "%simics%/test.efi") + "\n")
             bp.time.wait-for seconds = .5
             qsp.serconsole.con.input "test.efi\n"
+        }
+
+        script-branch {
+            bp.time.wait-for seconds = 240
+            quit 1
         }
 
         run

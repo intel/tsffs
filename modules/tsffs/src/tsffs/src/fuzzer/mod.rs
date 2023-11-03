@@ -99,6 +99,9 @@ pub enum FuzzerMessage {
     Testcase { testcase: Vec<u8>, cmplog: bool },
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ShutdownMessage {}
+
 #[derive(TypedBuilder, Getters)]
 #[getters(mutable)]
 pub struct TsffsFuzzer<'a>
@@ -112,6 +115,8 @@ where
     tx: Option<Sender<ModuleMessage>>,
     #[builder(default)]
     rx: Option<Receiver<FuzzerMessage>>,
+    #[builder(default)]
+    shutdown: Option<Sender<ShutdownMessage>>,
     #[builder(default)]
     fuzz_thread: Option<JoinHandle<Result<()>>>,
 }
@@ -181,9 +186,11 @@ impl<'a> TsffsFuzzer<'a> {
 
         let (tx, orx) = channel::<ModuleMessage>();
         let (otx, rx) = channel::<FuzzerMessage>();
+        let (stx, srx) = channel::<ShutdownMessage>();
 
         self.tx = Some(tx);
         self.rx = Some(rx);
+        self.shutdown = Some(stx);
 
         let client = RefCell::new((otx, orx));
         let configuration = self.configuration().clone();
@@ -471,12 +478,27 @@ impl<'a> TsffsFuzzer<'a> {
                 synchronize_corpus_stage,
             );
 
-            fuzzer.fuzz_loop(&mut stages, &mut executor, &mut state, &mut manager)?;
+            loop {
+                // Check if we have a message to shut down, and if so, exit.
+                if let Ok(_msg) = srx.try_recv() {
+                    break;
+                }
+
+                fuzzer.fuzz_one(&mut stages, &mut executor, &mut state, &mut manager)?;
+            }
 
             println!("Fuzzing loop exited.");
 
             Ok(())
         }));
+
+        Ok(())
+    }
+
+    pub fn send_shutdown(&mut self) -> Result<()> {
+        if let Some(stx) = self.shutdown_mut() {
+            stx.send(ShutdownMessage::default())?;
+        }
 
         Ok(())
     }

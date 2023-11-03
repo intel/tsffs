@@ -39,6 +39,11 @@ fn test_fuzz_gcc_x86_64_magic_crash() -> Result<()> {
             qsp.serconsole.con.input "test.efi\n"
         }
 
+        script-branch {
+            bp.time.wait-for seconds = 240
+            quit 1
+        }
+
         run
 
     "#};

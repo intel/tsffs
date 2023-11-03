@@ -98,9 +98,14 @@ fn test_fuzz_gcc_x86_64_manual_max() -> Result<()> {
             cli.global_cmds.wait_for_global_time(seconds=3.0, _relative = True)
             qsp.serconsole.con.iface.con_input.input_str("test.efi\n")
 
+        def exit_script_branch():
+            cli.global_cmds.wait_for_global_time(seconds=240.0, _relative = True)
+            simics.SIM_quit(1)
+
         simics.SIM_hap_add_callback("Core_Magic_Instruction", on_magic, None)
         cli.sb_create(start_script_branch)
         cli.sb_create(startup_script_branch)
+        cli.sb_create(exit_script_branch)
 
         simics.SIM_continue(0)
         simics.SIM_main_loop()

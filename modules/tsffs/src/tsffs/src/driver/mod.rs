@@ -8,10 +8,10 @@ use getters::Getters;
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use simics::{
     api::{
-        continue_simulation, discard_future, get_attribute, get_object, object_is_processor, quit,
-        restore_micro_checkpoint, restore_snapshot, run_alone, save_micro_checkpoint,
-        save_snapshot, set_log_level, AsConfObject, ConfObject, CoreMagicInstructionHap,
-        GenericAddress, Hap, HapHandle, LogLevel, MicroCheckpointFlags,
+        discard_future, get_attribute, get_object, object_is_processor, quit,
+        restore_micro_checkpoint, restore_snapshot, save_micro_checkpoint, save_snapshot,
+        set_log_level, AsConfObject, ConfObject, CoreMagicInstructionHap, GenericAddress, Hap,
+        HapHandle, LogLevel, MicroCheckpointFlags,
     },
     info,
 };
@@ -204,10 +204,13 @@ impl<'a> Driver<'a> {
 
 impl<'a> Driver<'a> {
     pub fn save_initial_snapshot(&mut self) -> Result<()> {
-        if *self.configuration().use_snapshots() {
+        if *self.configuration().use_snapshots() && self.snapshot_name().is_none() {
             save_snapshot(SNAPSHOT_NAME)?;
             *self.snapshot_name_mut() = Some(SNAPSHOT_NAME.to_string());
-        } else {
+        } else if !self.configuration().use_snapshots()
+            && self.snapshot_name().is_none()
+            && self.micro_checkpoint_index().is_none()
+        {
             save_micro_checkpoint(
                 SNAPSHOT_NAME,
                 MicroCheckpointFlags::Sim_MC_ID_User | MicroCheckpointFlags::Sim_MC_Persistent,
@@ -270,6 +273,8 @@ impl<'a> Driver<'a> {
                 *self.iterations() as f32 / duration.as_secs_f32()
             );
 
+            self.parent_mut().fuzzer_mut().send_shutdown()?;
+
             quit(0)?;
         }
 
@@ -277,6 +282,8 @@ impl<'a> Driver<'a> {
     }
 }
 
+/// Handlers for magic start and stop instructions, which automatically starts the fuzzing loop
+/// when magic instructions compiled into the target software execute
 impl<'a> Driver<'a> {
     /// Called on magic start if the driver is configured to use the magic start harness
     pub fn on_magic_start(&mut self, cpu: *mut ConfObject) -> Result<()> {
@@ -346,7 +353,10 @@ impl<'a> Driver<'a> {
     }
 }
 
+/// Handlers for the start and start_with_maximum_size interface methods, which start the fuzzing
+/// loop without using a magic instruction compiled into the target
 impl<'a> Driver<'a> {
+    /// on_start is only called a single time, to initialize the fuzzing loop
     pub fn on_start(
         &mut self,
         cpu: *mut ConfObject,
@@ -370,26 +380,13 @@ impl<'a> Driver<'a> {
             *self.start_time_mut() = SystemTime::now();
         }
 
-        // TODO: get a new testcase from the fuzzer
-        let testcase: Vec<u8> = thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(thread_rng().gen_range(0..8))
-            .map(u8::from)
-            .collect();
-
-        self.write_testcase(testcase)?;
-
-        info!(
-            self.parent_mut().as_conf_object_mut(),
-            "Completed start setup"
-        );
-
         self.parent_mut()
             .stop_simulation(StopReason::Start(Start::builder().processor(cpu).build()))?;
 
         Ok(())
     }
 
+    /// on_start_with_maximum_size is only called a single time, to initialize the fuzzing loop
     pub fn on_start_with_maximum_size(
         &mut self,
         cpu: *mut ConfObject,
@@ -397,7 +394,7 @@ impl<'a> Driver<'a> {
         maximum_size: u32,
         virt: bool,
     ) -> Result<()> {
-        if self.snapshot_name().is_none() {
+        if !self.have_initial_snapshot() {
             // NOTE: This is the first time start is being triggered. We need to go through
             // the whole buffer/size collection and snapshot process
             let arch = Architecture::new(cpu)?;
@@ -420,20 +417,6 @@ impl<'a> Driver<'a> {
             *self.start_time_mut() = SystemTime::now();
         }
 
-        // TODO: get a new testcase from the fuzzer
-        let testcase: Vec<u8> = thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(thread_rng().gen_range(0..8))
-            .map(u8::from)
-            .collect();
-
-        self.write_testcase(testcase)?;
-
-        info!(
-            self.parent_mut().as_conf_object_mut(),
-            "Completed start setup"
-        );
-
         self.parent_mut()
             .stop_simulation(StopReason::Start(Start::builder().processor(cpu).build()))?;
 
@@ -448,132 +431,45 @@ impl<'a> Driver<'a> {
     }
 }
 
-impl<'a> Driver<'a> {
-    /// Triggered when the simulation is stopped with a [`StopReason::MagicStart`] reason
-    pub fn on_simulation_stopped_magic_start(&mut self) -> Result<()> {
-        if !self.have_initial_snapshot() {
-            self.save_initial_snapshot()?;
-        }
-
-        run_alone(|| {
-            continue_simulation(0)?;
-            Ok(())
-        })?;
-
-        Ok(())
-    }
-
-    /// Triggered when the simulation is stopped with a [`StopReason::Start`] reason
-    pub fn on_simulation_stopped_start(&mut self) -> Result<()> {
-        if !self.have_initial_snapshot() {
-            self.save_initial_snapshot()?;
-        }
-
-        run_alone(|| {
-            continue_simulation(0)?;
-            Ok(())
-        })?;
-
-        Ok(())
-    }
-
-    /// Triggered when the simulation is stopped with a [`StopReason::MagicStop`] reason
-    /// The simulation has stopped, with the stop triggered by the driver catching a magic
-    /// stop callback. This allows
-    pub fn on_simulation_stopped_magic_stop(&mut self) -> Result<()> {
-        self.increment_iterations_and_maybe_exit()?;
-        // On a magic stop, we restore our initial snapshot and resume execution
-        self.restore_initial_snapshot()?;
-
-        info!(
-            self.parent_mut().as_conf_object_mut(),
-            "Iterations: {}",
-            self.iterations()
-        );
-
-        if let FuzzerMessage::Testcase { testcase, cmplog } =
-            self.parent_mut().fuzzer_mut().get_message()?
-        {
-            *self.parent_mut().tracer_mut().cmplog_enabled_mut() = cmplog;
-            self.write_testcase(testcase)?;
-        } else {
-            bail!("Expected testcase");
-        }
-
-        run_alone(|| {
-            continue_simulation(0)?;
-            Ok(())
-        })?;
-
-        Ok(())
-    }
-
-    /// Triggered when the simulation is stopped with a [`StopReason::Stop`] reason
-    pub fn on_simulation_stopped_stop(&mut self) -> Result<()> {
-        self.increment_iterations_and_maybe_exit()?;
-        self.restore_initial_snapshot()?;
-
-        info!(
-            self.parent_mut().as_conf_object_mut(),
-            "Iterations: {}",
-            self.iterations()
-        );
-
-        if let FuzzerMessage::Testcase { testcase, cmplog } =
-            self.parent_mut().fuzzer_mut().get_message()?
-        {
-            *self.parent_mut().tracer_mut().cmplog_enabled_mut() = cmplog;
-            self.write_testcase(testcase)?;
-        } else {
-            bail!("Expected testcase");
-        }
-
-        run_alone(|| {
-            continue_simulation(0)?;
-            Ok(())
-        })?;
-
-        Ok(())
-    }
-
-    /// Triggered when the simulation is stopped with a [`StopReason::Solution`] reason
-    pub fn on_simulation_stopped_solution(&mut self) -> Result<()> {
-        self.increment_iterations_and_maybe_exit()?;
-        self.restore_initial_snapshot()?;
-
-        info!(
-            self.parent_mut().as_conf_object_mut(),
-            "Iterations: {}",
-            self.iterations()
-        );
-
-        if let FuzzerMessage::Testcase { testcase, cmplog } =
-            self.parent_mut().fuzzer_mut().get_message()?
-        {
-            *self.parent_mut().tracer_mut().cmplog_enabled_mut() = cmplog;
-            self.write_testcase(testcase)?;
-        } else {
-            bail!("Expected testcase");
-        }
-
-        run_alone(|| {
-            continue_simulation(0)?;
-            Ok(())
-        })?;
-
-        Ok(())
-    }
-}
-
 impl<'a> Component for Driver<'a> {
     /// Triggered when the simulation is stopped, with the reason it was stopped.
     fn on_simulation_stopped(&mut self, reason: &StopReason) -> Result<()> {
         match reason {
-            StopReason::MagicStart(_) => self.on_simulation_stopped_magic_start()?,
-            StopReason::MagicStop(_) => self.on_simulation_stopped_magic_stop()?,
-            StopReason::Start(_) => self.on_simulation_stopped_start()?,
-            StopReason::Stop(_) => self.on_simulation_stopped_stop()?,
-            StopReason::Solution(_) => self.on_simulation_stopped_solution()?,
+            StopReason::MagicStart(_) | StopReason::Start(_) => {
+                if !self.have_initial_snapshot() {
+                    self.save_initial_snapshot()?;
+
+                    // NOTE: Need to write the testcase on first run. For all other runs, the testcase
+                    // is written after stop->restore sequence
+                    if let FuzzerMessage::Testcase { testcase, cmplog } =
+                        self.parent_mut().fuzzer_mut().get_message()?
+                    {
+                        *self.parent_mut().tracer_mut().cmplog_enabled_mut() = cmplog;
+                        self.write_testcase(testcase)?;
+                    } else {
+                        bail!("Expected testcase");
+                    }
+                }
+            }
+            StopReason::MagicStop(_) | StopReason::Stop(_) | StopReason::Solution(_) => {
+                self.increment_iterations_and_maybe_exit()?;
+                self.restore_initial_snapshot()?;
+
+                info!(
+                    self.parent_mut().as_conf_object_mut(),
+                    "Iterations: {}",
+                    self.iterations()
+                );
+
+                if let FuzzerMessage::Testcase { testcase, cmplog } =
+                    self.parent_mut().fuzzer_mut().get_message()?
+                {
+                    *self.parent_mut().tracer_mut().cmplog_enabled_mut() = cmplog;
+                    self.write_testcase(testcase)?;
+                } else {
+                    bail!("Expected testcase");
+                }
+            }
         }
         Ok(())
     }

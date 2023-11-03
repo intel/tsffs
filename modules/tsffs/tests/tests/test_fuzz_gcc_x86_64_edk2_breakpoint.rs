@@ -50,6 +50,11 @@ fn test_fuzz_gcc_x86_64_edk2_breakpoint() -> Result<()> {
             $ctx.break -w $BP_BUFFER_ADDRESS 0x1000
         }
 
+        script-branch {
+            bp.time.wait-for seconds = 240
+            quit 1
+        }
+
         run
 
     "#};

@@ -5,10 +5,10 @@ use anyhow::Result;
 use getters::Getters;
 use simics::{
     api::{
-        event_find_next_time, get_class, object_clock, AsConfObject, BreakpointId, ConfObject,
-        CoreBreakpointMemopHap, CoreExceptionHap, Event, GenericTransaction, HapHandle,
+        get_class, object_clock, AsConfObject, BreakpointId, ConfObject, CoreBreakpointMemopHap,
+        CoreExceptionHap, Event, EventClassFlag, GenericTransaction, HapHandle,
     },
-    info,
+    error, info,
 };
 use simics_macro::{TryFromAttrValueTypeDict, TryIntoAttrValueTypeDict};
 use std::collections::BTreeSet;
@@ -88,14 +88,8 @@ where
     exception_hap_handle: HapHandle,
     #[builder(default)]
     timeout_event_processor: Option<*mut ConfObject>,
-    #[builder(default = {
-        Event::builder()
-            .name(Detector::TIMEOUT_EVENT_NAME)
-            .cls(get_class(CLASS_NAME)
-            .expect("Error getting class"))
-            .build()
-    })]
-    timeout_event: Event,
+    #[builder(default)]
+    timeout_event: Option<Event>,
 }
 
 impl<'a> Detector<'a> {
@@ -177,46 +171,94 @@ impl<'a> Component for Detector<'a> {
     fn on_simulation_stopped(&mut self, reason: &StopReason) -> Result<()> {
         match reason {
             StopReason::MagicStart(start) | StopReason::Start(start) => {
+                if self.timeout_event().is_none() {
+                    *self.timeout_event_mut() = Some(
+                        Event::builder()
+                            .name(Detector::TIMEOUT_EVENT_NAME)
+                            .cls(get_class(CLASS_NAME).expect("Error getting class"))
+                            .flags(EventClassFlag::Sim_EC_No_Flags)
+                            .build(),
+                    );
+                    *self.timeout_event_processor_mut() = Some(*start.processor());
+                    info!(self.parent().as_conf_object(), "Registered timeout event");
+                }
                 // On start, we set a timeout event
                 let parent_conf_object = self.parent_mut().as_conf_object_mut();
 
-                self.timeout_event().post_time(
-                    *start.processor(),
-                    object_clock(*start.processor())?,
-                    *self.configuration().timeout(),
-                    move |obj| {
-                        let tsffs: &'static mut Tsffs = parent_conf_object.into();
-                        tsffs
-                            .detector_mut()
-                            .on_timeout(obj)
-                            .expect("Error calling timeout callback");
-                    },
-                )?;
+                if let Some(event) = self.timeout_event() {
+                    event.post_time(
+                        *start.processor(),
+                        object_clock(*start.processor())?,
+                        *self.configuration().timeout(),
+                        move |obj| {
+                            let tsffs: &'static mut Tsffs = parent_conf_object.into();
+                            info!(tsffs.as_conf_object_mut(), "timeout({:#x})", obj as usize);
+                            tsffs
+                                .detector_mut()
+                                .on_timeout(obj)
+                                .expect("Error calling timeout callback");
+                        },
+                    )?;
+                    info!(
+                        self.parent().as_conf_object(),
+                        "Posted timeout for {}s",
+                        self.configuration().timeout()
+                    );
+                }
             }
 
             StopReason::MagicStop(_stop) | StopReason::Stop(_stop) => {
                 // On stop, we clear the timeout event
                 if let Some(timeout_event_processor) = self.timeout_event_processor() {
-                    let next_time = event_find_next_time(
-                        object_clock(*timeout_event_processor)?,
-                        self.timeout_event().event_class(),
-                        *timeout_event_processor,
-                        None,
-                    )?;
-                    self.timeout_event().cancel_time(
-                        *timeout_event_processor,
-                        object_clock(*timeout_event_processor)?,
-                    )?;
+                    if let Some(event) = self.timeout_event() {
+                        match event.find_next_time(
+                            object_clock(*timeout_event_processor)?,
+                            *timeout_event_processor,
+                        ) {
+                            Ok(next_time) => {
+                                info!(
+                                    self.parent().as_conf_object(),
+                                    "Stopped with {next_time:.02}s remaining until timeout"
+                                );
+                            }
+                            Err(e) => error!(
+                                self.parent().as_conf_object(),
+                                "Error getting next time for clock: {}", e
+                            ),
+                        }
+
+                        event.cancel_time(
+                            *timeout_event_processor,
+                            object_clock(*timeout_event_processor)?,
+                        )?;
+                    }
                 }
             }
 
             StopReason::Solution(_) => {
-                // NOTE: We cancel all events just to be sure nothing is in the pipe before reset
                 if let Some(timeout_event_processor) = self.timeout_event_processor() {
-                    self.timeout_event().cancel_time(
-                        *timeout_event_processor,
-                        object_clock(*timeout_event_processor)?,
-                    )?;
+                    if let Some(event) = self.timeout_event() {
+                        match event.find_next_time(
+                            object_clock(*timeout_event_processor)?,
+                            *timeout_event_processor,
+                        ) {
+                            Ok(next_time) => {
+                                info!(
+                                    self.parent().as_conf_object(),
+                                    "Stopped with {next_time:.02}s remaining until timeout"
+                                );
+                            }
+                            Err(e) => error!(
+                                self.parent().as_conf_object(),
+                                "Error getting next time for clock: {}", e
+                            ),
+                        }
+
+                        event.cancel_time(
+                            *timeout_event_processor,
+                            object_clock(*timeout_event_processor)?,
+                        )?;
+                    }
                 }
             }
         }

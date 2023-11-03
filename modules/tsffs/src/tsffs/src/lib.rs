@@ -33,7 +33,10 @@ use crate::{
 };
 use getters::Getters;
 use simics::{
-    api::{break_simulation, AsConfObject, Class, ConfObject, CoreSimulationStoppedHap, HapHandle},
+    api::{
+        break_simulation, continue_simulation, run_alone, AsConfObject, Class, ConfObject,
+        CoreSimulationStoppedHap, HapHandle,
+    },
     info, Result,
 };
 use simics_macro::{class, interface, AsConfObject};
@@ -109,11 +112,17 @@ impl Tsffs {
                 "on_simulation_stopped({reason:?})"
             );
 
+            // We need to restore the state before we post any new events
             self.fuzzer.on_simulation_stopped(&reason)?;
+            self.driver.on_simulation_stopped(&reason)?;
             self.detector.on_simulation_stopped(&reason)?;
             self.tracer.on_simulation_stopped(&reason)?;
-            self.driver.on_simulation_stopped(&reason)?;
         }
+
+        run_alone(|| {
+            continue_simulation(0)?;
+            Ok(())
+        })?;
 
         Ok(())
     }
