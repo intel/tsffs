@@ -119,6 +119,7 @@ Group: src
     modules/tsffs/src/tsffs/src/tracer/mod.rs
     modules/tsffs/src/tsffs/src/init/mod.rs
     modules/tsffs/src/tsffs/src/fuzzer/mod.rs
+    modules/tsffs/src/tsffs/src/fuzzer/tokenize/mod.rs
     modules/tsffs/src/tsffs/src/traits/mod.rs
     modules/tsffs/src/tsffs/src/driver/mod.rs
     modules/tsffs/src/tsffs/src/lib.rs

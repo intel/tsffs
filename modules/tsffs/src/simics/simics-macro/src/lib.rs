@@ -1209,11 +1209,12 @@ pub fn simics_tests(args: TokenStream, _input: TokenStream) -> TokenStream {
 }
 
 #[derive(Debug, FromField)]
-#[darling(attributes(into_attr_value_type))]
+#[darling(attributes(try_into_attr_value_type))]
 struct TryIntoAttrValueTypeField {
     ident: Option<Ident>,
     #[allow(unused)]
     ty: Type,
+    skip: Flag,
 }
 
 #[derive(Debug, FromDeriveInput)]
@@ -1233,6 +1234,7 @@ impl TryIntoAttrValueTypeDictOpts {
         };
         let dict_fields = fields
             .iter()
+            .filter(|f| !f.skip.is_present())
             .filter_map(|f| {
                 f.ident.clone().map(|i| {
                     let ident_name = i.to_string();
@@ -1301,6 +1303,7 @@ impl TryIntoAttrValueTypeListOpts {
         };
         let dict_fields = fields
             .iter()
+            .filter(|f| !f.skip.is_present())
             .filter_map(|f| {
                 f.ident
                     .clone()

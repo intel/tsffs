@@ -19,6 +19,9 @@ pub struct Start {
     processor: *mut ConfObject,
 }
 
+unsafe impl Send for Start {}
+unsafe impl Sync for Start {}
+
 impl Default for Start {
     fn default() -> Self {
         Self::builder().build()
@@ -29,9 +32,19 @@ impl Default for Start {
 #[getters(mutable)]
 pub struct Stop {}
 
-#[derive(TypedBuilder, Getters, Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum SolutionKind {
+    Timeout,
+    Exception,
+    Breakpoint,
+    Manual,
+}
+
+#[derive(TypedBuilder, Getters, Serialize, Deserialize, Debug, Clone)]
 #[getters(mutable)]
-pub struct Solution {}
+pub struct Solution {
+    kind: SolutionKind,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 /// Definition of all the reasons the simulator could be stopped by the fuzzer. In general,

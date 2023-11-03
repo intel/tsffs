@@ -15,7 +15,7 @@ use std::collections::BTreeSet;
 use typed_builder::TypedBuilder;
 
 use crate::{
-    state::{Solution, StopReason},
+    state::{Solution, SolutionKind, StopReason},
     traits::Component,
     Tsffs, CLASS_NAME,
 };
@@ -53,7 +53,7 @@ impl Default for DetectorConfiguration {
     }
 }
 
-#[derive(TypedBuilder, Getters, Debug)]
+#[derive(TypedBuilder, Getters)]
 #[getters(mutable)]
 pub struct Detector<'a>
 where
@@ -116,6 +116,10 @@ impl<'a> Detector<'a> {
             message.as_ref()
         );
 
+        self.parent_mut().stop_simulation(StopReason::Solution(
+            Solution::builder().kind(SolutionKind::Manual).build(),
+        ))?;
+
         Ok(())
     }
 }
@@ -128,8 +132,9 @@ where
         if *self.configuration().all_exceptions_are_solutions()
             || self.configuration().exceptions().contains(&exception)
         {
-            self.parent_mut()
-                .stop_simulation(StopReason::Solution(Solution::default()))?;
+            self.parent_mut().stop_simulation(StopReason::Solution(
+                Solution::builder().kind(SolutionKind::Exception).build(),
+            ))?;
         }
         Ok(())
     }
@@ -153,15 +158,17 @@ where
                 breakpoint,
                 transaction as usize
             );
-            self.parent_mut()
-                .stop_simulation(StopReason::Solution(Solution::default()))?;
+            self.parent_mut().stop_simulation(StopReason::Solution(
+                Solution::builder().kind(SolutionKind::Breakpoint).build(),
+            ))?;
         }
         Ok(())
     }
 
     pub fn on_timeout(&mut self, _obj: *mut ConfObject) -> Result<()> {
-        self.parent_mut()
-            .stop_simulation(StopReason::Solution(Solution::default()))?;
+        self.parent_mut().stop_simulation(StopReason::Solution(
+            Solution::builder().kind(SolutionKind::Timeout).build(),
+        ))?;
         Ok(())
     }
 }

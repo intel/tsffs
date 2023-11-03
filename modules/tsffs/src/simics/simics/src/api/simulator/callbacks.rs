@@ -346,10 +346,10 @@ where
 
 extern "C" fn handle_in_thread_callback<F>(cb: *mut c_void)
 where
-    F: FnOnce() + 'static,
+    F: FnOnce() -> anyhow::Result<()> + 'static,
 {
     let closure: Box<Box<F>> = unsafe { Box::from_raw(cb as *mut Box<F>) };
-    closure()
+    closure().expect("Error running in thread callback")
 }
 
 #[simics_exception]
@@ -370,7 +370,7 @@ where
 /// Callback: Threaded Context
 pub fn run_in_thread<F>(cb: F)
 where
-    F: FnOnce() + 'static,
+    F: FnOnce() -> anyhow::Result<()> + 'static,
 {
     let cb = Box::new(cb);
     let cb_box = Box::new(cb);

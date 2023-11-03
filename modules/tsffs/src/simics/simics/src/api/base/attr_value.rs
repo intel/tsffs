@@ -25,6 +25,7 @@ use std::{
     fmt::Debug,
     hash::Hash,
     mem::size_of,
+    path::PathBuf,
     ptr::null_mut,
 };
 
@@ -617,6 +618,17 @@ impl From<*mut ConfObject> for AttrValue {
 // NOTE: From<T> for U implies TryFrom<T> for U, so this is just a more general way to allow
 // anything convertible.
 
+impl TryFrom<PathBuf> for AttrValue {
+    type Error = Error;
+
+    fn try_from(value: PathBuf) -> Result<Self> {
+        value
+            .to_str()
+            .ok_or_else(|| Error::ToString)
+            .map(|s| s.to_string().into())
+    }
+}
+
 impl<T> TryFrom<Option<T>> for AttrValue
 where
     T: TryInto<AttrValue>,
@@ -1020,6 +1032,19 @@ impl TryFrom<AttrValue> for String {
     }
 }
 
+impl TryFrom<AttrValue> for PathBuf {
+    type Error = Error;
+    fn try_from(value: AttrValue) -> Result<Self> {
+        value
+            .as_string()
+            .ok_or_else(|| Error::AttrValueType {
+                actual: value.kind(),
+                expected: AttrKind::Sim_Val_String,
+            })
+            .map(PathBuf::from)
+    }
+}
+
 impl<T> TryFrom<AttrValue> for Vec<T>
 where
     T: TryFrom<AttrValue> + Clone,
@@ -1247,6 +1272,23 @@ impl From<isize> for AttrValueType {
     }
 }
 
+impl From<&str> for AttrValueType {
+    fn from(value: &str) -> Self {
+        Self::String(value.to_string())
+    }
+}
+
+impl From<PathBuf> for AttrValueType {
+    fn from(value: PathBuf) -> Self {
+        value
+            .to_str()
+            .ok_or_else(|| Error::ToString)
+            .map(|s| s.to_string().into())
+            // TODO: Do not panic here, update TryIntoAttrValueTypeDict to use try_into()
+            .expect("Failed to convert pathbuf to string")
+    }
+}
+
 impl<T> From<Vec<T>> for AttrValueType
 where
     T: Into<AttrValueType>,
@@ -1301,12 +1343,6 @@ where
                 .map(|(k, v)| (k.into(), v.into()))
                 .collect::<BTreeMap<_, _>>(),
         )
-    }
-}
-
-impl From<&str> for AttrValueType {
-    fn from(value: &str) -> Self {
-        Self::String(value.to_string())
     }
 }
 

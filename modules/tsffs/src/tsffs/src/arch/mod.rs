@@ -7,9 +7,12 @@ use self::{
     risc_v::RISCVArchitectureOperations, x86::X86ArchitectureOperations,
     x86_64::X86_64ArchitectureOperations,
 };
-use crate::driver::{StartBuffer, StartSize};
+use crate::{
+    driver::{StartBuffer, StartSize},
+    tracer::TraceEntry,
+};
 use anyhow::{bail, Result};
-use simics::api::{ConfObject, GenericAddress};
+use simics::api::{sys::instruction_handle_t, ConfObject, GenericAddress};
 use std::fmt::Debug;
 
 pub mod arc;
@@ -60,6 +63,9 @@ pub trait ArchitectureOperations {
         buffer: &StartBuffer,
         size: &StartSize,
     ) -> Result<()>;
+    fn trace_pc(&mut self, instruction_query: *mut instruction_handle_t) -> Result<TraceEntry>;
+    fn trace_cmp(&mut self, instruction_query: *mut instruction_handle_t) -> Result<TraceEntry>;
+    fn cpu(&self) -> *mut ConfObject;
 }
 
 impl ArchitectureOperations for Architecture {
@@ -112,6 +118,30 @@ impl ArchitectureOperations for Architecture {
             Architecture::X86_64(x86_64) => x86_64.write_start(testcase, buffer, size),
             Architecture::I386(i386) => i386.write_start(testcase, buffer, size),
             Architecture::RISCV(riscv) => riscv.write_start(testcase, buffer, size),
+        }
+    }
+
+    fn trace_pc(&mut self, instruction_query: *mut instruction_handle_t) -> Result<TraceEntry> {
+        match self {
+            Architecture::X86_64(x86_64) => x86_64.trace_pc(instruction_query),
+            Architecture::I386(i386) => i386.trace_pc(instruction_query),
+            Architecture::RISCV(riscv) => riscv.trace_pc(instruction_query),
+        }
+    }
+
+    fn trace_cmp(&mut self, instruction_query: *mut instruction_handle_t) -> Result<TraceEntry> {
+        match self {
+            Architecture::X86_64(x86_64) => x86_64.trace_cmp(instruction_query),
+            Architecture::I386(i386) => i386.trace_cmp(instruction_query),
+            Architecture::RISCV(riscv) => riscv.trace_cmp(instruction_query),
+        }
+    }
+
+    fn cpu(&self) -> *mut ConfObject {
+        match self {
+            Architecture::X86_64(x86_64) => x86_64.cpu(),
+            Architecture::I386(i386) => i386.cpu(),
+            Architecture::RISCV(riscv) => riscv.cpu(),
         }
     }
 }

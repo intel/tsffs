@@ -1,7 +1,7 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
-use std::time::SystemTime;
+#![allow(irrefutable_let_patterns)]
 
 use anyhow::{anyhow, bail, Result};
 use getters::Getters;
@@ -16,10 +16,12 @@ use simics::{
     info,
 };
 use simics_macro::{TryFromAttrValueTypeList, TryIntoAttrValueTypeDict};
+use std::time::SystemTime;
 use typed_builder::TypedBuilder;
 
 use crate::{
     arch::{Architecture, ArchitectureOperations},
+    fuzzer::FuzzerMessage,
     state::{Start, Stop, StopReason},
     traits::Component,
     Tsffs,
@@ -84,7 +86,7 @@ pub struct StartInformation {
     #[builder(default)]
     size: Option<StartSize>,
 }
-#[derive(TypedBuilder, Getters, Debug)]
+#[derive(TypedBuilder, Getters)]
 #[getters(mutable)]
 pub struct Driver<'a>
 where
@@ -177,6 +179,10 @@ where
 
 impl<'a> Driver<'a> {
     pub fn write_testcase(&mut self, testcase: Vec<u8>) -> Result<()> {
+        info!(
+            self.parent_mut().as_conf_object_mut(),
+            "Running with testcase {:?}", testcase
+        );
         match (
             self.start_information().buffer().clone(),
             self.start_information().size().clone(),
@@ -448,14 +454,14 @@ impl<'a> Driver<'a> {
             self.save_initial_snapshot()?;
         }
 
-        // TODO: get a new testcase from the fuzzer
-        let testcase: Vec<u8> = thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(thread_rng().gen_range(0..8))
-            .map(u8::from)
-            .collect();
-
-        self.write_testcase(testcase)?;
+        if let FuzzerMessage::Testcase { testcase, cmplog } =
+            self.parent_mut().fuzzer_mut().get_message()?
+        {
+            *self.parent_mut().tracer_mut().cmplog_enabled_mut() = cmplog;
+            self.write_testcase(testcase)?;
+        } else {
+            bail!("Expected testcase");
+        }
 
         info!(
             self.parent_mut().as_conf_object_mut(),
@@ -517,17 +523,14 @@ impl<'a> Driver<'a> {
             self.iterations()
         );
 
-        // NOTE: for un-harnessed fuzzing, we need to write a new testcase on stop every iteration
-        // except the first, because we do not have a `start` call each time. Make this clear in
-        // the documentation.
-        // TODO: get a new testcase from the fuzzer
-        let testcase: Vec<u8> = thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(thread_rng().gen_range(0..8))
-            .map(u8::from)
-            .collect();
-
-        self.write_testcase(testcase)?;
+        if let FuzzerMessage::Testcase { testcase, cmplog } =
+            self.parent_mut().fuzzer_mut().get_message()?
+        {
+            *self.parent_mut().tracer_mut().cmplog_enabled_mut() = cmplog;
+            self.write_testcase(testcase)?;
+        } else {
+            bail!("Expected testcase");
+        }
 
         run_alone(|| {
             continue_simulation(0)?;
@@ -548,17 +551,14 @@ impl<'a> Driver<'a> {
             self.iterations()
         );
 
-        // NOTE: for un-harnessed fuzzing, we need to write a new testcase on stop every iteration
-        // except the first, because we do not have a `start` call each time. Make this clear in
-        // the documentation.
-        // TODO: get a new testcase from the fuzzer
-        let testcase: Vec<u8> = thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(thread_rng().gen_range(0..8))
-            .map(u8::from)
-            .collect();
-
-        self.write_testcase(testcase)?;
+        if let FuzzerMessage::Testcase { testcase, cmplog } =
+            self.parent_mut().fuzzer_mut().get_message()?
+        {
+            *self.parent_mut().tracer_mut().cmplog_enabled_mut() = cmplog;
+            self.write_testcase(testcase)?;
+        } else {
+            bail!("Expected testcase");
+        }
 
         run_alone(|| {
             continue_simulation(0)?;

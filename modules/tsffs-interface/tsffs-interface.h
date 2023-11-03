@@ -35,6 +35,10 @@ SIM_INTERFACE(tsffs) {
     void (*set_generate_random_corpus)(conf_object_t * obj, bool generate_random_corpus);
     void (*set_iterations)(conf_object_t * obj, size_t iterations);
     attr_value_t (*get_configuration)(conf_object_t * obj);
+    void (*tokenize_executable)(conf_object_t * obj, char * executable_file);
+    void (*tokenize_src)(conf_object_t * obj, char * source_file);
+    void (*add_token_file)(conf_object_t * obj, char * token_file);
+    void (*add_trace_processor)(conf_object_t * obj, conf_object_t * cpu);
 };
 
 #define TSFFS_INTERFACE "tsffs"

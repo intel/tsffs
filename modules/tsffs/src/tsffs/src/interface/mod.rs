@@ -5,8 +5,8 @@ use crate::{tracer::CoverageMode, Tsffs};
 use ffi_macro::ffi;
 use simics::{
     api::{
-        sys::attr_value_t, AsConfObject, AttrValue, AttrValueType, BreakpointId, ConfObject,
-        GenericAddress,
+        lookup_file, sys::attr_value_t, AsConfObject, AttrValue, AttrValueType, BreakpointId,
+        ConfObject, GenericAddress,
     },
     error, info, Result,
 };
@@ -14,6 +14,7 @@ use simics_macro::interface_impl;
 use std::{
     collections::BTreeMap,
     ffi::{c_char, CStr},
+    path::PathBuf,
     str::FromStr,
 };
 
@@ -357,14 +358,20 @@ impl Tsffs {
     /// directory without calling `set_generate_random_corpus(True)`.  If not provided,
     /// "%simics%/corpus" will be used by default.
     pub fn set_corpus_directory(&mut self, corpus_directory: *mut c_char) -> Result<()> {
-        let corpus_directory = unsafe { CStr::from_ptr(corpus_directory) }
-            .to_str()?
-            .to_string();
+        let corpus_directory = PathBuf::from(
+            unsafe { CStr::from_ptr(corpus_directory) }
+                .to_str()?
+                .to_string(),
+        );
 
         info!(
             self.as_conf_object_mut(),
-            "set_corpus_directory({corpus_directory})"
+            "set_corpus_directory({})",
+            corpus_directory.display(),
         );
+
+        *self.fuzzer_mut().configuration_mut().corpus_directory_mut() = corpus_directory;
+
         Ok(())
     }
 
@@ -374,14 +381,23 @@ impl Tsffs {
     /// and traige defects using the `reproduce` method. If no solutions directory is provided,
     /// "%simics%/solutions" will be used by default.
     pub fn set_solutions_directory(&mut self, solutions_directory: *mut c_char) -> Result<()> {
-        let solutions_directory = unsafe { CStr::from_ptr(solutions_directory) }
-            .to_str()?
-            .to_string();
+        let solutions_directory = PathBuf::from(
+            unsafe { CStr::from_ptr(solutions_directory) }
+                .to_str()?
+                .to_string(),
+        );
 
         info!(
             self.as_conf_object_mut(),
-            "set_solutions_directory({solutions_directory})"
+            "set_solutions_directory({})",
+            solutions_directory.display()
         );
+
+        *self
+            .fuzzer_mut()
+            .configuration_mut()
+            .solutions_directory_mut() = solutions_directory;
+
         Ok(())
     }
 
@@ -396,6 +412,10 @@ impl Tsffs {
             self.as_conf_object_mut(),
             "set_generate_random_corpus({generate_random_corpus})"
         );
+        *self
+            .fuzzer_mut()
+            .configuration_mut()
+            .generate_random_corpus_mut() = generate_random_corpus;
 
         Ok(())
     }
@@ -404,6 +424,7 @@ impl Tsffs {
     /// executed, and includes all stages (e.g. calibration). This should typically not be used
     /// to limit the time of a fuzzing campaign, and is only useful for demonstration purposes.
     pub fn set_iterations(&mut self, iterations: usize) -> Result<()> {
+        info!(self.as_conf_object_mut(), "set_iterations({iterations})");
         *self.driver_mut().configuration_mut().iterations_mut() = Some(iterations);
 
         Ok(())
@@ -423,5 +444,74 @@ impl Tsffs {
             .collect::<BTreeMap<AttrValueType, AttrValueType>>(),
         )?
         .into())
+    }
+
+    /// Tokenize an executable file and add extracted tokens to token mutations for the fuzzer
+    pub fn tokenize_executable(&mut self, executable_file: *mut c_char) -> Result<()> {
+        let simics_path = unsafe { CStr::from_ptr(executable_file) }
+            .to_str()?
+            .to_string();
+
+        let executable_path = lookup_file(simics_path)?;
+
+        info!(
+            self.as_conf_object_mut(),
+            "tokenize_executable({})",
+            executable_path.display()
+        );
+
+        self.fuzzer_mut().tokenize_executable(executable_path)?;
+
+        Ok(())
+    }
+
+    /// Tokenize a source file and add extracted tokens to token mutations for the fuzzer
+    pub fn tokenize_src(&mut self, source_file: *mut c_char) -> Result<()> {
+        let simics_path = unsafe { CStr::from_ptr(source_file) }.to_str()?.to_string();
+
+        let source_path = lookup_file(simics_path)?;
+        info!(
+            self.as_conf_object_mut(),
+            "tokenize_src({})",
+            source_path.display()
+        );
+
+        self.fuzzer_mut().tokenize_src(source_path)?;
+
+        Ok(())
+    }
+
+    /// Add tokens from a file of the format below, containing tokens extracted from the fuzz
+    /// target:
+    /// ```text,ignore
+    /// x = "hello"
+    /// y = "foo\x41bar"
+    /// ```
+    pub fn add_token_file(&mut self, token_file: *mut c_char) -> Result<()> {
+        let simics_path = unsafe { CStr::from_ptr(token_file) }.to_str()?.to_string();
+
+        let token_file = lookup_file(simics_path)?;
+        info!(
+            self.as_conf_object_mut(),
+            "add_token_file({})",
+            token_file.display()
+        );
+
+        self.fuzzer_mut().add_token_file(token_file)?;
+
+        Ok(())
+    }
+
+    /// Add a processor to be traced. By default, only the processor the start event occurs on
+    /// is used for tracing.
+    pub fn add_trace_processor(&mut self, cpu: *mut ConfObject) -> Result<()> {
+        info!(
+            self.as_conf_object_mut(),
+            "add_trace_processor({:#x})", cpu as usize
+        );
+
+        self.tracer_mut().add_trace_processor(cpu)?;
+
+        Ok(())
     }
 }

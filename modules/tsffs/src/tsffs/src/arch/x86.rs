@@ -1,18 +1,23 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
-use std::ffi::CStr;
-
-use anyhow::{anyhow, bail, Result};
-use raw_cstr::AsRawCstr;
-use simics::api::{
-    get_interface, read_phys_memory, write_phys_memory, Access, ConfObject, GenericAddress,
-    IntRegisterInterface, ProcessorInfoV2Interface,
-};
-
-use crate::driver::{StartBuffer, StartSize};
+use std::{ffi::CStr, mem::size_of, slice::from_raw_parts};
 
 use super::ArchitectureOperations;
+use crate::{
+    driver::{StartBuffer, StartSize},
+    tracer::{CmpExpr, CmpType, CmpValue, TraceEntry},
+    traits::TracerDisassembler,
+};
+use anyhow::{anyhow, bail, Error, Result};
+use libafl::prelude::CmpValues;
+use raw_cstr::AsRawCstr;
+use simics::api::{
+    get_interface, read_phys_memory, sys::instruction_handle_t, write_phys_memory, Access,
+    ConfObject, CpuInstructionQueryInterface, GenericAddress, IntRegisterInterface,
+    ProcessorInfoV2Interface,
+};
+use yaxpeax_x86::protected_mode::{ConditionCode, InstDecoder, Instruction, Opcode, Operand};
 
 /// The default register the fuzzer expects to contain a pointer to an area to write
 /// each testcase into when using an in-target harness
@@ -109,8 +114,10 @@ pub mod exceptions {
 
 pub struct X86ArchitectureOperations {
     cpu: *mut ConfObject,
+    disassembler: Disassembler,
     int_register: IntRegisterInterface,
     processor_info_v2: ProcessorInfoV2Interface,
+    cpu_instruction_query: CpuInstructionQueryInterface,
 }
 
 impl ArchitectureOperations for X86ArchitectureOperations {
@@ -158,8 +165,10 @@ impl ArchitectureOperations for X86ArchitectureOperations {
             }) {
                 Ok(Self {
                     cpu,
+                    disassembler: Disassembler::new(),
                     int_register,
                     processor_info_v2,
+                    cpu_instruction_query: get_interface(cpu)?,
                 })
             } else {
                 unreachable!("Register set must either contain a 64-bit register or no registers may be 64-bit");
@@ -170,8 +179,10 @@ impl ArchitectureOperations for X86ArchitectureOperations {
             // No i386 processor will actually be x86-64 under the hood
             Ok(Self {
                 cpu,
+                disassembler: Disassembler::new(),
                 int_register: get_interface(cpu)?,
                 processor_info_v2,
+                cpu_instruction_query: get_interface(cpu)?,
             })
         } else {
             bail!("Unsupported architecture {arch}");
@@ -280,5 +291,891 @@ impl ArchitectureOperations for X86ArchitectureOperations {
             initial_size: size,
             virt: original_size_address != size_address,
         })
+    }
+
+    fn trace_pc(&mut self, instruction_query: *mut instruction_handle_t) -> Result<TraceEntry> {
+        let instruction_bytes = self
+            .cpu_instruction_query
+            .get_instruction_bytes(instruction_query)?;
+        self.disassembler.disassemble(unsafe {
+            from_raw_parts(instruction_bytes.data, instruction_bytes.size)
+        })?;
+        if self.disassembler.last_was_call()?
+            || self.disassembler.last_was_control_flow()?
+            || self.disassembler.last_was_ret()?
+        {
+            Ok(TraceEntry::builder()
+                .edge(self.processor_info_v2.get_program_counter()?)
+                .build())
+        } else {
+            Ok(TraceEntry::default())
+        }
+    }
+
+    fn trace_cmp(&mut self, instruction_query: *mut instruction_handle_t) -> Result<TraceEntry> {
+        let instruction_bytes = self
+            .cpu_instruction_query
+            .get_instruction_bytes(instruction_query)?;
+        self.disassembler.disassemble(unsafe {
+            from_raw_parts(instruction_bytes.data, instruction_bytes.size)
+        })?;
+        if self.disassembler.last_was_cmp()? {
+            let pc = self.processor_info_v2.get_program_counter()?;
+            let mut cmp_values = Vec::new();
+
+            if let Ok(cmp) = self.disassembler.cmp() {
+                for expr in &cmp {
+                    if let Ok(value) = self.simplify(expr) {
+                        cmp_values.push(value);
+                    }
+                }
+            }
+
+            let cmp_value = if let (Some(l), Some(r)) = (cmp_values.get(0), cmp_values.get(1)) {
+                match (l, r) {
+                    (CmpValue::U8(l), CmpValue::U8(r)) => Some(CmpValues::U8((*l, *r))),
+                    (CmpValue::I8(l), CmpValue::I8(r)) => Some(CmpValues::U8((
+                        u8::from_le_bytes(l.to_le_bytes()),
+                        u8::from_le_bytes(r.to_le_bytes()),
+                    ))),
+                    (CmpValue::U16(l), CmpValue::U16(r)) => Some(CmpValues::U16((*l, *r))),
+                    (CmpValue::I16(l), CmpValue::I16(r)) => Some(CmpValues::U16((
+                        u16::from_le_bytes(l.to_le_bytes()),
+                        u16::from_le_bytes(r.to_le_bytes()),
+                    ))),
+                    (CmpValue::U32(l), CmpValue::U32(r)) => Some(CmpValues::U32((*l, *r))),
+                    (CmpValue::I32(l), CmpValue::I32(r)) => Some(CmpValues::U32((
+                        u32::from_le_bytes(l.to_le_bytes()),
+                        u32::from_le_bytes(r.to_le_bytes()),
+                    ))),
+                    (CmpValue::U64(l), CmpValue::U64(r)) => Some(CmpValues::U64((*l, *r))),
+                    (CmpValue::I64(l), CmpValue::I64(r)) => Some(CmpValues::U64((
+                        u64::from_le_bytes(l.to_le_bytes()),
+                        u64::from_le_bytes(r.to_le_bytes()),
+                    ))),
+                    (CmpValue::Expr(_), CmpValue::Expr(_)) => None,
+                    _ => None,
+                }
+            } else {
+                None
+            };
+
+            let cmp_types = if let Ok(types) = self.disassembler.cmp_type() {
+                Some(types)
+            } else {
+                None
+            };
+
+            Ok(TraceEntry::builder()
+                .cmp((
+                    pc,
+                    cmp_types.ok_or_else(|| anyhow!("No cmp type available"))?,
+                    cmp_value.ok_or_else(|| anyhow!("No cmp value available"))?,
+                ))
+                .build())
+        } else {
+            Ok(TraceEntry::default())
+        }
+    }
+
+    fn cpu(&self) -> *mut ConfObject {
+        self.cpu
+    }
+}
+impl X86ArchitectureOperations {
+    fn simplify(&mut self, expr: &CmpExpr) -> Result<CmpValue> {
+        match expr {
+            CmpExpr::Deref((expr, width)) => {
+                let v = self.simplify(expr)?;
+
+                match v {
+                    CmpValue::U64(a) => {
+                        let address = self
+                            .processor_info_v2
+                            .logical_to_physical(a, Access::Sim_Access_Read)?;
+                        let casted = match width {
+                            Some(1) => CmpValue::U8(
+                                read_phys_memory(self.cpu, address.address, size_of::<u8>() as i32)
+                                    .map_err(|e| {
+                                        anyhow!("Error reading bytes from {:#x}: {}", a, e)
+                                    })?
+                                    .to_le_bytes()[0],
+                            ),
+                            Some(2) => CmpValue::U16(u16::from_le_bytes(
+                                read_phys_memory(
+                                    self.cpu,
+                                    address.address,
+                                    size_of::<u16>() as i32,
+                                )
+                                .map_err(|e| anyhow!("Error reading bytes from {:#x}: {}", a, e))?
+                                .to_le_bytes()[0..size_of::<u16>()]
+                                    .try_into()?,
+                            )),
+                            Some(4) => CmpValue::U32(u32::from_le_bytes(
+                                read_phys_memory(
+                                    self.cpu,
+                                    address.address,
+                                    size_of::<u32>() as i32,
+                                )
+                                .map_err(|e| anyhow!("Error reading bytes from {:#x}: {}", a, e))?
+                                .to_le_bytes()[0..size_of::<u32>()]
+                                    .try_into()?,
+                            )),
+                            Some(8) => CmpValue::U64(u64::from_le_bytes(
+                                read_phys_memory(
+                                    self.cpu,
+                                    address.address,
+                                    size_of::<u64>() as i32,
+                                )
+                                .map_err(|e| anyhow!("Error reading bytes from {:#x}: {}", a, e))?
+                                .to_le_bytes(),
+                            )),
+                            _ => bail!("Can't cast to non-power-of-2 width {:?}", width),
+                        };
+                        Ok(casted)
+                    }
+                    _ => bail!("Can't dereference non-address"),
+                }
+            }
+            CmpExpr::Reg((name, width)) => {
+                let reg_number = self.int_register.get_number(name.as_raw_cstr()?)?;
+                let value = self.int_register.read(reg_number).map_err(|e| {
+                    anyhow!("Couldn't read register value for register {}: {}", name, e)
+                })?;
+
+                let casted = match width {
+                    1 => CmpValue::U8(value.to_le_bytes()[0]),
+                    2 => CmpValue::U16(u16::from_le_bytes(
+                        value.to_le_bytes()[..size_of::<u16>()]
+                            .try_into()
+                            .map_err(|e| anyhow!("Error converting to u32 bytes: {}", e))?,
+                    )),
+                    4 => CmpValue::U32(u32::from_le_bytes(
+                        value.to_le_bytes()[..size_of::<u32>()]
+                            .try_into()
+                            .map_err(|e| anyhow!("Error converting to u32 bytes: {}", e))?,
+                    )),
+                    8 => CmpValue::U64(u64::from_le_bytes(value.to_le_bytes())),
+                    _ => bail!("Can't cast to non-power-of-2 width {}", width),
+                };
+                Ok(casted)
+            }
+            CmpExpr::Mul((l, r)) => {
+                let lv = self.simplify(l)?;
+                let rv = self.simplify(r)?;
+
+                match (lv, rv) {
+                    (CmpValue::U8(lu), CmpValue::U8(ru)) => Ok(CmpValue::U8(lu.wrapping_mul(ru))),
+                    (CmpValue::U8(lu), CmpValue::I8(ru)) => {
+                        Ok(CmpValue::U8((lu as i32).wrapping_mul(ru as i32) as u8))
+                    }
+                    (CmpValue::U8(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::U8((lu as u16).wrapping_mul(ru) as u8))
+                    }
+                    (CmpValue::U8(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::U8((lu as i32).wrapping_mul(ru as i32) as u8))
+                    }
+                    (CmpValue::U8(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::U8((lu as u32).wrapping_mul(ru) as u8))
+                    }
+                    (CmpValue::U8(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::U8((lu as i32).wrapping_mul(ru) as u8))
+                    }
+                    (CmpValue::U8(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::U8((lu as u64).wrapping_mul(ru) as u8))
+                    }
+                    (CmpValue::U8(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::U8((lu as i64).wrapping_mul(ru) as u8))
+                    }
+                    (CmpValue::I8(lu), CmpValue::U8(ru)) => {
+                        Ok(CmpValue::I8((lu as i16).wrapping_mul(ru as i16) as i8))
+                    }
+                    (CmpValue::I8(lu), CmpValue::I8(ru)) => Ok(CmpValue::I8(lu.wrapping_mul(ru))),
+                    (CmpValue::I8(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::I8((lu as i32).wrapping_mul(ru as i32) as i8))
+                    }
+                    (CmpValue::I8(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::I8((lu as i16).wrapping_mul(ru) as i8))
+                    }
+                    (CmpValue::I8(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::I8((lu as i64).wrapping_mul(ru as i64) as i8))
+                    }
+                    (CmpValue::I8(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::I8((lu as i64).wrapping_mul(ru as i64) as i8))
+                    }
+                    (CmpValue::I8(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::I8((lu as i64).wrapping_mul(ru as i64) as i8))
+                    }
+                    (CmpValue::I8(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::I8((lu as i64).wrapping_mul(ru) as i8))
+                    }
+                    (CmpValue::U16(lu), CmpValue::U8(ru)) => {
+                        Ok(CmpValue::U16(lu.wrapping_mul(ru as u16)))
+                    }
+                    (CmpValue::U16(lu), CmpValue::I8(ru)) => {
+                        Ok(CmpValue::U16((lu as i32).wrapping_mul(ru as i32) as u16))
+                    }
+                    (CmpValue::U16(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::U16(lu.wrapping_mul(ru)))
+                    }
+                    (CmpValue::U16(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::U16((lu as i32).wrapping_mul(ru as i32) as u16))
+                    }
+                    (CmpValue::U16(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::U16((lu as u32).wrapping_mul(ru) as u16))
+                    }
+                    (CmpValue::U16(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::U16((lu as i32).wrapping_mul(ru) as u16))
+                    }
+                    (CmpValue::U16(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::U16((lu as u64).wrapping_mul(ru) as u16))
+                    }
+                    (CmpValue::U16(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::U16((lu as i64).wrapping_mul(ru) as u16))
+                    }
+                    (CmpValue::I16(lu), CmpValue::U8(ru)) => {
+                        Ok(CmpValue::I16(lu.wrapping_mul(ru as i16)))
+                    }
+                    (CmpValue::I16(lu), CmpValue::I8(ru)) => {
+                        Ok(CmpValue::I16(lu.wrapping_mul(ru as i16)))
+                    }
+                    (CmpValue::I16(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::I16((lu as i32).wrapping_mul(ru as i32) as i16))
+                    }
+                    (CmpValue::I16(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::I16(lu.wrapping_mul(ru)))
+                    }
+                    (CmpValue::I16(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::I16((lu as i64).wrapping_mul(ru as i64) as i16))
+                    }
+                    (CmpValue::I16(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::I16((lu as i32).wrapping_mul(ru) as i16))
+                    }
+                    (CmpValue::I16(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::I16((lu as i64).wrapping_mul(ru as i64) as i16))
+                    }
+                    (CmpValue::I16(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::I16((lu as i64).wrapping_mul(ru) as i16))
+                    }
+                    (CmpValue::U32(lu), CmpValue::U8(ru)) => {
+                        Ok(CmpValue::U32(lu.wrapping_mul(ru as u32)))
+                    }
+                    (CmpValue::U32(lu), CmpValue::I8(ru)) => {
+                        Ok(CmpValue::U32((lu as i64).wrapping_mul(ru as i64) as u32))
+                    }
+                    (CmpValue::U32(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::U32(lu.wrapping_mul(ru as u32)))
+                    }
+                    (CmpValue::U32(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::U32((lu as i64).wrapping_mul(ru as i64) as u32))
+                    }
+                    (CmpValue::U32(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::U32(lu.wrapping_mul(ru)))
+                    }
+                    (CmpValue::U32(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::U32((lu as i64).wrapping_mul(ru as i64) as u32))
+                    }
+                    (CmpValue::U32(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::U32((lu as u64).wrapping_mul(ru) as u32))
+                    }
+                    (CmpValue::U32(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::U32((lu as i64).wrapping_mul(ru) as u32))
+                    }
+                    (CmpValue::I32(lu), CmpValue::U8(ru)) => {
+                        Ok(CmpValue::I32(lu.wrapping_mul(ru as i32)))
+                    }
+                    (CmpValue::I32(lu), CmpValue::I8(ru)) => {
+                        Ok(CmpValue::I32(lu.wrapping_mul(ru as i32)))
+                    }
+                    (CmpValue::I32(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::I32(lu.wrapping_mul(ru as i32)))
+                    }
+                    (CmpValue::I32(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::I32(lu.wrapping_mul(ru as i32)))
+                    }
+                    (CmpValue::I32(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::I32((lu as i64).wrapping_mul(ru as i64) as i32))
+                    }
+                    (CmpValue::I32(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::I32(lu.wrapping_mul(ru)))
+                    }
+                    (CmpValue::I32(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::I32((lu as i64).wrapping_mul(ru as i64) as i32))
+                    }
+                    (CmpValue::I32(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::I32((lu as i64).wrapping_mul(ru) as i32))
+                    }
+                    (CmpValue::U64(lu), CmpValue::U8(ru)) => {
+                        Ok(CmpValue::U64(lu.wrapping_mul(ru as u64)))
+                    }
+                    (CmpValue::U64(lu), CmpValue::I8(ru)) => {
+                        Ok(CmpValue::U64((lu as i64).wrapping_mul(ru as i64) as u64))
+                    }
+                    (CmpValue::U64(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::U64(lu.wrapping_mul(ru as u64)))
+                    }
+                    (CmpValue::U64(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::U64((lu as i64).wrapping_mul(ru as i64) as u64))
+                    }
+                    (CmpValue::U64(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::U64(lu.wrapping_mul(ru as u64)))
+                    }
+                    (CmpValue::U64(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::U64((lu as i64).wrapping_mul(ru as i64) as u64))
+                    }
+                    (CmpValue::U64(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::U64(lu.wrapping_mul(ru)))
+                    }
+                    (CmpValue::U64(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::U64((lu as i64).wrapping_mul(ru) as u64))
+                    }
+                    (CmpValue::I64(lu), CmpValue::U8(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_mul(ru as i64)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::I8(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_mul(ru as i64)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_mul(ru as i64)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_mul(ru as i64)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_mul(ru as i64)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_mul(ru as i64)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_mul(ru as i64)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_mul(ru)))
+                    }
+                    _ => bail!("Cannot multiply non-integral types"),
+                }
+            }
+            CmpExpr::Add((l, r)) => {
+                let lv = self.simplify(l)?;
+                let rv = self.simplify(r)?;
+
+                match (lv, rv) {
+                    (CmpValue::U8(lu), CmpValue::U8(ru)) => Ok(CmpValue::U8(lu.wrapping_add(ru))),
+                    (CmpValue::U8(lu), CmpValue::I8(ru)) => {
+                        Ok(CmpValue::U8(lu.wrapping_add_signed(ru)))
+                    }
+                    (CmpValue::U8(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::U8((lu as u16).wrapping_add(ru) as u8))
+                    }
+                    (CmpValue::U8(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::U8((lu as u16).wrapping_add_signed(ru) as u8))
+                    }
+                    (CmpValue::U8(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::U8((lu as u32).wrapping_add(ru) as u8))
+                    }
+                    (CmpValue::U8(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::U8((lu as u32).wrapping_add_signed(ru) as u8))
+                    }
+                    (CmpValue::U8(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::U8((lu as u64).wrapping_add(ru) as u8))
+                    }
+                    (CmpValue::U8(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::U8((lu as u64).wrapping_add_signed(ru) as u8))
+                    }
+                    (CmpValue::I8(lu), CmpValue::U8(ru)) => {
+                        Ok(CmpValue::I8(lu.wrapping_add_unsigned(ru)))
+                    }
+                    (CmpValue::I8(lu), CmpValue::I8(ru)) => Ok(CmpValue::I8(lu.wrapping_add(ru))),
+                    (CmpValue::I8(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::I8((lu as i16).wrapping_add_unsigned(ru) as i8))
+                    }
+                    (CmpValue::I8(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::I8((lu as i16).wrapping_add(ru) as i8))
+                    }
+                    (CmpValue::I8(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::I8((lu as i32).wrapping_add_unsigned(ru) as i8))
+                    }
+                    (CmpValue::I8(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::I8((lu as i32).wrapping_add(ru) as i8))
+                    }
+                    (CmpValue::I8(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::I8((lu as i64).wrapping_add_unsigned(ru) as i8))
+                    }
+                    (CmpValue::I8(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::I8((lu as i64).wrapping_add(ru) as i8))
+                    }
+                    (CmpValue::U16(lu), CmpValue::U8(ru)) => {
+                        Ok(CmpValue::U16(lu.wrapping_add(ru as u16)))
+                    }
+                    (CmpValue::U16(lu), CmpValue::I8(ru)) => {
+                        Ok(CmpValue::U16(lu.wrapping_add_signed(ru as i16)))
+                    }
+                    (CmpValue::U16(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::U16(lu.wrapping_add(ru)))
+                    }
+                    (CmpValue::U16(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::U16(lu.wrapping_add_signed(ru)))
+                    }
+                    (CmpValue::U16(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::U16((lu as u32).wrapping_add(ru) as u16))
+                    }
+                    (CmpValue::U16(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::U16((lu as u32).wrapping_add_signed(ru) as u16))
+                    }
+                    (CmpValue::U16(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::U16((lu as u64).wrapping_add(ru) as u16))
+                    }
+                    (CmpValue::U16(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::U16((lu as u64).wrapping_add_signed(ru) as u16))
+                    }
+                    (CmpValue::I16(lu), CmpValue::U8(ru)) => {
+                        Ok(CmpValue::I16(lu.wrapping_add_unsigned(ru as u16)))
+                    }
+                    (CmpValue::I16(lu), CmpValue::I8(ru)) => {
+                        Ok(CmpValue::I16(lu.wrapping_add(ru as i16)))
+                    }
+                    (CmpValue::I16(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::I16(lu.wrapping_add_unsigned(ru)))
+                    }
+                    (CmpValue::I16(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::I16(lu.wrapping_add(ru)))
+                    }
+                    (CmpValue::I16(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::I16((lu as i32).wrapping_add_unsigned(ru) as i16))
+                    }
+                    (CmpValue::I16(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::I16((lu as i32).wrapping_add(ru) as i16))
+                    }
+                    (CmpValue::I16(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::I16((lu as i64).wrapping_add_unsigned(ru) as i16))
+                    }
+                    (CmpValue::I16(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::I16((lu as i64).wrapping_add(ru) as i16))
+                    }
+                    (CmpValue::U32(lu), CmpValue::U8(ru)) => {
+                        Ok(CmpValue::U32(lu.wrapping_add(ru as u32)))
+                    }
+                    (CmpValue::U32(lu), CmpValue::I8(ru)) => {
+                        Ok(CmpValue::U32(lu.wrapping_add_signed(ru as i32)))
+                    }
+                    (CmpValue::U32(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::U32(lu.wrapping_add(ru as u32)))
+                    }
+                    (CmpValue::U32(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::U32(lu.wrapping_add_signed(ru as i32)))
+                    }
+                    (CmpValue::U32(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::U32(lu.wrapping_add(ru)))
+                    }
+                    (CmpValue::U32(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::U32(lu.wrapping_add_signed(ru)))
+                    }
+                    (CmpValue::U32(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::U32((lu as u64).wrapping_add(ru) as u32))
+                    }
+                    (CmpValue::U32(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::U32((lu as u64).wrapping_add_signed(ru) as u32))
+                    }
+                    (CmpValue::I32(lu), CmpValue::U8(ru)) => {
+                        Ok(CmpValue::I32(lu.wrapping_add_unsigned(ru as u32)))
+                    }
+                    (CmpValue::I32(lu), CmpValue::I8(ru)) => {
+                        Ok(CmpValue::I32(lu.wrapping_add(ru as i32)))
+                    }
+                    (CmpValue::I32(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::I32(lu.wrapping_add_unsigned(ru as u32)))
+                    }
+                    (CmpValue::I32(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::I32(lu.wrapping_add(ru as i32)))
+                    }
+                    (CmpValue::I32(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::I32(lu.wrapping_add_unsigned(ru)))
+                    }
+                    (CmpValue::I32(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::I32(lu.wrapping_add(ru)))
+                    }
+                    (CmpValue::I32(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::I32((lu as i64).wrapping_add_unsigned(ru) as i32))
+                    }
+                    (CmpValue::I32(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::I32((lu as i64).wrapping_add(ru) as i32))
+                    }
+                    (CmpValue::U64(lu), CmpValue::U8(ru)) => {
+                        Ok(CmpValue::U64(lu.wrapping_add(ru as u64)))
+                    }
+                    (CmpValue::U64(lu), CmpValue::I8(ru)) => {
+                        Ok(CmpValue::U64(lu.wrapping_add_signed(ru as i64)))
+                    }
+                    (CmpValue::U64(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::U64(lu.wrapping_add(ru as u64)))
+                    }
+                    (CmpValue::U64(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::U64(lu.wrapping_add_signed(ru as i64)))
+                    }
+                    (CmpValue::U64(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::U64(lu.wrapping_add(ru as u64)))
+                    }
+                    (CmpValue::U64(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::U64(lu.wrapping_add_signed(ru as i64)))
+                    }
+                    (CmpValue::U64(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::U64(lu.wrapping_add(ru)))
+                    }
+                    (CmpValue::U64(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::U64(lu.wrapping_add_signed(ru)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::U8(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_add_unsigned(ru as u64)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::I8(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_add(ru as i64)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::U16(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_add_unsigned(ru as u64)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::I16(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_add(ru as i64)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::U32(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_add_unsigned(ru as u64)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::I32(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_add(ru as i64)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::U64(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_add_unsigned(ru)))
+                    }
+                    (CmpValue::I64(lu), CmpValue::I64(ru)) => {
+                        Ok(CmpValue::I64(lu.wrapping_add(ru)))
+                    }
+                    _ => bail!("Cannot multiply non-integral types"),
+                }
+            }
+            CmpExpr::U8(_)
+            | CmpExpr::I8(_)
+            | CmpExpr::U16(_)
+            | CmpExpr::I16(_)
+            | CmpExpr::U32(_)
+            | CmpExpr::I32(_)
+            | CmpExpr::U64(_)
+            | CmpExpr::I64(_) => Ok(CmpValue::try_from(expr)?),
+            CmpExpr::Addr(a) => {
+                let address = self
+                    .processor_info_v2
+                    .logical_to_physical(*a, Access::Sim_Access_Read)?;
+                let bytes: [u8; 8] =
+                    read_phys_memory(self.cpu, address.address, size_of::<u64>() as i32)?
+                        .to_le_bytes();
+                Ok(CmpValue::U64(u64::from_le_bytes(bytes)))
+            }
+        }
+    }
+}
+
+pub struct Disassembler {
+    decoder: InstDecoder,
+    last: Option<Instruction>,
+}
+
+impl Disassembler {
+    pub fn new() -> Self {
+        Self {
+            decoder: InstDecoder::default(),
+            last: None,
+        }
+    }
+}
+
+impl Default for Disassembler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl TryFrom<(&Operand, Option<u8>)> for CmpExpr {
+    type Error = Error;
+
+    fn try_from(value: (&Operand, Option<u8>)) -> Result<Self> {
+        let width = value.1;
+        let value = value.0;
+
+        let expr = match value {
+            Operand::ImmediateI8(i) => CmpExpr::I8(*i),
+            Operand::ImmediateU8(u) => CmpExpr::U8(*u),
+            Operand::ImmediateI16(i) => CmpExpr::I16(*i),
+            Operand::ImmediateU16(u) => CmpExpr::U16(*u),
+            Operand::ImmediateI32(i) => CmpExpr::I32(*i),
+            Operand::ImmediateU32(u) => CmpExpr::U32(*u),
+            Operand::Register(r) => CmpExpr::Reg((r.name().to_string(), r.width())),
+            Operand::DisplacementU32(d) => CmpExpr::Addr(*d as u64),
+            Operand::RegDeref(r) => CmpExpr::Deref((
+                Box::new(CmpExpr::Reg((r.name().to_string(), r.width()))),
+                width,
+            )),
+            Operand::RegDisp(r, d) => CmpExpr::Deref((
+                Box::new(CmpExpr::Add((
+                    Box::new(CmpExpr::Reg((r.name().to_string(), r.width()))),
+                    Box::new(CmpExpr::I32(*d)),
+                ))),
+                width,
+            )),
+            Operand::RegScale(r, s) => CmpExpr::Deref((
+                Box::new(CmpExpr::Mul((
+                    Box::new(CmpExpr::Reg((r.name().to_string(), r.width()))),
+                    Box::new(CmpExpr::U8(*s)),
+                ))),
+                width,
+            )),
+            Operand::RegIndexBase(r, i) => CmpExpr::Deref((
+                Box::new(CmpExpr::Add((
+                    Box::new(CmpExpr::Reg((r.name().to_string(), r.width()))),
+                    Box::new(CmpExpr::Reg((i.name().to_string(), i.width()))),
+                ))),
+                width,
+            )),
+            Operand::RegIndexBaseDisp(r, i, d) => CmpExpr::Deref((
+                Box::new(CmpExpr::Add((
+                    Box::new(CmpExpr::Add((
+                        Box::new(CmpExpr::Reg((r.name().to_string(), r.width()))),
+                        Box::new(CmpExpr::Reg((i.name().to_string(), i.width()))),
+                    ))),
+                    Box::new(CmpExpr::I32(*d)),
+                ))),
+                width,
+            )),
+            Operand::RegScaleDisp(r, s, d) => CmpExpr::Deref((
+                Box::new(CmpExpr::Add((
+                    Box::new(CmpExpr::Mul((
+                        Box::new(CmpExpr::Reg((r.name().to_string(), r.width()))),
+                        Box::new(CmpExpr::U8(*s)),
+                    ))),
+                    Box::new(CmpExpr::I32(*d)),
+                ))),
+                width,
+            )),
+            Operand::RegIndexBaseScale(r, i, s) => CmpExpr::Deref((
+                Box::new(CmpExpr::Add((
+                    Box::new(CmpExpr::Reg((r.name().to_string(), r.width()))),
+                    Box::new(CmpExpr::Add((
+                        Box::new(CmpExpr::Reg((i.name().to_string(), i.width()))),
+                        Box::new(CmpExpr::U8(*s)),
+                    ))),
+                ))),
+                width,
+            )),
+            Operand::RegIndexBaseScaleDisp(r, i, s, d) => CmpExpr::Deref((
+                Box::new(CmpExpr::Add((
+                    Box::new(CmpExpr::Add((
+                        Box::new(CmpExpr::Reg((r.name().to_string(), r.width()))),
+                        Box::new(CmpExpr::Add((
+                            Box::new(CmpExpr::Reg((i.name().to_string(), i.width()))),
+                            Box::new(CmpExpr::U8(*s)),
+                        ))),
+                    ))),
+                    Box::new(CmpExpr::I32(*d)),
+                ))),
+                width,
+            )),
+            _ => {
+                bail!("Unsupported operand type for cmplog");
+            }
+        };
+        Ok(expr)
+    }
+}
+
+impl TracerDisassembler for Disassembler {
+    /// Check if an instruction is a control flow instruction
+    fn last_was_control_flow(&self) -> Result<bool> {
+        if let Some(last) = self.last {
+            if matches!(
+                last.opcode(),
+                Opcode::JA
+                    | Opcode::JB
+                    | Opcode::JG
+                    | Opcode::JGE
+                    | Opcode::JL
+                    | Opcode::JLE
+                    | Opcode::JNA
+                    | Opcode::JNB
+                    | Opcode::JNO
+                    | Opcode::JNP
+                    | Opcode::JNS
+                    | Opcode::JNZ
+                    | Opcode::JO
+                    | Opcode::JP
+                    | Opcode::JS
+                    | Opcode::JZ
+                    | Opcode::LOOP
+                    | Opcode::LOOPNZ
+                    | Opcode::LOOPZ
+            ) {
+                Ok(true)
+            } else {
+                Ok(false)
+            }
+        } else {
+            bail!("No last instruction");
+        }
+    }
+
+    /// Check if an instruction is a call instruction
+    fn last_was_call(&self) -> Result<bool> {
+        if let Some(last) = self.last {
+            Ok(matches!(last.opcode(), Opcode::CALL | Opcode::CALLF))
+        } else {
+            bail!("No last instruction");
+        }
+    }
+
+    /// Check if an instruction is a ret instruction
+    fn last_was_ret(&self) -> Result<bool> {
+        if let Some(last) = self.last {
+            Ok(matches!(last.opcode(), Opcode::RETF | Opcode::RETURN))
+        } else {
+            bail!("No last instruction");
+        }
+    }
+
+    /// Check if an instruction is a cmp instruction
+    fn last_was_cmp(&self) -> Result<bool> {
+        if let Some(last) = self.last {
+            if matches!(
+                last.opcode(),
+                Opcode::CMP
+                    | Opcode::CMPPD
+                    | Opcode::CMPS
+                    | Opcode::CMPSD
+                    | Opcode::CMPSS
+                    | Opcode::CMPXCHG16B
+                    | Opcode::COMISD
+                    | Opcode::COMISS
+                    | Opcode::FCOM
+                    | Opcode::FCOMI
+                    | Opcode::FCOMIP
+                    | Opcode::FCOMP
+                    | Opcode::FCOMPP
+                    | Opcode::FICOM
+                    | Opcode::FICOMP
+                    | Opcode::FTST
+                    | Opcode::FUCOM
+                    | Opcode::FUCOMI
+                    | Opcode::FUCOMIP
+                    | Opcode::FUCOMP
+                    | Opcode::FXAM
+                    | Opcode::PCMPEQB
+                    | Opcode::PCMPEQD
+                    | Opcode::PCMPEQW
+                    | Opcode::PCMPGTB
+                    | Opcode::PCMPGTD
+                    | Opcode::PCMPGTQ
+                    | Opcode::PCMPGTW
+                    | Opcode::PMAXSB
+                    | Opcode::PMAXSD
+                    | Opcode::PMAXUD
+                    | Opcode::PMAXUW
+                    | Opcode::PMINSB
+                    | Opcode::PMINSD
+                    | Opcode::PMINUD
+                    | Opcode::PMINUW
+                    | Opcode::TEST
+                    | Opcode::UCOMISD
+                    | Opcode::UCOMISS
+                    | Opcode::VPCMPB
+                    | Opcode::VPCMPD
+                    | Opcode::VPCMPQ
+                    | Opcode::VPCMPUB
+                    | Opcode::VPCMPUD
+                    | Opcode::VPCMPUQ
+                    | Opcode::VPCMPUW
+                    | Opcode::VPCMPW
+            ) {
+                Ok(true)
+            } else {
+                Ok(false)
+            }
+        } else {
+            bail!("No last instruction");
+        }
+    }
+
+    fn disassemble(&mut self, bytes: &[u8]) -> Result<()> {
+        if let Ok(insn) = self.decoder.decode_slice(bytes) {
+            self.last = Some(insn);
+        } else {
+            bail!("Could not disassemble {:?}", bytes);
+        }
+
+        Ok(())
+    }
+
+    fn cmp(&self) -> Result<Vec<CmpExpr>> {
+        let mut cmp_exprs = Vec::new();
+        if self.last_was_cmp()? {
+            if let Some(last) = self.last {
+                for op_idx in 0..last.operand_count() {
+                    let op = last.operand(op_idx);
+                    let width = if let Some(width) = op.width() {
+                        Some(width)
+                    } else if let Some(width) = last.mem_size() {
+                        width.bytes_size()
+                    } else {
+                        None
+                    };
+                    if let Ok(expr) = CmpExpr::try_from((&op, width)) {
+                        cmp_exprs.push(expr);
+                    }
+                }
+            }
+        } else {
+            bail!("Last was not a compare");
+        }
+        Ok(cmp_exprs)
+    }
+
+    fn cmp_type(&self) -> Result<Vec<CmpType>> {
+        if self.last_was_cmp()? {
+            if let Some(last) = self.last {
+                if let Some(condition) = last.opcode().condition() {
+                    return match condition {
+                        // Overflow
+                        ConditionCode::O => Ok(vec![]),
+                        // No Overflow
+                        ConditionCode::NO => Ok(vec![]),
+                        // Below
+                        ConditionCode::B => Ok(vec![CmpType::Lesser]),
+                        // Above or Equal
+                        ConditionCode::AE => Ok(vec![CmpType::Greater, CmpType::Equal]),
+                        // Zero
+                        ConditionCode::Z => Ok(vec![]),
+                        // Not Zero
+                        ConditionCode::NZ => Ok(vec![]),
+                        // Above
+                        ConditionCode::A => Ok(vec![CmpType::Greater]),
+                        // Below or Equal
+                        ConditionCode::BE => Ok(vec![CmpType::Lesser, CmpType::Equal]),
+                        // Signed
+                        ConditionCode::S => Ok(vec![]),
+                        // Not Signed
+                        ConditionCode::NS => Ok(vec![]),
+                        // Parity
+                        ConditionCode::P => Ok(vec![]),
+                        // No Parity
+                        ConditionCode::NP => Ok(vec![]),
+                        // Less
+                        ConditionCode::L => Ok(vec![CmpType::Lesser]),
+                        // Greater or Equal
+                        ConditionCode::GE => Ok(vec![CmpType::Greater, CmpType::Equal]),
+                        // Greater
+                        ConditionCode::G => Ok(vec![CmpType::Greater]),
+                        // Less or Equal
+                        ConditionCode::LE => Ok(vec![CmpType::Lesser, CmpType::Equal]),
+                    };
+                }
+            }
+        }
+
+        bail!("Last instruction was not a compare");
     }
 }

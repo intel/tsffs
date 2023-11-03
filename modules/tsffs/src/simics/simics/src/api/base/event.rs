@@ -16,7 +16,7 @@ use crate::{
     },
     Error, Result,
 };
-use raw_cstr::AsRawCstr;
+use raw_cstr::raw_cstr;
 use simics_macro::simics_exception;
 use std::{ffi::c_void, ptr::null_mut};
 use typed_builder::TypedBuilder;
@@ -353,7 +353,7 @@ where
 {
     let event = unsafe {
         SIM_register_event(
-            name.as_ref().as_raw_cstr()?,
+            raw_cstr(name.as_ref())?,
             cls,
             flags,
             Some(event_callback_handler),

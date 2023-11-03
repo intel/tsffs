@@ -28,7 +28,7 @@
 #![deny(clippy::unwrap_used)]
 
 use crate::{
-    detector::Detector, driver::Driver, fuzzer::Fuzzer, interface::TsffsInterfaceInternal,
+    detector::Detector, driver::Driver, fuzzer::TsffsFuzzer, interface::TsffsInterfaceInternal,
     tracer::Tracer, traits::Component,
 };
 use getters::Getters;
@@ -53,12 +53,12 @@ pub mod traits;
 pub const CLASS_NAME: &str = env!("CARGO_PKG_NAME");
 
 #[class(name = CLASS_NAME)]
-#[derive(AsConfObject, Getters, Debug)]
+#[derive(AsConfObject, Getters)]
 #[getters(mutable)]
 #[interface]
 pub struct Tsffs {
     driver: Driver<'static>,
-    fuzzer: Fuzzer<'static>,
+    fuzzer: TsffsFuzzer<'static>,
     detector: Detector<'static>,
     tracer: Tracer<'static>,
     stop_hap_handle: HapHandle,
@@ -92,7 +92,7 @@ impl Class for Tsffs {
         Ok(Tsffs::new(
             instance,
             Driver::builder().parent(instance.into()).build(),
-            Fuzzer::builder().parent(instance.into()).build(),
+            TsffsFuzzer::builder().parent(instance.into()).build(),
             Detector::builder().parent(instance.into()).build(),
             Tracer::builder().parent(instance.into()).build(),
             stop_hap_handle,
