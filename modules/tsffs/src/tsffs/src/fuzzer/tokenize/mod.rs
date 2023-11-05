@@ -11,7 +11,7 @@ const STRING_TOKEN_MIN_LEN: usize = 3;
 // PE strings can just be utf-8 as utf-16, so we don't want to double it.
 const WCHAR_STRING_TOKEN_MIN_LEN: usize = 4;
 
-pub fn tokenize_src<I, P>(source_files: I) -> Result<Vec<String>>
+pub fn tokenize_src_file<I, P>(source_files: I) -> Result<Vec<String>>
 where
     I: IntoIterator<Item = P>,
     P: AsRef<Path>,
@@ -70,7 +70,7 @@ fn tokenize_strings(bytes: &[u8]) -> Result<Vec<Vec<u8>>> {
 ///
 /// For PE and COFF executables, we take the reserved sections .data and .rdata as noted in the
 /// [docs](https://learn.microsoft.com/en-us/windows/win32/debug/pe-format#special-sections).
-pub fn tokenize_executable<P>(executable: P) -> Result<Vec<Vec<u8>>>
+pub fn tokenize_executable_file<P>(executable: P) -> Result<Vec<Vec<u8>>>
 where
     P: AsRef<Path>,
 {

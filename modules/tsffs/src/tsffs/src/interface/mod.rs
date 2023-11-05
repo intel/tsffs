@@ -1,21 +1,23 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::{tracer::CoverageMode, Tsffs};
+use crate::{
+    fuzzer::tokenize::{tokenize_executable_file, tokenize_src_file},
+    state::{ManualStart, ManualStartSize, Solution, SolutionKind, Stop, StopReason},
+    Tsffs,
+};
 use ffi_macro::ffi;
 use simics::{
     api::{
         lookup_file, sys::attr_value_t, AsConfObject, AttrValue, AttrValueType, BreakpointId,
         ConfObject, GenericAddress,
     },
-    error, info, Result,
+    info, Result,
 };
 use simics_macro::interface_impl;
 use std::{
-    collections::BTreeMap,
     ffi::{c_char, CStr},
     path::PathBuf,
-    str::FromStr,
 };
 
 // Emit the interface header/dml files in the "modules" directory in the module subdirectory
@@ -80,11 +82,12 @@ impl Tsffs {
     ///   which will be overwritten each execution with the current actual size of the testcase
     pub fn set_start_on_harness(&mut self, start_on_harness: bool) -> Result<()> {
         info!(
-            self.as_conf_object_mut(),
+            self.as_conf_object(),
             "set_start_on_harness({start_on_harness})"
         );
 
-        self.driver_mut().set_start_on_harness(start_on_harness)?;
+        // self.set_start_on_harness(start_on_harness)?;
+        *self.configuration_mut().start_on_harness_mut() = start_on_harness;
 
         Ok(())
     }
@@ -94,11 +97,11 @@ impl Tsffs {
     /// a single binary and selectively enable one of them.
     pub fn set_start_magic_number(&mut self, magic_number: i64) {
         info!(
-            self.as_conf_object_mut(),
+            self.as_conf_object(),
             "set_start_magic_number({magic_number})"
         );
 
-        *self.driver_mut().configuration_mut().magic_start_mut() = magic_number;
+        *self.configuration_mut().magic_start_mut() = magic_number;
     }
 
     /// Interface method to enable or disable the fuzzer to stop automatically when it
@@ -108,11 +111,12 @@ impl Tsffs {
     /// resume execution afterward.
     pub fn set_stop_on_harness(&mut self, stop_on_harness: bool) -> Result<()> {
         info!(
-            self.as_conf_object_mut(),
+            self.as_conf_object(),
             "set_stop_on_harness({stop_on_harness})"
         );
 
-        self.driver_mut().set_stop_on_harness(stop_on_harness)?;
+        // self.set_stop_on_harness(stop_on_harness)?;
+        *self.configuration_mut().stop_on_harness_mut() = stop_on_harness;
 
         Ok(())
     }
@@ -122,11 +126,11 @@ impl Tsffs {
     /// a single binary and selectively enable one of them.
     pub fn set_stop_magic_number(&mut self, magic_number: i64) {
         info!(
-            self.as_conf_object_mut(),
+            self.as_conf_object(),
             "set_stop_magic_number({magic_number})"
         );
 
-        *self.driver_mut().configuration_mut().magic_stop_mut() = magic_number;
+        *self.configuration_mut().magic_stop_mut() = magic_number;
     }
 
     /// Interface method to manually start the fuzzing loop by taking a snapshot, saving the
@@ -148,14 +152,20 @@ impl Tsffs {
         cpu: *mut ConfObject,
         testcase_address: GenericAddress,
         size_address: GenericAddress,
-        virt: bool,
     ) -> Result<()> {
         info!(
-            self.as_conf_object_mut(),
-            "start({testcase_address:#x}, {size_address:#x}, {virt})"
+            self.as_conf_object(),
+            "start({testcase_address:#x}, {size_address:#x})"
         );
-        self.driver_mut()
-            .on_start(cpu, testcase_address, size_address, virt)?;
+
+        self.stop_simulation(StopReason::ManualStart(
+            ManualStart::builder()
+                .processor(cpu)
+                .buffer(testcase_address)
+                .size(ManualStartSize::SizeAddress(size_address))
+                .build(),
+        ))?;
+
         Ok(())
     }
 
@@ -175,14 +185,20 @@ impl Tsffs {
         cpu: *mut ConfObject,
         testcase_address: GenericAddress,
         maximum_size: u32,
-        virt: bool,
     ) -> Result<()> {
         info!(
-            self.as_conf_object_mut(),
-            "start_with_maximum_size({testcase_address:#x}, {maximum_size:#x}, {virt})"
+            self.as_conf_object(),
+            "start_with_maximum_size({testcase_address:#x}, {maximum_size:#x})"
         );
-        self.driver_mut()
-            .on_start_with_maximum_size(cpu, testcase_address, maximum_size, virt)?;
+
+        self.stop_simulation(StopReason::ManualStart(
+            ManualStart::builder()
+                .processor(cpu)
+                .buffer(testcase_address)
+                .size(ManualStartSize::MaximumSize(maximum_size as u64))
+                .build(),
+        ))?;
+
         Ok(())
     }
 
@@ -193,9 +209,9 @@ impl Tsffs {
     /// breakpoints or other complex conditions. This method does
     /// not need to be called if `set_stop_on_harness` is enabled.
     pub fn stop(&mut self) -> Result<()> {
-        info!(self.as_conf_object_mut(), "stop");
+        info!(self.as_conf_object(), "stop");
 
-        self.driver_mut().on_stop()?;
+        self.stop_simulation(StopReason::ManualStop(Stop::default()))?;
 
         Ok(())
     }
@@ -207,9 +223,11 @@ impl Tsffs {
     pub fn solution(&mut self, id: u64, message: *mut c_char) -> Result<()> {
         let message = unsafe { CStr::from_ptr(message) }.to_str()?.to_string();
 
-        info!(self.as_conf_object_mut(), "solution({id:#x}, {message})");
+        info!(self.as_conf_object(), "solution({id:#x}, {message})");
 
-        self.detector_mut().on_solution(id, &message)?;
+        self.stop_simulation(StopReason::Solution(
+            Solution::builder().kind(SolutionKind::Manual).build(),
+        ))?;
 
         Ok(())
     }
@@ -217,16 +235,16 @@ impl Tsffs {
     /// Interface method to set the fuzzer to use the experimental snapshots interface
     /// instead of the micro checkpoints interface for snapshot save and restore operations
     pub fn set_use_snapshots(&mut self, use_snapshots: bool) {
-        info!(self.as_conf_object_mut(), "use_snapshots({use_snapshots})");
+        info!(self.as_conf_object(), "use_snapshots({use_snapshots})");
 
-        *self.driver_mut().configuration_mut().use_snapshots_mut() = use_snapshots;
+        *self.configuration_mut().use_snapshots_mut() = use_snapshots;
     }
 
     /// Interface method to set the execution timeout in seconds
     pub fn set_timeout(&mut self, timeout: f64) {
-        info!(self.as_conf_object_mut(), "set_timeout({timeout})");
+        info!(self.as_conf_object(), "set_timeout({timeout})");
 
-        *self.detector_mut().configuration_mut().timeout_mut() = timeout;
+        *self.configuration_mut().timeout_mut() = timeout;
     }
 
     /// Interface method to add an exception-type solution number to the set of
@@ -237,15 +255,9 @@ impl Tsffs {
     /// For example on x86_64, `add_exception_solution(14)` would treat any page fault as
     /// a solution.
     pub fn add_exception_solution(&mut self, exception: i64) {
-        info!(
-            self.as_conf_object_mut(),
-            "add_exception_solution({exception})"
-        );
+        info!(self.as_conf_object(), "add_exception_solution({exception})");
 
-        self.detector_mut()
-            .configuration_mut()
-            .exceptions_mut()
-            .insert(exception);
+        self.configuration_mut().exceptions_mut().insert(exception);
     }
 
     /// Interface method to remove an exception-type solution number from the set of
@@ -254,14 +266,11 @@ impl Tsffs {
     /// reported as a solution.
     pub fn remove_exception_solution(&mut self, exception: i64) {
         info!(
-            self.as_conf_object_mut(),
+            self.as_conf_object(),
             "remove_exception_solution({exception})"
         );
 
-        self.detector_mut()
-            .configuration_mut()
-            .exceptions_mut()
-            .remove(&exception);
+        self.configuration_mut().exceptions_mut().remove(&exception);
     }
 
     /// Set whether all CPU exceptions are considered solutions. If set to true, any
@@ -269,26 +278,22 @@ impl Tsffs {
     /// not desired.
     pub fn set_all_exceptions_are_solutions(&mut self, all_exceptions_are_solutions: bool) {
         info!(
-            self.as_conf_object_mut(),
+            self.as_conf_object(),
             "set_all_exceptions_are_solutions({all_exceptions_are_solutions})"
         );
 
-        *self
-            .detector_mut()
-            .configuration_mut()
-            .all_exceptions_are_solutions_mut() = all_exceptions_are_solutions;
+        *self.configuration_mut().all_exceptions_are_solutions_mut() = all_exceptions_are_solutions;
     }
 
     /// Set a specific breakpoint number to be considered a solution. If a breakpoint with
     /// this ID is encountered during fuzzing, the input will be saved as a solution.
     pub fn add_breakpoint_solution(&mut self, breakpoint: BreakpointId) {
         info!(
-            self.as_conf_object_mut(),
+            self.as_conf_object(),
             "add_breakpoint_solution({breakpoint})"
         );
 
-        self.detector_mut()
-            .configuration_mut()
+        self.configuration_mut()
             .breakpoints_mut()
             .insert(breakpoint);
     }
@@ -297,11 +302,10 @@ impl Tsffs {
     /// this ID is encountered during fuzzing, the input will be saved as a solution.
     pub fn remove_breakpoint_solution(&mut self, breakpoint: BreakpointId) {
         info!(
-            self.as_conf_object_mut(),
+            self.as_conf_object(),
             "remove_breakpoint_solution({breakpoint})"
         );
-        self.detector_mut()
-            .configuration_mut()
+        self.configuration_mut()
             .breakpoints_mut()
             .remove(&breakpoint);
     }
@@ -311,30 +315,12 @@ impl Tsffs {
     /// a solution.
     pub fn set_all_breakpoints_are_solutions(&mut self, all_breakpoints_are_solutions: bool) {
         info!(
-            self.as_conf_object_mut(),
+            self.as_conf_object(),
             "set_all_breakpoints_are_solutions({all_breakpoints_are_solutions})"
         );
 
-        *self
-            .detector_mut()
-            .configuration_mut()
-            .all_breakpoints_are_solutions_mut() = all_breakpoints_are_solutions;
-    }
-
-    /// Set the coverage tracing mode to either "hit-count" (the default) or "once". The hit-count
-    /// mode is slower, but much more accurate. "once" mode is faster, but is unable to capture
-    /// coverage changes from multiple executions of the same code path (e.g. loops).
-    pub fn set_tracing_mode(&mut self, mode: *mut c_char) -> Result<()> {
-        let mode = unsafe { CStr::from_ptr(mode) }.to_str()?.to_string();
-
-        info!(self.as_conf_object_mut(), "set_tracing_mode({mode})");
-
-        match CoverageMode::from_str(&mode) {
-            Ok(mode) => *self.tracer_mut().configuration_mut().coverage_mode_mut() = mode,
-            Err(e) => error!(self.as_conf_object_mut(), "Error setting tracing mode: {e}"),
-        }
-
-        Ok(())
+        *self.configuration_mut().all_breakpoints_are_solutions_mut() =
+            all_breakpoints_are_solutions;
     }
 
     /// Set whether cmplog is enabled or disabled. Cmplog adds stages to trace and
@@ -345,9 +331,9 @@ impl Tsffs {
     /// particularly well suited for software which performs magic value checks, large
     /// value and string comparisons, and sums.
     pub fn set_cmplog_enabled(&mut self, enabled: bool) {
-        info!(self.as_conf_object_mut(), "set_cmplog_enabled({enabled})");
+        info!(self.as_conf_object(), "set_cmplog_enabled({enabled})");
 
-        *self.tracer_mut().configuration_mut().cmplog_mut() = enabled;
+        *self.configuration_mut().cmplog_mut() = enabled;
     }
 
     /// Set the directory path where the input corpus should be taken from when the
@@ -365,12 +351,12 @@ impl Tsffs {
         );
 
         info!(
-            self.as_conf_object_mut(),
+            self.as_conf_object(),
             "set_corpus_directory({})",
             corpus_directory.display(),
         );
 
-        *self.fuzzer_mut().configuration_mut().corpus_directory_mut() = corpus_directory;
+        *self.configuration_mut().corpus_directory_mut() = corpus_directory;
 
         Ok(())
     }
@@ -388,15 +374,12 @@ impl Tsffs {
         );
 
         info!(
-            self.as_conf_object_mut(),
+            self.as_conf_object(),
             "set_solutions_directory({})",
             solutions_directory.display()
         );
 
-        *self
-            .fuzzer_mut()
-            .configuration_mut()
-            .solutions_directory_mut() = solutions_directory;
+        *self.configuration_mut().solutions_directory_mut() = solutions_directory;
 
         Ok(())
     }
@@ -409,13 +392,10 @@ impl Tsffs {
     /// useful for demonstration and test purposes.
     pub fn set_generate_random_corpus(&mut self, generate_random_corpus: bool) -> Result<()> {
         info!(
-            self.as_conf_object_mut(),
+            self.as_conf_object(),
             "set_generate_random_corpus({generate_random_corpus})"
         );
-        *self
-            .fuzzer_mut()
-            .configuration_mut()
-            .generate_random_corpus_mut() = generate_random_corpus;
+        *self.configuration_mut().generate_random_corpus_mut() = generate_random_corpus;
 
         Ok(())
     }
@@ -424,26 +404,15 @@ impl Tsffs {
     /// executed, and includes all stages (e.g. calibration). This should typically not be used
     /// to limit the time of a fuzzing campaign, and is only useful for demonstration purposes.
     pub fn set_iterations(&mut self, iterations: usize) -> Result<()> {
-        info!(self.as_conf_object_mut(), "set_iterations({iterations})");
-        *self.driver_mut().configuration_mut().iterations_mut() = Some(iterations);
+        info!(self.as_conf_object(), "set_iterations({iterations})");
+        *self.configuration_mut().iterations_mut() = Some(iterations);
 
         Ok(())
     }
 
     pub fn get_configuration(&mut self) -> Result<attr_value_t> {
-        Ok(AttrValue::try_from(
-            [
-                (
-                    "detector".into(),
-                    self.detector().configuration().try_into()?,
-                ),
-                ("driver".into(), self.driver().configuration().try_into()?),
-                ("tracer".into(), self.tracer().configuration().try_into()?),
-            ]
-            .into_iter()
-            .collect::<BTreeMap<AttrValueType, AttrValueType>>(),
-        )?
-        .into())
+        let value: AttrValueType = self.configuration().clone().try_into()?;
+        Ok(AttrValue::try_from(value)?.into())
     }
 
     /// Tokenize an executable file and add extracted tokens to token mutations for the fuzzer
@@ -455,12 +424,14 @@ impl Tsffs {
         let executable_path = lookup_file(simics_path)?;
 
         info!(
-            self.as_conf_object_mut(),
+            self.as_conf_object(),
             "tokenize_executable({})",
             executable_path.display()
         );
 
-        self.fuzzer_mut().tokenize_executable(executable_path)?;
+        self.configuration_mut()
+            .tokens_mut()
+            .extend(tokenize_executable_file(executable_path)?);
 
         Ok(())
     }
@@ -471,12 +442,17 @@ impl Tsffs {
 
         let source_path = lookup_file(simics_path)?;
         info!(
-            self.as_conf_object_mut(),
+            self.as_conf_object(),
             "tokenize_src({})",
             source_path.display()
         );
 
-        self.fuzzer_mut().tokenize_src(source_path)?;
+        self.configuration_mut().tokens_mut().extend(
+            tokenize_src_file([source_path])?
+                .iter()
+                .map(|e| e.as_bytes().to_vec())
+                .collect::<Vec<_>>(),
+        );
 
         Ok(())
     }
@@ -492,12 +468,14 @@ impl Tsffs {
 
         let token_file = lookup_file(simics_path)?;
         info!(
-            self.as_conf_object_mut(),
+            self.as_conf_object(),
             "add_token_file({})",
             token_file.display()
         );
 
-        self.fuzzer_mut().add_token_file(token_file)?;
+        if token_file.is_file() {
+            self.configuration_mut().token_files_mut().push(token_file);
+        }
 
         Ok(())
     }
@@ -506,11 +484,11 @@ impl Tsffs {
     /// is used for tracing.
     pub fn add_trace_processor(&mut self, cpu: *mut ConfObject) -> Result<()> {
         info!(
-            self.as_conf_object_mut(),
+            self.as_conf_object(),
             "add_trace_processor({:#x})", cpu as usize
         );
 
-        self.tracer_mut().add_trace_processor(cpu)?;
+        self.add_processor(cpu, false)?;
 
         Ok(())
     }

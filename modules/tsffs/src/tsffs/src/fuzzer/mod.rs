@@ -1,9 +1,8 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
-mod tokenize;
-
-use anyhow::{anyhow, bail, Result};
+use crate::Tsffs;
+use anyhow::{anyhow, Result};
 use getters::Getters;
 use libafl::{
     feedback_or, feedback_or_fast,
@@ -34,142 +33,23 @@ use libafl_bolts::{
     AsMutSlice, AsSlice,
 };
 use libafl_targets::{AFLppCmpLogObserver, AFLppCmplogTracingStage};
-use simics::{
-    api::{lookup_file, AsConfObject},
-    info,
-};
-use simics_macro::TryIntoAttrValueTypeDict;
+use simics::{api::AsConfObject, info};
 use std::{
-    cell::RefCell,
-    path::{Path, PathBuf},
-    slice::from_raw_parts_mut,
-    sync::mpsc::{channel, Receiver, Sender},
-    thread::{spawn, JoinHandle},
-    time::Duration,
+    cell::RefCell, slice::from_raw_parts_mut, sync::mpsc::channel, thread::spawn, time::Duration,
 };
-use typed_builder::TypedBuilder;
 
-use crate::{
-    state::{SolutionKind, StopReason},
-    tracer::Tracer,
-    traits::Component,
-    Tsffs,
-};
-use tokenize::{tokenize_executable, tokenize_src};
+pub mod tokenize;
 
-impl FuzzerConfiguration {
-    pub const DEFAULT_CORPUS_DIRECTORY_NAME: &'static str = "corpus";
-    pub const DEFAULT_SOLUTIONS_DIRECTORY_NAME: &'static str = "solutions";
-    pub const DEFAULT_EXECUTOR_TIMEOUT: u64 = 60;
-    pub const INITIAL_RANDOM_CORPUS_SIZE: usize = 8;
-}
-#[derive(TypedBuilder, Getters, Clone, Debug, TryIntoAttrValueTypeDict)]
-#[getters(mutable)]
-pub struct FuzzerConfiguration {
-    #[builder(default)]
-    tokens: Vec<Vec<u8>>,
-    #[builder(default = lookup_file("%simics%").expect("No simics project root found").join(FuzzerConfiguration::DEFAULT_CORPUS_DIRECTORY_NAME))]
-    corpus_directory: PathBuf,
-    #[builder(default = lookup_file("%simics%").expect("No simics project root found").join(FuzzerConfiguration::DEFAULT_SOLUTIONS_DIRECTORY_NAME))]
-    solutions_directory: PathBuf,
-    #[builder(default = false)]
-    generate_random_corpus: bool,
-    #[builder(default)]
-    token_files: Vec<PathBuf>,
-    #[builder(default = FuzzerConfiguration::DEFAULT_EXECUTOR_TIMEOUT)]
-    /// The executor timeout in seconds
-    executor_timeout: u64,
-    #[builder(default = FuzzerConfiguration::INITIAL_RANDOM_CORPUS_SIZE)]
-    initial_random_corpus_size: usize,
-}
-
-impl Default for FuzzerConfiguration {
-    fn default() -> Self {
-        FuzzerConfiguration::builder().build()
-    }
-}
-
-#[derive(Clone)]
-pub enum ModuleMessage {
-    Status(StopReason),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum FuzzerMessage {
-    Testcase { testcase: Vec<u8>, cmplog: bool },
+#[derive(Getters, Debug, Clone, PartialEq, Eq)]
+pub struct Testcase {
+    testcase: Vec<u8>,
+    cmplog: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ShutdownMessage {}
 
-#[derive(TypedBuilder, Getters)]
-#[getters(mutable)]
-pub struct TsffsFuzzer<'a>
-where
-    'a: 'static,
-{
-    parent: &'a mut Tsffs,
-    #[builder(default)]
-    configuration: FuzzerConfiguration,
-    #[builder(default)]
-    tx: Option<Sender<ModuleMessage>>,
-    #[builder(default)]
-    rx: Option<Receiver<FuzzerMessage>>,
-    #[builder(default)]
-    shutdown: Option<Sender<ShutdownMessage>>,
-    #[builder(default)]
-    fuzz_thread: Option<JoinHandle<Result<()>>>,
-}
-
-impl<'a> TsffsFuzzer<'a> {
-    /// Tokenize an executable into the configuration. Tokens will be used on
-    /// fuzzer initialization.
-    pub fn tokenize_executable<P>(&mut self, executable: P) -> Result<()>
-    where
-        P: AsRef<Path>,
-    {
-        self.configuration_mut()
-            .tokens_mut()
-            .extend(tokenize_executable(executable)?);
-        Ok(())
-    }
-
-    /// Tokenize a source file into the configuration. Tokens will be used on
-    /// fuzzer initialization.
-    pub fn tokenize_src<P>(&mut self, src: P) -> Result<()>
-    where
-        P: AsRef<Path>,
-    {
-        self.configuration_mut().tokens_mut().extend(
-            tokenize_src([src])?
-                .iter()
-                .map(|e| e.as_bytes().to_vec())
-                .collect::<Vec<_>>(),
-        );
-        Ok(())
-    }
-
-    /// Add a token file
-    pub fn add_token_file<P>(&mut self, file: P) -> Result<()>
-    where
-        P: AsRef<Path>,
-    {
-        if file.as_ref().is_file() {
-            self.configuration_mut()
-                .token_files_mut()
-                .push(file.as_ref().to_path_buf());
-        } else {
-            bail!(
-                "Token file {} is not a file or did not exist",
-                file.as_ref().display()
-            );
-        }
-
-        Ok(())
-    }
-}
-
-impl<'a> TsffsFuzzer<'a> {
+impl Tsffs {
     const EDGES_OBSERVER_NAME: &'static str = "coverage";
     const AFLPP_CMP_OBSERVER_NAME: &'static str = "aflpp_cmplog";
     const CMPLOG_OBSERVER_NAME: &'static str = "cmplog";
@@ -178,108 +58,71 @@ impl<'a> TsffsFuzzer<'a> {
     const CORPUS_CACHE_SIZE: usize = 4096;
 
     /// Start the fuzzing thread.
-    pub fn start(&mut self) -> Result<()> {
-        info!(
-            self.parent_mut().as_conf_object_mut(),
-            "Starting fuzzer thread"
-        );
+    pub fn start_fuzzer_thread(&mut self) -> Result<()> {
+        info!(self.as_conf_object_mut(), "Starting fuzzer thread");
 
-        let (tx, orx) = channel::<ModuleMessage>();
-        let (otx, rx) = channel::<FuzzerMessage>();
+        let (tx, orx) = channel::<ExitKind>();
+        let (otx, rx) = channel::<Testcase>();
         let (stx, srx) = channel::<ShutdownMessage>();
 
-        self.tx = Some(tx);
-        self.rx = Some(rx);
-        self.shutdown = Some(stx);
+        self.fuzzer_tx = Some(tx);
+        self.fuzzer_rx = Some(rx);
+        self.fuzzer_shutdown = Some(stx);
 
         let client = RefCell::new((otx, orx));
         let configuration = self.configuration().clone();
         let coverage_map = unsafe {
             from_raw_parts_mut(
-                self.parent_mut()
-                    .tracer_mut()
-                    .coverage_map_mut()
-                    .as_mut_slice()
-                    .as_mut_ptr(),
-                Tracer::COVERAGE_MAP_SIZE,
+                self.coverage_map_mut().as_mut_slice().as_mut_ptr(),
+                Self::COVERAGE_MAP_SIZE,
             )
         };
-        let aflpp_cmp_map =
-            Box::leak(unsafe { Box::from_raw(*self.parent().tracer().aflpp_cmp_map_ptr()) });
-        let aflpp_cmp_map_dup =
-            Box::leak(unsafe { Box::from_raw(*self.parent().tracer().aflpp_cmp_map_ptr()) });
-        let cmplog_enabled = *self.parent().tracer().configuration().cmplog();
+        let aflpp_cmp_map = Box::leak(unsafe { Box::from_raw(*self.aflpp_cmp_map_ptr()) });
+        let aflpp_cmp_map_dup = Box::leak(unsafe { Box::from_raw(*self.aflpp_cmp_map_ptr()) });
+        let cmplog_enabled = *self.configuration().cmplog();
 
         // NOTE: We do *not* use `run_in_thread` because it causes the fuzzer to block when HAPs arrive
         // which prevents forward progress.
         *self.fuzz_thread_mut() = Some(spawn(move || -> Result<()> {
             let mut harness = |input: &BytesInput| {
                 let testcase = input.target_bytes().as_slice().to_vec();
-                println!("Sending testcase {:?}", testcase);
+                // println!("Sending testcase {:?}", testcase);
                 client
                     .borrow_mut()
                     .0
-                    .send(FuzzerMessage::Testcase {
+                    .send(Testcase {
                         testcase,
                         cmplog: false,
                     })
                     .expect("Failed to send testcase message");
-                println!("Sent testcase, waiting for status");
+                // println!("Sent testcase, waiting for status");
                 let status = match client.borrow_mut().1.recv() {
                     Err(e) => panic!("Error receiving status: {e}"),
-                    Ok(m) => match m {
-                        ModuleMessage::Status(s) => match s {
-                            // Some reasons are not valid as message status reasons
-                            StopReason::MagicStart(_) | StopReason::Start(_) => {
-                                panic!("Unexpected status type {:?}", s);
-                            }
-                            StopReason::MagicStop(_) | StopReason::Stop(_) => ExitKind::Ok,
-                            StopReason::Solution(solution) => match solution.kind() {
-                                SolutionKind::Timeout => ExitKind::Timeout,
-                                SolutionKind::Exception => ExitKind::Crash,
-                                SolutionKind::Breakpoint => ExitKind::Crash,
-                                SolutionKind::Manual => ExitKind::Crash,
-                            },
-                        },
-                    },
+                    Ok(m) => m,
                 };
-                println!("Got status: {:?}", status);
+                // println!("Got status: {:?}", status);
 
                 status
             };
 
             let mut aflpp_cmp_harness = |input: &BytesInput| {
                 let testcase = input.target_bytes().as_slice().to_vec();
-                println!("Sending testcase {:?}", testcase);
+                // println!("Sending testcase {:?}", testcase);
                 client
                     .borrow_mut()
                     .0
-                    .send(FuzzerMessage::Testcase {
+                    .send(Testcase {
                         testcase,
                         cmplog: true,
                     })
                     .expect("Failed to send testcase message");
-                println!("Sent testcase, waiting for status");
+                // println!("Sent testcase, waiting for status");
 
                 let status = match client.borrow_mut().1.recv() {
                     Err(e) => panic!("Error receiving status: {e}"),
-                    Ok(m) => match m {
-                        ModuleMessage::Status(s) => match s {
-                            // Some reasons are not valid as message status reasons
-                            StopReason::MagicStart(_) | StopReason::Start(_) => {
-                                panic!("Unexpected status type {:?}", s);
-                            }
-                            StopReason::MagicStop(_) | StopReason::Stop(_) => ExitKind::Ok,
-                            StopReason::Solution(solution) => match solution.kind() {
-                                SolutionKind::Timeout => ExitKind::Timeout,
-                                SolutionKind::Exception => ExitKind::Crash,
-                                SolutionKind::Breakpoint => ExitKind::Crash,
-                                SolutionKind::Manual => ExitKind::Crash,
-                            },
-                        },
-                    },
+                    Ok(m) => m,
                 };
-                println!("Got status: {:?}", status);
+                // println!("Got status: {:?}", status);
 
                 status
             };
@@ -496,55 +339,52 @@ impl<'a> TsffsFuzzer<'a> {
     }
 
     pub fn send_shutdown(&mut self) -> Result<()> {
-        if let Some(stx) = self.shutdown_mut() {
+        if let Some(stx) = self.fuzzer_shutdown_mut() {
             stx.send(ShutdownMessage::default())?;
         }
 
         Ok(())
     }
 
-    pub fn get_message(&mut self) -> Result<FuzzerMessage> {
-        info!(
-            self.parent_mut().as_conf_object_mut(),
-            "Getting message from fuzzer"
-        );
-        let message = self
-            .rx_mut()
+    pub fn get_testcase(&mut self) -> Result<Testcase> {
+        info!(self.as_conf_object(), "Getting message from fuzzer");
+        let testcase = self
+            .fuzzer_rx_mut()
             .as_mut()
             .ok_or_else(|| anyhow!("Fuzzer receiver not set"))?
             .recv()
             .map_err(|e| anyhow!("Error receiving from fuzzer: {e}"))?;
         info!(
-            self.parent_mut().as_conf_object_mut(),
-            "Got message from fuzzer {:?}", message
+            self.as_conf_object(),
+            "Got message from fuzzer {:?}", testcase
         );
-        Ok(message)
+        Ok(testcase)
     }
 }
 
-impl<'a> Component for TsffsFuzzer<'a> {
-    fn on_init(&mut self) -> Result<()> {
-        Ok(())
-    }
-
-    fn on_simulation_stopped(&mut self, reason: &StopReason) -> Result<()> {
-        info!(
-            self.parent_mut().as_conf_object_mut(),
-            "Stopped in fuzzer with reason {:?}", reason
-        );
-        match reason {
-            StopReason::MagicStart(_) | StopReason::Start(_) => {
-                if self.fuzz_thread().is_none() {
-                    self.start()?;
-                }
-            }
-            StopReason::MagicStop(_) | StopReason::Stop(_) | StopReason::Solution(_) => {
-                if let Some(tx) = self.tx().as_ref() {
-                    tx.send(ModuleMessage::Status(reason.clone()))
-                        .map_err(|e| anyhow!("Failed to send status message: {e}"))?;
-                }
-            }
-        }
-        Ok(())
-    }
-}
+// impl Tsffs {
+//     fn on_init(&mut self) -> Result<()> {
+//         Ok(())
+//     }
+//
+//     fn on_simulation_stopped(&mut self, reason: &StopReason) -> Result<()> {
+//         info!(
+//             self.as_conf_object(),
+//             "Stopped in fuzzer with reason {:?}", reason
+//         );
+//         match reason {
+//             StopReason::MagicStart(_) | StopReason::Start(_) => {
+//                 if self.fuzz_thread().is_none() {
+//                     self.start()?;
+//                 }
+//             }
+//             StopReason::MagicStop(_) | StopReason::Stop(_) | StopReason::Solution(_) => {
+//                 if let Some(tx) = self.tx().as_ref() {
+//                     tx.send(ModuleMessage::Status(reason.clone()))
+//                         .map_err(|e| anyhow!("Failed to send status message: {e}"))?;
+//                 }
+//             }
+//         }
+//         Ok(())
+//     }
+// }

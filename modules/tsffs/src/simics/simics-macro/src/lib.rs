@@ -365,16 +365,13 @@ fn raw_impl(
             #[allow(clippy::not_unsafe_ptr_arg_deref)]
             fn new(
                 obj: *mut simics::api::ConfObject,
-                #(#field_parameters),*
-            ) -> *mut simics::api::ConfObject  {
-
-                let obj_ptr: *mut simics::api::ConfObject = obj.into();
-                let ptr: *mut #name #ty_generics = obj_ptr as *mut #name #ty_generics;
-
-                #(#field_initializers)*
-
-                (ptr as *mut simics::api::ConfObject).into()
+                value: #name #ty_generics
+            ) -> *mut simics::api::ConfObject {
+                let ptr: *mut #name #ty_generics = obj as *mut #name #ty_generics;
+                unsafe { std::ptr::addr_of_mut!(*ptr).write(value) };
+                ptr as *mut simics::api::ConfObject
             }
+
         }
     }
 }

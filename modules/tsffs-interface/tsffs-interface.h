@@ -16,8 +16,8 @@ SIM_INTERFACE(tsffs) {
     void (*set_start_magic_number)(conf_object_t * obj, int64 magic_number);
     void (*set_stop_on_harness)(conf_object_t * obj, bool stop_on_harness);
     void (*set_stop_magic_number)(conf_object_t * obj, int64 magic_number);
-    void (*start)(conf_object_t * obj, conf_object_t * cpu, generic_address_t testcase_address, generic_address_t size_address, bool virt);
-    void (*start_with_maximum_size)(conf_object_t * obj, conf_object_t * cpu, generic_address_t testcase_address, uint32 maximum_size, bool virt);
+    void (*start)(conf_object_t * obj, conf_object_t * cpu, generic_address_t testcase_address, generic_address_t size_address);
+    void (*start_with_maximum_size)(conf_object_t * obj, conf_object_t * cpu, generic_address_t testcase_address, uint32 maximum_size);
     void (*stop)(conf_object_t * obj);
     void (*solution)(conf_object_t * obj, uint64 id, char * message);
     void (*set_use_snapshots)(conf_object_t * obj, bool use_snapshots);
@@ -28,7 +28,6 @@ SIM_INTERFACE(tsffs) {
     void (*add_breakpoint_solution)(conf_object_t * obj, breakpoint_id_t breakpoint);
     void (*remove_breakpoint_solution)(conf_object_t * obj, breakpoint_id_t breakpoint);
     void (*set_all_breakpoints_are_solutions)(conf_object_t * obj, bool all_breakpoints_are_solutions);
-    void (*set_tracing_mode)(conf_object_t * obj, char * mode);
     void (*set_cmplog_enabled)(conf_object_t * obj, bool enabled);
     void (*set_corpus_directory)(conf_object_t * obj, char * corpus_directory);
     void (*set_solutions_directory)(conf_object_t * obj, char * solutions_directory);

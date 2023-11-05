@@ -7,12 +7,14 @@ use self::{
     risc_v::RISCVArchitectureOperations, x86::X86ArchitectureOperations,
     x86_64::X86_64ArchitectureOperations,
 };
-use crate::{
-    driver::{StartBuffer, StartSize},
-    tracer::TraceEntry,
-};
+use crate::{tracer::TraceEntry, traits::TracerDisassembler, StartBuffer, StartSize};
 use anyhow::{bail, Result};
-use simics::api::{sys::instruction_handle_t, ConfObject, GenericAddress};
+use raw_cstr::AsRawCstr;
+use simics::api::{
+    read_phys_memory, sys::instruction_handle_t, write_phys_memory, Access, ConfObject,
+    CpuInstructionQueryInterface, CpuInstrumentationSubscribeInterface, CycleInterface,
+    GenericAddress, IntRegisterInterface, ProcessorInfoV2Interface,
+};
 use std::fmt::Debug;
 
 pub mod arc;
@@ -44,31 +46,153 @@ impl Debug for Architecture {
 }
 /// Each architecture must provide a struct that performs architecture-specific operations
 pub trait ArchitectureOperations {
+    const DEFAULT_TESTCASE_AREA_REGISTER_NAME: &'static str;
+    const DEFAULT_TESTCASE_SIZE_REGISTER_NAME: &'static str;
+
     fn new(cpu: *mut ConfObject) -> Result<Self>
     where
         Self: Sized;
+    fn cpu(&self) -> *mut ConfObject;
+    fn disassembler(&mut self) -> &mut dyn TracerDisassembler;
+    fn int_register(&mut self) -> &mut IntRegisterInterface;
+    fn processor_info_v2(&mut self) -> &mut ProcessorInfoV2Interface;
+    fn cpu_instruction_query(&mut self) -> &mut CpuInstructionQueryInterface;
+    fn cpu_instrumentation_subscribe(&mut self) -> &mut CpuInstrumentationSubscribeInterface;
+    fn cycle(&mut self) -> &mut CycleInterface;
+
     /// Returns the address and whether the address is virtual for the testcase buffer used by
     /// the magic start functionality
-    fn get_magic_start_buffer(&mut self) -> Result<StartBuffer>;
+    fn get_magic_start_buffer(&mut self) -> Result<StartBuffer> {
+        let number = self
+            .int_register()
+            .get_number(Self::DEFAULT_TESTCASE_AREA_REGISTER_NAME.as_raw_cstr()?)?;
+
+        let logical_address = self.int_register().read(number)?;
+
+        let physical_address_block = self
+            .processor_info_v2()
+            // NOTE: Do we need to support segmented memory via logical_to_physical?
+            .logical_to_physical(logical_address, Access::Sim_Access_Read)?;
+
+        // NOTE: -1 signals no valid mapping, but this is equivalent to u64::MAX
+        if physical_address_block.valid == 0 {
+            bail!("Invalid linear address found in magic start buffer register {number}: {logical_address:#x}");
+        } else {
+            Ok(StartBuffer::builder()
+                .physical_address(physical_address_block.address)
+                .virt(physical_address_block.address != logical_address)
+                .build())
+        }
+    }
     /// Returns the memory pointed to by the magic start functionality containing the maximum
     /// size of an input testcase
-    fn get_magic_start_size(&mut self) -> Result<StartSize>;
+    fn get_magic_start_size(&mut self) -> Result<StartSize> {
+        let number = self
+            .int_register()
+            .get_number(Self::DEFAULT_TESTCASE_SIZE_REGISTER_NAME.as_raw_cstr()?)?;
+        let logical_address = self.int_register().read(number)?;
+        let physical_address_block = self
+            .processor_info_v2()
+            // NOTE: Do we need to support segmented memory via logical_to_physical?
+            .logical_to_physical(logical_address, Access::Sim_Access_Read)?;
+
+        // NOTE: -1 signals no valid mapping, but this is equivalent to u64::MAX
+        if physical_address_block.valid == 0 {
+            bail!("Invalid linear address found in magic start buffer register {number}: {logical_address:#x}");
+        }
+
+        let size_size = self.processor_info_v2().get_logical_address_width()? / u8::BITS as i32;
+        let size = read_phys_memory(self.cpu(), physical_address_block.address, size_size)?;
+
+        Ok(StartSize::builder()
+            .physical_address((
+                physical_address_block.address,
+                physical_address_block.address != logical_address,
+            ))
+            .initial_size(size)
+            .build())
+    }
+    fn get_manual_start_buffer(&mut self, buffer_address: GenericAddress) -> Result<StartBuffer> {
+        let physical_address_block = self
+            .processor_info_v2()
+            // NOTE: Do we need to support segmented memory via logical_to_physical?
+            .logical_to_physical(buffer_address, Access::Sim_Access_Read)?;
+
+        if physical_address_block.valid == 0 {
+            bail!(
+                "Invalid linear address for given buffer address {:#x}",
+                buffer_address
+            );
+        } else {
+            Ok(StartBuffer::builder()
+                .physical_address(physical_address_block.address)
+                .virt(physical_address_block.address != buffer_address)
+                .build())
+        }
+    }
     /// Returns the initial start size for non-magic instructions by reading it from a given
     /// (possibly virtual) address
-    fn get_start_size(&mut self, size_address: GenericAddress, virt: bool) -> Result<StartSize>;
+    fn get_manual_start_size(&mut self, size_address: GenericAddress) -> Result<StartSize> {
+        let physical_address_block = self
+            .processor_info_v2()
+            // NOTE: Do we need to support segmented memory via logical_to_physical?
+            .logical_to_physical(size_address, Access::Sim_Access_Read)?;
+
+        if physical_address_block.valid == 0 {
+            bail!("Invalid linear address given for start buffer : {size_address:#x}");
+        }
+
+        let size_size = self.processor_info_v2().get_logical_address_width()? / u8::BITS as i32;
+        let size = read_phys_memory(self.cpu(), physical_address_block.address, size_size)?;
+
+        Ok(StartSize::builder()
+            .physical_address((
+                physical_address_block.address,
+                physical_address_block.address != size_address,
+            ))
+            .initial_size(size)
+            .build())
+    }
     /// Writes the buffer with a testcase of a certain size
     fn write_start(
         &mut self,
         testcase: &[u8],
         buffer: &StartBuffer,
         size: &StartSize,
-    ) -> Result<()>;
+    ) -> Result<()> {
+        let mut testcase = testcase.to_vec();
+        // NOTE: We have to handle both riscv64 and riscv32 here
+        let addr_size =
+            self.processor_info_v2().get_logical_address_width()? as usize / u8::BITS as usize;
+
+        testcase.truncate((*size.initial_size()) as usize);
+
+        testcase
+            .chunks(addr_size)
+            .try_for_each(|c| write_phys_memory(self.cpu(), buffer.physical_address, c))?;
+
+        let value = testcase
+            .len()
+            .to_le_bytes()
+            .iter()
+            .take(addr_size)
+            .cloned()
+            .collect::<Vec<_>>();
+
+        if let Some((address, _)) = size.physical_address {
+            write_phys_memory(self.cpu(), address, value.as_slice())?;
+        }
+
+        Ok(())
+    }
     fn trace_pc(&mut self, instruction_query: *mut instruction_handle_t) -> Result<TraceEntry>;
     fn trace_cmp(&mut self, instruction_query: *mut instruction_handle_t) -> Result<TraceEntry>;
-    fn cpu(&self) -> *mut ConfObject;
 }
 
 impl ArchitectureOperations for Architecture {
+    const DEFAULT_TESTCASE_AREA_REGISTER_NAME: &'static str = "";
+    const DEFAULT_TESTCASE_SIZE_REGISTER_NAME: &'static str = "";
+
     fn new(cpu: *mut ConfObject) -> Result<Self>
     where
         Self: Sized,
@@ -81,6 +205,62 @@ impl ArchitectureOperations for Architecture {
             Ok(Self::RISCV(riscv))
         } else {
             bail!("Unsupported architecture");
+        }
+    }
+
+    fn cpu(&self) -> *mut ConfObject {
+        match self {
+            Architecture::X86_64(x86_64) => x86_64.cpu(),
+            Architecture::I386(i386) => i386.cpu(),
+            Architecture::RISCV(riscv) => riscv.cpu(),
+        }
+    }
+
+    fn disassembler(&mut self) -> &mut dyn TracerDisassembler {
+        match self {
+            Architecture::X86_64(x86_64) => x86_64.disassembler(),
+            Architecture::I386(i386) => i386.disassembler(),
+            Architecture::RISCV(riscv) => riscv.disassembler(),
+        }
+    }
+
+    fn int_register(&mut self) -> &mut IntRegisterInterface {
+        match self {
+            Architecture::X86_64(x86_64) => x86_64.int_register(),
+            Architecture::I386(i386) => i386.int_register(),
+            Architecture::RISCV(riscv) => riscv.int_register(),
+        }
+    }
+
+    fn processor_info_v2(&mut self) -> &mut ProcessorInfoV2Interface {
+        match self {
+            Architecture::X86_64(x86_64) => x86_64.processor_info_v2(),
+            Architecture::I386(i386) => i386.processor_info_v2(),
+            Architecture::RISCV(riscv) => riscv.processor_info_v2(),
+        }
+    }
+
+    fn cpu_instruction_query(&mut self) -> &mut CpuInstructionQueryInterface {
+        match self {
+            Architecture::X86_64(x86_64) => x86_64.cpu_instruction_query(),
+            Architecture::I386(i386) => i386.cpu_instruction_query(),
+            Architecture::RISCV(riscv) => riscv.cpu_instruction_query(),
+        }
+    }
+
+    fn cpu_instrumentation_subscribe(&mut self) -> &mut CpuInstrumentationSubscribeInterface {
+        match self {
+            Architecture::X86_64(x86_64) => x86_64.cpu_instrumentation_subscribe(),
+            Architecture::I386(i386) => i386.cpu_instrumentation_subscribe(),
+            Architecture::RISCV(riscv) => riscv.cpu_instrumentation_subscribe(),
+        }
+    }
+
+    fn cycle(&mut self) -> &mut CycleInterface {
+        match self {
+            Architecture::X86_64(x86_64) => x86_64.cycle(),
+            Architecture::I386(i386) => i386.cycle(),
+            Architecture::RISCV(riscv) => riscv.cycle(),
         }
     }
 
@@ -100,11 +280,19 @@ impl ArchitectureOperations for Architecture {
         }
     }
 
-    fn get_start_size(&mut self, size_address: GenericAddress, virt: bool) -> Result<StartSize> {
+    fn get_manual_start_buffer(&mut self, buffer_address: GenericAddress) -> Result<StartBuffer> {
         match self {
-            Architecture::X86_64(x86_64) => x86_64.get_start_size(size_address, virt),
-            Architecture::I386(i386) => i386.get_start_size(size_address, virt),
-            Architecture::RISCV(riscv) => riscv.get_start_size(size_address, virt),
+            Architecture::X86_64(x86_64) => x86_64.get_manual_start_buffer(buffer_address),
+            Architecture::I386(i386) => i386.get_manual_start_buffer(buffer_address),
+            Architecture::RISCV(riscv) => riscv.get_manual_start_buffer(buffer_address),
+        }
+    }
+
+    fn get_manual_start_size(&mut self, size_address: GenericAddress) -> Result<StartSize> {
+        match self {
+            Architecture::X86_64(x86_64) => x86_64.get_manual_start_size(size_address),
+            Architecture::I386(i386) => i386.get_manual_start_size(size_address),
+            Architecture::RISCV(riscv) => riscv.get_manual_start_size(size_address),
         }
     }
 
@@ -134,14 +322,6 @@ impl ArchitectureOperations for Architecture {
             Architecture::X86_64(x86_64) => x86_64.trace_cmp(instruction_query),
             Architecture::I386(i386) => i386.trace_cmp(instruction_query),
             Architecture::RISCV(riscv) => riscv.trace_cmp(instruction_query),
-        }
-    }
-
-    fn cpu(&self) -> *mut ConfObject {
-        match self {
-            Architecture::X86_64(x86_64) => x86_64.cpu(),
-            Architecture::I386(i386) => i386.cpu(),
-            Architecture::RISCV(riscv) => riscv.cpu(),
         }
     }
 }

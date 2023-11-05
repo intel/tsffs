@@ -115,7 +115,6 @@ Group: src
     modules/tsffs/src/tsffs/src/arch/risc_v.rs
     modules/tsffs/src/tsffs/src/arch/arm_thumb2.rs
     modules/tsffs/src/tsffs/src/interface/mod.rs
-    modules/tsffs/src/tsffs/src/detector/mod.rs
     modules/tsffs/src/tsffs/src/tracer/mod.rs
     modules/tsffs/src/tsffs/src/init/mod.rs
     modules/tsffs/src/tsffs/src/fuzzer/mod.rs
@@ -124,6 +123,9 @@ Group: src
     modules/tsffs/src/tsffs/src/driver/mod.rs
     modules/tsffs/src/tsffs/src/lib.rs
     modules/tsffs/src/tsffs/src/state/mod.rs
+    modules/tsffs/src/tsffs/src/configuration/mod.rs
+    modules/tsffs/src/tsffs/src/haps/mod.rs
+    modules/tsffs/src/tsffs/src/util/mod.rs
 
 Group: tsffs
 Make: tsffs

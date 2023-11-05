@@ -11,21 +11,28 @@ use simics::api::ConfObject;
 use std::{ptr::null_mut, str::FromStr};
 use typed_builder::TypedBuilder;
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum ManualStartSize {
+    MaximumSize(u64),
+    SizeAddress(u64),
+}
+
 #[derive(TypedBuilder, Getters, Serialize, Deserialize, Debug, Clone)]
 #[getters(mutable)]
-pub struct Start {
+pub struct ManualStart {
     #[builder(default = null_mut())]
     #[serde(skip, default = "null_mut")]
     processor: *mut ConfObject,
+    buffer: u64,
+    size: ManualStartSize,
 }
 
-unsafe impl Send for Start {}
-unsafe impl Sync for Start {}
-
-impl Default for Start {
-    fn default() -> Self {
-        Self::builder().build()
-    }
+#[derive(TypedBuilder, Getters, Serialize, Deserialize, Debug, Clone)]
+#[getters(mutable)]
+pub struct MagicStart {
+    #[builder(default = null_mut())]
+    #[serde(skip, default = "null_mut")]
+    processor: *mut ConfObject,
 }
 
 #[derive(TypedBuilder, Getters, Serialize, Deserialize, Debug, Clone, Default)]
@@ -51,10 +58,10 @@ pub struct Solution {
 /// callbacks in the fuzzer, for example [`Driver::on_magic_instruction`] may be called
 /// asynchronously and stop the simulation.
 pub enum StopReason {
-    MagicStart(Start),
+    MagicStart(MagicStart),
     MagicStop(Stop),
-    Start(Start),
-    Stop(Stop),
+    ManualStart(ManualStart),
+    ManualStop(Stop),
     Solution(Solution),
 }
 

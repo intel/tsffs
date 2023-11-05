@@ -5,34 +5,15 @@ use anyhow::{anyhow, bail, Error, Result};
 use ffi_macro::ffi;
 use getters::Getters;
 use libafl::prelude::CmpValues;
-use libafl_bolts::{prelude::OwnedMutSlice, AsMutSlice, AsSlice};
-use libafl_targets::{AFLppCmpLogMap, AFLppCmpLogOperands, AFLPP_CMPLOG_MAP_H, AFL_CMP_TYPE_INS};
+use libafl_bolts::{AsMutSlice, AsSlice};
+use libafl_targets::{AFLppCmpLogOperands, AFLPP_CMPLOG_MAP_H, AFL_CMP_TYPE_INS};
 use simics::api::{
-    get_interface, get_processor_number,
-    sys::{cached_instruction_handle_t, instruction_handle_t},
-    AttrValue, AttrValueType, ConfObject, CpuInstrumentationSubscribeInterface,
+    get_processor_number, sys::instruction_handle_t, AttrValue, AttrValueType, ConfObject,
 };
-use simics_macro::TryIntoAttrValueTypeDict;
-use std::{
-    alloc::{alloc_zeroed, Layout},
-    collections::HashMap,
-    ffi::c_void,
-    fmt::Display,
-    num::Wrapping,
-    ptr::null_mut,
-    slice::from_raw_parts,
-    str::FromStr,
-};
+use std::{collections::HashMap, ffi::c_void, fmt::Display, num::Wrapping, str::FromStr};
 use typed_builder::TypedBuilder;
 
-use crate::{
-    arch::{Architecture, ArchitectureOperations},
-    state::StopReason,
-    traits::Component,
-    Tsffs,
-};
-
-use self::tracer::on_instruction_before;
+use crate::{arch::ArchitectureOperations, Tsffs};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum CmpExpr {
@@ -218,59 +199,7 @@ impl From<CoverageMode> for AttrValueType {
     }
 }
 
-#[derive(TypedBuilder, Getters, Clone, Debug, TryIntoAttrValueTypeDict)]
-#[getters(mutable)]
-pub struct TracerConfiguration {
-    #[builder(default)]
-    coverage_mode: CoverageMode,
-    #[builder(default = true)]
-    cmplog: bool,
-}
-
-impl Default for TracerConfiguration {
-    fn default() -> Self {
-        Self::builder().build()
-    }
-}
-
-#[derive(TypedBuilder, Getters)]
-#[getters(mutable)]
-pub struct Tracer<'a>
-where
-    'a: 'static,
-{
-    parent: &'a mut Tsffs,
-    #[builder(default)]
-    configuration: TracerConfiguration,
-    #[builder(default = OwnedMutSlice::from(vec![0; Tracer::COVERAGE_MAP_SIZE]))]
-    /// Coverage map owned by the tracer
-    coverage_map: OwnedMutSlice<'a, u8>,
-    #[builder(default = unsafe {
-        let layout = Layout::new::<AFLppCmpLogMap>();
-        alloc_zeroed(layout) as *mut AFLppCmpLogMap
-    })]
-    /// Comparison logging map owned by the tracer
-    aflpp_cmp_map_ptr: *mut AFLppCmpLogMap,
-    #[builder(default = unsafe { &mut *aflpp_cmp_map_ptr})]
-    aflpp_cmp_map: &'a mut AFLppCmpLogMap,
-    #[builder(default = false)]
-    /// Whether cmplog is currently enabled
-    cmplog_enabled: bool,
-    #[builder(default)]
-    start_processor_number: Option<i32>,
-    #[builder(default)]
-    processors: HashMap<i32, Architecture>,
-    #[builder(default)]
-    processor_interfaces: HashMap<i32, CpuInstrumentationSubscribeInterface>,
-    #[builder(default = 0)]
-    coverage_prev_loc: u64,
-}
-
-impl<'a> Tracer<'a> {
-    pub const COVERAGE_MAP_SIZE: usize = 128 * 1024;
-}
-
-impl<'a> Tracer<'a> {
+impl Tsffs {
     fn log_pc(&mut self, pc: u64) -> Result<()> {
         let afl_idx = (pc ^ self.coverage_prev_loc) % self.coverage_map().as_slice().len() as u64;
         let mut cur_byte: Wrapping<u8> = Wrapping(self.coverage_map().as_slice()[afl_idx as usize]);
@@ -309,11 +238,15 @@ impl<'a> Tracer<'a> {
 }
 
 #[ffi(from_ptr, expect, self_ty = "*mut c_void")]
-impl<'a> Tracer<'a>
-where
-    'a: 'static,
-{
+impl Tsffs {
     #[ffi(arg(rest), arg(self))]
+    /// Callback before each instruction executed
+    ///
+    /// # Arguments
+    ///
+    /// * `obj`
+    /// * `cpu` - The processor the instruction is being executed by
+    /// * `handle` - An opaque handle to the instruction being executed
     pub fn on_instruction_before(
         &mut self,
         _obj: *mut ConfObject,
@@ -322,15 +255,17 @@ where
     ) -> Result<()> {
         let processor_number = get_processor_number(cpu)?;
 
-        if let Some(arch) = self.processors_mut().get_mut(&processor_number) {
-            if let Ok(r) = arch.trace_pc(handle) {
-                if let Some(pc) = r.edge() {
-                    self.log_pc(*pc)?;
+        if *self.coverage_enabled() {
+            if let Some(arch) = self.processors_mut().get_mut(&processor_number) {
+                if let Ok(r) = arch.trace_pc(handle) {
+                    if let Some(pc) = r.edge() {
+                        self.log_pc(*pc)?;
+                    }
                 }
             }
         }
 
-        if self.cmplog_enabled {
+        if *self.configuration().cmplog() && *self.cmplog_enabled() {
             if let Some(arch) = self.processors_mut().get_mut(&processor_number) {
                 if let Ok(r) = arch.trace_cmp(handle) {
                     if let Some((pc, types, cmp)) = r.cmp() {
@@ -344,55 +279,34 @@ where
     }
 }
 
-impl<'a> Tracer<'a> {
-    pub fn add_trace_processor(&mut self, cpu: *mut ConfObject) -> Result<()> {
-        let cpu_number = get_processor_number(cpu)?;
-
-        if !self.processors().contains_key(&cpu_number) {
-            self.processors_mut()
-                .insert(cpu_number, Architecture::new(cpu)?);
-            let mut cpu_interface: CpuInstrumentationSubscribeInterface = get_interface(cpu)?;
-            cpu_interface.register_instruction_before_cb(
-                null_mut(),
-                Some(on_instruction_before),
-                self as *mut Tracer<'a> as *mut _,
-            )?;
-            self.processor_interfaces_mut()
-                .insert(cpu_number, cpu_interface);
-        }
-
-        Ok(())
-    }
-}
-
-impl<'a> Component for Tracer<'a> {
-    fn on_simulation_stopped(&mut self, reason: &StopReason) -> Result<()> {
-        match reason {
-            StopReason::MagicStart(_start) | StopReason::Start(_start) => {
-                if self.start_processor_number().is_none() {
-                    if let Some(start_processor) = self.parent().driver().start_core_architecture()
-                    {
-                        let start_processor_number = get_processor_number(start_processor.cpu())?;
-                        let start_processor = Architecture::new(start_processor.cpu())?;
-                        let mut start_processor_interface: CpuInstrumentationSubscribeInterface =
-                            get_interface(start_processor.cpu())?;
-                        *self.start_processor_number_mut() = Some(start_processor_number);
-                        self.processors_mut()
-                            .insert(start_processor_number, start_processor);
-                        start_processor_interface.register_instruction_before_cb(
-                            null_mut(),
-                            Some(on_instruction_before),
-                            self as *mut Tracer<'a> as *mut _,
-                        )?;
-                        self.processor_interfaces_mut()
-                            .insert(start_processor_number, start_processor_interface);
-                    }
-                }
-            }
-            StopReason::MagicStop(stop) | StopReason::Stop(stop) => {}
-            StopReason::Solution(_) => {}
-        }
-
-        Ok(())
-    }
-}
+// impl<'a> Component for Tracer<'a> {
+//     fn on_simulation_stopped(&mut self, reason: &StopReason) -> Result<()> {
+//         match reason {
+//             StopReason::MagicStart(_start) | StopReason::Start(_start) => {
+//                 if self.start_processor_number().is_none() {
+//                     if let Some(start_processor) = self.parent().driver().start_core_architecture()
+//                     {
+//                         let start_processor_number = get_processor_number(start_processor.cpu())?;
+//                         let start_processor = Architecture::new(start_processor.cpu())?;
+//                         let mut start_processor_interface: CpuInstrumentationSubscribeInterface =
+//                             get_interface(start_processor.cpu())?;
+//                         *self.start_processor_number_mut() = Some(start_processor_number);
+//                         self.processors_mut()
+//                             .insert(start_processor_number, start_processor);
+//                         start_processor_interface.register_instruction_before_cb(
+//                             null_mut(),
+//                             Some(on_instruction_before),
+//                             self as *mut Tracer<'a> as *mut _,
+//                         )?;
+//                         self.processor_interfaces_mut()
+//                             .insert(start_processor_number, start_processor_interface);
+//                     }
+//                 }
+//             }
+//             StopReason::MagicStop(stop) | StopReason::Stop(stop) => {}
+//             StopReason::Solution(_) => {}
+//         }
+//
+//         Ok(())
+//     }
+// }

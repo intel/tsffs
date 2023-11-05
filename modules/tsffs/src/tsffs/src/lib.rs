@@ -28,51 +28,99 @@
 #![deny(clippy::unwrap_used)]
 
 use crate::{
-    detector::Detector, driver::Driver, fuzzer::TsffsFuzzer, interface::TsffsInterfaceInternal,
-    tracer::Tracer, traits::Component,
+    interface::TsffsInterfaceInternal,
+    state::{Solution, SolutionKind},
 };
+use anyhow::{anyhow, Result};
+use arch::{Architecture, ArchitectureOperations};
+use configuration::Configuration;
+use fuzzer::{ShutdownMessage, Testcase};
 use getters::Getters;
+use libafl::prelude::ExitKind;
+use libafl_bolts::prelude::OwnedMutSlice;
+use libafl_targets::AFLppCmpLogMap;
+use serde::{Deserialize, Serialize};
 use simics::{
     api::{
-        break_simulation, continue_simulation, run_alone, AsConfObject, Class, ConfObject,
-        CoreSimulationStoppedHap, HapHandle,
+        break_simulation, discard_future, get_class, get_interface, get_processor_number,
+        object_clock, restore_micro_checkpoint, restore_snapshot, save_micro_checkpoint,
+        save_snapshot, AsConfObject, Class, ConfObject, CoreBreakpointMemopHap, CoreExceptionHap,
+        CoreMagicInstructionHap, CoreSimulationStoppedHap, CpuInstrumentationSubscribeInterface,
+        Event, EventClassFlag, HapHandle, MicroCheckpointFlags,
     },
-    info, Result,
+    info,
 };
 use simics_macro::{class, interface, AsConfObject};
 use state::StopReason;
+use std::{
+    alloc::{alloc_zeroed, Layout},
+    collections::HashMap,
+    ptr::null_mut,
+    sync::mpsc::{Receiver, Sender},
+    thread::JoinHandle,
+    time::SystemTime,
+};
+use tracer::tsffs::on_instruction_before;
+use typed_builder::TypedBuilder;
+use util::Utils;
 
 pub mod arch;
-pub mod detector;
-pub mod driver;
+pub mod configuration;
+// pub mod detector;
+// pub mod driver;
 pub mod fuzzer;
+pub mod haps;
 pub mod init;
 pub mod interface;
 pub mod state;
 pub mod tracer;
 pub mod traits;
+pub mod util;
 
 /// The class name used for all operations interfacing with SIMICS
+
 pub const CLASS_NAME: &str = env!("CARGO_PKG_NAME");
 
+#[derive(TypedBuilder, Getters, Serialize, Deserialize, Clone, Debug)]
+pub struct StartBuffer {
+    /// The physical address of the buffer. Must be physical, if the input address was
+    /// virtual, it should be pre-translated
+    pub physical_address: u64,
+    /// Whether the address that translated to this physical address was virtual
+    /// this should not be used or checked, it's simply informational
+    pub virt: bool,
+}
+
+#[derive(TypedBuilder, Getters, Serialize, Deserialize, Clone, Debug)]
+pub struct StartSize {
+    #[builder(default, setter(strip_option))]
+    /// The address of the magic start size value, and whether the address that translated
+    /// to this physical address was virtual. The address must be physical.
+    pub physical_address: Option<(u64, bool)>,
+    // NOTE: There is no need to save the size fo the size, it must be pointer-sized.
+    /// The initial size of the magic start size
+    pub initial_size: u64,
+}
+impl Tsffs {
+    pub const COVERAGE_MAP_SIZE: usize = 128 * 1024;
+    pub const TIMEOUT_EVENT_NAME: &str = "detector_timeout_event";
+    pub const SNAPSHOT_NAME: &str = "tsffs-origin-snapshot";
+}
+
 #[class(name = CLASS_NAME)]
-#[derive(AsConfObject, Getters)]
+#[derive(TypedBuilder, AsConfObject, Getters)]
 #[getters(mutable)]
 #[interface]
 pub struct Tsffs {
-    driver: Driver<'static>,
-    fuzzer: TsffsFuzzer<'static>,
-    detector: Detector<'static>,
-    tracer: Tracer<'static>,
-    stop_hap_handle: HapHandle,
-    stop_reason: Option<StopReason>,
-}
+    /// The pointer to this instance. This is a self pointer.
+    instance: *mut ConfObject,
+    #[builder(default)]
+    /// The configuration for the fuzzer
+    configuration: Configuration,
 
-impl Class for Tsffs {
-    fn init(instance: *mut ConfObject) -> Result<*mut ConfObject> {
-        let stop_hap_instance = instance;
-
-        let stop_hap_handle = CoreSimulationStoppedHap::add_callback(
+    // Registered HAPs
+    #[builder(default = {
+        CoreSimulationStoppedHap::add_callback(
             // NOTE: Core_Simulation_Stopped is called with an object, exception and
             // error string, but the exception is always
             // SimException::SimExc_No_Exception and the error string is always
@@ -82,56 +130,316 @@ impl Class for Tsffs {
                 // stop callback methods on each of the module's components. The stop reason will
                 // be retrieved from the module, if one is set. It is an error for the module to
                 // stop itself without setting a reason
-                let tsffs: &'static mut Tsffs = stop_hap_instance.into();
-
+                let tsffs: &'static mut Tsffs = instance.into();
                 tsffs
                     .on_simulation_stopped()
                     .expect("Error calling simulation stopped callback");
             },
-        )?;
+        )
+        .expect("Failed to register core simulation stopped hap callback")
+    })]
+    /// Handle for the core simulation stopped hap
+    stop_hap_handle: HapHandle,
+    #[builder(default = {
+        CoreBreakpointMemopHap::add_callback(
+            move |trigger_obj, breakpoint_number, memop| {
+                let tsffs: &'static mut Tsffs = instance.into();
+                tsffs
+                    .on_breakpoint_memop(trigger_obj, breakpoint_number, memop)
+                    .expect("Error calling breakpoint memop callback");
+            }
+        ).expect("Failed to register breakpoint memop callback")
+    })]
+    breakpoint_memop_hap_handle: HapHandle,
+    #[builder(default = {
+        CoreExceptionHap::add_callback(
+            move |trigger_obj, exception_number| {
+                let tsffs: &'static mut Tsffs = instance.into();
+                tsffs
+                    .on_exception(trigger_obj, exception_number)
+                    .expect("Error calling breakpoint memop callback");
+            }
+        ).expect("Failed to register breakpoint memop callback")
+    })]
+    exception_hap_handle: HapHandle,
+    #[builder(default = {
+        CoreMagicInstructionHap::add_callback(
+            move |trigger_obj, magic_number| {
+                let tsffs: &'static mut Tsffs = instance.into();
+
+                tsffs
+                    .on_magic_instruction(trigger_obj, magic_number)
+                    .expect("Error calling magic instruction callback");
+            },
+        ).expect("Failed to register magic instruction callback")
+    })]
+    /// The handle for the registered magic HAP, used to
+    /// listen for magic start and stop if `start_on_harness`
+    /// or `stop_on_harness` are set.
+    magic_hap_handle: HapHandle,
+
+    // Fuzzer thread and channels
+    #[builder(default)]
+    fuzz_thread: Option<JoinHandle<Result<()>>>,
+    #[builder(default)]
+    fuzzer_tx: Option<Sender<ExitKind>>,
+    #[builder(default)]
+    fuzzer_rx: Option<Receiver<Testcase>>,
+    #[builder(default)]
+    fuzzer_shutdown: Option<Sender<ShutdownMessage>>,
+
+    // Fuzzer coverage maps
+    #[builder(default = OwnedMutSlice::from(vec![0; Tsffs::COVERAGE_MAP_SIZE]))]
+    /// Coverage map owned by the tracer
+    coverage_map: OwnedMutSlice<'static, u8>,
+    #[builder(default = unsafe {
+        let layout = Layout::new::<AFLppCmpLogMap>();
+        alloc_zeroed(layout) as *mut AFLppCmpLogMap
+    })]
+    /// Comparison logging map owned by the tracer
+    aflpp_cmp_map_ptr: *mut AFLppCmpLogMap,
+    #[builder(default = unsafe { &mut *aflpp_cmp_map_ptr})]
+    aflpp_cmp_map: &'static mut AFLppCmpLogMap,
+    #[builder(default = 0)]
+    coverage_prev_loc: u64,
+
+    // Registered events
+    #[builder(default = Event::builder()
+        .name(Tsffs::TIMEOUT_EVENT_NAME)
+        .cls(get_class(CLASS_NAME).expect("Error getting class"))
+        .flags(EventClassFlag::Sim_EC_No_Flags)
+        .build()
+    )]
+    timeout_event: Event,
+
+    // Micro checkpoint/snapshot management
+    #[builder(default)]
+    /// The name of the fuzz snapshot, if saved
+    snapshot_name: Option<String>,
+    #[builder(default)]
+    /// The index of the micro checkpoint saved for the fuzzer. Only present if not using
+    /// snapshots.
+    micro_checkpoint_index: Option<i32>,
+
+    #[builder(default)]
+    stop_reason: Option<StopReason>,
+    #[builder(default)]
+    /// The buffer and size information, if saved
+    start_buffer: Option<StartBuffer>,
+    #[builder(default)]
+    start_size: Option<StartSize>,
+
+    // Statistics
+    #[builder(default = 0)]
+    /// The number of fuzzing iterations run. Incremented on stop
+    iterations: usize,
+    #[builder(default = SystemTime::now())]
+    /// The time the fuzzer was started at
+    start_time: SystemTime,
+
+    // State and settings
+    #[builder(default = false)]
+    /// Whether cmplog is currently enabled
+    coverage_enabled: bool,
+    #[builder(default = false)]
+    /// Whether cmplog is currently enabled
+    cmplog_enabled: bool,
+    #[builder(default)]
+    /// The number of the processor which starts the fuzzing loop (via magic or manual methods)
+    start_processor_number: Option<i32>,
+    #[builder(default)]
+    /// Tracked processors. This always includes the start processor, and may include
+    /// additional processors that are manually added by the user
+    processors: HashMap<i32, Architecture>,
+}
+
+impl Class for Tsffs {
+    fn init(instance: *mut ConfObject) -> simics::Result<*mut ConfObject> {
+        let tsffs = Self::builder()
+            .conf_object(unsafe { *instance })
+            .instance(instance)
+            .build();
 
         info!(instance, "Initialized instance");
 
-        Ok(Tsffs::new(
-            instance,
-            Driver::builder().parent(instance.into()).build(),
-            TsffsFuzzer::builder().parent(instance.into()).build(),
-            Detector::builder().parent(instance.into()).build(),
-            Tracer::builder().parent(instance.into()).build(),
-            stop_hap_handle,
-            None,
-        ))
+        Ok(Tsffs::new(instance, tsffs))
     }
 }
 
+/// Implementations for controlling the simulation
 impl Tsffs {
-    pub fn on_simulation_stopped(&mut self) -> Result<()> {
-        if let Some(reason) = self.stop_reason_mut().take() {
-            info!(
-                self.as_conf_object_mut(),
-                "on_simulation_stopped({reason:?})"
-            );
-
-            // We need to restore the state before we post any new events
-            self.fuzzer.on_simulation_stopped(&reason)?;
-            self.driver.on_simulation_stopped(&reason)?;
-            self.detector.on_simulation_stopped(&reason)?;
-            self.tracer.on_simulation_stopped(&reason)?;
-        }
-
-        run_alone(|| {
-            continue_simulation(0)?;
-            Ok(())
-        })?;
-
-        Ok(())
-    }
-
     pub fn stop_simulation(&mut self, reason: StopReason) -> Result<()> {
         let break_string = reason.to_string();
         *self.stop_reason_mut() = Some(reason);
         break_simulation(break_string)?;
 
+        Ok(())
+    }
+}
+
+/// Implementations for common functionality
+impl Tsffs {
+    pub fn add_processor(&mut self, cpu: *mut ConfObject, is_start: bool) -> Result<()> {
+        let cpu_number = get_processor_number(cpu)?;
+
+        if !self.processors().contains_key(&cpu_number) {
+            self.processors_mut()
+                .insert(cpu_number, Architecture::new(cpu)?);
+            let mut cpu_interface: CpuInstrumentationSubscribeInterface = get_interface(cpu)?;
+            cpu_interface.register_instruction_before_cb(
+                null_mut(),
+                Some(on_instruction_before),
+                self as *mut Self as *mut _,
+            )?;
+        }
+
+        if is_start {
+            *self.start_processor_number_mut() = Some(cpu_number);
+        }
+
+        Ok(())
+    }
+
+    pub fn start_processor(&mut self) -> Option<&mut Architecture> {
+        self.start_processor_number()
+            .map(|n| self.processors_mut().get_mut(&n))
+            .flatten()
+    }
+}
+
+impl Tsffs {
+    pub fn save_initial_snapshot(&mut self) -> Result<()> {
+        if *self.configuration().use_snapshots() && self.snapshot_name().is_none() {
+            save_snapshot(Self::SNAPSHOT_NAME)?;
+            *self.snapshot_name_mut() = Some(Self::SNAPSHOT_NAME.to_string());
+        } else if !self.configuration().use_snapshots()
+            && self.snapshot_name().is_none()
+            && self.micro_checkpoint_index().is_none()
+        {
+            save_micro_checkpoint(
+                Self::SNAPSHOT_NAME,
+                MicroCheckpointFlags::Sim_MC_ID_User | MicroCheckpointFlags::Sim_MC_Persistent,
+            )?;
+
+            *self.snapshot_name_mut() = Some(Self::SNAPSHOT_NAME.to_string());
+
+            *self.micro_checkpoint_index_mut() = Some(
+                Utils::get_micro_checkpoints()?
+                    .iter()
+                    .enumerate()
+                    .find_map(|(i, c)| (c.name == Self::SNAPSHOT_NAME).then_some(i as i32))
+                    .ok_or_else(|| {
+                        anyhow!("No micro checkpoint with just-registered name found")
+                    })?,
+            );
+        }
+
+        Ok(())
+    }
+
+    pub fn restore_initial_snapshot(&mut self) -> Result<()> {
+        if *self.configuration().use_snapshots() {
+            restore_snapshot(Self::SNAPSHOT_NAME)?;
+        } else {
+            restore_micro_checkpoint(self.micro_checkpoint_index().ok_or_else(|| {
+                anyhow!("Not using snapshots and no micro checkpoint index present")
+            })?)?;
+
+            discard_future()?;
+        }
+
+        Ok(())
+    }
+
+    pub fn have_initial_snapshot(&self) -> bool {
+        (self.snapshot_name().is_some() && *self.configuration().use_snapshots())
+            || (self.snapshot_name().is_some()
+                && self.micro_checkpoint_index().is_some()
+                && !self.configuration().use_snapshots())
+    }
+}
+
+impl Tsffs {
+    pub fn get_and_write_testcase(&mut self) -> Result<()> {
+        let testcase = self.get_testcase()?;
+        *self.cmplog_enabled_mut() = *testcase.cmplog();
+        // TODO: Fix cloning - refcell?
+        let start_buffer = self
+            .start_buffer()
+            .as_ref()
+            .ok_or_else(|| anyhow!("No start buffer"))?
+            .clone();
+        let start_size = self
+            .start_size()
+            .as_ref()
+            .ok_or_else(|| anyhow!("No start size"))?
+            .clone();
+        let start_processor = self
+            .start_processor()
+            .ok_or_else(|| anyhow!("No start processor"))?;
+        start_processor.write_start(testcase.testcase(), &start_buffer, &start_size)?;
+
+        Ok(())
+    }
+
+    pub fn post_timeout_event(&mut self) -> Result<()> {
+        let tsffs_ptr = self.as_conf_object_mut();
+        let start_processor = self
+            .start_processor()
+            .ok_or_else(|| anyhow!("No start processor"))?;
+        let start_processor_time = start_processor.cycle().get_time()?;
+        let start_processor_cpu = start_processor.cpu();
+        let start_processor_clock = object_clock(start_processor_cpu)?;
+        let timeout_time = *self.configuration().timeout() + start_processor_time;
+        info!(
+            self.as_conf_object(),
+            "Posting event on processor at time {} for {}s (time {})",
+            start_processor_time,
+            *self.configuration().timeout(),
+            timeout_time
+        );
+        self.timeout_event().post_time(
+            start_processor_cpu,
+            start_processor_clock,
+            *self.configuration().timeout(),
+            move |obj| {
+                let tsffs: &'static mut Tsffs = tsffs_ptr.into();
+                info!(tsffs.as_conf_object_mut(), "timeout({:#x})", obj as usize);
+                tsffs
+                    .stop_simulation(StopReason::Solution(
+                        Solution::builder().kind(SolutionKind::Timeout).build(),
+                    ))
+                    .expect("Error calling timeout callback");
+            },
+        )?;
+
+        Ok(())
+    }
+
+    pub fn cancel_timeout_event(&mut self) -> Result<()> {
+        let start_processor = self
+            .start_processor()
+            .ok_or_else(|| anyhow!("No start processor"))?;
+        let start_processor_time = start_processor.cycle().get_time()?;
+        let start_processor_cpu = start_processor.cpu();
+        let start_processor_clock = object_clock(start_processor_cpu)?;
+        match self
+            .timeout_event()
+            .find_next_time(start_processor_clock, start_processor_cpu)
+        {
+            Ok(next_time) => info!(
+                self.as_conf_object(),
+                "Cancelling event with next time {} (current time {})",
+                next_time,
+                start_processor_time
+            ),
+            Err(e) => info!(
+                self.as_conf_object(),
+                "Not cancelling event with next time due to error: {e}"
+            ),
+        }
+        self.timeout_event()
+            .cancel_time(start_processor_cpu, start_processor_clock)?;
         Ok(())
     }
 }

@@ -348,7 +348,7 @@ impl Event {
     /// # Context
     ///
     /// Cell Context
-    pub fn find_next_time(&self, clock: *mut ConfObject, obj: *mut ConfObject) -> Result<f64> {
+    pub fn find_next_time(&self, obj: *mut ConfObject, clock: *mut ConfObject) -> Result<f64> {
         event_find_next_time::<Box<dyn Fn(*mut c_void) -> i32>>(clock, self.event_class, obj, None)
     }
 
@@ -379,8 +379,8 @@ impl Event {
     /// Cell Context
     pub fn find_next_time_filter<F>(
         &self,
-        clock: *mut ConfObject,
         obj: *mut ConfObject,
+        clock: *mut ConfObject,
         filter: F,
     ) -> Result<f64>
     where
@@ -413,7 +413,7 @@ impl Event {
     /// # Context
     ///
     /// Cell Context
-    pub fn find_next_cycle(&self, clock: *mut ConfObject, obj: *mut ConfObject) -> Result<Cycles> {
+    pub fn find_next_cycle(&self, obj: *mut ConfObject, clock: *mut ConfObject) -> Result<Cycles> {
         event_find_next_cycle::<Box<dyn Fn(*mut c_void) -> i32>>(clock, self.event_class, obj, None)
     }
 
@@ -444,8 +444,8 @@ impl Event {
     /// Cell Context
     pub fn find_next_cycle_filter<F>(
         &self,
-        clock: *mut ConfObject,
         obj: *mut ConfObject,
+        clock: *mut ConfObject,
         filter: F,
     ) -> Result<Cycles>
     where
@@ -478,7 +478,7 @@ impl Event {
     /// # Context
     ///
     /// Cell Context
-    pub fn find_next_step(&self, clock: *mut ConfObject, obj: *mut ConfObject) -> Result<PcStep> {
+    pub fn find_next_step(&self, obj: *mut ConfObject, clock: *mut ConfObject) -> Result<PcStep> {
         event_find_next_step::<Box<dyn Fn(*mut c_void) -> i32>>(clock, self.event_class, obj, None)
     }
 
@@ -509,8 +509,8 @@ impl Event {
     /// Cell Context
     pub fn find_next_step_filter<F>(
         &self,
-        clock: *mut ConfObject,
         obj: *mut ConfObject,
+        clock: *mut ConfObject,
         filter: F,
     ) -> Result<PcStep>
     where

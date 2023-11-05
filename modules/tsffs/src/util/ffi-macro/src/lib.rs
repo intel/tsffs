@@ -425,6 +425,7 @@ struct FfiOpts {
     self_ty: Option<String>,
     expect: Flag,
     from_ptr: Flag,
+    from_any_ptr: Flag,
 }
 
 #[proc_macro_attribute]
@@ -532,16 +533,12 @@ pub fn ffi(args: TokenStream, input: TokenStream) -> TokenStream {
         abort!(impl_item, "Self type must be path");
     };
 
-    // println!(
-    //     "generics {:?} where {:?} name {:?} self generics {:?}",
-    //     impl_generics, where_clause, impl_item_name, self_ty_generics
-    // );
-
     let impl_methods = match FfiMethods::try_from((
         &impl_item,
         impl_item_opts
             .self_ty
-            .and_then(|s| parse_str::<Type>(&s).ok()),
+            .as_ref()
+            .and_then(|s| parse_str::<Type>(s).ok()),
         impl_item_opts.expect,
     )) {
         Ok(o) => o,
@@ -583,9 +580,12 @@ pub fn ffi(args: TokenStream, input: TokenStream) -> TokenStream {
         .iter()
         .map(|g| quote!(#g))
         .collect::<Vec<_>>();
-    impl_generics_from.push(quote!(T));
 
-    let maybe_from_ptr = impl_item_opts.from_ptr.is_present().then_some(quote! {
+    if impl_item_opts.from_any_ptr.is_present() {
+        impl_generics_from.push(quote!(T));
+    }
+
+    let maybe_from_any_ptr = impl_item_opts.from_any_ptr.is_present().then_some(quote! {
         impl<#(#impl_generics_from),*> From<*mut T> for &'static mut #impl_item_name<#(#self_ty_generics),*> {
             fn from(value: *mut T) -> Self {
                 let ptr: *mut #impl_item_name <#(#self_ty_generics),*>= value as *mut #impl_item_name <#(#self_ty_generics),*>;
@@ -608,6 +608,34 @@ pub fn ffi(args: TokenStream, input: TokenStream) -> TokenStream {
         }
     }).unwrap_or_default();
 
+    let maybe_from_ptr = if impl_item_opts.from_ptr.is_present() {
+        impl_item_opts
+            .self_ty
+            .as_ref()
+            .and_then(|st| {
+                parse_str(st).ok().map(|stp: Type| {
+                    quote! {
+                        impl<#(#impl_generics_from),*> From<#stp> for &'static mut #impl_item_name<#(#self_ty_generics),*> {
+                            fn from(value: #stp) -> Self {
+                                let ptr: *mut #impl_item_name <#(#self_ty_generics),*>= value as *mut #impl_item_name <#(#self_ty_generics),*>;
+                                unsafe { &mut *ptr }
+                            }
+                        }
+
+                        impl<#(#impl_generics_from),*> From<#stp> for &'static #impl_item_name<#(#self_ty_generics),*> {
+                            fn from(value: #stp) -> Self {
+                                let ptr: *mut #impl_item_name <#(#self_ty_generics),*> = value as *mut #impl_item_name <#(#self_ty_generics),*>;
+                                unsafe { &*ptr }
+                            }
+                        }
+                    }
+                })
+            })
+            .unwrap_or_default()
+    } else {
+        quote!()
+    };
+
     let maybe_impl_generics = if impl_generics.is_empty() {
         quote!()
     } else {
@@ -626,6 +654,8 @@ pub fn ffi(args: TokenStream, input: TokenStream) -> TokenStream {
         }
 
         #maybe_from_ptr
+
+        #maybe_from_any_ptr
 
         #ffi_mod_visibility mod #ffi_mod_name {
             use super::*;
