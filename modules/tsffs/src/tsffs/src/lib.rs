@@ -66,8 +66,6 @@ use util::Utils;
 
 pub mod arch;
 pub mod configuration;
-// pub mod detector;
-// pub mod driver;
 pub mod fuzzer;
 pub mod haps;
 pub mod init;
@@ -283,8 +281,13 @@ impl Tsffs {
         let cpu_number = get_processor_number(cpu)?;
 
         if !self.processors().contains_key(&cpu_number) {
-            self.processors_mut()
-                .insert(cpu_number, Architecture::new(cpu)?);
+            let architecture =
+                if let Some(hint) = self.configuration().architecture_hints().get(&cpu_number) {
+                    hint.architecture(cpu)?
+                } else {
+                    Architecture::new(cpu)?
+                };
+            self.processors_mut().insert(cpu_number, architecture);
             let mut cpu_interface: CpuInstrumentationSubscribeInterface = get_interface(cpu)?;
             cpu_interface.register_instruction_before_cb(
                 null_mut(),

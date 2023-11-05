@@ -7,15 +7,19 @@ use self::{
     risc_v::RISCVArchitectureOperations, x86::X86ArchitectureOperations,
     x86_64::X86_64ArchitectureOperations,
 };
-use crate::{tracer::TraceEntry, traits::TracerDisassembler, StartBuffer, StartSize};
-use anyhow::{bail, Result};
+use crate::{tracer::TraceEntry, traits::TracerDisassembler, StartBuffer, StartSize, CLASS_NAME};
+use anyhow::{bail, Error, Result};
 use raw_cstr::AsRawCstr;
-use simics::api::{
-    read_phys_memory, sys::instruction_handle_t, write_phys_memory, Access, ConfObject,
-    CpuInstructionQueryInterface, CpuInstrumentationSubscribeInterface, CycleInterface,
-    GenericAddress, IntRegisterInterface, ProcessorInfoV2Interface,
+use simics::{
+    api::{
+        get_object, read_phys_memory, sys::instruction_handle_t, write_phys_memory, Access,
+        AttrValueType, ConfObject, CpuInstructionQueryInterface,
+        CpuInstrumentationSubscribeInterface, CycleInterface, GenericAddress, IntRegisterInterface,
+        ProcessorInfoV2Interface,
+    },
+    trace,
 };
-use std::fmt::Debug;
+use std::{fmt::Debug, str::FromStr};
 
 pub mod arc;
 pub mod arm;
@@ -24,6 +28,53 @@ pub mod armv8;
 pub mod risc_v;
 pub mod x86;
 pub mod x86_64;
+
+#[derive(Debug, Clone)]
+pub enum ArchitectureHint {
+    X86_64,
+    I386,
+    RISCV,
+}
+
+impl FromStr for ArchitectureHint {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        Ok(match s {
+            "x86-64" => Self::X86_64,
+            "i386" | "i486" | "i586" | "i686" | "ia-32" | "x86" => Self::I386,
+            "riscv" | "risc-v" | "riscv32" | "riscv64" => Self::RISCV,
+            _ => bail!("Unknown hint: {}", s),
+        })
+    }
+}
+
+impl From<ArchitectureHint> for AttrValueType {
+    fn from(val: ArchitectureHint) -> Self {
+        match val {
+            ArchitectureHint::X86_64 => "x86-64",
+            ArchitectureHint::I386 => "i386",
+            ArchitectureHint::RISCV => "risc-v",
+        }
+        .into()
+    }
+}
+
+impl ArchitectureHint {
+    pub fn architecture(&self, cpu: *mut ConfObject) -> Result<Architecture> {
+        Ok(match self {
+            ArchitectureHint::X86_64 => {
+                Architecture::X86_64(X86_64ArchitectureOperations::new_unchecked(cpu)?)
+            }
+            ArchitectureHint::I386 => {
+                Architecture::I386(X86ArchitectureOperations::new_unchecked(cpu)?)
+            }
+            ArchitectureHint::RISCV => {
+                Architecture::RISCV(RISCVArchitectureOperations::new_unchecked(cpu)?)
+            }
+        })
+    }
+}
 
 pub enum Architecture {
     X86_64(X86_64ArchitectureOperations),
@@ -52,6 +103,12 @@ pub trait ArchitectureOperations {
     fn new(cpu: *mut ConfObject) -> Result<Self>
     where
         Self: Sized;
+    fn new_unchecked(_: *mut ConfObject) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        bail!("Invalid CPU");
+    }
     fn cpu(&self) -> *mut ConfObject;
     fn disassembler(&mut self) -> &mut dyn TracerDisassembler;
     fn int_register(&mut self) -> &mut IntRegisterInterface;
@@ -67,7 +124,19 @@ pub trait ArchitectureOperations {
             .int_register()
             .get_number(Self::DEFAULT_TESTCASE_AREA_REGISTER_NAME.as_raw_cstr()?)?;
 
+        trace!(
+            get_object(CLASS_NAME)?,
+            "Got number {} for register {}",
+            number,
+            Self::DEFAULT_TESTCASE_AREA_REGISTER_NAME
+        );
+
         let logical_address = self.int_register().read(number)?;
+        trace!(
+            get_object(CLASS_NAME)?,
+            "Got logical address {:#x} from register",
+            logical_address
+        );
 
         let physical_address_block = self
             .processor_info_v2()
@@ -78,6 +147,11 @@ pub trait ArchitectureOperations {
         if physical_address_block.valid == 0 {
             bail!("Invalid linear address found in magic start buffer register {number}: {logical_address:#x}");
         } else {
+            trace!(
+                get_object(CLASS_NAME)?,
+                "Got physical address {:#x} from logical address",
+                physical_address_block.address
+            );
             Ok(StartBuffer::builder()
                 .physical_address(physical_address_block.address)
                 .virt(physical_address_block.address != logical_address)
@@ -112,6 +186,7 @@ pub trait ArchitectureOperations {
             .initial_size(size)
             .build())
     }
+
     fn get_manual_start_buffer(&mut self, buffer_address: GenericAddress) -> Result<StartBuffer> {
         let physical_address_block = self
             .processor_info_v2()
@@ -130,6 +205,7 @@ pub trait ArchitectureOperations {
                 .build())
         }
     }
+
     /// Returns the initial start size for non-magic instructions by reading it from a given
     /// (possibly virtual) address
     fn get_manual_start_size(&mut self, size_address: GenericAddress) -> Result<StartSize> {
@@ -153,6 +229,7 @@ pub trait ArchitectureOperations {
             .initial_size(size)
             .build())
     }
+
     /// Writes the buffer with a testcase of a certain size
     fn write_start(
         &mut self,
@@ -185,6 +262,7 @@ pub trait ArchitectureOperations {
 
         Ok(())
     }
+
     fn trace_pc(&mut self, instruction_query: *mut instruction_handle_t) -> Result<TraceEntry>;
     fn trace_cmp(&mut self, instruction_query: *mut instruction_handle_t) -> Result<TraceEntry>;
 }

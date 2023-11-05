@@ -80,7 +80,6 @@ fn test_fuzz_gcc_x86_64_manual_max() -> Result<()> {
                 conf.qsp.mb.cpu0.core[0][0],
                 testcase_address,
                 maximum_size,
-                virt
             )
 
 
@@ -108,6 +107,7 @@ fn test_fuzz_gcc_x86_64_manual_max() -> Result<()> {
         cli.sb_create(exit_script_branch)
 
         simics.SIM_continue(0)
+        # NOTE: If running from CLI, omit this!
         simics.SIM_main_loop()
     "#};
 

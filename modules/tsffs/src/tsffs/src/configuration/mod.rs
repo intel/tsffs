@@ -1,9 +1,14 @@
-use std::{collections::BTreeSet, path::PathBuf};
+use std::{
+    collections::{BTreeSet, HashMap},
+    path::PathBuf,
+};
 
 use getters::Getters;
 use simics::api::{lookup_file, BreakpointId};
 use simics_macro::TryIntoAttrValueTypeDict;
 use typed_builder::TypedBuilder;
+
+use crate::arch::ArchitectureHint;
 
 impl Configuration {
     /// The timeout runs in virtual time, so a typical 5 second timeout is acceptable
@@ -68,6 +73,8 @@ pub struct Configuration {
     initial_random_corpus_size: usize,
     #[builder(default = true)]
     cmplog: bool,
+    #[builder(default)]
+    architecture_hints: HashMap<i32, ArchitectureHint>,
 }
 
 impl Default for Configuration {

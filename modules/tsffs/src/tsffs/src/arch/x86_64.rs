@@ -185,6 +185,21 @@ impl ArchitectureOperations for X86_64ArchitectureOperations {
         }
     }
 
+    fn new_unchecked(cpu: *mut ConfObject) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        Ok(Self {
+            cpu,
+            disassembler: Disassembler::new(),
+            int_register: get_interface(cpu)?,
+            processor_info_v2: get_interface(cpu)?,
+            cpu_instruction_query: get_interface(cpu)?,
+            cpu_instrumentation_subscribe: get_interface(cpu)?,
+            cycle: get_interface(cpu)?,
+        })
+    }
+
     fn cpu(&self) -> *mut ConfObject {
         self.cpu
     }

@@ -7,14 +7,18 @@ use super::ArchitectureOperations;
 use crate::{
     tracer::{CmpExpr, CmpType, CmpValue, TraceEntry},
     traits::TracerDisassembler,
+    StartBuffer, StartSize, CLASS_NAME,
 };
 use anyhow::{anyhow, bail, Error, Result};
 use libafl::prelude::CmpValues;
 use raw_cstr::AsRawCstr;
-use simics::api::{
-    get_interface, read_phys_memory, sys::instruction_handle_t, Access, ConfObject,
-    CpuInstructionQueryInterface, CpuInstrumentationSubscribeInterface, CycleInterface,
-    IntRegisterInterface, ProcessorInfoV2Interface,
+use simics::{
+    api::{
+        get_interface, get_object, read_phys_memory, sys::instruction_handle_t, write_phys_memory,
+        Access, ConfObject, CpuInstructionQueryInterface, CpuInstrumentationSubscribeInterface,
+        CycleInterface, GenericAddress, IntRegisterInterface, ProcessorInfoV2Interface,
+    },
+    trace,
 };
 use yaxpeax_x86::protected_mode::{ConditionCode, InstDecoder, Instruction, Opcode, Operand};
 
@@ -132,6 +136,11 @@ impl ArchitectureOperations for X86ArchitectureOperations {
             .to_str()?
             .to_string();
 
+        trace!(
+            get_object(CLASS_NAME)?,
+            "Checking whether cpu with architecutre {arch} is i386"
+        );
+
         if arch == "x86-64" {
             // Check if the arch is actually x86-64, some x86-64 processors are actually
             // i386 under the hood
@@ -167,6 +176,10 @@ impl ArchitectureOperations for X86ArchitectureOperations {
                 ]
                 .contains(&n.to_ascii_lowercase().as_str())
             }) {
+                trace!(
+                    get_object(CLASS_NAME)?,
+                    "Architecture name is x86-64, but no 'r' registers found. Assuming i386"
+                );
                 Ok(Self {
                     cpu,
                     disassembler: Disassembler::new(),
@@ -183,6 +196,7 @@ impl ArchitectureOperations for X86ArchitectureOperations {
             .contains(&arch.to_ascii_lowercase().as_str())
         {
             // No i386 processor will actually be x86-64 under the hood
+            trace!(get_object(CLASS_NAME)?, "Architecture is i386");
             Ok(Self {
                 cpu,
                 disassembler: Disassembler::new(),
@@ -195,6 +209,21 @@ impl ArchitectureOperations for X86ArchitectureOperations {
         } else {
             bail!("Unsupported architecture {arch}");
         }
+    }
+
+    fn new_unchecked(cpu: *mut ConfObject) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        Ok(Self {
+            cpu,
+            disassembler: Disassembler::new(),
+            int_register: get_interface(cpu)?,
+            processor_info_v2: get_interface(cpu)?,
+            cpu_instruction_query: get_interface(cpu)?,
+            cpu_instrumentation_subscribe: get_interface(cpu)?,
+            cycle: get_interface(cpu)?,
+        })
     }
 
     fn cpu(&self) -> *mut ConfObject {
@@ -225,6 +254,196 @@ impl ArchitectureOperations for X86ArchitectureOperations {
         &mut self.cycle
     }
 
+    /// Returns the address and whether the address is virtual for the testcase buffer used by
+    /// the magic start functionality
+    fn get_magic_start_buffer(&mut self) -> Result<StartBuffer> {
+        let number = self
+            .int_register()
+            .get_number(Self::DEFAULT_TESTCASE_AREA_REGISTER_NAME.as_raw_cstr()?)?;
+        trace!(
+            get_object(CLASS_NAME)?,
+            "Got number {} for register {}",
+            number,
+            Self::DEFAULT_TESTCASE_AREA_REGISTER_NAME
+        );
+
+        let logical_address = self.int_register().read(number)?;
+        trace!(
+            get_object(CLASS_NAME)?,
+            "Got logical address {:#x} from register",
+            logical_address
+        );
+
+        let physical_address_block = self
+            .processor_info_v2()
+            // NOTE: Do we need to support segmented memory via logical_to_physical?
+            .logical_to_physical(logical_address, Access::Sim_Access_Read)?;
+
+        // NOTE: -1 signals no valid mapping, but this is equivalent to u64::MAX
+        if physical_address_block.valid == 0 {
+            bail!("Invalid linear address found in magic start buffer register {number}: {logical_address:#x}");
+        } else {
+            trace!(
+                get_object(CLASS_NAME)?,
+                "Got physical address {:#x} from logical address",
+                physical_address_block.address
+            );
+            Ok(StartBuffer::builder()
+                .physical_address(physical_address_block.address)
+                .virt(physical_address_block.address != logical_address)
+                .build())
+        }
+    }
+
+    // NOTE: Manual implementation because we must ensure we set the width to 4 bytes
+    // instead of 6 for misreporting/hinted architectures
+    fn get_magic_start_size(&mut self) -> Result<StartSize> {
+        let number = self
+            .int_register()
+            .get_number(Self::DEFAULT_TESTCASE_SIZE_REGISTER_NAME.as_raw_cstr()?)?;
+        trace!(
+            get_object(CLASS_NAME)?,
+            "Got number {} for register {}",
+            number,
+            Self::DEFAULT_TESTCASE_SIZE_REGISTER_NAME
+        );
+        let logical_address = self.int_register().read(number)?;
+        trace!(
+            get_object(CLASS_NAME)?,
+            "Got logical address {:#x} from register",
+            logical_address
+        );
+        let physical_address_block = self
+            .processor_info_v2()
+            // NOTE: Do we need to support segmented memory via logical_to_physical?
+            .logical_to_physical(logical_address, Access::Sim_Access_Read)?;
+        trace!(
+            get_object(CLASS_NAME)?,
+            "Got physical address {:#x} from logical address",
+            physical_address_block.address
+        );
+
+        // NOTE: -1 signals no valid mapping, but this is equivalent to u64::MAX
+        if physical_address_block.valid == 0 {
+            bail!("Invalid linear address found in magic start buffer register {number}: {logical_address:#x}");
+        }
+
+        let size = read_phys_memory(self.cpu(), physical_address_block.address, 4)?;
+
+        trace!(
+            get_object(CLASS_NAME)?,
+            "Read start size {size} from start size address"
+        );
+
+        Ok(StartSize::builder()
+            .physical_address((
+                physical_address_block.address,
+                physical_address_block.address != logical_address,
+            ))
+            .initial_size(size)
+            .build())
+    }
+
+    fn get_manual_start_buffer(&mut self, buffer_address: GenericAddress) -> Result<StartBuffer> {
+        let physical_address_block = self
+            .processor_info_v2()
+            // NOTE: Do we need to support segmented memory via logical_to_physical?
+            .logical_to_physical(buffer_address, Access::Sim_Access_Read)?;
+
+        if physical_address_block.valid == 0 {
+            bail!(
+                "Invalid linear address for given buffer address {:#x}",
+                buffer_address
+            );
+        } else {
+            trace!(
+                get_object(CLASS_NAME)?,
+                "Got physical address {:#x} from logical address for manual start buffer",
+                physical_address_block.address
+            );
+            Ok(StartBuffer::builder()
+                .physical_address(physical_address_block.address)
+                .virt(physical_address_block.address != buffer_address)
+                .build())
+        }
+    }
+
+    /// Returns the initial start size for non-magic instructions by reading it from a given
+    /// (possibly virtual) address
+    fn get_manual_start_size(&mut self, size_address: GenericAddress) -> Result<StartSize> {
+        let physical_address_block = self
+            .processor_info_v2()
+            // NOTE: Do we need to support segmented memory via logical_to_physical?
+            .logical_to_physical(size_address, Access::Sim_Access_Read)?;
+
+        if physical_address_block.valid == 0 {
+            bail!("Invalid linear address given for start buffer : {size_address:#x}");
+        }
+
+        trace!(
+            get_object(CLASS_NAME)?,
+            "Got physical address {:#x} from logical address for manual start buffer size",
+            physical_address_block.address
+        );
+
+        let size = read_phys_memory(self.cpu(), physical_address_block.address, 4)?;
+
+        trace!(
+            get_object(CLASS_NAME)?,
+            "Read start size {size} from start size address"
+        );
+
+        Ok(StartSize::builder()
+            .physical_address((
+                physical_address_block.address,
+                physical_address_block.address != size_address,
+            ))
+            .initial_size(size)
+            .build())
+    }
+
+    /// Writes the buffer with a testcase of a certain size
+    fn write_start(
+        &mut self,
+        testcase: &[u8],
+        buffer: &StartBuffer,
+        size: &StartSize,
+    ) -> Result<()> {
+        let mut testcase = testcase.to_vec();
+        // NOTE: We have to handle both riscv64 and riscv32 here
+
+        testcase.truncate((*size.initial_size()) as usize);
+
+        testcase.chunks(4).try_for_each(|c| {
+            trace!(
+                get_object(CLASS_NAME)?,
+                "Writing testcase bytes {:?} to physical memory {:#x}",
+                c,
+                buffer.physical_address
+            );
+            write_phys_memory(self.cpu(), buffer.physical_address, c)
+        })?;
+
+        let value = testcase
+            .len()
+            .to_le_bytes()
+            .iter()
+            .take(4)
+            .cloned()
+            .collect::<Vec<_>>();
+
+        if let Some((address, _)) = size.physical_address {
+            trace!(
+                get_object(CLASS_NAME)?,
+                "Writing testcase size {:?} to physical memory {:#x}",
+                &value,
+                address
+            );
+            write_phys_memory(self.cpu(), address, value.as_slice())?;
+        }
+
+        Ok(())
+    }
     fn trace_pc(&mut self, instruction_query: *mut instruction_handle_t) -> Result<TraceEntry> {
         let instruction_bytes = self
             .cpu_instruction_query

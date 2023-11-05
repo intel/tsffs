@@ -52,7 +52,7 @@ impl ArchitectureOperations for RISCVArchitectureOperations {
             .to_str()?
             .to_string();
 
-        if arch == "risc-v" || arch == "riscv32" || arch == "riscv64" {
+        if arch == "risc-v" || arch == "riscv" || arch == "riscv32" || arch == "riscv64" {
             Ok(Self {
                 cpu,
                 disassembler: Disassembler::new(),
@@ -65,6 +65,21 @@ impl ArchitectureOperations for RISCVArchitectureOperations {
         } else {
             bail!("Architecture {} is not risc-v", arch);
         }
+    }
+
+    fn new_unchecked(cpu: *mut ConfObject) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        Ok(Self {
+            cpu,
+            disassembler: Disassembler::new(),
+            int_register: get_interface(cpu)?,
+            processor_info_v2: get_interface(cpu)?,
+            cpu_instruction_query: get_interface(cpu)?,
+            cpu_instrumentation_subscribe: get_interface(cpu)?,
+            cycle: get_interface(cpu)?,
+        })
     }
 
     fn cpu(&self) -> *mut ConfObject {
@@ -99,9 +114,11 @@ impl ArchitectureOperations for RISCVArchitectureOperations {
         let instruction_bytes = self
             .cpu_instruction_query
             .get_instruction_bytes(instruction_query)?;
+
         self.disassembler.disassemble(unsafe {
             from_raw_parts(instruction_bytes.data, instruction_bytes.size)
         })?;
+
         if self.disassembler.last_was_call()?
             || self.disassembler.last_was_control_flow()?
             || self.disassembler.last_was_ret()?

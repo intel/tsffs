@@ -33,17 +33,34 @@ use libafl_bolts::{
     AsMutSlice, AsSlice,
 };
 use libafl_targets::{AFLppCmpLogObserver, AFLppCmplogTracingStage};
-use simics::{api::AsConfObject, info};
+use simics::{api::AsConfObject, debug, info};
 use std::{
-    cell::RefCell, slice::from_raw_parts_mut, sync::mpsc::channel, thread::spawn, time::Duration,
+    cell::RefCell, fmt::Debug, slice::from_raw_parts_mut, sync::mpsc::channel, thread::spawn,
+    time::Duration,
 };
 
 pub mod tokenize;
 
-#[derive(Getters, Debug, Clone, PartialEq, Eq)]
+#[derive(Getters, Clone, PartialEq, Eq)]
 pub struct Testcase {
     testcase: Vec<u8>,
     cmplog: bool,
+}
+
+impl Debug for Testcase {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Testcase")
+            .field(
+                "testcase",
+                &&self.testcase[..(if self.testcase.len() < 8 {
+                    self.testcase.len()
+                } else {
+                    8
+                })],
+            )
+            .field("cmplog", &self.cmplog)
+            .finish()
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -59,7 +76,7 @@ impl Tsffs {
 
     /// Start the fuzzing thread.
     pub fn start_fuzzer_thread(&mut self) -> Result<()> {
-        info!(self.as_conf_object_mut(), "Starting fuzzer thread");
+        debug!(self.as_conf_object_mut(), "Starting fuzzer thread");
 
         let (tx, orx) = channel::<ExitKind>();
         let (otx, rx) = channel::<Testcase>();

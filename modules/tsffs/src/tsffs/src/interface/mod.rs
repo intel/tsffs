@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
+    arch::ArchitectureHint,
     fuzzer::tokenize::{tokenize_executable_file, tokenize_src_file},
     state::{ManualStart, ManualStartSize, Solution, SolutionKind, Stop, StopReason},
     Tsffs,
@@ -9,15 +10,16 @@ use crate::{
 use ffi_macro::ffi;
 use simics::{
     api::{
-        lookup_file, sys::attr_value_t, AsConfObject, AttrValue, AttrValueType, BreakpointId,
-        ConfObject, GenericAddress,
+        get_processor_number, lookup_file, sys::attr_value_t, AsConfObject, AttrValue,
+        AttrValueType, BreakpointId, ConfObject, GenericAddress,
     },
-    info, Result,
+    debug, Result,
 };
 use simics_macro::interface_impl;
 use std::{
     ffi::{c_char, CStr},
     path::PathBuf,
+    str::FromStr,
 };
 
 // Emit the interface header/dml files in the "modules" directory in the module subdirectory
@@ -81,7 +83,7 @@ impl Tsffs {
     /// * `r1` - set to the address of a variable containing the maximum size of a testcase,
     ///   which will be overwritten each execution with the current actual size of the testcase
     pub fn set_start_on_harness(&mut self, start_on_harness: bool) -> Result<()> {
-        info!(
+        debug!(
             self.as_conf_object(),
             "set_start_on_harness({start_on_harness})"
         );
@@ -96,7 +98,7 @@ impl Tsffs {
     /// `set_start_on_harness` has ben configured. This allows you to place multiple harnesses in
     /// a single binary and selectively enable one of them.
     pub fn set_start_magic_number(&mut self, magic_number: i64) {
-        info!(
+        debug!(
             self.as_conf_object(),
             "set_start_magic_number({magic_number})"
         );
@@ -110,7 +112,7 @@ impl Tsffs {
     /// resume or run the simulation, the SIMICS script containing this call should
     /// resume execution afterward.
     pub fn set_stop_on_harness(&mut self, stop_on_harness: bool) -> Result<()> {
-        info!(
+        debug!(
             self.as_conf_object(),
             "set_stop_on_harness({stop_on_harness})"
         );
@@ -125,7 +127,7 @@ impl Tsffs {
     /// `set_start_on_harness` has ben configured. This allows you to place multiple harnesses in
     /// a single binary and selectively enable one of them.
     pub fn set_stop_magic_number(&mut self, magic_number: i64) {
-        info!(
+        debug!(
             self.as_conf_object(),
             "set_stop_magic_number({magic_number})"
         );
@@ -153,7 +155,7 @@ impl Tsffs {
         testcase_address: GenericAddress,
         size_address: GenericAddress,
     ) -> Result<()> {
-        info!(
+        debug!(
             self.as_conf_object(),
             "start({testcase_address:#x}, {size_address:#x})"
         );
@@ -186,7 +188,7 @@ impl Tsffs {
         testcase_address: GenericAddress,
         maximum_size: u32,
     ) -> Result<()> {
-        info!(
+        debug!(
             self.as_conf_object(),
             "start_with_maximum_size({testcase_address:#x}, {maximum_size:#x})"
         );
@@ -209,7 +211,7 @@ impl Tsffs {
     /// breakpoints or other complex conditions. This method does
     /// not need to be called if `set_stop_on_harness` is enabled.
     pub fn stop(&mut self) -> Result<()> {
-        info!(self.as_conf_object(), "stop");
+        debug!(self.as_conf_object(), "stop");
 
         self.stop_simulation(StopReason::ManualStop(Stop::default()))?;
 
@@ -223,7 +225,7 @@ impl Tsffs {
     pub fn solution(&mut self, id: u64, message: *mut c_char) -> Result<()> {
         let message = unsafe { CStr::from_ptr(message) }.to_str()?.to_string();
 
-        info!(self.as_conf_object(), "solution({id:#x}, {message})");
+        debug!(self.as_conf_object(), "solution({id:#x}, {message})");
 
         self.stop_simulation(StopReason::Solution(
             Solution::builder().kind(SolutionKind::Manual).build(),
@@ -235,14 +237,14 @@ impl Tsffs {
     /// Interface method to set the fuzzer to use the experimental snapshots interface
     /// instead of the micro checkpoints interface for snapshot save and restore operations
     pub fn set_use_snapshots(&mut self, use_snapshots: bool) {
-        info!(self.as_conf_object(), "use_snapshots({use_snapshots})");
+        debug!(self.as_conf_object(), "use_snapshots({use_snapshots})");
 
         *self.configuration_mut().use_snapshots_mut() = use_snapshots;
     }
 
     /// Interface method to set the execution timeout in seconds
     pub fn set_timeout(&mut self, timeout: f64) {
-        info!(self.as_conf_object(), "set_timeout({timeout})");
+        debug!(self.as_conf_object(), "set_timeout({timeout})");
 
         *self.configuration_mut().timeout_mut() = timeout;
     }
@@ -255,7 +257,7 @@ impl Tsffs {
     /// For example on x86_64, `add_exception_solution(14)` would treat any page fault as
     /// a solution.
     pub fn add_exception_solution(&mut self, exception: i64) {
-        info!(self.as_conf_object(), "add_exception_solution({exception})");
+        debug!(self.as_conf_object(), "add_exception_solution({exception})");
 
         self.configuration_mut().exceptions_mut().insert(exception);
     }
@@ -265,7 +267,7 @@ impl Tsffs {
     /// the set of solutions currently monitored occurs, the testcase will be saved and
     /// reported as a solution.
     pub fn remove_exception_solution(&mut self, exception: i64) {
-        info!(
+        debug!(
             self.as_conf_object(),
             "remove_exception_solution({exception})"
         );
@@ -277,7 +279,7 @@ impl Tsffs {
     /// exception encountered during fuzzing will be saved as a solution. This is typically
     /// not desired.
     pub fn set_all_exceptions_are_solutions(&mut self, all_exceptions_are_solutions: bool) {
-        info!(
+        debug!(
             self.as_conf_object(),
             "set_all_exceptions_are_solutions({all_exceptions_are_solutions})"
         );
@@ -288,7 +290,7 @@ impl Tsffs {
     /// Set a specific breakpoint number to be considered a solution. If a breakpoint with
     /// this ID is encountered during fuzzing, the input will be saved as a solution.
     pub fn add_breakpoint_solution(&mut self, breakpoint: BreakpointId) {
-        info!(
+        debug!(
             self.as_conf_object(),
             "add_breakpoint_solution({breakpoint})"
         );
@@ -301,7 +303,7 @@ impl Tsffs {
     /// Remove a specific breakpoint from consideration as a solution. If a breakpoint with
     /// this ID is encountered during fuzzing, the input will be saved as a solution.
     pub fn remove_breakpoint_solution(&mut self, breakpoint: BreakpointId) {
-        info!(
+        debug!(
             self.as_conf_object(),
             "remove_breakpoint_solution({breakpoint})"
         );
@@ -314,7 +316,7 @@ impl Tsffs {
     /// breakpoint (read, write, or execute) encountered during fuzzing will be saved as
     /// a solution.
     pub fn set_all_breakpoints_are_solutions(&mut self, all_breakpoints_are_solutions: bool) {
-        info!(
+        debug!(
             self.as_conf_object(),
             "set_all_breakpoints_are_solutions({all_breakpoints_are_solutions})"
         );
@@ -331,7 +333,7 @@ impl Tsffs {
     /// particularly well suited for software which performs magic value checks, large
     /// value and string comparisons, and sums.
     pub fn set_cmplog_enabled(&mut self, enabled: bool) {
-        info!(self.as_conf_object(), "set_cmplog_enabled({enabled})");
+        debug!(self.as_conf_object(), "set_cmplog_enabled({enabled})");
 
         *self.configuration_mut().cmplog_mut() = enabled;
     }
@@ -350,7 +352,7 @@ impl Tsffs {
                 .to_string(),
         );
 
-        info!(
+        debug!(
             self.as_conf_object(),
             "set_corpus_directory({})",
             corpus_directory.display(),
@@ -373,7 +375,7 @@ impl Tsffs {
                 .to_string(),
         );
 
-        info!(
+        debug!(
             self.as_conf_object(),
             "set_solutions_directory({})",
             solutions_directory.display()
@@ -391,7 +393,7 @@ impl Tsffs {
     /// should be aware your fuzz campaign's efficiency will be lowered. This is, however, very
     /// useful for demonstration and test purposes.
     pub fn set_generate_random_corpus(&mut self, generate_random_corpus: bool) -> Result<()> {
-        info!(
+        debug!(
             self.as_conf_object(),
             "set_generate_random_corpus({generate_random_corpus})"
         );
@@ -404,7 +406,7 @@ impl Tsffs {
     /// executed, and includes all stages (e.g. calibration). This should typically not be used
     /// to limit the time of a fuzzing campaign, and is only useful for demonstration purposes.
     pub fn set_iterations(&mut self, iterations: usize) -> Result<()> {
-        info!(self.as_conf_object(), "set_iterations({iterations})");
+        debug!(self.as_conf_object(), "set_iterations({iterations})");
         *self.configuration_mut().iterations_mut() = Some(iterations);
 
         Ok(())
@@ -423,7 +425,7 @@ impl Tsffs {
 
         let executable_path = lookup_file(simics_path)?;
 
-        info!(
+        debug!(
             self.as_conf_object(),
             "tokenize_executable({})",
             executable_path.display()
@@ -441,7 +443,8 @@ impl Tsffs {
         let simics_path = unsafe { CStr::from_ptr(source_file) }.to_str()?.to_string();
 
         let source_path = lookup_file(simics_path)?;
-        info!(
+
+        debug!(
             self.as_conf_object(),
             "tokenize_src({})",
             source_path.display()
@@ -467,7 +470,8 @@ impl Tsffs {
         let simics_path = unsafe { CStr::from_ptr(token_file) }.to_str()?.to_string();
 
         let token_file = lookup_file(simics_path)?;
-        info!(
+
+        debug!(
             self.as_conf_object(),
             "add_token_file({})",
             token_file.display()
@@ -483,12 +487,30 @@ impl Tsffs {
     /// Add a processor to be traced. By default, only the processor the start event occurs on
     /// is used for tracing.
     pub fn add_trace_processor(&mut self, cpu: *mut ConfObject) -> Result<()> {
-        info!(
+        debug!(
             self.as_conf_object(),
             "add_trace_processor({:#x})", cpu as usize
         );
 
         self.add_processor(cpu, false)?;
+
+        Ok(())
+    }
+
+    /// Set an architecture hint to be used for a particular processor. This allows overriding
+    /// the detected or reported architecture for the processor object. This is particularly
+    /// useful for x86 processors which report as x86-64 processors, or when fuzzing x86 code
+    /// running on an x86-64 processor in a backward compatibility mode.
+    pub fn add_architecture_hint(&mut self, cpu: *mut ConfObject, hint: *mut c_char) -> Result<()> {
+        let hint = unsafe { CStr::from_ptr(hint) }.to_str()?.to_string();
+        let processor_number = get_processor_number(cpu)?;
+        debug!(
+            self.as_conf_object(),
+            "add_architecture_hint({processor_number}, {hint})"
+        );
+        self.configuration_mut()
+            .architecture_hints_mut()
+            .insert(processor_number, ArchitectureHint::from_str(&hint)?);
 
         Ok(())
     }
