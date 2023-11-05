@@ -1,7 +1,7 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
-//! HAP APIs
+//! HAP APIs and HAP definitions
 
 #![allow(clippy::unused_unit)]
 #![allow(clippy::not_unsafe_ptr_arg_deref)]

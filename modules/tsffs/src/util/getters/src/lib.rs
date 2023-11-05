@@ -81,6 +81,21 @@ impl ToTokens for Getters {
 
 #[proc_macro_derive(Getters, attributes(getters))]
 #[allow(non_snake_case)]
+/// Add immutable and (optionally) mutable accessors for every field of a struct
+///
+/// ```rust,ignore
+/// use getters::Getters;
+///
+/// #[derive(Getters)]
+/// pub struct Foo {
+///     x: i32,
+/// }
+///
+/// let f = Foo { x: 0 };
+/// assert_eq!(f.x(), 0);
+/// *f.eq_mut()  = 1;
+/// assert_eq!(f.x(), 1);
+/// ```
 pub fn Getters(input: TokenStream) -> TokenStream {
     let getters = match Getters::from_derive_input(&parse_macro_input!(input as DeriveInput)) {
         Ok(g) => g,

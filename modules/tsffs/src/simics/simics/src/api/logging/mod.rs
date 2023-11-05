@@ -23,6 +23,7 @@ use super::ConfClass;
 const LOG_GROUP: i32 = 0;
 
 #[repr(i32)]
+/// A SIMICS logging level
 pub enum LogLevel {
     Error = 0,
     Warn = 1,

@@ -2,19 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Wrappers for the small subset of ISPM commands the fuzzer and its build processes need to
-//!
-//! To implement or update this subset using public SIMICS, install ISPM (Intel SIMICS
-//! Package Manager) to `~/simics-public/ispm/`, then:
-//!
-//! ```sh,ignore
-//! npx asar -h
-//! npx
-//! npx asar extract ~/simics-public/ispm/resources/app.asar \
-//!     ~/simics-public/ispm/resources/app.asar.extracted
-//! npx webcrack ~/simics-public/ispm/resources/app.asar.extracted/dist/electron/main.js \
-//!     > ~/simics-public/ispm/resources/app.asar.extracted/dist/electron/main.unmin.js
-//! npx deobfuscator ~/simics-public/ispm/resources/app.asar.extracted/dist/electron/main.js
-//! ```
+//! function
 
 #[allow(deprecated)]
 use std::env::home_dir;
@@ -27,6 +15,7 @@ pub mod data;
 
 pub const ISPM_NAME: &str = "ispm";
 pub const NON_INTERACTIVE_FLAG: &str = "--non-interactive";
+
 /// Minimal implementation of internal ISPM functionality to use it externally
 pub struct Internal {}
 
@@ -77,26 +66,38 @@ pub mod ispm {
     use crate::{ToArgs, NON_INTERACTIVE_FLAG};
 
     #[derive(TypedBuilder, Getters, Clone, Debug)]
+    /// Global ISPM options
     pub struct GlobalOptions {
         #[builder(default, setter(into))]
+        /// A package repo to use when installing packages
         package_repo: Vec<String>,
         #[builder(default, setter(into, strip_option))]
+        /// A directory to install packages into, overriding global configurations
         install_dir: Option<PathBuf>,
         #[builder(default, setter(into, strip_option))]
+        /// An HTTPS proxy URL to use
         https_proxy: Option<String>,
         #[builder(default, setter(into, strip_option))]
+        /// A no-proxy string of addresses not to use the proxy for, e.g. "*.intel.com,127.0.0.1"
         no_proxy: Option<String>,
         #[builder(default = true)]
+        /// Whether this command should be run in non-interactive mode.
         non_interactive: bool,
         #[builder(default = false)]
+        /// Whether insecure packages should be trusted. This should be set to true when
+        /// installing an un-signed local package
         trust_insecure_packages: bool,
         #[builder(default, setter(into, strip_option))]
+        /// A path to an override configuration file
         config_file: Option<PathBuf>,
         #[builder(default = false)]
+        /// Whether the configuration file should not be used for this command
         no_config_file: bool,
         #[builder(default, setter(into, strip_option))]
+        /// A different temporary directory to use
         temp_dir: Option<PathBuf>,
         #[builder(default, setter(into, strip_option))]
+        /// An authentication file to use for this command
         auth_file: Option<PathBuf>,
     }
 

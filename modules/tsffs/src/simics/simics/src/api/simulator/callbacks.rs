@@ -1,6 +1,8 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+//! Callbacks from the simulator to user code
+
 use crate::{
     api::sys::{
         notify_mode_t, socket_t, SIM_cancel_realtime_event, SIM_notify_on_descriptor,

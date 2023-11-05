@@ -1,3 +1,8 @@
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
+//! Data deserializable from ISPM commands and configurations
+
 use anyhow::Result;
 use derive_getters::Getters;
 use serde::Deserialize;
@@ -22,6 +27,7 @@ pub struct IPathObject {
 }
 
 #[derive(TypedBuilder, Getters, Deserialize, Clone, Debug, PartialEq, Eq)]
+/// A path to a SIMICS repo. This is an artifactory repository.
 pub struct RepoPath {
     #[builder(setter(into))]
     value: String,
@@ -32,6 +38,7 @@ pub struct RepoPath {
 
 #[derive(TypedBuilder, Getters, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[builder(field_defaults(setter(into)))]
+/// An electron rectangle definition
 pub struct Rectangle {
     x: isize,
     y: isize,
@@ -41,6 +48,7 @@ pub struct Rectangle {
 
 #[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
+/// Proxy settings
 pub enum ProxySettingTypes {
     None,
     Env,
@@ -48,6 +56,7 @@ pub enum ProxySettingTypes {
 }
 
 #[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
+/// Preference for which method should be used to install packages
 pub enum InstallationPreference {
     RepoOrder,
     LegacyStyle,
@@ -140,49 +149,66 @@ pub struct Settings {
 }
 
 impl Settings {
+    /// Get the current settings from the currently set configuration file
     pub fn get() -> Result<Self> {
         Ok(from_slice(&read(Internal::cfg_file_path()?)?)?)
     }
 }
 
 #[derive(TypedBuilder, Getters, Deserialize, Clone, Debug, PartialEq, Eq)]
+/// A package that is already installed
 pub struct InstalledPackage {
     #[serde(rename = "pkgNumber")]
+    /// The package number
     package_number: isize,
     #[serde(deserialize_with = "version_constraint_from_string")]
+    /// The package version
     version: VersionConstraint,
     #[builder(setter(into))]
+    /// The package name
     name: String,
     #[builder(default, setter(into))]
+    /// Paths to this installed package
     paths: Vec<PathBuf>,
 }
 
 #[derive(TypedBuilder, Getters, Deserialize, Clone, Debug, PartialEq, Eq)]
+/// A package that can be installed
 pub struct AvailablePackage {
     #[serde(rename = "pkgNumber")]
+    /// The package number
     package_number: isize,
     #[serde(deserialize_with = "version_constraint_from_string")]
+    /// The package version
     version: VersionConstraint,
     #[builder(setter(into))]
+    /// The package name
     name: String,
+    /// Whether this package is installed
     installed: bool,
 }
 
 #[derive(TypedBuilder, Getters, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[builder(field_defaults(default, setter(strip_option, into)))]
+/// Set of installed and available packages
 pub struct Packages {
     #[serde(rename = "installedPackages")]
+    /// The list of packages which are installed
     installed_packages: Option<Vec<InstalledPackage>>,
     #[serde(rename = "availablePackages")]
+    /// The list of packages which are available to install
     available_packages: Option<Vec<AvailablePackage>>,
 }
 
 #[derive(TypedBuilder, Getters, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
+/// A package which is added to a project
 pub struct ProjectPackage {
     #[serde(rename = "pkgNumber")]
+    /// The package number
     package_number: isize,
     #[serde(deserialize_with = "version_constraint_from_string")]
     #[builder(setter(into))]
+    /// The package version
     version: VersionConstraint,
 }
 
@@ -201,35 +227,48 @@ impl Display for ProjectPackage {
 }
 
 #[derive(TypedBuilder, Getters, Deserialize, Clone, Debug, PartialEq, Eq)]
+/// A SIMICS project
 pub struct Project {
     #[builder(setter(into))]
+    /// The project name
     name: String,
     #[builder(setter(into))]
+    /// The project description
     description: String,
+    /// The path to the project
     path: PathBuf,
     #[builder(default, setter(into))]
+    /// The set of packages this project was configured with
     packages: Vec<ProjectPackage>,
 }
 
 #[derive(TypedBuilder, Getters, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[builder(field_defaults(default, setter(into)))]
+/// List of known projects associated with this ISPM installation
 pub struct Projects {
     projects: Vec<Project>,
 }
 
 #[derive(TypedBuilder, Getters, Deserialize, Clone, Debug, PartialEq, Eq)]
+/// A platform, which is a collection of packages
 pub struct Platform {
     #[builder(setter(into))]
+    /// The name of the platform
     name: String,
     #[builder(setter(into))]
+    /// The group of the platform
     group: String,
     #[builder(setter(into))]
+    /// The path to the platform
     path: String,
+    /// Whether this platform is remote
     remote: bool,
 }
 
 #[derive(TypedBuilder, Getters, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[builder(field_defaults(default, setter(into)))]
+/// A list of platforms
 pub struct Platforms {
+    /// The list of platforms
     platforms: Vec<Platform>,
 }

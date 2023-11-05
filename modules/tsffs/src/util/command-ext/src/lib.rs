@@ -8,6 +8,7 @@ use std::{
 use thiserror::Error;
 
 #[derive(Error, Debug)]
+/// An error when checking the result of a command
 pub enum CommandExtError {
     #[error("Command failed to execute with code ({code}), stdout ({stdout}), stderr ({stderr})")]
     Check {
@@ -21,14 +22,20 @@ pub enum CommandExtError {
 
 pub trait CommandExt: CommandExtCheck {}
 
+/// Extension trait for [`std::process::Command`] to check the output of a command
 pub trait CommandExtCheck {
     type Error;
+
+    /// Check the result of a command, returning an error containing the output and
+    /// error stream content if the status is not success
     fn check(&mut self) -> Result<Output, Self::Error>;
 }
 
 impl CommandExtCheck for Command {
     type Error = CommandExtError;
 
+    /// Check the result of a command, returning an error containing the output and
+    /// error stream content if the status is not success
     fn check(&mut self) -> Result<Output, Self::Error> {
         self.output()
             .map_err(|e| CommandExtError::Io { source: e })

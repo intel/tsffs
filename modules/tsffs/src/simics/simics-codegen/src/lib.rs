@@ -59,33 +59,32 @@ fn interface_field_to_method(field: &Field) -> Option<TokenStream2> {
                                 .skip(if has_obj { 1 } else { 0 })
                                 .filter_map(|a| a.name.clone().map(|n| n.0))
                                 .collect::<Vec<_>>();
-                            let wrapper_inputs = inputs.iter().skip(if has_obj { 1 } else { 0 }).collect::<Vec<_>>();
+                            let wrapper_inputs = inputs
+                                .iter()
+                                .skip(if has_obj { 1 } else { 0 })
+                                .collect::<Vec<_>>();
                             let (is_attr_value, output) = match &proto.output {
                                 ReturnType::Default => (false, quote!(())),
-                                ReturnType::Type(_, t) => {
-                                    match &**t {
-                                        Type::Path(p) => {
-                                            if let Some(last) = p.path.get_ident() {
-                                                if last == "attr_value_t" {
-                                                    (true, quote!(crate::api::AttrValue))
-                                                } else {
-                                                    (false, quote!(#t))
-                                                }
+                                ReturnType::Type(_, t) => match &**t {
+                                    Type::Path(p) => {
+                                        if let Some(last) = p.path.get_ident() {
+                                            if last == "attr_value_t" {
+                                                (true, quote!(crate::api::AttrValue))
                                             } else {
                                                 (false, quote!(#t))
                                             }
-
-
-                                        },
-                                        _ => (false, quote!(#t)),
+                                        } else {
+                                            (false, quote!(#t))
+                                        }
                                     }
+                                    _ => (false, quote!(#t)),
                                 },
                             };
                             // NOTE: We need to make a new name because in some cases the fn ptr name is the same as one of the parameter
                             // names
                             let some_name = format_ident!("{}_fn", name);
-                            let maybe_self_obj = has_obj.then_some(quote!(self.obj,)).unwrap_or_default();
-
+                            let maybe_self_obj =
+                                has_obj.then_some(quote!(self.obj,)).unwrap_or_default();
 
                             let ok_value = if is_attr_value {
                                 quote!(Ok(unsafe { #some_name(#maybe_self_obj #(#input_names),*) }.into()))
@@ -177,17 +176,18 @@ fn hap_name_and_type_to_struct(
                                 inputs.iter().skip(1).map(|a| &a.ty).collect::<Vec<_>>();
                             let closure_param_names =
                                 input_names.iter().skip(1).collect::<Vec<_>>();
-                            let callback_ty = quote!(FnMut(#(#closure_params),*) -> #output + 'static);
+                            let callback_ty =
+                                quote!(FnMut(#(#closure_params),*) -> #output + 'static);
 
                             let add_callback_methods = quote! {
                                 /// Add a callback to be called on each occurrence of this HAP. The callback may capture its environment.
-                                /// 
+                                ///
                                 /// # Arguments
-                                /// 
+                                ///
                                 /// * `callback` - The closure to fire as a callback. The closure will be doubly boxed. Any program state accessed inside
                                 ///   the closure must have the static lifetime. This is not enforced by the compiler, it is up to the programmer to ensure
                                 ///   the soundness of their callback code.
-                                pub fn add_callback<F>(callback: F) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle> 
+                                pub fn add_callback<F>(callback: F) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle>
                                 where
                                     F: #callback_ty,
                                 {
@@ -205,15 +205,15 @@ fn hap_name_and_type_to_struct(
                                 }
 
                                 /// Add a callback to be called on each occurrence of this HAP for a specific object. The callback may capture its environment.
-                                /// 
+                                ///
                                 /// # Arguments
-                                /// 
+                                ///
                                 /// * `callback` - The closure to fire as a callback. The closure will be doubly boxed. Any program state accessed inside
                                 ///   the closure must have the static lifetime. This is not enforced by the compiler, it is up to the programmer to ensure
                                 ///   the soundness of their callback code.
                                 /// * `obj` - The object to fire this callback for. This HAP will not trigger the callback when firing on any object other than
                                 ///   this one.
-                                pub fn add_callback_object<F>(callback: F, obj: *mut crate::api::ConfObject) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle> 
+                                pub fn add_callback_object<F>(callback: F, obj: *mut crate::api::ConfObject) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle>
                                 where
                                     F: #callback_ty
                                 {
@@ -249,7 +249,7 @@ fn hap_name_and_type_to_struct(
                                     ///   the closure must have the static lifetime. This is not enforced by the compiler, it is up to the programmer to ensure
                                     ///   the soundness of their callback code.
                                 #[doc = #index_doc]
-                                pub fn add_callback_index<F>(callback: F, index: i64) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle> 
+                                pub fn add_callback_index<F>(callback: F, index: i64) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle>
                                 where
                                     F: #callback_ty
                                 {
@@ -279,7 +279,7 @@ fn hap_name_and_type_to_struct(
                                     ///   the soundness of their callback code.
                                 #[doc = #range_start_doc]
                                 #[doc = #range_end_doc]
-                                pub fn add_callback_range<F>(callback: F, start: i64, end: i64) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle> 
+                                pub fn add_callback_range<F>(callback: F, start: i64, end: i64) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle>
                                 where
                                     F: #callback_ty
                                 {
@@ -311,7 +311,7 @@ fn hap_name_and_type_to_struct(
                                     /// * `obj` - The object to fire this callback for. This HAP will not trigger the callback when firing on any object other than
                                     ///   this one.
                                 #[doc = #index_doc]
-                                pub fn add_callback_object_index<F>(callback: F, obj: *mut crate::api::ConfObject, index: i64) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle> 
+                                pub fn add_callback_object_index<F>(callback: F, obj: *mut crate::api::ConfObject, index: i64) -> crate::Result<crate::api::simulator::hap_consumer::HapHandle>
                                 where
                                     F: #callback_ty
                                 {

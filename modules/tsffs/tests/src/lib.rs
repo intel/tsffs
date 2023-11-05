@@ -1,4 +1,7 @@
-//! Runs the SIMICS tests for the project
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
+//! SIMICS test utilities for test environment setup and configuration
 
 use anyhow::{anyhow, Result};
 use getters::Getters;
@@ -13,7 +16,7 @@ use ispm_wrapper::{
 };
 use std::{
     collections::HashSet,
-    fs::{create_dir_all, read_dir, remove_dir_all, write},
+    fs::{create_dir_all, read_dir, write},
     path::{Path, PathBuf},
 };
 use typed_builder::TypedBuilder;

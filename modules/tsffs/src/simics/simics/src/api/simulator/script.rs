@@ -1,8 +1,6 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
-use std::any::type_name;
-
 use crate::{
     api::{
         sys::{
@@ -15,6 +13,7 @@ use crate::{
 };
 use raw_cstr::raw_cstr;
 use simics_macro::simics_exception;
+use std::any::type_name;
 
 #[simics_exception]
 /// Run a SIMICS CLI command

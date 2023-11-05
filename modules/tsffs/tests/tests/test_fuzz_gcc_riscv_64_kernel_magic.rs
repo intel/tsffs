@@ -1,10 +1,13 @@
-//! Test that we can load TSFFS in a new project
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
 
-use std::process::Command;
+//! Test for fuzzing a kernel module using a harness directly in the kernel module
+//! RISC-V architecture
 
 use anyhow::Result;
 use command_ext::CommandExtCheck;
 use indoc::indoc;
+use std::process::Command;
 use tests::{Architecture, TestEnvSpec};
 
 // const BOOT_DISK: &[u8] = include_bytes!("../rsrc/minimal_boot_disk.craff");
@@ -80,12 +83,10 @@ fn test_fuzz_gcc_riscv_64_kernel_magic() -> Result<()> {
         .arch(Architecture::Riscv)
         .build()
         .to_env()?;
-    println!("Set up env");
 
     let base = env.simics_base_dir()?;
     let craff = base.join("linux64").join("bin").join("craff");
 
-    println!("dd");
     Command::new("dd")
         .arg("if=/dev/zero")
         .arg(format!(
@@ -96,11 +97,9 @@ fn test_fuzz_gcc_riscv_64_kernel_magic() -> Result<()> {
         .arg("bs=1024")
         .arg("count=131072")
         .check()?;
-    println!("mkfs");
     Command::new("mkfs.fat")
         .arg(env.project_dir().join("test.fs"))
         .check()?;
-    println!("mcopy");
     Command::new("mcopy")
         .arg("-i")
         .arg(env.project_dir().join("test.fs"))
@@ -110,7 +109,6 @@ fn test_fuzz_gcc_riscv_64_kernel_magic() -> Result<()> {
         )
         .arg("::test-mod")
         .check()?;
-    println!("mcopy");
     Command::new("mcopy")
         .arg("-i")
         .arg(env.project_dir().join("test.fs"))
@@ -120,25 +118,11 @@ fn test_fuzz_gcc_riscv_64_kernel_magic() -> Result<()> {
         )
         .arg("::test-mod.ko")
         .check()?;
-    println!("craff");
     Command::new(craff)
         .arg("-o")
         .arg(env.project_dir().join("test.fs.craff"))
         .arg(env.project_dir().join("test.fs"))
         .check()?;
-
-    // NOTE:
-    // You can connect to the qsp-x86/uefi-shell
-    // machine by running `qsp.serconsole.con.telnet-setup /path/to/telnet.sock
-    // then connect with
-    // socat -,rawer,escape=0x1d unix-connect:/path/to/telnet.sock
-    //
-    // An empty FAT fs craff can be created with:
-    // dd if=/dev/zero of=fat.fs bs=1024 count=4096
-    // mkfs.fat fat.fs
-    // /path/to/craff -o fat.fs.craff fat.fs
-    //
-    println!("Running simics");
 
     let output = Command::new("./simics")
         .current_dir(env.project_dir())
@@ -148,8 +132,7 @@ fn test_fuzz_gcc_riscv_64_kernel_magic() -> Result<()> {
         .arg("test.simics")
         .check()?;
 
-    let output_str = String::from_utf8_lossy(&output.stdout);
-    println!("{}", output_str);
+    let _output_str = String::from_utf8_lossy(&output.stdout);
 
     Ok(())
 }

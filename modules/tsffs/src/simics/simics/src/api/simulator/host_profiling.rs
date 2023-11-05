@@ -8,7 +8,6 @@ use crate::{
     Result,
 };
 use raw_cstr::raw_cstr;
-
 use simics_macro::simics_exception;
 
 pub type ProfileArea = profile_area_t;

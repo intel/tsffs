@@ -1260,7 +1260,6 @@ impl TryIntoAttrValueTypeDictOpts {
             }
         });
     }
-
 }
 
 impl ToTokens for TryIntoAttrValueTypeDictOpts {
@@ -1334,7 +1333,7 @@ impl TryIntoAttrValueTypeListOpts {
 
 impl ToTokens for TryIntoAttrValueTypeListOpts {
     fn to_tokens(&self, tokens: &mut TokenStream2) {
-            self.to_tokens_list(tokens)
+        self.to_tokens_list(tokens)
     }
 }
 
@@ -1369,7 +1368,6 @@ struct TryFromAttrValueTypeListOpts {
 }
 
 impl TryFromAttrValueTypeListOpts {
-
     fn to_tokens_list(&self, tokens: &mut TokenStream2) {
         let ident = &self.ident;
         let (impl_generics, ty_generics, where_clause) = self.generics.split_for_impl();
@@ -1409,7 +1407,7 @@ impl TryFromAttrValueTypeListOpts {
                     })
                 }
             }
-            
+
             impl #impl_generics TryFrom<simics::api::AttrValue> for #ident #ty_generics  #where_clause {
                 type Error = simics::Error;
 
@@ -1518,7 +1516,6 @@ impl TryFromAttrValueTypeDictOpts {
             }
         });
     }
-
 }
 
 impl ToTokens for TryFromAttrValueTypeDictOpts {

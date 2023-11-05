@@ -1,11 +1,15 @@
-//! Test that we can load TSFFS in a new project
+// Copyright (C) 2023 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
 
-use std::process::Command;
+//! Test fuzzing an x86 user space application in Linux
+//!
+//! X86-64 architecture, hinted to x86
 
 use anyhow::Result;
 use command_ext::CommandExtCheck;
 use indoc::indoc;
 use ispm_wrapper::data::ProjectPackage;
+use std::process::Command;
 use tests::{Architecture, TestEnvSpec};
 
 const TEST_USER: &[u8] = include_bytes!("../targets/minimal-x86-user/test");
@@ -126,18 +130,6 @@ fn test_fuzz_gcc_x86_magic() -> Result<()> {
         .arg(env.project_dir().join("test.fs"))
         .check()?;
 
-    // NOTE:
-    // You can connect to the qsp-x86/uefi-shell
-    // machine by running `qsp.serconsole.con.telnet-setup /path/to/telnet.sock
-    // then connect with
-    // socat -,rawer,escape=0x1d unix-connect:/path/to/telnet.sock
-    //
-    // An empty FAT fs craff can be created with:
-    // dd if=/dev/zero of=fat.fs bs=1024 count=4096
-    // mkfs.fat fat.fs
-    // /path/to/craff -o fat.fs.craff fat.fs
-    //
-
     let output = Command::new("./simics")
         .current_dir(env.project_dir())
         .arg("--batch-mode")
@@ -146,8 +138,7 @@ fn test_fuzz_gcc_x86_magic() -> Result<()> {
         .arg("test.py")
         .check()?;
 
-    let output_str = String::from_utf8_lossy(&output.stdout);
-    println!("{}", output_str);
+    let _output_str = String::from_utf8_lossy(&output.stdout);
 
     Ok(())
 }

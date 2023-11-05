@@ -1,6 +1,9 @@
 // Copyright (C) 2023 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+//! Functionality for embedding SIMICS into a program or library. These functions are useful for
+//! creating alternate SIMICS frontends
+
 use crate::{
     api::sys::{
         cpu_variant_t, gui_mode_t, init_arg_t, init_arg_t__bindgen_ty_1, SIM_init_command_line,
