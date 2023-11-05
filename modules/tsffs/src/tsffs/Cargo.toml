@@ -46,9 +46,8 @@ getters.workspace = true
 ordered-float = "4.1.1"
 serde_json.workspace = true
 goblin = "0.7.1"
-# yaxpeax-riscv = { git = "https://github.com/novafacing/yaxpeax-riscv", version = "0.1.0", features = [
-#     "serde",
-# ], rev = "0c5ab07a279692ce16978029d842735e106c4411" }
-yaxpeax-riscv = { path = "/home/rhart/hub/yaxpeax-riscv" }
+yaxpeax-riscv = { git = "https://github.com/novafacing/yaxpeax-riscv", version = "0.1.0", features = [
+    "serde",
+], rev = "696eb047208e4d3c903654aa557a42071c466e71" }
 
 [dev-dependencies]

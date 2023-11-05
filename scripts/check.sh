@@ -49,7 +49,7 @@ echo "================="
 echo "Running clippy..."
 echo "================="
 
-cargo clippy --features=6.0.169
+cargo clippy
 
 echo "================="
 echo "Running flake8..."

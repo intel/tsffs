@@ -17,7 +17,7 @@ RUN apt-get -y update && \
 RUN git clone \
     https://github.com/buildroot/buildroot.git
 
-WORKDIR buildroot
+WORKDIR /buildroot
 
 COPY test-kernel-modules /test/test-kernel-modules/
 
@@ -37,6 +37,6 @@ COPY test-mod-userspace.c /test/usr/test-mod-userspace.c
 
 COPY tsffs-gcc-riscv64.h /test/usr/tsffs-gcc-riscv64.h
 
-RUN /buildroot/output/host/bin/riscv64-buildroot-linux-gnu-gcc -o /test/usr/test /test/usr/test.c
-RUN /buildroot/output/host/bin/riscv64-buildroot-linux-gnu-gcc -o /test/usr/test-mod /test/usr/test-mod.c
-RUN /buildroot/output/host/bin/riscv64-buildroot-linux-gnu-gcc -o /test/usr/test-mod-userspace /test/usr/test-mod-userspace.c
+RUN /buildroot/output/host/bin/riscv64-buildroot-linux-gnu-gcc -o /test/usr/test /test/usr/test.c && \
+    /buildroot/output/host/bin/riscv64-buildroot-linux-gnu-gcc -o /test/usr/test-mod /test/usr/test-mod.c && \
+    /buildroot/output/host/bin/riscv64-buildroot-linux-gnu-gcc -o /test/usr/test-mod-userspace /test/usr/test-mod-userspace.c
