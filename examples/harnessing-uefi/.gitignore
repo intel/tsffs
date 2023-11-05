@@ -1,7 +1,0 @@
-*.o
-*.lib
-*.efi
-corpus
-project
-solutions
-src/.ninja_log
