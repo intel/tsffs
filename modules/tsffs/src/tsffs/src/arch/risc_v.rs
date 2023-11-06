@@ -119,9 +119,9 @@ impl ArchitectureOperations for RISCVArchitectureOperations {
             from_raw_parts(instruction_bytes.data, instruction_bytes.size)
         })?;
 
-        if self.disassembler.last_was_call()?
-            || self.disassembler.last_was_control_flow()?
-            || self.disassembler.last_was_ret()?
+        if self.disassembler.last_was_call()
+            || self.disassembler.last_was_control_flow()
+            || self.disassembler.last_was_ret()
         {
             Ok(TraceEntry::builder()
                 .edge(self.processor_info_v2.get_program_counter()?)
@@ -142,11 +142,10 @@ impl ArchitectureOperations for RISCVArchitectureOperations {
         let pc = self.processor_info_v2.get_program_counter()?;
 
         let mut cmp_values = Vec::new();
-        if let Ok(ref cmp) = self.disassembler.cmp() {
-            for expr in cmp {
-                if let Ok(value) = self.simplify(expr) {
-                    cmp_values.push(value);
-                }
+
+        for expr in self.disassembler.cmp() {
+            if let Ok(value) = self.simplify(&expr) {
+                cmp_values.push(value);
             }
         }
 
@@ -179,16 +178,10 @@ impl ArchitectureOperations for RISCVArchitectureOperations {
             None
         };
 
-        let cmp_types = if let Ok(types) = self.disassembler.cmp_type() {
-            Some(types)
-        } else {
-            None
-        };
-
         Ok(TraceEntry::builder()
             .cmp((
                 pc,
-                cmp_types.ok_or_else(|| anyhow!("No cmp type available"))?,
+                self.disassembler.cmp_type(),
                 cmp_value.ok_or_else(|| anyhow!("No cmp value available"))?,
             ))
             .build())
@@ -470,7 +463,7 @@ impl TracerDisassembler for Disassembler {
         Ok(())
     }
 
-    fn last_was_control_flow(&self) -> Result<bool> {
+    fn last_was_control_flow(&self) -> bool {
         if let Some(last) = self.last.as_ref() {
             if matches!(last.opcode(), |Opcode::BEQ| Opcode::BNE
                 | Opcode::BLT
@@ -478,46 +471,36 @@ impl TracerDisassembler for Disassembler {
                 | Opcode::BLTU
                 | Opcode::BGEU)
             {
-                Ok(true)
-            } else {
-                Ok(false)
+                return true;
             }
-        } else {
-            bail!("No last instruction");
         }
+
+        false
     }
 
     // TODO: Make call/ret distinction more accurate, all three can ret/call far or near, but
     // there are semantic versions based on operands:
     // https://inst.eecs.berkeley.edu/~cs61c/fa20/pdfs/lectures/lec12-bw.pdf
 
-    fn last_was_call(&self) -> Result<bool> {
+    fn last_was_call(&self) -> bool {
         if let Some(last) = self.last.as_ref() {
-            if matches!(last.opcode(), Opcode::JALR | Opcode::JAL | Opcode::AUIPC) {
-                Ok(true)
-            } else {
-                Ok(false)
-            }
-        } else {
-            bail!("No last instruction");
+            return matches!(last.opcode(), Opcode::JALR | Opcode::JAL | Opcode::AUIPC);
         }
+
+        false
     }
 
-    fn last_was_ret(&self) -> Result<bool> {
+    fn last_was_ret(&self) -> bool {
         if let Some(last) = self.last.as_ref() {
-            if matches!(last.opcode(), Opcode::JALR | Opcode::JAL | Opcode::AUIPC) {
-                Ok(true)
-            } else {
-                Ok(false)
-            }
-        } else {
-            bail!("No last instruction");
+            return matches!(last.opcode(), Opcode::JALR | Opcode::JAL | Opcode::AUIPC);
         }
+
+        false
     }
 
-    fn last_was_cmp(&self) -> Result<bool> {
+    fn last_was_cmp(&self) -> bool {
         if let Some(last) = self.last.as_ref() {
-            if matches!(
+            return matches!(
                 last.opcode(),
                 Opcode::SLT
                     | Opcode::SLTI
@@ -528,19 +511,15 @@ impl TracerDisassembler for Disassembler {
                     | Opcode::BGE
                     | Opcode::BLTU
                     | Opcode::BGEU
-            ) {
-                Ok(true)
-            } else {
-                Ok(false)
-            }
-        } else {
-            bail!("No last instruction");
+            );
         }
+
+        false
     }
 
-    fn cmp(&self) -> Result<Vec<CmpExpr>> {
+    fn cmp(&self) -> Vec<CmpExpr> {
         let mut cmp_exprs = Vec::new();
-        if self.last_was_cmp()? {
+        if self.last_was_cmp() {
             if let Some(last) = self.last.as_ref() {
                 for operand in last.operands() {
                     match operand {
@@ -569,32 +548,29 @@ impl TracerDisassembler for Disassembler {
                     }
                 }
             }
-        } else {
-            bail!("Last was not a compare");
         }
-        Ok(cmp_exprs)
+
+        cmp_exprs
     }
 
-    fn cmp_type(&self) -> Result<Vec<CmpType>> {
-        if self.last_was_cmp()? {
+    fn cmp_type(&self) -> Vec<CmpType> {
+        if self.last_was_cmp() {
             if let Some(last) = self.last.as_ref() {
-                match last.opcode() {
-                    Opcode::SLT => Ok(vec![CmpType::Lesser]),
-                    Opcode::SLTI => Ok(vec![CmpType::Lesser]),
-                    Opcode::SLTU => Ok(vec![CmpType::Lesser]),
-                    Opcode::SLTIU => Ok(vec![CmpType::Lesser]),
-                    Opcode::BEQ => Ok(vec![CmpType::Equal]),
-                    Opcode::BNE => Ok(vec![CmpType::Equal]),
-                    Opcode::BGE => Ok(vec![CmpType::Greater, CmpType::Equal]),
-                    Opcode::BLTU => Ok(vec![CmpType::Lesser]),
-                    Opcode::BGEU => Ok(vec![CmpType::Greater, CmpType::Equal]),
-                    _ => Ok(vec![]),
-                }
-            } else {
-                bail!("Last was not a compare");
+                return match last.opcode() {
+                    Opcode::SLT => vec![CmpType::Lesser],
+                    Opcode::SLTI => vec![CmpType::Lesser],
+                    Opcode::SLTU => vec![CmpType::Lesser],
+                    Opcode::SLTIU => vec![CmpType::Lesser],
+                    Opcode::BEQ => vec![CmpType::Equal],
+                    Opcode::BNE => vec![CmpType::Equal],
+                    Opcode::BGE => vec![CmpType::Greater, CmpType::Equal],
+                    Opcode::BLTU => vec![CmpType::Lesser],
+                    Opcode::BGEU => vec![CmpType::Greater, CmpType::Equal],
+                    _ => vec![],
+                };
             }
-        } else {
-            bail!("Last was not a compare");
         }
+
+        vec![]
     }
 }

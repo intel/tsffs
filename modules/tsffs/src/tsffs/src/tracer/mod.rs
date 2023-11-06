@@ -7,8 +7,12 @@ use getters::Getters;
 use libafl::prelude::CmpValues;
 use libafl_bolts::{AsMutSlice, AsSlice};
 use libafl_targets::{AFLppCmpLogOperands, AFLPP_CMPLOG_MAP_H, AFL_CMP_TYPE_INS};
-use simics::api::{
-    get_processor_number, sys::instruction_handle_t, AttrValue, AttrValueType, ConfObject,
+use simics::{
+    api::{
+        get_processor_number, sys::instruction_handle_t, AsConfObject, AttrValue, AttrValueType,
+        ConfObject,
+    },
+    error, trace,
 };
 use std::{collections::HashMap, ffi::c_void, fmt::Display, num::Wrapping, str::FromStr};
 use typed_builder::TypedBuilder;
@@ -219,14 +223,24 @@ impl Tsffs {
         let pc_index = hash_index(pc, self.aflpp_cmp_map().headers().len() as u64);
 
         let hits = self.aflpp_cmp_map_mut().headers_mut()[pc_index as usize].hits();
+
+        if hits == 0 {
+            trace!(
+                self.as_conf_object(),
+                "Logging first hit of comparison with types {types:?} and values {cmp:?}"
+            );
+        }
+
         self.aflpp_cmp_map_mut().headers_mut()[pc_index as usize].set_hits(hits + 1);
         self.aflpp_cmp_map_mut().headers_mut()[pc_index as usize].set_shape(shape);
         self.aflpp_cmp_map_mut().headers_mut()[pc_index as usize].set__type(AFL_CMP_TYPE_INS);
+
         let attribute = types
             .iter()
             .map(|t| *t as u32)
             .reduce(|acc, t| acc | t)
             .ok_or_else(|| anyhow!("Could not reduce types"))?;
+
         self.aflpp_cmp_map_mut().headers_mut()[pc_index as usize].set_attribute(attribute);
         // NOTE: overflow isn't used by aflppredqueen
 
@@ -257,9 +271,14 @@ impl Tsffs {
 
         if *self.coverage_enabled() {
             if let Some(arch) = self.processors_mut().get_mut(&processor_number) {
-                if let Ok(r) = arch.trace_pc(handle) {
-                    if let Some(pc) = r.edge() {
-                        self.log_pc(*pc)?;
+                match arch.trace_pc(handle) {
+                    Ok(r) => {
+                        if let Some(pc) = r.edge() {
+                            self.log_pc(*pc)?;
+                        }
+                    }
+                    Err(e) => {
+                        error!(self.as_conf_object(), "Error tracing for PC: {e}");
                     }
                 }
             }
@@ -267,9 +286,14 @@ impl Tsffs {
 
         if *self.configuration().cmplog() && *self.cmplog_enabled() {
             if let Some(arch) = self.processors_mut().get_mut(&processor_number) {
-                if let Ok(r) = arch.trace_cmp(handle) {
-                    if let Some((pc, types, cmp)) = r.cmp() {
-                        self.log_cmp(*pc, types.clone(), cmp.clone())?;
+                match arch.trace_cmp(handle) {
+                    Ok(r) => {
+                        if let Some((pc, types, cmp)) = r.cmp() {
+                            self.log_cmp(*pc, types.clone(), cmp.clone())?;
+                        }
+                    }
+                    Err(e) => {
+                        error!(self.as_conf_object(), "Error tracing for CMP: {e}");
                     }
                 }
             }
@@ -278,35 +302,3 @@ impl Tsffs {
         Ok(())
     }
 }
-
-// impl<'a> Component for Tracer<'a> {
-//     fn on_simulation_stopped(&mut self, reason: &StopReason) -> Result<()> {
-//         match reason {
-//             StopReason::MagicStart(_start) | StopReason::Start(_start) => {
-//                 if self.start_processor_number().is_none() {
-//                     if let Some(start_processor) = self.parent().driver().start_core_architecture()
-//                     {
-//                         let start_processor_number = get_processor_number(start_processor.cpu())?;
-//                         let start_processor = Architecture::new(start_processor.cpu())?;
-//                         let mut start_processor_interface: CpuInstrumentationSubscribeInterface =
-//                             get_interface(start_processor.cpu())?;
-//                         *self.start_processor_number_mut() = Some(start_processor_number);
-//                         self.processors_mut()
-//                             .insert(start_processor_number, start_processor);
-//                         start_processor_interface.register_instruction_before_cb(
-//                             null_mut(),
-//                             Some(on_instruction_before),
-//                             self as *mut Tracer<'a> as *mut _,
-//                         )?;
-//                         self.processor_interfaces_mut()
-//                             .insert(start_processor_number, start_processor_interface);
-//                     }
-//                 }
-//             }
-//             StopReason::MagicStop(stop) | StopReason::Stop(stop) => {}
-//             StopReason::Solution(_) => {}
-//         }
-//
-//         Ok(())
-//     }
-// }

@@ -235,9 +235,9 @@ impl ArchitectureOperations for X86_64ArchitectureOperations {
         self.disassembler.disassemble(unsafe {
             from_raw_parts(instruction_bytes.data, instruction_bytes.size)
         })?;
-        if self.disassembler.last_was_call()?
-            || self.disassembler.last_was_control_flow()?
-            || self.disassembler.last_was_ret()?
+        if self.disassembler.last_was_call()
+            || self.disassembler.last_was_control_flow()
+            || self.disassembler.last_was_ret()
         {
             Ok(TraceEntry::builder()
                 .edge(self.processor_info_v2.get_program_counter()?)
@@ -254,15 +254,13 @@ impl ArchitectureOperations for X86_64ArchitectureOperations {
         self.disassembler.disassemble(unsafe {
             from_raw_parts(instruction_bytes.data, instruction_bytes.size)
         })?;
-        if self.disassembler.last_was_cmp()? {
+        if self.disassembler.last_was_cmp() {
             let pc = self.processor_info_v2.get_program_counter()?;
             let mut cmp_values = Vec::new();
 
-            if let Ok(cmp) = self.disassembler.cmp() {
-                for expr in &cmp {
-                    if let Ok(value) = self.simplify(expr) {
-                        cmp_values.push(value);
-                    }
+            for expr in self.disassembler.cmp() {
+                if let Ok(value) = self.simplify(&expr) {
+                    cmp_values.push(value);
                 }
             }
 
@@ -295,16 +293,10 @@ impl ArchitectureOperations for X86_64ArchitectureOperations {
                 None
             };
 
-            let cmp_types = if let Ok(types) = self.disassembler.cmp_type() {
-                Some(types)
-            } else {
-                None
-            };
-
             Ok(TraceEntry::builder()
                 .cmp((
                     pc,
-                    cmp_types.ok_or_else(|| anyhow!("No cmp type available"))?,
+                    self.disassembler.cmp_type(),
                     cmp_value.ok_or_else(|| anyhow!("No cmp value available"))?,
                 ))
                 .build())
@@ -922,7 +914,7 @@ impl TryFrom<(&Operand, Option<u8>)> for CmpExpr {
 
 impl TracerDisassembler for Disassembler {
     /// Check if an instruction is a control flow instruction
-    fn last_was_control_flow(&self) -> Result<bool> {
+    fn last_was_control_flow(&self) -> bool {
         if let Some(last) = self.last {
             if matches!(
                 last.opcode(),
@@ -947,37 +939,34 @@ impl TracerDisassembler for Disassembler {
                     | Opcode::LOOPNZ
                     | Opcode::LOOPZ
             ) {
-                Ok(true)
-            } else {
-                Ok(false)
+                return true;
             }
-        } else {
-            bail!("No last instruction");
         }
+        false
     }
 
     /// Check if an instruction is a call instruction
-    fn last_was_call(&self) -> Result<bool> {
+    fn last_was_call(&self) -> bool {
         if let Some(last) = self.last {
-            Ok(matches!(last.opcode(), Opcode::CALL | Opcode::CALLF))
-        } else {
-            bail!("No last instruction");
+            return matches!(last.opcode(), Opcode::CALL | Opcode::CALLF);
         }
+
+        false
     }
 
     /// Check if an instruction is a ret instruction
-    fn last_was_ret(&self) -> Result<bool> {
+    fn last_was_ret(&self) -> bool {
         if let Some(last) = self.last {
-            Ok(matches!(last.opcode(), Opcode::RETF | Opcode::RETURN))
-        } else {
-            bail!("No last instruction");
+            return matches!(last.opcode(), Opcode::RETF | Opcode::RETURN);
         }
+
+        false
     }
 
     /// Check if an instruction is a cmp instruction
-    fn last_was_cmp(&self) -> Result<bool> {
+    fn last_was_cmp(&self) -> bool {
         if let Some(last) = self.last {
-            if matches!(
+            return matches!(
                 last.opcode(),
                 Opcode::CMP
                     | Opcode::CMPPD
@@ -1026,14 +1015,10 @@ impl TracerDisassembler for Disassembler {
                     | Opcode::VPCMPUQ
                     | Opcode::VPCMPUW
                     | Opcode::VPCMPW
-            ) {
-                Ok(true)
-            } else {
-                Ok(false)
-            }
-        } else {
-            bail!("No last instruction");
+            );
         }
+
+        false
     }
 
     fn disassemble(&mut self, bytes: &[u8]) -> Result<()> {
@@ -1046,9 +1031,9 @@ impl TracerDisassembler for Disassembler {
         Ok(())
     }
 
-    fn cmp(&self) -> Result<Vec<CmpExpr>> {
+    fn cmp(&self) -> Vec<CmpExpr> {
         let mut cmp_exprs = Vec::new();
-        if self.last_was_cmp()? {
+        if self.last_was_cmp() {
             if let Some(last) = self.last {
                 for op_idx in 0..last.operand_count() {
                     let op = last.operand(op_idx);
@@ -1064,54 +1049,52 @@ impl TracerDisassembler for Disassembler {
                     }
                 }
             }
-        } else {
-            bail!("Last was not a compare");
         }
-        Ok(cmp_exprs)
+        cmp_exprs
     }
 
-    fn cmp_type(&self) -> Result<Vec<CmpType>> {
-        if self.last_was_cmp()? {
+    fn cmp_type(&self) -> Vec<CmpType> {
+        if self.last_was_cmp() {
             if let Some(last) = self.last {
                 if let Some(condition) = last.opcode().condition() {
                     return match condition {
                         // Overflow
-                        ConditionCode::O => Ok(vec![]),
+                        ConditionCode::O => vec![],
                         // No Overflow
-                        ConditionCode::NO => Ok(vec![]),
+                        ConditionCode::NO => vec![],
                         // Below
-                        ConditionCode::B => Ok(vec![CmpType::Lesser]),
+                        ConditionCode::B => vec![CmpType::Lesser],
                         // Above or Equal
-                        ConditionCode::AE => Ok(vec![CmpType::Greater, CmpType::Equal]),
+                        ConditionCode::AE => vec![CmpType::Greater, CmpType::Equal],
                         // Zero
-                        ConditionCode::Z => Ok(vec![]),
+                        ConditionCode::Z => vec![],
                         // Not Zero
-                        ConditionCode::NZ => Ok(vec![]),
+                        ConditionCode::NZ => vec![],
                         // Above
-                        ConditionCode::A => Ok(vec![CmpType::Greater]),
+                        ConditionCode::A => vec![CmpType::Greater],
                         // Below or Equal
-                        ConditionCode::BE => Ok(vec![CmpType::Lesser, CmpType::Equal]),
+                        ConditionCode::BE => vec![CmpType::Lesser, CmpType::Equal],
                         // Signed
-                        ConditionCode::S => Ok(vec![]),
+                        ConditionCode::S => vec![],
                         // Not Signed
-                        ConditionCode::NS => Ok(vec![]),
+                        ConditionCode::NS => vec![],
                         // Parity
-                        ConditionCode::P => Ok(vec![]),
+                        ConditionCode::P => vec![],
                         // No Parity
-                        ConditionCode::NP => Ok(vec![]),
+                        ConditionCode::NP => vec![],
                         // Less
-                        ConditionCode::L => Ok(vec![CmpType::Lesser]),
+                        ConditionCode::L => vec![CmpType::Lesser],
                         // Greater or Equal
-                        ConditionCode::GE => Ok(vec![CmpType::Greater, CmpType::Equal]),
+                        ConditionCode::GE => vec![CmpType::Greater, CmpType::Equal],
                         // Greater
-                        ConditionCode::G => Ok(vec![CmpType::Greater]),
+                        ConditionCode::G => vec![CmpType::Greater],
                         // Less or Equal
-                        ConditionCode::LE => Ok(vec![CmpType::Lesser, CmpType::Equal]),
+                        ConditionCode::LE => vec![CmpType::Lesser, CmpType::Equal],
                     };
                 }
             }
         }
 
-        bail!("Last instruction was not a compare");
+        vec![]
     }
 }

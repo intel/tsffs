@@ -8,10 +8,10 @@ use anyhow::Result;
 /// and compare tracing
 pub trait TracerDisassembler {
     fn disassemble(&mut self, bytes: &[u8]) -> Result<()>;
-    fn last_was_control_flow(&self) -> Result<bool>;
-    fn last_was_call(&self) -> Result<bool>;
-    fn last_was_ret(&self) -> Result<bool>;
-    fn last_was_cmp(&self) -> Result<bool>;
-    fn cmp(&self) -> Result<Vec<CmpExpr>>;
-    fn cmp_type(&self) -> Result<Vec<CmpType>>;
+    fn last_was_control_flow(&self) -> bool;
+    fn last_was_call(&self) -> bool;
+    fn last_was_ret(&self) -> bool;
+    fn last_was_cmp(&self) -> bool;
+    fn cmp(&self) -> Vec<CmpExpr>;
+    fn cmp_type(&self) -> Vec<CmpType>;
 }

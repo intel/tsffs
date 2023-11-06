@@ -97,20 +97,23 @@ WORKDIR /workspace/projects/example/
 # - SIMICS Base (1000)
 # - QSP X86 (2096)
 # - QSP CPU (8112)
+# - Crypto Engine (1030) [only necessary because it is required by Golden Cove]
 # - TSFFS Fuzzer (31337)
 # - A built EFI application (test.efi) which checks a password and crashes when it gets the
 #   password "fuzzing!"
 # - A SIMICS script that configures the fuzzer for the example and starts fuzzing it
-RUN ispm projects example --create \
+RUN ispm projects /workspace/projects/example/ --create \
     1000-latest \
     2096-latest \
     8112-latest \
+    1030-latest \
     31337-latest --ignore-existing-files --non-interactive && \
+    cp /workspace/tsffs/modules/tsffs/tests/rsrc/minimal_boot_disk.craff /workspace/projects/example/ && \
     cp /workspace/tsffs/modules/tsffs/tests/targets/minimal-x86_64/* /workspace/projects/example/ && \
     cp /workspace/tsffs/harness/tsffs-gcc-x86_64.h /workspace/projects/example/ && \
     cp /workspace/tsffs/examples/docker-fuzz.simics /workspace/projects/example/fuzz.simics && \
     ninja
-RUN echo 'echo "To run the demo, run ./simics -no-win --no-win test.simics"' >> /root/.bashrc
+RUN echo 'echo "To run the demo, run ./simics -no-gui --no-win fuzz.simics"' >> /root/.bashrc
 
 
 
