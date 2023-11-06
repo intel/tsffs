@@ -348,11 +348,11 @@ impl Tsffs {
     /// directory without calling `set_generate_random_corpus(True)`.  If not provided,
     /// "%simics%/corpus" will be used by default.
     pub fn set_corpus_directory(&mut self, corpus_directory: *mut c_char) -> Result<()> {
-        let corpus_directory = PathBuf::from(
+        let corpus_directory = PathBuf::from(lookup_file(
             unsafe { CStr::from_ptr(corpus_directory) }
                 .to_str()?
                 .to_string(),
-        );
+        )?);
 
         debug!(
             self.as_conf_object(),
@@ -371,11 +371,11 @@ impl Tsffs {
     /// and traige defects using the `reproduce` method. If no solutions directory is provided,
     /// "%simics%/solutions" will be used by default.
     pub fn set_solutions_directory(&mut self, solutions_directory: *mut c_char) -> Result<()> {
-        let solutions_directory = PathBuf::from(
+        let solutions_directory = PathBuf::from(lookup_file(
             unsafe { CStr::from_ptr(solutions_directory) }
                 .to_str()?
                 .to_string(),
-        );
+        )?);
 
         debug!(
             self.as_conf_object(),
