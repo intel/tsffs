@@ -7,11 +7,22 @@ Cargo.lock
 config.mk
 .package-list
 .modcache
+simics*
+GNUmakefile*
 
 
+.cargo/
+.vscode/
+.mypy_cache/
 .project-properties/
 bin/
+dist-packages/
+dist/
+distfile-list/
+doc-src/
 linux64/
-win64/
+logs/
+packageinfo/
 packageinfo/
 target/
+win64/
