@@ -14,8 +14,8 @@ anyhow = "1.0.75"
 command-ext = { path = "../src/util/command-ext" }
 getters = { path = "../src/util/getters" }
 indoc = "2.0.4"
-ispm-wrapper = { version = "0.1.0", path = "../src/simics/ispm-wrapper" }
-tests = { version = "0.1.0", path = "../tests" }
+ispm-wrapper = { version = "*", path = "../src/simics/ispm-wrapper" }
+tests = { version = "*", path = "../tests" }
 tmp-dir = { path = "../src/util/tmp-dir" }
 typed-builder = "0.18.0"
 

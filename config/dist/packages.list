@@ -4,7 +4,7 @@ Package-number: 31337
 Description: TSFFS: Target Software Fuzzer For SIMICS
 Owners: rhart
 Access-labels: external-intel
-Hosts: linux64
+Hosts: linux64 win64
 Doc-title: TSFFS Fuzzer
 Comment: TSFFS: Target Software Fuzzer For SIMICS
 Confidentiality: Public

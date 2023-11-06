@@ -14,13 +14,21 @@
 //! command-ext = { path = "modules/tsffs/src/util/command-ext" }
 //! typed-builder = "*"
 //! walkdir = "*"
+//! serde = { version = "*", features = ["derive"] }
+//! serde_json = "*"
+//! cargo_metadata = "*"
 //! ```
 
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Error, Result};
+use cargo_metadata::MetadataCommand;
 use command_ext::CommandExtCheck;
+use serde::{Deserialize, Serialize};
+use serde_json::{to_string, value::Value};
 use std::{
+    collections::HashMap,
     env::current_dir,
     fs::write,
+    iter::once,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -30,6 +38,43 @@ use walkdir::WalkDir;
 fn make() -> Result<()> {
     Command::new("make").check()?;
     Ok(())
+}
+
+fn version() -> Result<String> {
+    let metadata = MetadataCommand::new().exec()?;
+    let Value::Object(workspace_metadata) = metadata.workspace_metadata else {
+        bail!("No workspace metadata");
+    };
+
+    let Some(Value::String(version)) = workspace_metadata.get("version") else {
+        bail!("No version in workspace metadata");
+    };
+
+    Ok(version.to_string())
+}
+
+fn build_id() -> Result<isize> {
+    let metadata = MetadataCommand::new().exec()?;
+    let Value::Object(workspace_metadata) = metadata.workspace_metadata else {
+        bail!("No workspace metadata");
+    };
+
+    let Some(Value::Number(num)) = workspace_metadata.get("build-id") else {
+        bail!("No build-id in workspace metadata");
+    };
+
+    num.as_i64()
+        .map(|i| i as isize)
+        .ok_or_else(|| anyhow!("build-id is not an integer"))
+}
+
+fn current_crate() -> Result<String> {
+    let metadata = MetadataCommand::new().exec()?;
+    Ok(metadata
+        .workspace_root
+        .file_name()
+        .ok_or_else(|| anyhow!("No file name"))?
+        .to_string())
 }
 
 fn recursive_directory_listing<P>(directory: P) -> Vec<PathBuf>
@@ -104,16 +149,19 @@ impl ToString for PackagesList {
             .map(|b| format!("Bin-encryption-key: {}", b))
             .unwrap_or_default();
         list += &(!self.owners.is_empty())
-            .then_some(format!("Owners: {}\n", self.owners.join(",")))
+            .then_some(format!("Owners: {}\n", self.owners.join(", ")))
             .unwrap_or_default();
         list += &(!self.access_labels.is_empty())
-            .then_some(format!("Access-labels: {}\n", self.access_labels.join(",")))
+            .then_some(format!(
+                "Access-labels: {}\n",
+                self.access_labels.join(", ")
+            ))
             .unwrap_or_default();
         list += &(!self.hosts.is_empty())
-            .then_some(format!("Hosts: {}\n", self.hosts.join(",")))
+            .then_some(format!("Hosts: {}\n", self.hosts.join(" ")))
             .unwrap_or_default();
         list += &(!self.make.is_empty())
-            .then_some(format!("Make: {}\n", self.make.join(",")))
+            .then_some(format!("Make: {}\n", self.make.join(", ")))
             .unwrap_or_default();
         list += &self
             .doc_title
@@ -123,7 +171,7 @@ impl ToString for PackagesList {
         list += &(!self.refman_localfiles.is_empty())
             .then_some(format!(
                 "Refman-localfiles: {}\n",
-                self.refman_localfiles.join(",")
+                self.refman_localfiles.join(", ")
             ))
             .unwrap_or_default();
         list += &self
@@ -141,7 +189,7 @@ impl ToString for PackagesList {
             .unwrap_or_default();
         list += &format!("Confidentiality: {}\n", self.confidentiality);
         list += &(!self.ip_plans.is_empty())
-            .then_some(format!("IP-plans: {}\n", self.ip_plans.join(",")))
+            .then_some(format!("IP-plans: {}\n", self.ip_plans.join(", ")))
             .unwrap_or_default();
         list += &self
             .data
@@ -184,21 +232,21 @@ impl ToString for PackagesListGroup {
     fn to_string(&self) -> String {
         let mut group = format!("Group: {}\n", self.group);
         group += &(!self.hosts.is_empty())
-            .then_some(format!("Hosts: {}\n", self.hosts.join(",")))
+            .then_some(format!("Hosts: {}\n", self.hosts.join(" ")))
             .unwrap_or_default();
         group += &(!self.make.is_empty())
-            .then_some(format!("Make: {}\n", self.make.join(",")))
+            .then_some(format!("Make: {}\n", self.make.join(", ")))
             .unwrap_or_default();
         group += &(!self.doc_make.is_empty())
-            .then_some(format!("Doc-make: {}\n", self.doc_make.join(",")))
+            .then_some(format!("Doc-make: {}\n", self.doc_make.join(", ")))
             .unwrap_or_default();
         group += &(!self.doc_formats.is_empty())
-            .then_some(format!("Doc-formats: {}\n", self.doc_formats.join(",")))
+            .then_some(format!("Doc-formats: {}\n", self.doc_formats.join(", ")))
             .unwrap_or_default();
         group += &(!self.require_tokens.is_empty())
             .then_some(format!(
                 "Require-tokens: {}\n",
-                self.require_tokens.join(",")
+                self.require_tokens.join(", ")
             ))
             .unwrap_or_default();
         group += &self
@@ -222,16 +270,10 @@ impl PackagesListGroup {
     }
 }
 
-fn generate_packages_list<P>(directory: P) -> Result<()>
+fn generate_packages_list<P>(directory: P) -> Result<PackagesList>
 where
     P: AsRef<Path>,
 {
-    let packages_list_path = directory
-        .as_ref()
-        .join("config")
-        .join("dist")
-        .join("packages.list");
-
     // Src has no dependencies
     let src_group = PackagesListGroup::builder()
         .group("src")
@@ -297,7 +339,7 @@ where
         .package_number(31337)
         .owners(["rhart".to_string()])
         .access_labels(["external-intel".to_string()])
-        .hosts(["linux64".to_string()])
+        .hosts(["linux64".to_string(), "win64".to_string()])
         .doc_title("TSFFS Fuzzer")
         .comment("TSFFS: Target Software Fuzzer For SIMICS")
         .description("TSFFS: Target Software Fuzzer For SIMICS")
@@ -306,20 +348,221 @@ where
         .groups(groups)
         .build();
 
-    write(&packages_list_path, packages_list.to_string())?;
-
-    Ok(())
+    Ok(packages_list)
 }
 
-fn create_package_specs<P>(directory: P) -> Result<()>
-where
-    P: AsRef<Path>,
-{
-    Command::new(directory.as_ref().join("bin").join("create-package-specs"))
-        .arg("-o")
-        .arg("linux64/package-specs.json")
-        .arg("config/dist")
-        .check()?;
+/// Implements the Schema for package-specs.json
+/// {
+///     "$schema": "https://json-schema.org/draft/2020-12/schema",
+///     "type": "array",
+///     "title": "Simics Package Specification file",
+///     "items": {
+///         "type": "object",
+///         "required": [
+///             "package-name", "package-number", "name", "description",
+///             "host", "version", "build-id", "build-id-namespace",
+///             "confidentiality", "files"
+///         ],
+///         "properties": {
+///             "package-name": {
+///                 "type": "string"
+///             },
+///             "package-number": {
+///                 "anyOf": [{"type": "integer"}, {"type": "null"}]
+///             },
+///             "name": {
+///                 "type": "string"
+///             },
+///             "description": {
+///                 "type": "string"
+///             },
+///             "host": {
+///                 "type": "string"
+///             },
+///             "version": {
+///                 "type": "string"
+///             },
+///             "build-id": {
+///                 "type": "integer"
+///             },
+///             "build-id-namespace": {
+///                 "type": "string"
+///             },
+///             "confidentiality": {
+///                 "type": "string"
+///             },
+///             "files": {
+///                 "type": "object",
+///                 "patternProperties": {
+///                     "^[^\\:]*/$": {
+///                         "type": "object",
+///                         "properties": {
+///                             "source-directory": {
+///                                 "type": "string"
+///                             },
+///                             "file-list": {
+///                                 "type": "string"
+///                             },
+///                             "suffixes": {
+///                                 "type": "array",
+///                                 "items": {
+///                                     "type": "string"
+///                                 }
+///                             }
+///                         }
+///                     },
+///                     "^[^\\:]*[^/]$": {
+///                         "type": "string"
+///                     }
+///                 }
+///             },
+///             "type": {
+///                 "enum": ["addon", "base"]
+///             },
+///             "disabled": {
+///                 "type": "boolean"
+///             },
+///             "doc-title": {
+///                 "anyOf": [{"type": "string"}, {"type": "null"}]
+///             },
+///             "make-targets": {
+///                 "type": "array",
+///                 "items": {
+///                     "type": "string"
+///                 }
+///             }
+///         }
+///     }
+/// }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PackageSpec {
+    #[serde(rename = "package-name")]
+    package_name: String,
+    #[serde(rename = "package-name-full")]
+    package_name_full: String,
+    #[serde(rename = "package-number")]
+    package_number: Option<isize>,
+    name: String,
+    description: String,
+    host: String,
+    version: String,
+    #[serde(rename = "build-id")]
+    build_id: isize,
+    #[serde(rename = "build-id-namespace")]
+    build_id_namespace: String,
+    confidentiality: String,
+    files: HashMap<String, String>,
+    #[serde(rename = "type")]
+    // NOTE: Either "addon" or "base" -- convert to enum
+    typ: String,
+    disabled: bool,
+    #[serde(rename = "doc-title")]
+    doc_title: Option<String>,
+    #[serde(rename = "make-targets")]
+    make_targets: Vec<String>,
+    #[serde(rename = "include-release-notes")]
+    include_release_notes: bool,
+    #[serde(rename = "ip-plans")]
+    ip_plans: Vec<String>,
+    #[serde(rename = "legacy-doc-make-targets")]
+    legacy_doc_make_targets: Vec<String>,
+    #[serde(rename = "release-notes")]
+    release_notes: Vec<String>,
+    #[serde(rename = "access-labels")]
+    access_labels: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PackageSpecs(Vec<PackageSpec>);
+
+impl TryFrom<PackagesList> for PackageSpecs {
+    type Error = Error;
+
+    fn try_from(value: PackagesList) -> Result<Self> {
+        let version = version()?;
+        let build_id_namespace = current_crate()?;
+        let build_id = build_id()?;
+        let files = value
+            .groups
+            .iter()
+            .map(|g| g.data.clone())
+            .flatten()
+            .collect::<Vec<_>>();
+        let make_targets = value
+            .groups
+            .iter()
+            .map(|g| g.make.clone())
+            .flatten()
+            .collect::<Vec<_>>();
+        Ok(Self(
+            value
+                .hosts
+                .iter()
+                .map(|h| {
+                    let package_name_full = format!("{}-{}", value.dist, h);
+                    let files = files
+                        .iter()
+                        .map(|f| {
+                            f.replace("$(HOST)", h)
+                                .replace("$(SO)", if h == "linux64" { ".so" } else { ".dll" })
+                        })
+                        .filter_map(|f| match PathBuf::from(".").join(&f).canonicalize() {
+                            Ok(fc) => {
+                                Some((f.clone(), fc.to_string_lossy().to_string()))
+                            }
+                            Err(_) => None,
+                        })
+                        .chain(once((
+                            format!("{}/lib/{}.modcache", h, package_name_full),
+                            PathBuf::from(".")
+                                .canonicalize()
+                                .unwrap_or_else(|_| panic!("Failed to canonicalize modcache path"))
+                                .join(format!("{}/lib/{}.modcache", h, package_name_full))
+                                .to_string_lossy()
+                                .to_string(),
+                        )))
+                        .collect::<HashMap<_, _>>();
+                    PackageSpec {
+                        name: value.name.clone(),
+                        package_name: value.dist.clone(),
+                        package_name_full: package_name_full,
+                        package_number: value.package_number.map(|pn| pn as isize),
+                        disabled: value.disabled,
+                        description: value.description.clone(),
+                        host: h.clone(),
+                        version: version.clone(),
+                        build_id: build_id.clone(),
+                        build_id_namespace: build_id_namespace.clone(),
+                        confidentiality: value.confidentiality.clone(),
+                        files: files.clone(),
+                        typ: "addon".to_string(),
+                        doc_title: value.doc_title.clone(),
+                        make_targets: make_targets.clone(),
+                        include_release_notes: value.include_release_notes,
+                        ip_plans: value.ip_plans.clone(),
+                        legacy_doc_make_targets: vec![],
+                        release_notes: vec![],
+                        access_labels: value.access_labels.clone(),
+                    }
+                })
+                .collect(),
+        ))
+    }
+}
+
+fn create_package_specs(packages_list: PackagesList) -> Result<()> {
+    // NOTE: On systems with doc-and-packaging available, this will work, but since end users
+    // do not have access to this package, we do this ourselves.
+    // Command::new(directory.as_ref().join("bin").join("create-package-specs"))
+    //     .arg("-o")
+    //     .arg("linux64/package-specs.json")
+    //     .arg("config/dist")
+    //     .check()?;
+    let package_spec: PackageSpecs = packages_list.try_into()?;
+    write(
+        &PathBuf::from("linux64/package-specs.json"),
+        to_string(&package_spec)?.as_bytes(),
+    )?;
     Ok(())
 }
 
@@ -357,8 +600,13 @@ fn main() -> Result<()> {
 
     make()?;
     make()?;
-    generate_packages_list(&current_dir)?;
-    create_package_specs(&current_dir)?;
+    let packages_list_path = current_dir
+        .join("config")
+        .join("dist")
+        .join("packages.list");
+    let packages_list = generate_packages_list(&current_dir)?;
+    write(&packages_list_path, packages_list.to_string())?;
+    create_package_specs(packages_list)?;
     create_modcache(&current_dir)?;
     create_packages(&current_dir)?;
 

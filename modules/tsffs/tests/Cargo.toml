@@ -19,7 +19,7 @@ anyhow = { workspace = true }
 command-ext.workspace = true
 getters.workspace = true
 indoc = "2.0.4"
-ispm-wrapper = { version = "0.1.0", path = "../src/simics/ispm-wrapper" }
+ispm-wrapper.workspace = true
 tmp-dir.workspace = true
 typed-builder = "0.18.0"
 

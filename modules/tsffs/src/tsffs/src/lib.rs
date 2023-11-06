@@ -40,13 +40,15 @@ use libafl::prelude::ExitKind;
 use libafl_bolts::prelude::OwnedMutSlice;
 use libafl_targets::AFLppCmpLogMap;
 use serde::{Deserialize, Serialize};
+#[cfg(simics_experimentatl_api_snapshots)]
+use simics::api::{restore_snapshot, save_snapshot};
 use simics::{
     api::{
         break_simulation, discard_future, get_class, get_interface, get_processor_number,
-        object_clock, restore_micro_checkpoint, restore_snapshot, save_micro_checkpoint,
-        save_snapshot, AsConfObject, Class, ConfObject, CoreBreakpointMemopHap, CoreExceptionHap,
-        CoreMagicInstructionHap, CoreSimulationStoppedHap, CpuInstrumentationSubscribeInterface,
-        Event, EventClassFlag, HapHandle, MicroCheckpointFlags,
+        object_clock, restore_micro_checkpoint, save_micro_checkpoint, AsConfObject, Class,
+        ConfObject, CoreBreakpointMemopHap, CoreExceptionHap, CoreMagicInstructionHap,
+        CoreSimulationStoppedHap, CpuInstrumentationSubscribeInterface, Event, EventClassFlag,
+        HapHandle, MicroCheckpointFlags,
     },
     info,
 };
@@ -101,8 +103,8 @@ pub struct StartSize {
 }
 impl Tsffs {
     pub const COVERAGE_MAP_SIZE: usize = 128 * 1024;
-    pub const TIMEOUT_EVENT_NAME: &str = "detector_timeout_event";
-    pub const SNAPSHOT_NAME: &str = "tsffs-origin-snapshot";
+    pub const TIMEOUT_EVENT_NAME: &'static str = "detector_timeout_event";
+    pub const SNAPSHOT_NAME: &'static str = "tsffs-origin-snapshot";
 }
 
 #[class(name = CLASS_NAME)]
@@ -313,8 +315,13 @@ impl Tsffs {
 impl Tsffs {
     pub fn save_initial_snapshot(&mut self) -> Result<()> {
         if *self.configuration().use_snapshots() && self.snapshot_name().is_none() {
-            save_snapshot(Self::SNAPSHOT_NAME)?;
-            *self.snapshot_name_mut() = Some(Self::SNAPSHOT_NAME.to_string());
+            #[cfg(simics_experimental_api_snapshots)]
+            {
+                save_snapshot(Self::SNAPSHOT_NAME)?;
+                *self.snapshot_name_mut() = Some(Self::SNAPSHOT_NAME.to_string());
+            }
+            #[cfg(not(simics_experimental_api_snapshots))]
+            panic!("Snapshots cannot be used without SIMICS support from recent SIMICS versions.");
         } else if !self.configuration().use_snapshots()
             && self.snapshot_name().is_none()
             && self.micro_checkpoint_index().is_none()
@@ -342,7 +349,10 @@ impl Tsffs {
 
     pub fn restore_initial_snapshot(&mut self) -> Result<()> {
         if *self.configuration().use_snapshots() {
+            #[cfg(simics_experimental_api_snapshots)]
             restore_snapshot(Self::SNAPSHOT_NAME)?;
+            #[cfg(not(simics_experimental_api_snapshots))]
+            panic!("Snapshots cannot be used without SIMICS support from recent SIMICS versions.");
         } else {
             restore_micro_checkpoint(self.micro_checkpoint_index().ok_or_else(|| {
                 anyhow!("Not using snapshots and no micro checkpoint index present")
