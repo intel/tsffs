@@ -83,8 +83,8 @@ COPY . /workspace/tsffs/
 WORKDIR /workspace/tsffs/
 
 # Build the project by initializing it as a project associated with the local SIMICS installation
-# and building the build script. Then, install the built TSFFS SIMICS package into the local
-# SIMICS installation for use.
+# and building the module using the build script. Then, install the built TSFFS SIMICS
+# package into the local SIMICS installation for use.
 RUN ispm projects /workspace/tsffs/ --create --ignore-existing-files --non-interactive && \
     ./build.rs && \
     ispm packages \
@@ -108,11 +108,12 @@ RUN ispm projects /workspace/projects/example/ --create \
     8112-latest \
     1030-latest \
     31337-latest --ignore-existing-files --non-interactive && \
+    cp /workspace/tsffs/examples/docker-example/fuzz.simics /workspace/projects/example/ && \
     cp /workspace/tsffs/modules/tsffs/tests/rsrc/minimal_boot_disk.craff /workspace/projects/example/ && \
     cp /workspace/tsffs/modules/tsffs/tests/targets/minimal-x86_64/* /workspace/projects/example/ && \
     cp /workspace/tsffs/harness/tsffs-gcc-x86_64.h /workspace/projects/example/ && \
-    cp /workspace/tsffs/examples/docker-fuzz.simics /workspace/projects/example/fuzz.simics && \
     ninja
+
 RUN echo 'echo "To run the demo, run ./simics -no-gui --no-win fuzz.simics"' >> /root/.bashrc
 
 

@@ -12,7 +12,7 @@ use simics::{
         get_processor_number, sys::instruction_handle_t, AsConfObject, AttrValue, AttrValueType,
         ConfObject,
     },
-    error, trace,
+    trace,
 };
 use std::{collections::HashMap, ffi::c_void, fmt::Display, num::Wrapping, str::FromStr};
 use typed_builder::TypedBuilder;
@@ -277,7 +277,7 @@ impl Tsffs {
                             self.log_pc(*pc)?;
                         }
                     }
-                    Err(e) => {
+                    Err(_) => {
                         // This is not really an error, but we may want to know  about it
                         // sometimes when debugging
                         // trace!(self.as_conf_object(), "Error tracing for PC: {e}");
@@ -294,7 +294,7 @@ impl Tsffs {
                             self.log_cmp(*pc, types.clone(), cmp.clone())?;
                         }
                     }
-                    Err(e) => {
+                    Err(_) => {
                         // This is not really an error, but we may want to know  about it
                         // sometimes when debugging
                         // trace!(self.as_conf_object(), "Error tracing for CMP: {e}");

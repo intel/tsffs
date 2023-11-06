@@ -6,18 +6,14 @@ use std::{ffi::CStr, mem::size_of, slice::from_raw_parts};
 use crate::{
     tracer::{CmpExpr, CmpType, CmpValue, TraceEntry},
     traits::TracerDisassembler,
-    CLASS_NAME,
 };
 use anyhow::{anyhow, bail, Error, Result};
 use libafl::prelude::CmpValues;
 use raw_cstr::AsRawCstr;
-use simics::{
-    api::{
-        get_interface, get_object, read_phys_memory, sys::instruction_handle_t, Access, ConfObject,
-        CpuInstructionQueryInterface, CpuInstrumentationSubscribeInterface, CycleInterface,
-        IntRegisterInterface, ProcessorInfoV2Interface,
-    },
-    trace,
+use simics::api::{
+    get_interface, read_phys_memory, sys::instruction_handle_t, Access, ConfObject,
+    CpuInstructionQueryInterface, CpuInstrumentationSubscribeInterface, CycleInterface,
+    IntRegisterInterface, ProcessorInfoV2Interface,
 };
 use yaxpeax_x86::amd64::{ConditionCode, InstDecoder, Instruction, Opcode, Operand};
 
@@ -267,11 +263,6 @@ impl ArchitectureOperations for X86_64ArchitectureOperations {
                     cmp_values.push(value);
                 }
             }
-
-            trace!(
-                get_object(CLASS_NAME),
-                "Converting values to LR pairs: {cmp_values:?}",
-            );
 
             let cmp_value = if let (Some(l), Some(r)) = (cmp_values.get(0), cmp_values.get(1)) {
                 match (l, r) {

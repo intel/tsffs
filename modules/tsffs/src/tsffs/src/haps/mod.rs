@@ -179,6 +179,19 @@ impl Tsffs {
                 self.as_conf_object(),
                 "Simulation stopped without reason, not resuming."
             );
+
+            let duration = SystemTime::now().duration_since(*self.start_time())?;
+
+            // Set the log level so this message always prints
+            set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
+
+            info!(
+                self.as_conf_object(),
+                "Stopped after {} iterations in {} seconds ({} exec/s).",
+                self.iterations(),
+                duration.as_secs_f32(),
+                *self.iterations() as f32 / duration.as_secs_f32()
+            );
         }
 
         Ok(())
