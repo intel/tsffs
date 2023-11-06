@@ -39,6 +39,7 @@ SIM_INTERFACE(tsffs) {
     void (*add_token_file)(conf_object_t * obj, char * token_file);
     void (*add_trace_processor)(conf_object_t * obj, conf_object_t * cpu);
     void (*add_architecture_hint)(conf_object_t * obj, conf_object_t * cpu, char * hint);
+    void (*repro)(conf_object_t * obj, char * testcase_file);
 };
 
 #define TSFFS_INTERFACE "tsffs"

@@ -86,6 +86,7 @@ WORKDIR /workspace/tsffs/
 # and building the module using the build script. Then, install the built TSFFS SIMICS
 # package into the local SIMICS installation for use.
 RUN ispm projects /workspace/tsffs/ --create --ignore-existing-files --non-interactive && \
+    bin/project-setup --force && \
     ./build.rs && \
     ispm packages \
         -i /workspace/tsffs/linux64/packages/simics-pkg-31337-6.0.0-linux64.ispm \

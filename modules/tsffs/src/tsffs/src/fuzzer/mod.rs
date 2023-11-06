@@ -33,7 +33,7 @@ use libafl_bolts::{
     AsMutSlice, AsSlice,
 };
 use libafl_targets::{AFLppCmpLogObserver, AFLppCmplogTracingStage};
-use simics::{api::AsConfObject, debug, info};
+use simics::{api::AsConfObject, debug};
 use std::{
     cell::RefCell, fmt::Debug, slice::from_raw_parts_mut, sync::mpsc::channel, thread::spawn,
     time::Duration,
@@ -364,18 +364,18 @@ impl Tsffs {
     }
 
     pub fn get_testcase(&mut self) -> Result<Testcase> {
-        info!(self.as_conf_object(), "Getting message from fuzzer");
-        let testcase = self
-            .fuzzer_rx_mut()
-            .as_mut()
-            .ok_or_else(|| anyhow!("Fuzzer receiver not set"))?
-            .recv()
-            .map_err(|e| anyhow!("Error receiving from fuzzer: {e}"))?;
-        info!(
-            self.as_conf_object(),
-            "Got message from fuzzer {:?}", testcase
-        );
-        Ok(testcase)
+        Ok(if let Some(testcase) = self.repro_testcase() {
+            Testcase {
+                testcase: testcase.clone(),
+                cmplog: false,
+            }
+        } else {
+            self.fuzzer_rx_mut()
+                .as_mut()
+                .ok_or_else(|| anyhow!("Fuzzer receiver not set"))?
+                .recv()
+                .map_err(|e| anyhow!("Error receiving from fuzzer: {e}"))?
+        })
     }
 }
 

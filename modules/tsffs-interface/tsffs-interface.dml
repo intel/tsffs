@@ -35,6 +35,7 @@ extern typedef struct {
     void (*add_token_file)(conf_object_t * obj, char * token_file);
     void (*add_trace_processor)(conf_object_t * obj, conf_object_t * cpu);
     void (*add_architecture_hint)(conf_object_t * obj, conf_object_t * cpu, char * hint);
+    void (*repro)(conf_object_t * obj, char * testcase_file);
 } tsffs_interface_t;
 
 extern const char *const TSFFS_INTERFACE;

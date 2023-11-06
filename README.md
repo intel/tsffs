@@ -11,13 +11,10 @@ device firmware. TSSFS can even fuzz user-space applications on Linux and Window
 the [requirements](./docs/Requirements.md) to find out if TSSFS can fuzz your code.
 
 - [TSFFS: Target Software Fuzzer For SIMICS](#tsffs-target-software-fuzzer-for-simics)
-  - [UEFI Fuzzing Demo](#uefi-fuzzing-demo)
   - [Capabilities](#capabilities)
-  - [Documentation](#documentation)
   - [Use Cases](#use-cases)
+  - [Documentation](#documentation)
   - [Setup](#setup)
-  - [Running a Simple Sample Target](#running-a-simple-sample-target)
-  - [Running an EDK2 Sample Target](#running-an-edk2-sample-target)
   - [Contact](#contact)
   - [Help Wanted / Roadmap](#help-wanted--roadmap)
   - [Why TSFFS](#why-tsffs)
@@ -38,11 +35,6 @@ and takes advantage of several of the state of the art capabilities of both.
   - MOpt & Auto-token mutations
   - More coming soon!
 
-## Documentation
-
-Documentation for this project lives in the [docs](./docs/README.md) directory of this
-repository.
-
 ## Use Cases
 
 TSFFS is focused on several primary use cases:
@@ -58,12 +50,15 @@ However, TSFFS is also capable of fuzzing:
 - User-space applications
 - Network applications
 
+## Documentation
+
+Documentation for this project lives in the [docs](./docs/README.md) directory of this
+repository.
+
 ## Setup
 
 Detailed instructions for setting up and building this project can be found in
-[Setup.md](./docs/Setup.md). You should follow the documentation there to set up the
-fuzzer before trying to run the sample targets.
-
+[Setup.md](./docs/Setup.md). 
 
 ## Contact
 

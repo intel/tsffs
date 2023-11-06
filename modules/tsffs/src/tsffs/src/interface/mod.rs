@@ -7,17 +7,19 @@ use crate::{
     state::{ManualStart, ManualStartSize, Solution, SolutionKind, Stop, StopReason},
     Tsffs,
 };
+use anyhow::anyhow;
 use ffi_macro::ffi;
 use simics::{
     api::{
-        get_processor_number, lookup_file, sys::attr_value_t, AsConfObject, AttrValue,
-        AttrValueType, BreakpointId, ConfObject, GenericAddress,
+        continue_simulation, get_processor_number, lookup_file, run_alone, sys::attr_value_t,
+        AsConfObject, AttrValue, AttrValueType, BreakpointId, ConfObject, GenericAddress,
     },
     debug, Result,
 };
 use simics_macro::interface_impl;
 use std::{
     ffi::{c_char, CStr},
+    fs::read,
     path::PathBuf,
     str::FromStr,
 };
@@ -511,6 +513,47 @@ impl Tsffs {
         self.configuration_mut()
             .architecture_hints_mut()
             .insert(processor_number, ArchitectureHint::from_str(&hint)?);
+
+        Ok(())
+    }
+
+    /// Reproduce a test case execution. This will set the fuzzer's next input through
+    /// one execution using the provided file as input instead of taking input from the
+    /// fuzzer. It will stop execution at the first stop, timeout, or other solution
+    /// instead of continuing the fuzzing loop.
+    ///
+    /// This can be called during configuration *or* after stopping the fuzzer once a solution
+    /// has been found.
+    pub fn repro(&mut self, testcase_file: *mut c_char) -> Result<()> {
+        let simics_path = unsafe { CStr::from_ptr(testcase_file) }
+            .to_str()?
+            .to_string();
+
+        let testcase_file = lookup_file(simics_path)?;
+
+        debug!(self.as_conf_object(), "repro({})", testcase_file.display());
+
+        let contents = read(&testcase_file).map_err(|e| {
+            anyhow!(
+                "Failed to read repro testcase file {}: {}",
+                testcase_file.display(),
+                e
+            )
+        })?;
+
+        *self.repro_testcase_mut() = Some(contents);
+
+        if *self.iterations() > 0 {
+            // We've done an iteration already, so we need to reset and run
+            self.restore_initial_snapshot()?;
+            self.get_and_write_testcase()?;
+            self.post_timeout_event()?;
+
+            run_alone(|| {
+                continue_simulation(0)?;
+                Ok(())
+            })?;
+        }
 
         Ok(())
     }

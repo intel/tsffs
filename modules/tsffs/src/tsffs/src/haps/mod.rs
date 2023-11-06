@@ -21,6 +21,11 @@ use simics::{
 impl Tsffs {
     /// Called on core simulation stopped HAP
     pub fn on_simulation_stopped(&mut self) -> Result<()> {
+        if *self.stopped_for_repro() {
+            // If we are stopped for repro, we do nothing on this HAP!
+            return Ok(());
+        }
+
         if let Some(reason) = self.stop_reason_mut().take() {
             info!(self.as_conf_object(), "on_simulation_stopped({reason:?})");
 
@@ -46,7 +51,10 @@ impl Tsffs {
                         *self.coverage_enabled_mut() = true;
                         self.save_initial_snapshot()?;
                         self.get_and_write_testcase()?;
+                        self.post_timeout_event()?;
                     }
+
+                    self.save_repro_bookmark_if_needed()?;
                 }
                 StopReason::ManualStart(start) => {
                     if !self.have_initial_snapshot() {
@@ -78,9 +86,24 @@ impl Tsffs {
                         self.get_and_write_testcase()?;
                         self.post_timeout_event()?;
                     }
+
+                    self.save_repro_bookmark_if_needed()?;
                 }
                 StopReason::MagicStop(_) | StopReason::ManualStop(_) => {
                     self.cancel_timeout_event()?;
+
+                    if *self.repro_bookmark_set() {
+                        *self.stopped_for_repro_mut() = true;
+                        set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
+
+                        info!(
+                            self.as_conf_object(),
+                            "Stopped for repro. Restore to start bookmark with 'reverse-to start'"
+                        );
+
+                        // Skip the shutdown and continue, we are finished here
+                        return Ok(());
+                    }
 
                     *self.iterations_mut() += 1;
 
@@ -117,11 +140,23 @@ impl Tsffs {
                     self.restore_initial_snapshot()?;
 
                     self.get_and_write_testcase()?;
-
                     self.post_timeout_event()?;
                 }
                 StopReason::Solution(solution) => {
                     self.cancel_timeout_event()?;
+
+                    if *self.repro_bookmark_set() {
+                        *self.stopped_for_repro_mut() = true;
+                        set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
+
+                        info!(
+                            self.as_conf_object(),
+                            "Stopped for repro. Restore to start bookmark with 'reverse-to start'"
+                        );
+
+                        // Skip the shutdown and continue, we are finished here
+                        return Ok(());
+                    }
 
                     *self.iterations_mut() += 1;
 
@@ -163,7 +198,6 @@ impl Tsffs {
                     self.restore_initial_snapshot()?;
 
                     self.get_and_write_testcase()?;
-
                     self.post_timeout_event()?;
                 }
             }
@@ -175,6 +209,15 @@ impl Tsffs {
                 Ok(())
             })?;
         } else {
+            self.cancel_timeout_event()?;
+
+            let fuzzer_tx = self
+                .fuzzer_tx_mut()
+                .as_ref()
+                .ok_or_else(|| anyhow!("No fuzzer tx channel"))?;
+
+            fuzzer_tx.send(ExitKind::Ok)?;
+
             info!(
                 self.as_conf_object(),
                 "Simulation stopped without reason, not resuming."

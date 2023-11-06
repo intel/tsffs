@@ -44,11 +44,12 @@ use serde::{Deserialize, Serialize};
 use simics::api::{restore_snapshot, save_snapshot};
 use simics::{
     api::{
-        break_simulation, discard_future, get_class, get_interface, get_processor_number,
-        object_clock, restore_micro_checkpoint, save_micro_checkpoint, AsConfObject, Class,
-        ConfObject, CoreBreakpointMemopHap, CoreExceptionHap, CoreMagicInstructionHap,
-        CoreSimulationStoppedHap, CpuInstrumentationSubscribeInterface, Event, EventClassFlag,
-        HapHandle, MicroCheckpointFlags,
+        break_simulation, discard_future, free_attribute, get_class, get_interface,
+        get_processor_number, object_clock, restore_micro_checkpoint, run_command,
+        save_micro_checkpoint, AsConfObject, Class, ConfObject, CoreBreakpointMemopHap,
+        CoreExceptionHap, CoreMagicInstructionHap, CoreSimulationStoppedHap,
+        CpuInstrumentationSubscribeInterface, Event, EventClassFlag, HapHandle,
+        MicroCheckpointFlags,
     },
     info,
 };
@@ -251,6 +252,13 @@ pub struct Tsffs {
     /// Tracked processors. This always includes the start processor, and may include
     /// additional processors that are manually added by the user
     processors: HashMap<i32, Architecture>,
+    #[builder(default)]
+    /// A testcase to use for repro
+    repro_testcase: Option<Vec<u8>>,
+    #[builder(default)]
+    repro_bookmark_set: bool,
+    #[builder(default)]
+    stopped_for_repro: bool,
 }
 
 impl Class for Tsffs {
@@ -369,6 +377,15 @@ impl Tsffs {
             || (self.snapshot_name().is_some()
                 && self.micro_checkpoint_index().is_some()
                 && !self.configuration().use_snapshots())
+    }
+
+    pub fn save_repro_bookmark_if_needed(&mut self) -> Result<()> {
+        if self.repro_testcase().is_some() && !self.repro_bookmark_set() {
+            free_attribute(run_command("set-bookmark start")?)?;
+            *self.repro_bookmark_set_mut() = true;
+        }
+
+        Ok(())
     }
 }
 
