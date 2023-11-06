@@ -1,14 +1,7 @@
-Cargo.lock
-.env
-.secrets
-.secret*
-.mypy_cache
-*restricted*
 config.mk
 .package-list
 .modcache
-
-
+Dockerfile
 .project-properties/
 bin/
 linux64/
