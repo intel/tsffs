@@ -227,7 +227,7 @@ impl Tsffs {
         if hits == 0 {
             trace!(
                 self.as_conf_object(),
-                "Logging first hit of comparison with types {types:?} and values {cmp:?}"
+                "Logging first hit of comparison with types {types:?} and values {cmp:?} (assume == if no types)"
             );
         }
 
@@ -235,14 +235,14 @@ impl Tsffs {
         self.aflpp_cmp_map_mut().headers_mut()[pc_index as usize].set_shape(shape);
         self.aflpp_cmp_map_mut().headers_mut()[pc_index as usize].set__type(AFL_CMP_TYPE_INS);
 
-        let attribute = types
-            .iter()
-            .map(|t| *t as u32)
-            .reduce(|acc, t| acc | t)
-            .ok_or_else(|| anyhow!("Could not reduce types"))?;
-
-        self.aflpp_cmp_map_mut().headers_mut()[pc_index as usize].set_attribute(attribute);
-        // NOTE: overflow isn't used by aflppredqueen
+        if let Some(attribute) = types.iter().map(|t| *t as u32).reduce(|acc, t| acc | t) {
+            self.aflpp_cmp_map_mut().headers_mut()[pc_index as usize].set_attribute(attribute);
+            // NOTE: overflow isn't used by aflppredqueen
+        } else {
+            // Naively use EQ if we don't have a value
+            self.aflpp_cmp_map_mut().headers_mut()[pc_index as usize]
+                .set_attribute(CmpType::Equal as u32);
+        }
 
         self.aflpp_cmp_map_mut().values_mut().operands_mut()[pc_index as usize]
             [hits as usize % AFLPP_CMPLOG_MAP_H] = AFLppCmpLogOperands::new(operands.0, operands.1);
@@ -278,7 +278,9 @@ impl Tsffs {
                         }
                     }
                     Err(e) => {
-                        error!(self.as_conf_object(), "Error tracing for PC: {e}");
+                        // This is not really an error, but we may want to know  about it
+                        // sometimes when debugging
+                        // trace!(self.as_conf_object(), "Error tracing for PC: {e}");
                     }
                 }
             }
@@ -293,7 +295,9 @@ impl Tsffs {
                         }
                     }
                     Err(e) => {
-                        error!(self.as_conf_object(), "Error tracing for CMP: {e}");
+                        // This is not really an error, but we may want to know  about it
+                        // sometimes when debugging
+                        // trace!(self.as_conf_object(), "Error tracing for CMP: {e}");
                     }
                 }
             }
