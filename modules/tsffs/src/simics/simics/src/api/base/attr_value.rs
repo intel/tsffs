@@ -1394,41 +1394,11 @@ impl TryFrom<AttrValueType> for AttrValue {
     fn try_from(value: AttrValueType) -> Result<Self> {
         match value {
             AttrValueType::Nil => Ok(AttrValue::nil()),
-            AttrValueType::Bool(v) => {
-                v.try_into()
-                    .map_err(|e| Error::NestedFromAttrValueTypeConversionError {
-                        ty: type_name::<AttrValue>().to_string(),
-                        source: Box::new(Error::from(e)),
-                    })
-            }
-            AttrValueType::Signed(v) => {
-                v.try_into()
-                    .map_err(|e| Error::NestedFromAttrValueTypeConversionError {
-                        ty: type_name::<AttrValue>().to_string(),
-                        source: Box::new(Error::from(e)),
-                    })
-            }
-            AttrValueType::Unsigned(v) => {
-                v.try_into()
-                    .map_err(|e| Error::NestedFromAttrValueTypeConversionError {
-                        ty: type_name::<AttrValue>().to_string(),
-                        source: Box::new(Error::from(e)),
-                    })
-            }
-            AttrValueType::Float(v) => {
-                v.try_into()
-                    .map_err(|e| Error::NestedFromAttrValueTypeConversionError {
-                        ty: type_name::<AttrValue>().to_string(),
-                        source: Box::new(Error::from(e)),
-                    })
-            }
-            AttrValueType::String(v) => {
-                v.try_into()
-                    .map_err(|e| Error::NestedFromAttrValueTypeConversionError {
-                        ty: type_name::<AttrValue>().to_string(),
-                        source: Box::new(Error::from(e)),
-                    })
-            }
+            AttrValueType::Bool(v) => v.into(),
+            AttrValueType::Signed(v) => v.into(),
+            AttrValueType::Unsigned(v) => v.into(),
+            AttrValueType::Float(v) => v.into(),
+            AttrValueType::String(v) => v.into(),
             AttrValueType::List(v) => v.try_into(),
             AttrValueType::Dict(v) => v.try_into(),
         }

@@ -149,7 +149,7 @@ impl ArchitectureOperations for RISCVArchitectureOperations {
             }
         }
 
-        let cmp_value = if let (Some(l), Some(r)) = (cmp_values.get(0), cmp_values.get(1)) {
+        let cmp_value = if let (Some(l), Some(r)) = (cmp_values.first(), cmp_values.get(1)) {
             match (l, r) {
                 (CmpValue::U8(l), CmpValue::U8(r)) => Some(CmpValues::U8((*l, *r))),
                 (CmpValue::I8(l), CmpValue::I8(r)) => Some(CmpValues::U8((

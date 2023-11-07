@@ -225,7 +225,7 @@ impl Tsffs {
     /// it had finished executing with an exception or timeout, and the state will be
     /// restored to the state at the initial snapshot.
     pub fn solution(&mut self, id: u64, message: *mut c_char) -> Result<()> {
-        let message = unsafe { CStr::from_ptr(message) }.to_str()?.to_string();
+        let message = unsafe { CStr::from_ptr(message) }.to_str()?;
 
         debug!(self.as_conf_object(), "solution({id:#x}, {message})");
 
@@ -348,11 +348,7 @@ impl Tsffs {
     /// directory without calling `set_generate_random_corpus(True)`.  If not provided,
     /// "%simics%/corpus" will be used by default.
     pub fn set_corpus_directory(&mut self, corpus_directory: *mut c_char) -> Result<()> {
-        let corpus_directory = PathBuf::from(lookup_file(
-            unsafe { CStr::from_ptr(corpus_directory) }
-                .to_str()?
-                .to_string(),
-        )?);
+        let corpus_directory = lookup_file(unsafe { CStr::from_ptr(corpus_directory) }.to_str()?)?;
 
         debug!(
             self.as_conf_object(),
@@ -371,11 +367,8 @@ impl Tsffs {
     /// and traige defects using the `reproduce` method. If no solutions directory is provided,
     /// "%simics%/solutions" will be used by default.
     pub fn set_solutions_directory(&mut self, solutions_directory: *mut c_char) -> Result<()> {
-        let solutions_directory = PathBuf::from(lookup_file(
-            unsafe { CStr::from_ptr(solutions_directory) }
-                .to_str()?
-                .to_string(),
-        )?);
+        let solutions_directory =
+            lookup_file(unsafe { CStr::from_ptr(solutions_directory) }.to_str()?)?;
 
         debug!(
             self.as_conf_object(),
@@ -421,9 +414,7 @@ impl Tsffs {
 
     /// Tokenize an executable file and add extracted tokens to token mutations for the fuzzer
     pub fn tokenize_executable(&mut self, executable_file: *mut c_char) -> Result<()> {
-        let simics_path = unsafe { CStr::from_ptr(executable_file) }
-            .to_str()?
-            .to_string();
+        let simics_path = unsafe { CStr::from_ptr(executable_file) }.to_str()?;
 
         let executable_path = lookup_file(simics_path)?;
 
@@ -442,7 +433,7 @@ impl Tsffs {
 
     /// Tokenize a source file and add extracted tokens to token mutations for the fuzzer
     pub fn tokenize_src(&mut self, source_file: *mut c_char) -> Result<()> {
-        let simics_path = unsafe { CStr::from_ptr(source_file) }.to_str()?.to_string();
+        let simics_path = unsafe { CStr::from_ptr(source_file) }.to_str()?;
 
         let source_path = lookup_file(simics_path)?;
 
@@ -469,7 +460,7 @@ impl Tsffs {
     /// y = "foo\x41bar"
     /// ```
     pub fn add_token_file(&mut self, token_file: *mut c_char) -> Result<()> {
-        let simics_path = unsafe { CStr::from_ptr(token_file) }.to_str()?.to_string();
+        let simics_path = unsafe { CStr::from_ptr(token_file) }.to_str()?;
 
         let token_file = lookup_file(simics_path)?;
 
@@ -504,7 +495,7 @@ impl Tsffs {
     /// useful for x86 processors which report as x86-64 processors, or when fuzzing x86 code
     /// running on an x86-64 processor in a backward compatibility mode.
     pub fn add_architecture_hint(&mut self, cpu: *mut ConfObject, hint: *mut c_char) -> Result<()> {
-        let hint = unsafe { CStr::from_ptr(hint) }.to_str()?.to_string();
+        let hint = unsafe { CStr::from_ptr(hint) }.to_str()?;
         let processor_number = get_processor_number(cpu)?;
         debug!(
             self.as_conf_object(),
@@ -525,9 +516,7 @@ impl Tsffs {
     /// This can be called during configuration *or* after stopping the fuzzer once a solution
     /// has been found.
     pub fn repro(&mut self, testcase_file: *mut c_char) -> Result<()> {
-        let simics_path = unsafe { CStr::from_ptr(testcase_file) }
-            .to_str()?
-            .to_string();
+        let simics_path = unsafe { CStr::from_ptr(testcase_file) }.to_str()?;
 
         let testcase_file = lookup_file(simics_path)?;
 
