@@ -20,7 +20,8 @@ fn main() -> Result<()> {
     let tests_out_file = out_dir.join(TESTS_FILE);
 
     let tests_tokens = simics_tests("../../../");
-    write(tests_out_file, tests_tokens.to_string())?;
+    write(tests_out_file, tests_tokens.to_string())
+        .map_err(|e| anyhow!("Failed to write tests out file: {e}"))?;
 
     let manifest_dir = PathBuf::from(
         var(CARGO_MANIFEST_DIR)
@@ -29,17 +30,19 @@ fn main() -> Result<()> {
 
     let targets_dir = manifest_dir.join("targets");
 
-    read_dir(targets_dir)?
-        .filter_map(|d| d.ok())
-        .filter(|d| d.path().is_dir())
-        .map(|d| d.path())
-        .for_each(|d| {
-            Command::new("ninja")
-                .current_dir(&d)
-                .check()
-                .expect("failed to build");
-            println!("cargo:rerun-if-changed={}", d.display());
-        });
+    if targets_dir.is_dir() {
+        read_dir(targets_dir)?
+            .filter_map(|d| d.ok())
+            .filter(|d| d.path().is_dir())
+            .map(|d| d.path())
+            .for_each(|d| {
+                Command::new("ninja")
+                    .current_dir(&d)
+                    .check()
+                    .expect("failed to build");
+                println!("cargo:rerun-if-changed={}", d.display());
+            });
+    }
 
     Ok(())
 }
