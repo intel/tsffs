@@ -89,34 +89,33 @@ jobs:
                   ispm packages \
                     -i linux64/packages/simics-pkg-31337-6.0.0-linux64.ispm \
                     --non-interactive --trust-insecure-packages
-            - name: Setup Cargo Env
-              run: |
-                mkdir -p .cargo
-                echo "[env]" > .cargo/config.toml
-                echo "SIMICS_BASE = \"${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}\"" > .cargo/config.toml
 
             - name: Build Project
               run: |
-                  cargo build
+                  SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo build
             - name: Check Project
               run: |
-                  cargo clippy
+                  SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo clippy
             - name: Test Project
               run: |
-                  cargo test || ( echo "❗ Tests failed" && exit 1 )
+                  SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo test || ( echo "❗ Tests failed" && exit 1 )
                   echo "✅ Tests passed"
             - name: Build Docs
               run: |
-                  cargo doc --workspace --no-deps
+                  SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo doc --workspace --no-deps
             - name: Test Docs
               run: |
-                  cargo test --doc
+                  SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo test --doc
 
     static_analysis:
         name: Run Static Analysis
         container: fedora:38
         runs-on: ubuntu-latest
         steps:
+            - name: Add ISPM to PATH
+              run: |
+                echo "${HOME}/simics/ispm/" >> $GITHUB_PATH
+
             - name: Install Dependencies
               shell: bash
               run: |
@@ -165,22 +164,17 @@ jobs:
                   ispm packages \
                     -i linux64/packages/simics-pkg-31337-6.0.0-linux64.ispm \
                     --non-interactive --trust-insecure-packages
-            - name: Setup Cargo Env
-              run: |
-                mkdir -p .cargo
-                echo "[env]" > .cargo/config.toml
-                echo "SIMICS_BASE = \"${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}\"" > .cargo/config.toml
 
             - name: CT39 - Clippy Check Project
               run: |
-                  cargo clippy --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }} \
+                  SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo clippy \
                     || ( echo "❗ [CT39 (1/2)] Failed clippy static analysis checks" && exit 1 )
                   echo "✅ [CT39 (1/2)] Passed clippy static analysis checks"
             - name: CT39 - MIRI Check Project
               run: |
-                  cargo clippy --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }}
+                  SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} \
                   MIRIFLAGS="-Zmiri-backtrace=full -Zmiri-disable-isolation -Zmiri-panic-on-unsupported" cargo \
-                    miri test --features=${{ env.SIMICS_PUBLIC_PACKAGE_VERSION_1000 }} \
+                    miri test \
                     || ( echo "❗ [CT39 (2/2)] Failed MIRI static analysis checks" && exit 1 )
                   echo "✅ [CT39 (2/2)] Passed MIRI static analysis checks"
 
