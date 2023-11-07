@@ -62,24 +62,28 @@ jobs:
                 toolchain: nightly
                 components: rustfmt,clippy,miri
 
-            - name: Install SIMICS (External)
-              shell: bash
-              run: |
-                  mkdir -p "${HOME}/simics/ispm/" && \
-                  curl --noproxy -L -o "${HOME}/simics/ispm.tar.gz" \
-                      "${{ env.PUBLIC_SIMICS_ISPM_URL }}" && \
-                  curl --noproxy -L -o "${HOME}/simics/simics.ispm" \
-                      "${{ env.PUBLIC_SIMICS_PKGS_URL }}" && \
-                  tar -C "${HOME}/simics/ispm" --strip-components=1 \
-                      -xvf "${HOME}/simics/ispm.tar.gz" && \
-                  ispm settings install-dir "${HOME}/simics" && \
-                  ispm packages --install-bundle "${HOME}/simics/simics.ispm" \
-                      --non-interactive
             - name: Cache SIMICS Dependencies
               uses: actions/cache@v3
               with:
-                path: |
-                  ~/simics/
+                path: ~/simics/
+                key: simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
+
+            - name: Install SIMICS (External)
+              shell: bash
+              run: |
+                  if [ ! -d "${HOME}/simics" ]; then
+                      mkdir -p "${HOME}/simics/ispm/" && \
+                      curl --noproxy -L -o "${HOME}/simics/ispm.tar.gz" \
+                          "${{ env.PUBLIC_SIMICS_ISPM_URL }}" && \
+                      curl --noproxy -L -o "${HOME}/simics/simics.ispm" \
+                          "${{ env.PUBLIC_SIMICS_PKGS_URL }}" && \
+                      tar -C "${HOME}/simics/ispm" --strip-components=1 \
+                          -xvf "${HOME}/simics/ispm.tar.gz" && \
+                      ispm settings install-dir "${HOME}/simics" && \
+                      ispm packages --install-bundle "${HOME}/simics/simics.ispm" \
+                          --non-interactive
+                  fi
+
             - name: Build and Install TSFFS SIMICS Package
               run: |
                   ispm projects $(pwd) --create --ignore-existing-files \
@@ -137,24 +141,28 @@ jobs:
                 toolchain: nightly
                 components: rustfmt,clippy,miri
 
-            - name: Install SIMICS (External)
-              shell: bash
-              run: |
-                  mkdir -p "${HOME}/simics/ispm/" && \
-                  curl --noproxy -L -o "${HOME}/simics/ispm.tar.gz" \
-                      "${{ env.PUBLIC_SIMICS_ISPM_URL }}" && \
-                  curl --noproxy -L -o "${HOME}/simics/simics.ispm" \
-                      "${{ env.PUBLIC_SIMICS_PKGS_URL }}" && \
-                  tar -C "${HOME}/simics/ispm" --strip-components=1 \
-                      -xvf "${HOME}/simics/ispm.tar.gz" && \
-                  ispm settings install-dir "${HOME}/simics" && \
-                  ispm packages --install-bundle "${HOME}/simics/simics.ispm" \
-                      --non-interactive
             - name: Cache SIMICS Dependencies
               uses: actions/cache@v3
               with:
-                path: |
-                  ~/simics/
+                path: ~/simics/
+                key: simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
+
+            - name: Install SIMICS (External)
+              shell: bash
+              run: |
+                  if [ ! -d "${HOME}/simics" ]; then
+                      mkdir -p "${HOME}/simics/ispm/" && \
+                      curl --noproxy -L -o "${HOME}/simics/ispm.tar.gz" \
+                          "${{ env.PUBLIC_SIMICS_ISPM_URL }}" && \
+                      curl --noproxy -L -o "${HOME}/simics/simics.ispm" \
+                          "${{ env.PUBLIC_SIMICS_PKGS_URL }}" && \
+                      tar -C "${HOME}/simics/ispm" --strip-components=1 \
+                          -xvf "${HOME}/simics/ispm.tar.gz" && \
+                      ispm settings install-dir "${HOME}/simics" && \
+                      ispm packages --install-bundle "${HOME}/simics/simics.ispm" \
+                          --non-interactive
+                  fi
+
             - name: Build and Install TSFFS SIMICS Package
               run: |
                   ispm projects $(pwd) --create --ignore-existing-files \
@@ -274,6 +282,35 @@ jobs:
                   /action/lib/linter.sh || ( echo "❗ [CT222] Super linter found an issue (possibly Hadolint)" && exit 1 )
                   echo "✅ [CT222] Hadolint Dockerfile check passed"
 
+    scan_docker_example:
+        container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.2
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+              with:
+                fetch-depth: 0
+                lfs: false
+            - name: Build Image
+              run: |
+                  /kaniko/executor \
+                    --build-arg "http_proxy=${http_proxy}" \
+                    --build-arg "HTTP_PROXY=${HTTP_PROXY}" \
+                    --build-arg "https_proxy=${https_proxy}" \
+                    --build-arg "HTTPS_PROXY=${HTTPS_PROXY}" \
+                    --build-arg "no_proxy=${no_proxy}" \
+                    --build-arg "NO_PROXY=${NO_PROXY}" \
+                    --build-arg "proxy=${HTTP_PROXY}" \
+                    --snapshot-mode=redo \
+                    --use-new-run \
+                    --context . \
+                    --dockerfile Dockerfile \
+                    --no-push \
+                    --tar-path /container.tar \
+                    --destination=image
+            - name: (T1187, T1186) (N/C) - Test if secrets are stored in Dockerfiles
+              run: |
+                  /kaniko/trivy image --input /container.tar
+
     scan_minimal_riscv_64:
         container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.2
         runs-on: ubuntu-latest
@@ -295,7 +332,7 @@ jobs:
                     --snapshot-mode=redo \
                     --use-new-run \
                     --context modules/tsffs/tests/targets/minimal-riscv-64 \
-                    --dockerfile Dockerfile \
+                    --dockerfile modules/tsffs/tests/targets/minimal-riscv-64/Dockerfile \
                     --no-push \
                     --tar-path /container.tar \
                     --destination=image
@@ -324,7 +361,7 @@ jobs:
                     --snapshot-mode=redo \
                     --use-new-run \
                     --context modules/tsffs/tests/targets/minimal-riscv-64-edk2 \
-                    --dockerfile Dockerfile \
+                    --dockerfile modules/tsffs/tests/targets/minimal-riscv-64-edk2/Dockerfile \
                     --no-push \
                     --tar-path /container.tar \
                     --destination=image
@@ -353,7 +390,7 @@ jobs:
                     --snapshot-mode=redo \
                     --use-new-run \
                     --context modules/tsffs/tests/targets/minimal-x86_64-breakpoint-edk2 \
-                    --dockerfile Dockerfile \
+                    --dockerfile modules/tsffs/tests/targets/minimal-x86_64-breakpoint-edk2/Dockerfile \
                     --no-push \
                     --tar-path /container.tar \
                     --destination=image
@@ -382,7 +419,7 @@ jobs:
                     --snapshot-mode=redo \
                     --use-new-run \
                     --context modules/tsffs/tests/targets/minimal-x86_64-edk2 \
-                    --dockerfile Dockerfile \
+                    --dockerfile modules/tsffs/tests/targets/minimal-x86_64-edk2/Dockerfile \
                     --no-push \
                     --tar-path /container.tar \
                     --destination=image
@@ -411,7 +448,7 @@ jobs:
                     --snapshot-mode=redo \
                     --use-new-run \
                     --context modules/tsffs/tests/targets/minimal-x86_64-timeout \
-                    --dockerfile Dockerfile \
+                    --dockerfile modules/tsffs/tests/targets/minimal-x86_64-timeout/Dockerfile \
                     --no-push \
                     --tar-path /container.tar \
                     --destination=image
