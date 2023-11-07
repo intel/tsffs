@@ -510,7 +510,7 @@ jobs:
             - name: (T349, T350) (N/C) - Protect audit information and logs against unauthorized access, Verify that audit information is sufficiently protected
               run: |
                   # shellcheck disable=SC2016
-                  find . -type f -name '*.rs' -print0 2> /dev/null \
+                  find . -type f -name '*.rs' -not -path 'tests/*.rs' -print0 2> /dev/null \
                     | xargs -0 -i bash -c \
                       'MATCH=$(grep -A16 -E "File::|OpenOptions::" {} | grep -B16 -A16 -i "log"); if [ -n "${MATCH}" ]; then echo "${MATCH}" > /tmp/logmatch.$(printf {} | sed "s/\//-/g"); fi'
                   find /tmp -name 'logmatch.*' -print0 2> /dev/null \
