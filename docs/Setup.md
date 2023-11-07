@@ -45,7 +45,9 @@ cargo +nightly --version
 
 For users of the public distribution of SIMICS, visit the [SIMICS download
 page](https://www.intel.com/content/www/us/en/developer/articles/tool/simics-simulator.html),
-accept the EULA, and download:
+accept the EULA, and download the following files. Users of internal or commercial
+private Wind River or Intel SIMICS should follow internal documentation available
+[here](TODO).
 
 * `intel-simics-package-manager-[VERSION].tar.gz`
 * `simics-6-packages-[VERSION].ispm`
@@ -162,4 +164,5 @@ ispm packages -i linux64/packages/simics-pkg-31337-6.0.0-linux64.ispm \
     --non-interactive --trust-insecure-packages
 ```
 
-You are now ready to use TSFFS!
+You are now ready to use TSFFS! See the [User Guide](./UserGuide.md) to learn how to
+add TSFFS to your SIMICS projects, configure TSFFS, and run fuzzing campaigns.

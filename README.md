@@ -13,8 +13,7 @@ the [requirements](./docs/Requirements.md) to find out if TSSFS can fuzz your co
   - [Quick Start](#quick-start)
   - [Capabilities](#capabilities)
   - [Use Cases](#use-cases)
-  - [Documentation](#documentation)
-  - [Setup](#setup)
+  - [Documentation \& Setup](#documentation--setup)
   - [Contact](#contact)
   - [Help Wanted / Roadmap](#help-wanted--roadmap)
   - [Why TSFFS](#why-tsffs)
@@ -68,15 +67,10 @@ However, TSFFS is also capable of fuzzing:
 - User-space applications
 - Network applications
 
-## Documentation
+## Documentation & Setup
 
-Documentation for this project lives in the [docs](./docs/README.md) directory of this
-repository.
-
-## Setup
-
-Detailed instructions for setting up and building this project can be found in
-[Setup.md](./docs/Setup.md). 
+Documentation for setup & usage of this project lives in the [docs](./docs/README.md)
+directory of this repository.
 
 ## Contact
 

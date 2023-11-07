@@ -30,7 +30,6 @@ tutorials on various use cases, see the [tutorials](./tutorials).
       - [Adding a Trace Processor](#adding-a-trace-processor)
     - [Reproducing Solutions](#reproducing-solutions)
 
-
 ## Adding TSFFS to Projects
 
 Before TSFFS can be used, it must be added to (sometimes mentioned as *associated with*
