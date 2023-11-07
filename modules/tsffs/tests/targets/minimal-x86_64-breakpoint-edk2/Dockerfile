@@ -1,8 +1,8 @@
-ARG DEBIAN_FRONTEND=noninteractive
-
+# hadolint global ignore=DL3008
 FROM ghcr.io/tianocore/containers/ubuntu-22-build:a0dd931
+ENV DEBIAN_FRONTEND=noninteractive
 
-SHELL ["/bin/bash", "-c"]
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 ENV EDK2_REPO_URL "https://github.com/tianocore/edk2.git"
 ENV EDK2_REPO_HASH "d189de3b0a2f44f4c9b87ed120be16569ea19b51"

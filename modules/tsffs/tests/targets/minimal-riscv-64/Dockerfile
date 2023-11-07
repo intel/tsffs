@@ -1,6 +1,7 @@
-ARG DEBIAN_FRONTEND=noninteractive
-
+# hadolint global ignore=DL3008
 FROM ubuntu:22.04 AS buildroot
+
+ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get -y update && \
     apt-get -y install \

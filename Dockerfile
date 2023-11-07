@@ -1,5 +1,6 @@
 # Copyright (C) 2023 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
+# hadolint global ignore=DL3041
 
 FROM fedora:38
 
@@ -9,6 +10,7 @@ ARG PUBLIC_SIMICS_PKGS_URL="https://registrationcenter-download.intel.com/akdlm/
 ARG PUBLIC_SIMICS_ISPM_URL="https://registrationcenter-download.intel.com/akdlm/IRC_NAS/881ee76a-c24d-41c0-af13-5d89b2a857ff/intel-simics-package-manager-1.7.5-linux64.tar.gz"
 # Add cargo and ispm to the path
 ENV PATH="/root/.cargo/bin:/workspace/simics/ispm:${PATH}"
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Install local dependencies:
 # - Libraries and dependencies for SIMICS and ISPM
@@ -20,6 +22,7 @@ RUN dnf -y update && \
     dnf -y install \
         alsa-lib \
         atk \
+        bash \
         clang \
         clang-libs \
         clang-resource-filesystem \
@@ -53,12 +56,13 @@ RUN dnf -y update && \
         python3 \
         python3-pip \
         yamllint && \
-    python3 -m pip install \
-        black \
-        flake8 \
-        isort \
-        mypy \
-        pylint && \
+    dnf -y clean all && \
+    python3 -m pip install --no-cache-dir \
+        black==23.10.1 \
+        flake8==6.1.0 \
+        isort==5.12.0 \
+        mypy==1.6.1 \
+        pylint==3.0.2 && \
     curl https://sh.rustup.rs -sSf | bash -s -- -y && \
     rustup toolchain install nightly
 

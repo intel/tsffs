@@ -20,545 +20,549 @@
 name: CI
 
 on:
-    push:
-        branches: ["main"]
-    pull_request:
-        branches: ["main"]
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
 
 env:
-    CARGO_TERM_COLOR: always
-    PUBLIC_SIMICS_PKGS_URL: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/881ee76a-c24d-41c0-af13-5d89b2a857ff/simics-6-packages-2023-31-linux64.ispm"
-    PUBLIC_SIMICS_ISPM_URL: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/881ee76a-c24d-41c0-af13-5d89b2a857ff/intel-simics-package-manager-1.7.5-linux64.tar.gz"
-    PUBLIC_SIMICS_PACKAGE_VERSION_1000: "6.0.169"
+  CARGO_TERM_COLOR: always
+  PUBLIC_SIMICS_PKGS_URL: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/881ee76a-c24d-41c0-af13-5d89b2a857ff/simics-6-packages-2023-31-linux64.ispm"
+  PUBLIC_SIMICS_ISPM_URL: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/881ee76a-c24d-41c0-af13-5d89b2a857ff/intel-simics-package-manager-1.7.5-linux64.tar.gz"
+  PUBLIC_SIMICS_PACKAGE_VERSION_1000: "6.0.169"
 
 jobs:
-    build_and_test:
-        name: Build and Test
-        container: fedora:38
-        runs-on: ubuntu-latest
-        steps:
-            - name: Add ISPM to PATH
-              run: |
-                echo "${HOME}/simics/ispm/" >> $GITHUB_PATH
+  build_and_test:
+    name: Build and Test
+    container: fedora:38
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add ISPM to PATH
+        run: |
+          echo "${HOME}/simics/ispm/" >> "${GITHUB_PATH}"
 
-            - name: Install Dependencies
-              shell: bash
-              run: |
-                  dnf -y update && \
-                  dnf -y install \
-                    alsa-lib atk clang clang-libs clang-resource-filesystem \
-                    clang-tools-extra cmake cups curl dosfstools g++ gcc git \
-                    git-lfs glibc-devel glibc-devel.i686 glibc-static \
-                    glibc-static.i686 gtk3 lld lld-devel lld-libs llvm llvm-libs \
-                    llvm-static make mesa-libgbm mtools ninja-build openssl \
-                    openssl-devel openssl-libs python3 python3-pip yamllint
+      - name: Install Dependencies
+        shell: bash
+        run: |
+          dnf -y update && \
+          dnf -y install \
+            alsa-lib atk clang clang-libs clang-resource-filesystem \
+            clang-tools-extra cmake cups curl dosfstools g++ gcc git \
+            git-lfs glibc-devel glibc-devel.i686 glibc-static \
+            glibc-static.i686 gtk3 lld lld-devel lld-libs llvm llvm-libs \
+            llvm-static make mesa-libgbm mtools ninja-build openssl \
+            openssl-devel openssl-libs python3 python3-pip yamllint
 
-            - uses: actions/checkout@v3
-              with:
-                lfs: true
+      - uses: actions/checkout@v3
+        with:
+          lfs: true
 
-            - uses: dtolnay/rust-toolchain@nightly
-              with:
-                toolchain: nightly
-                components: rustfmt,clippy,miri
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          toolchain: nightly
+          components: rustfmt,clippy,miri
 
-            - name: Cache SIMICS Dependencies
-              uses: actions/cache@v3
-              with:
-                path: ~/simics/
-                key: simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
+      - name: Cache SIMICS Dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/simics/
+          key: simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
 
-            - name: Install SIMICS (External)
-              shell: bash
-              run: |
-                  if [ ! -d "${HOME}/simics" ]; then
-                      mkdir -p "${HOME}/simics/ispm/" && \
-                      curl --noproxy -L -o "${HOME}/simics/ispm.tar.gz" \
-                          "${{ env.PUBLIC_SIMICS_ISPM_URL }}" && \
-                      curl --noproxy -L -o "${HOME}/simics/simics.ispm" \
-                          "${{ env.PUBLIC_SIMICS_PKGS_URL }}" && \
-                      tar -C "${HOME}/simics/ispm" --strip-components=1 \
-                          -xvf "${HOME}/simics/ispm.tar.gz" && \
-                      ispm settings install-dir "${HOME}/simics" && \
-                      ispm packages --install-bundle "${HOME}/simics/simics.ispm" \
-                          --non-interactive
-                  fi
+      - name: Install SIMICS (External)
+        shell: bash
+        run: |
+          if [ ! -d "${HOME}/simics" ]; then
+              mkdir -p "${HOME}/simics/ispm/" && \
+              curl --noproxy -L -o "${HOME}/simics/ispm.tar.gz" \
+                  "${{ env.PUBLIC_SIMICS_ISPM_URL }}" && \
+              curl --noproxy -L -o "${HOME}/simics/simics.ispm" \
+                  "${{ env.PUBLIC_SIMICS_PKGS_URL }}" && \
+              tar -C "${HOME}/simics/ispm" --strip-components=1 \
+                  -xvf "${HOME}/simics/ispm.tar.gz" && \
+              ispm settings install-dir "${HOME}/simics" && \
+              ispm packages --install-bundle "${HOME}/simics/simics.ispm" \
+                  --non-interactive
+          fi
 
-            - name: Build and Install TSFFS SIMICS Package
-              run: |
-                  ispm projects $(pwd) --create --ignore-existing-files \
-                    --non-interactive
-                  bin/project-setup --force
-                  ./build.rs
-                  ispm packages \
-                    -i linux64/packages/simics-pkg-31337-6.0.0-linux64.ispm \
-                    --non-interactive --trust-insecure-packages
+      - name: Build and Install TSFFS SIMICS Package
+        run: |
+          ispm projects "$(pwd)" --create --ignore-existing-files \
+            --non-interactive
+          bin/project-setup --force
+          ./build.rs
+          ispm packages \
+            -i linux64/packages/simics-pkg-31337-6.0.0-linux64.ispm \
+            --non-interactive --trust-insecure-packages
 
-            - name: Build Project
-              run: |
-                  SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo build
-            - name: Check Project
-              run: |
-                  SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo clippy
-            - name: Test Project
-              run: |
-                  SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo test || ( echo "❗ Tests failed" && exit 1 )
-                  echo "✅ Tests passed"
-            - name: Build Docs
-              run: |
-                  SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo doc --workspace --no-deps
-            - name: Test Docs
-              run: |
-                  SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo test --doc
+      - name: Build Project
+        run: |
+          SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo build
+      - name: Check Project
+        run: |
+          SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo clippy
+      - name: Test Project
+        run: |
+          SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo test || ( echo "❗ Tests failed" && exit 1 )
+          echo "✅ Tests passed"
+      - name: Build Docs
+        run: |
+          SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo doc --workspace --no-deps
+      - name: Test Docs
+        run: |
+          SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo test --doc
 
-    static_analysis:
-        name: Run Static Analysis
-        container: fedora:38
-        runs-on: ubuntu-latest
-        steps:
-            - name: Add ISPM to PATH
-              run: |
-                echo "${HOME}/simics/ispm/" >> $GITHUB_PATH
+  static_analysis:
+    name: Run Static Analysis
+    container: fedora:38
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add ISPM to PATH
+        run: |
+          echo "${HOME}/simics/ispm/" >> "${GITHUB_PATH}"
 
-            - name: Install Dependencies
-              shell: bash
-              run: |
-                  dnf -y update && \
-                  dnf -y install \
-                    alsa-lib atk clang clang-libs clang-resource-filesystem \
-                    clang-tools-extra cmake cups curl dosfstools g++ gcc git \
-                    git-lfs glibc-devel glibc-devel.i686 glibc-static \
-                    glibc-static.i686 gtk3 lld lld-devel lld-libs llvm llvm-libs \
-                    llvm-static make mesa-libgbm mtools ninja-build openssl \
-                    openssl-devel openssl-libs python3 python3-pip yamllint
+      - name: Install Dependencies
+        shell: bash
+        run: |
+          dnf -y update && \
+          dnf -y install \
+            alsa-lib atk clang clang-libs clang-resource-filesystem \
+            clang-tools-extra cmake cups curl dosfstools g++ gcc git \
+            git-lfs glibc-devel glibc-devel.i686 glibc-static \
+            glibc-static.i686 gtk3 lld lld-devel lld-libs llvm llvm-libs \
+            llvm-static make mesa-libgbm mtools ninja-build openssl \
+            openssl-devel openssl-libs python3 python3-pip yamllint
 
-            - uses: actions/checkout@v3
-              with:
-                lfs: true
+      - uses: actions/checkout@v3
+        with:
+          lfs: true
 
-            - uses: dtolnay/rust-toolchain@nightly
-              with:
-                toolchain: nightly
-                components: rustfmt,clippy,miri
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          toolchain: nightly
+          components: rustfmt,clippy,miri
 
-            - name: Cache SIMICS Dependencies
-              uses: actions/cache@v3
-              with:
-                path: ~/simics/
-                key: simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
+      - name: Cache SIMICS Dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/simics/
+          key: simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
 
-            - name: Install SIMICS (External)
-              shell: bash
-              run: |
-                  if [ ! -d "${HOME}/simics" ]; then
-                      mkdir -p "${HOME}/simics/ispm/" && \
-                      curl --noproxy -L -o "${HOME}/simics/ispm.tar.gz" \
-                          "${{ env.PUBLIC_SIMICS_ISPM_URL }}" && \
-                      curl --noproxy -L -o "${HOME}/simics/simics.ispm" \
-                          "${{ env.PUBLIC_SIMICS_PKGS_URL }}" && \
-                      tar -C "${HOME}/simics/ispm" --strip-components=1 \
-                          -xvf "${HOME}/simics/ispm.tar.gz" && \
-                      ispm settings install-dir "${HOME}/simics" && \
-                      ispm packages --install-bundle "${HOME}/simics/simics.ispm" \
-                          --non-interactive
-                  fi
+      - name: Install SIMICS (External)
+        shell: bash
+        run: |
+          if [ ! -d "${HOME}/simics" ]; then
+              mkdir -p "${HOME}/simics/ispm/" && \
+              curl --noproxy -L -o "${HOME}/simics/ispm.tar.gz" \
+                  "${{ env.PUBLIC_SIMICS_ISPM_URL }}" && \
+              curl --noproxy -L -o "${HOME}/simics/simics.ispm" \
+                  "${{ env.PUBLIC_SIMICS_PKGS_URL }}" && \
+              tar -C "${HOME}/simics/ispm" --strip-components=1 \
+                  -xvf "${HOME}/simics/ispm.tar.gz" && \
+              ispm settings install-dir "${HOME}/simics" && \
+              ispm packages --install-bundle "${HOME}/simics/simics.ispm" \
+                  --non-interactive
+          fi
 
-            - name: Build and Install TSFFS SIMICS Package
-              run: |
-                  ispm projects $(pwd) --create --ignore-existing-files \
-                    --non-interactive
-                  bin/project-setup --force
-                  ./build.rs
-                  ispm packages \
-                    -i linux64/packages/simics-pkg-31337-6.0.0-linux64.ispm \
-                    --non-interactive --trust-insecure-packages
+      - name: Build and Install TSFFS SIMICS Package
+        run: |
+          ispm projects "$(pwd)" --create --ignore-existing-files \
+            --non-interactive
+          bin/project-setup --force
+          ./build.rs
+          ispm packages \
+            -i linux64/packages/simics-pkg-31337-6.0.0-linux64.ispm \
+            --non-interactive --trust-insecure-packages
 
-            - name: CT39 - Clippy Check Project
-              run: |
-                  SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo clippy \
-                    || ( echo "❗ [CT39 (1/2)] Failed clippy static analysis checks" && exit 1 )
-                  echo "✅ [CT39 (1/2)] Passed clippy static analysis checks"
-            - name: CT39 - MIRI Check Project
-              run: |
-                  SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} \
-                  MIRIFLAGS="-Zmiri-backtrace=full -Zmiri-disable-isolation -Zmiri-panic-on-unsupported" cargo \
-                    miri test \
-                    || ( echo "❗ [CT39 (2/2)] Failed MIRI static analysis checks" && exit 1 )
-                  echo "✅ [CT39 (2/2)] Passed MIRI static analysis checks"
+      - name: CT39 - Clippy Check Project
+        run: |
+          SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo clippy \
+            || ( echo "❗ [CT39 (1/2)] Failed clippy static analysis checks" && exit 1 )
+          echo "✅ [CT39 (1/2)] Passed clippy static analysis checks"
+      - name: CT39 - MIRI Check Project
+        run: |
+          SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} \
+          MIRIFLAGS="-Zmiri-backtrace=full -Zmiri-disable-isolation -Zmiri-panic-on-unsupported" cargo \
+            miri test \
+            || ( echo "❗ [CT39 (2/2)] Failed MIRI static analysis checks" && exit 1 )
+          echo "✅ [CT39 (2/2)] Passed MIRI static analysis checks"
 
-    fuzz_tests:
-        name: Run Fuzz Tests
-        container: fedora:38
-        runs-on: ubuntu-latest
-        steps:
-            - name: Install Dependencies
-              shell: bash
-              run: |
-                  dnf -y update && \
-                  dnf -y install \
-                    alsa-lib atk clang clang-libs clang-resource-filesystem \
-                    clang-tools-extra cmake cups curl dosfstools g++ gcc git \
-                    git-lfs glibc-devel glibc-devel.i686 glibc-static \
-                    glibc-static.i686 gtk3 lld lld-devel lld-libs llvm llvm-libs \
-                    llvm-static make mesa-libgbm mtools ninja-build openssl \
-                    openssl-devel openssl-libs python3 python3-pip yamllint
+  fuzz_tests:
+    name: Run Fuzz Tests
+    container: fedora:38
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Dependencies
+        shell: bash
+        run: |
+          dnf -y update && \
+          dnf -y install \
+            alsa-lib atk clang clang-libs clang-resource-filesystem \
+            clang-tools-extra cmake cups curl dosfstools g++ gcc git \
+            git-lfs glibc-devel glibc-devel.i686 glibc-static \
+            glibc-static.i686 gtk3 lld lld-devel lld-libs llvm llvm-libs \
+            llvm-static make mesa-libgbm mtools ninja-build openssl \
+            openssl-devel openssl-libs python3 python3-pip yamllint
 
-            - uses: actions/checkout@v3
-              with:
-                lfs: true
+      - uses: actions/checkout@v3
+        with:
+          lfs: true
 
-            - uses: dtolnay/rust-toolchain@nightly
-              with:
-                toolchain: nightly
-                components: rustfmt,clippy,miri
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          toolchain: nightly
+          components: rustfmt,clippy,miri
 
-            - name: Install Cargo-Fuzz
-              run: |
-                  cargo install cargo-fuzz
-            - name: CT632 (E/C) - Perform fuzz testing
-              run: |
-                  cd modules/tsffs/src/util/version-tools
+      - name: Install Cargo-Fuzz
+        run: |
+          cargo install cargo-fuzz
+      - name: CT632 (E/C) - Perform fuzz testing
+        run: |
+          cd modules/tsffs/src/util/version-tools
 
-                  cargo fuzz build
+          cargo fuzz build
 
-                  timeout --preserve-status 600 cargo fuzz run \
-                    fuzz_version_constraint_parse || exit 0
+          timeout --preserve-status 600 cargo fuzz run \
+            fuzz_version_constraint_parse || exit 0
 
-                  echo "Done fuzzing!"
+          echo "Done fuzzing!"
 
-                  if [ -d ./fuzz/artifacts ]; then
-                    if find ./fuzz/artifacts -mindepth 1 -maxdepth 1 2> /dev/null | read -r; then
-                      echo "❗ [CT632] Fuzz test found an issue"
-                      exit 1
-                    fi
-                  fi
-                  cd ../../../../../
+          if [ -d ./fuzz/artifacts ]; then
+            if find ./fuzz/artifacts -mindepth 1 -maxdepth 1 2> /dev/null | read -r; then
+              echo "❗ [CT632] Fuzz test found an issue"
+              exit 1
+            fi
+          fi
+          cd ../../../../../
 
-                  cd modules/tsffs/src/util/util/raw-cstr
+          cd modules/tsffs/src/util/util/raw-cstr
 
-                  cargo fuzz build
+          cargo fuzz build
 
-                  timeout --preserve-status 600 cargo fuzz run \
-                    fuzz_raw_cstr || exit 0
+          timeout --preserve-status 600 cargo fuzz run \
+            fuzz_raw_cstr || exit 0
 
-                  echo "Done fuzzing!"
+          echo "Done fuzzing!"
 
-                  if [ -d ./fuzz/artifacts ]; then
-                    if find ./fuzz/artifacts -mindepth 1 -maxdepth 1 2> /dev/null | read -r; then
-                      echo "❗ [CT632] Fuzz test found an issue"
-                      exit 1
-                    fi
-                  fi
+          if [ -d ./fuzz/artifacts ]; then
+            if find ./fuzz/artifacts -mindepth 1 -maxdepth 1 2> /dev/null | read -r; then
+              echo "❗ [CT632] Fuzz test found an issue"
+              exit 1
+            fi
+          fi
 
-                  cd ../../../../../
+          cd ../../../../../
 
-                  echo "✅ [CT632] Fuzz test completed"
-                  exit 0
+          echo "✅ [CT632] Fuzz test completed"
+          exit 0
 
-    super_lint:
-        name: Run Super Linter
-        container: github/super-linter
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v3
-              with:
-                  fetch-depth: 0
-                  lfs: false
-            - name: (CT222) (E/C) - Use hadolint to evaluate Dockerfile configuration
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  # Rust validation is handled by build_and_test
-                  VALIDATE_RUST_2015: false
-                  VALIDATE_RUST_2018: false
-                  VALIDATE_RUST_2021: false
-                  VALIDATE_RUST_CLIPPY: false
-                  # We have no non-example CPP in the codebase
-                  VALIDATE_CPP: false
-                  VALIDATE_CLANG_FORMAT: false
-                  VALIDATE_JSCPD: false
-                  # This is way too pedantic
-                  VALIDATE_NATURAL_LANGUAGE: false
-              run: |
-                  /action/lib/linter.sh || ( echo "❗ [CT222] Super linter found an issue (possibly Hadolint)" && exit 1 )
-                  echo "✅ [CT222] Hadolint Dockerfile check passed"
+  super_lint:
+    name: Run Super Linter
+    container: github/super-linter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          lfs: false
+      - name: (CT222) (E/C) - Use hadolint to evaluate Dockerfile configuration
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Rust validation is handled by build_and_test
+          VALIDATE_RUST_2015: false
+          VALIDATE_RUST_2018: false
+          VALIDATE_RUST_2021: false
+          VALIDATE_RUST_CLIPPY: false
+          # We have no non-example CPP in the codebase
+          VALIDATE_CPP: false
+          VALIDATE_CLANG_FORMAT: false
+          VALIDATE_JSCPD: false
+          # This is way too pedantic
+          VALIDATE_NATURAL_LANGUAGE: false
+          # Dont flake8/mypy/pylint because our only python files attempt to import
+          # simics and fail
+          VALIDATE_PYTHON_FLAKE8: false
+          VALIDATE_PYTHON_ISORT: false
+          VALIDATE_PYTHON_PYLINT: false
+        run: |
+          /action/lib/linter.sh || ( echo "❗ [CT222] Super linter found an issue (possibly Hadolint)" && exit 1 )
+          echo "✅ [CT222] Hadolint Dockerfile check passed"
 
-    scan_docker_example:
-        container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.2
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v3
-              with:
-                fetch-depth: 0
-                lfs: false
-            - name: Build Image
-              run: |
-                  /kaniko/executor \
-                    --build-arg "http_proxy=${http_proxy}" \
-                    --build-arg "HTTP_PROXY=${HTTP_PROXY}" \
-                    --build-arg "https_proxy=${https_proxy}" \
-                    --build-arg "HTTPS_PROXY=${HTTPS_PROXY}" \
-                    --build-arg "no_proxy=${no_proxy}" \
-                    --build-arg "NO_PROXY=${NO_PROXY}" \
-                    --build-arg "proxy=${HTTP_PROXY}" \
-                    --snapshot-mode=redo \
-                    --use-new-run \
-                    --context . \
-                    --dockerfile Dockerfile \
-                    --no-push \
-                    --tar-path /container.tar \
-                    --destination=image
-            - name: (T1187, T1186) (N/C) - Test if secrets are stored in Dockerfiles
-              run: |
-                  /kaniko/trivy image --input /container.tar
+  scan_docker_example:
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.2
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          lfs: false
+      - name: Build Image
+        run: |
+          /kaniko/executor \
+            --build-arg "http_proxy=${http_proxy}" \
+            --build-arg "HTTP_PROXY=${HTTP_PROXY}" \
+            --build-arg "https_proxy=${https_proxy}" \
+            --build-arg "HTTPS_PROXY=${HTTPS_PROXY}" \
+            --build-arg "no_proxy=${no_proxy}" \
+            --build-arg "NO_PROXY=${NO_PROXY}" \
+            --build-arg "proxy=${HTTP_PROXY}" \
+            --snapshot-mode=redo \
+            --use-new-run \
+            --context . \
+            --dockerfile Dockerfile \
+            --no-push \
+            --tar-path /container.tar \
+            --destination=image
+      - name: (T1187, T1186) (N/C) - Test if secrets are stored in Dockerfiles
+        run: |
+          /kaniko/trivy image --input /container.tar
 
-    scan_minimal_riscv_64:
-        container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.2
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v3
-              with:
-                fetch-depth: 0
-                lfs: false
-            - name: Build Image
-              run: |
-                  /kaniko/executor \
-                    --build-arg "http_proxy=${http_proxy}" \
-                    --build-arg "HTTP_PROXY=${HTTP_PROXY}" \
-                    --build-arg "https_proxy=${https_proxy}" \
-                    --build-arg "HTTPS_PROXY=${HTTPS_PROXY}" \
-                    --build-arg "no_proxy=${no_proxy}" \
-                    --build-arg "NO_PROXY=${NO_PROXY}" \
-                    --build-arg "proxy=${HTTP_PROXY}" \
-                    --snapshot-mode=redo \
-                    --use-new-run \
-                    --context modules/tsffs/tests/targets/minimal-riscv-64 \
-                    --dockerfile modules/tsffs/tests/targets/minimal-riscv-64/Dockerfile \
-                    --no-push \
-                    --tar-path /container.tar \
-                    --destination=image
-            - name: (T1187, T1186) (N/C) - Test if secrets are stored in Dockerfiles
-              run: |
-                  /kaniko/trivy image --input /container.tar
+  scan_minimal_riscv_64:
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.2
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          lfs: false
+      - name: Build Image
+        run: |
+          /kaniko/executor \
+            --build-arg "http_proxy=${http_proxy}" \
+            --build-arg "HTTP_PROXY=${HTTP_PROXY}" \
+            --build-arg "https_proxy=${https_proxy}" \
+            --build-arg "HTTPS_PROXY=${HTTPS_PROXY}" \
+            --build-arg "no_proxy=${no_proxy}" \
+            --build-arg "NO_PROXY=${NO_PROXY}" \
+            --build-arg "proxy=${HTTP_PROXY}" \
+            --snapshot-mode=redo \
+            --use-new-run \
+            --context modules/tsffs/tests/targets/minimal-riscv-64 \
+            --dockerfile modules/tsffs/tests/targets/minimal-riscv-64/Dockerfile \
+            --no-push \
+            --tar-path /container.tar \
+            --destination=image
+      - name: (T1187, T1186) (N/C) - Test if secrets are stored in Dockerfiles
+        run: |
+          /kaniko/trivy image --input /container.tar
 
-    scan_minimal_riscv64_edk2:
-        container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.2
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v3
-              with:
-                fetch-depth: 0
-                lfs: false
-            - name: Build Image
-              run: |
-                  /kaniko/executor \
-                    --build-arg "http_proxy=${http_proxy}" \
-                    --build-arg "HTTP_PROXY=${HTTP_PROXY}" \
-                    --build-arg "https_proxy=${https_proxy}" \
-                    --build-arg "HTTPS_PROXY=${HTTPS_PROXY}" \
-                    --build-arg "no_proxy=${no_proxy}" \
-                    --build-arg "NO_PROXY=${NO_PROXY}" \
-                    --build-arg "proxy=${HTTP_PROXY}" \
-                    --snapshot-mode=redo \
-                    --use-new-run \
-                    --context modules/tsffs/tests/targets/minimal-riscv-64-edk2 \
-                    --dockerfile modules/tsffs/tests/targets/minimal-riscv-64-edk2/Dockerfile \
-                    --no-push \
-                    --tar-path /container.tar \
-                    --destination=image
-            - name: (T1187, T1186) (N/C) - Test if secrets are stored in Dockerfiles
-              run: |
-                  /kaniko/trivy image --input /container.tar
+  scan_minimal_riscv64_edk2:
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.2
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          lfs: false
+      - name: Build Image
+        run: |
+          /kaniko/executor \
+            --build-arg "http_proxy=${http_proxy}" \
+            --build-arg "HTTP_PROXY=${HTTP_PROXY}" \
+            --build-arg "https_proxy=${https_proxy}" \
+            --build-arg "HTTPS_PROXY=${HTTPS_PROXY}" \
+            --build-arg "no_proxy=${no_proxy}" \
+            --build-arg "NO_PROXY=${NO_PROXY}" \
+            --build-arg "proxy=${HTTP_PROXY}" \
+            --snapshot-mode=redo \
+            --use-new-run \
+            --context modules/tsffs/tests/targets/minimal-riscv-64-edk2 \
+            --dockerfile modules/tsffs/tests/targets/minimal-riscv-64-edk2/Dockerfile \
+            --no-push \
+            --tar-path /container.tar \
+            --destination=image
+      - name: (T1187, T1186) (N/C) - Test if secrets are stored in Dockerfiles
+        run: |
+          /kaniko/trivy image --input /container.tar
 
-    scan_minimal_x86_64_breakpoint_edk2:
-        container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.2
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v3
-              with:
-                fetch-depth: 0
-                lfs: false
-            - name: Build Image
-              run: |
-                  /kaniko/executor \
-                    --build-arg "http_proxy=${http_proxy}" \
-                    --build-arg "HTTP_PROXY=${HTTP_PROXY}" \
-                    --build-arg "https_proxy=${https_proxy}" \
-                    --build-arg "HTTPS_PROXY=${HTTPS_PROXY}" \
-                    --build-arg "no_proxy=${no_proxy}" \
-                    --build-arg "NO_PROXY=${NO_PROXY}" \
-                    --build-arg "proxy=${HTTP_PROXY}" \
-                    --snapshot-mode=redo \
-                    --use-new-run \
-                    --context modules/tsffs/tests/targets/minimal-x86_64-breakpoint-edk2 \
-                    --dockerfile modules/tsffs/tests/targets/minimal-x86_64-breakpoint-edk2/Dockerfile \
-                    --no-push \
-                    --tar-path /container.tar \
-                    --destination=image
-            - name: (T1187, T1186) (N/C) - Test if secrets are stored in Dockerfiles
-              run: |
-                  /kaniko/trivy image --input /container.tar
+  scan_minimal_x86_64_breakpoint_edk2:
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.2
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          lfs: false
+      - name: Build Image
+        run: |
+          /kaniko/executor \
+            --build-arg "http_proxy=${http_proxy}" \
+            --build-arg "HTTP_PROXY=${HTTP_PROXY}" \
+            --build-arg "https_proxy=${https_proxy}" \
+            --build-arg "HTTPS_PROXY=${HTTPS_PROXY}" \
+            --build-arg "no_proxy=${no_proxy}" \
+            --build-arg "NO_PROXY=${NO_PROXY}" \
+            --build-arg "proxy=${HTTP_PROXY}" \
+            --snapshot-mode=redo \
+            --use-new-run \
+            --context modules/tsffs/tests/targets/minimal-x86_64-breakpoint-edk2 \
+            --dockerfile modules/tsffs/tests/targets/minimal-x86_64-breakpoint-edk2/Dockerfile \
+            --no-push \
+            --tar-path /container.tar \
+            --destination=image
+      - name: (T1187, T1186) (N/C) - Test if secrets are stored in Dockerfiles
+        run: |
+          /kaniko/trivy image --input /container.tar
 
-    minimal_x86_64_edk2:
-        container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.2
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v3
-              with:
-                fetch-depth: 0
-                lfs: false
-            - name: Build Image
-              run: |
-                  /kaniko/executor \
-                    --build-arg "http_proxy=${http_proxy}" \
-                    --build-arg "HTTP_PROXY=${HTTP_PROXY}" \
-                    --build-arg "https_proxy=${https_proxy}" \
-                    --build-arg "HTTPS_PROXY=${HTTPS_PROXY}" \
-                    --build-arg "no_proxy=${no_proxy}" \
-                    --build-arg "NO_PROXY=${NO_PROXY}" \
-                    --build-arg "proxy=${HTTP_PROXY}" \
-                    --snapshot-mode=redo \
-                    --use-new-run \
-                    --context modules/tsffs/tests/targets/minimal-x86_64-edk2 \
-                    --dockerfile modules/tsffs/tests/targets/minimal-x86_64-edk2/Dockerfile \
-                    --no-push \
-                    --tar-path /container.tar \
-                    --destination=image
-            - name: (T1187, T1186) (N/C) - Test if secrets are stored in Dockerfiles
-              run: |
-                  /kaniko/trivy image --input /container.tar
+  minimal_x86_64_edk2:
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.2
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          lfs: false
+      - name: Build Image
+        run: |
+          /kaniko/executor \
+            --build-arg "http_proxy=${http_proxy}" \
+            --build-arg "HTTP_PROXY=${HTTP_PROXY}" \
+            --build-arg "https_proxy=${https_proxy}" \
+            --build-arg "HTTPS_PROXY=${HTTPS_PROXY}" \
+            --build-arg "no_proxy=${no_proxy}" \
+            --build-arg "NO_PROXY=${NO_PROXY}" \
+            --build-arg "proxy=${HTTP_PROXY}" \
+            --snapshot-mode=redo \
+            --use-new-run \
+            --context modules/tsffs/tests/targets/minimal-x86_64-edk2 \
+            --dockerfile modules/tsffs/tests/targets/minimal-x86_64-edk2/Dockerfile \
+            --no-push \
+            --tar-path /container.tar \
+            --destination=image
+      - name: (T1187, T1186) (N/C) - Test if secrets are stored in Dockerfiles
+        run: |
+          /kaniko/trivy image --input /container.tar
 
-    minimal_x86_64_timeout:
-        container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.2
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v3
-              with:
-                fetch-depth: 0
-                lfs: false
-            - name: Build Image
-              run: |
-                  /kaniko/executor \
-                    --build-arg "http_proxy=${http_proxy}" \
-                    --build-arg "HTTP_PROXY=${HTTP_PROXY}" \
-                    --build-arg "https_proxy=${https_proxy}" \
-                    --build-arg "HTTPS_PROXY=${HTTPS_PROXY}" \
-                    --build-arg "no_proxy=${no_proxy}" \
-                    --build-arg "NO_PROXY=${NO_PROXY}" \
-                    --build-arg "proxy=${HTTP_PROXY}" \
-                    --snapshot-mode=redo \
-                    --use-new-run \
-                    --context modules/tsffs/tests/targets/minimal-x86_64-timeout \
-                    --dockerfile modules/tsffs/tests/targets/minimal-x86_64-timeout/Dockerfile \
-                    --no-push \
-                    --tar-path /container.tar \
-                    --destination=image
-            - name: (T1187, T1186) (N/C) - Test if secrets are stored in Dockerfiles
-              run: |
-                  /kaniko/trivy image --input /container.tar
+  minimal_x86_64_timeout:
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.2
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          lfs: false
+      - name: Build Image
+        run: |
+          /kaniko/executor \
+            --build-arg "http_proxy=${http_proxy}" \
+            --build-arg "HTTP_PROXY=${HTTP_PROXY}" \
+            --build-arg "https_proxy=${https_proxy}" \
+            --build-arg "HTTPS_PROXY=${HTTPS_PROXY}" \
+            --build-arg "no_proxy=${no_proxy}" \
+            --build-arg "NO_PROXY=${NO_PROXY}" \
+            --build-arg "proxy=${HTTP_PROXY}" \
+            --snapshot-mode=redo \
+            --use-new-run \
+            --context modules/tsffs/tests/targets/minimal-x86_64-timeout \
+            --dockerfile modules/tsffs/tests/targets/minimal-x86_64-timeout/Dockerfile \
+            --no-push \
+            --tar-path /container.tar \
+            --destination=image
+      - name: (T1187, T1186) (N/C) - Test if secrets are stored in Dockerfiles
+        run: |
+          /kaniko/trivy image --input /container.tar
 
-    additional_sdl_checks:
-        name: Perform Additional SDL Checks
-        container: fedora:38
-        runs-on: ubuntu-latest
-        steps:
-            - name: Install Dependencies
-              run: |
-                  dnf -y update && \
-                  dnf -y install \
-                    alsa-lib atk clang clang-libs clang-resource-filesystem \
-                    clang-tools-extra cmake cups curl dosfstools g++ gcc git \
-                    git-lfs glibc-devel glibc-devel.i686 glibc-static \
-                    glibc-static.i686 gtk3 lld lld-devel lld-libs llvm llvm-libs \
-                    llvm-static make mesa-libgbm mtools ninja-build openssl \
-                    openssl-devel openssl-libs python3 python3-pip yamllint
+  additional_sdl_checks:
+    name: Perform Additional SDL Checks
+    container: fedora:38
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Dependencies
+        run: |
+          dnf -y update && \
+          dnf -y install \
+            alsa-lib atk clang clang-libs clang-resource-filesystem \
+            clang-tools-extra cmake cups curl dosfstools g++ gcc git \
+            git-lfs glibc-devel glibc-devel.i686 glibc-static \
+            glibc-static.i686 gtk3 lld lld-devel lld-libs llvm llvm-libs \
+            llvm-static make mesa-libgbm mtools ninja-build openssl \
+            openssl-devel openssl-libs python3 python3-pip yamllint
 
-            - uses: actions/checkout@v3
-              with:
-                lfs: false
-            - uses: dtolnay/rust-toolchain@nightly
-              with:
-                toolchain: nightly
-                components: rustfmt,clippy,miri
+      - uses: actions/checkout@v3
+        with:
+          lfs: false
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          toolchain: nightly
+          components: rustfmt,clippy,miri
 
-            - name: Install Cargo Plugins
-              run: |
-                  cargo install cargo-audit cargo-outdated
-            - name: CT256 (N/C) - Include security.md file in open source repos
-              run: |
-                  [ -f SECURITY.md ] \
-                    || ( echo "❗ [CT256] Missing SECURITY.md file" && exit 1 )
-                  echo "✅ [CT256] SECURITY.md file found"
-            - name: CT37 (N/NA) - Scan release package for malware
-              run: |
-                  # We mark this task as NA because we do not publish any release
-                  # package, so we check that we indeed cannot publish anything
-                  grep -q "publish = false" 'Cargo.toml' || ( echo "❗ [CT37] Crate {} is publishable" && exit 1 )
-                  find . -mindepth 2 -type f -name 'Cargo.toml' -not -path './target/*' -print0 2> /dev/null \
-                    | xargs -0 -i bash -c \
-                      'grep -qE "publish.workspace = true|publish = false" {} || ( echo "❗ [CT37] Crate {} is publishable" && exit 1 )' \
-                  || exit 1
-                  echo "✅ [CT37] No release package is provided by this repository"
-            - name: (T152, T14, T174) (N/C) - Avoid asking for and using excessive permissions, Enforce Principle of least privilege, Test that the client application is not asking for excessive permissions
-              run: |
-                  # All the crates I can find that escalate do so by setting uid at some
-                  # point
-                  find . -type f -name '*.rs' -print0 2> /dev/null \
-                    | xargs -0 -i bash -c \
-                      '! grep -Eq "sudo|setuid\(0\)" {} || ( echo "❗ [T152] sudo or setuid(0) found in {}" && exit 1 )' \
-                    || exit 1
-                  echo "✅ [T152] Elevated permissions not requested or used"
-            - name: (T349, T350) (N/C) - Protect audit information and logs against unauthorized access, Verify that audit information is sufficiently protected
-              run: |
-                  # shellcheck disable=SC2016
-                  find . -type f -name '*.rs' -not -path 'tests/*.rs' -print0 2> /dev/null \
-                    | xargs -0 -i bash -c \
-                      'MATCH=$(grep -A16 -E "File::|OpenOptions::" {} | grep -B16 -A16 -i "log"); if [ -n "${MATCH}" ]; then echo "${MATCH}" > /tmp/logmatch.$(printf {} | sed "s/\//-/g"); fi'
-                  find /tmp -name 'logmatch.*' -print0 2> /dev/null \
-                    | xargs -0 -i bash -c 'grep -qE "set_permissions.*0o[0-9]*700" {} || ( echo "❗ [T349] No set_permissions call with safe default permissions found after File:: or OpenOptions::" && exit 1 )'
-                  echo "✅ [T349] Safe set_permissions call found for all File:: and OpenOptions:: with log mentioned"
-                  echo "✅ [T350] Logs are protected. See T349."
-            - name: (T437, T438) (N/C) - Include log reduction and report generation capabilities, Verify that log reduction and report generation capabilities exist
-              run: |
-                  RESULTS=$(find . -type f -name '*.rs' -not -path './target/*' -print0 2> /dev/null \
-                    | xargs -0 -i bash -c \
-                      'grep "with_filter" {}' | wc -l)
-                  if [ "${RESULTS}" -eq 0 ]; then ( echo "❗ [T437] no 'with_filter' calls found to restrict tracing output" && exit 1 ); fi
-                  echo "✅ [T437] 'with_filter' calls found to restrict tracing output"
-                  echo "✅ [T438] Log reduction implemented with log levels. See T437."
-            - name: (CT247/CT200) (N/C) - Scan 3rd-Party Components for Vulnerabilities, Verify that project is not using vulnerable 3rd party components
-              run: |
-                  # shellcheck disable=SC2086,SC2143
-                  LATEST="$(find '.github/dependabot' -name '*.csv' -print0 \
-                    | xargs -r -0 ls -1 -t \
-                    | head -n 1)"
-                  if ! find '.github/dependabot' -name '*.csv' -mtime -14 | grep -q '.'; then
-                      echo "❗ [CT247/CT200] No dependabot report found from last 2 weeks. Run ./scripts/dependabot.sh."
-                      exit 1
-                  fi
-                  if tail -n+2 "${LATEST}" | grep -qv ".github/actions/toolchain"; then
-                      cat "${LATEST}"
-                      echo "❗ [CT247/CT200] Vulnerabilities found outside of github actions. Please remediate them."
-                      exit 1
-                  fi
-                  echo "✅ [CT247/CT200] No dependabot vulnerabilities found"
-            - name: (CT72/CT98) (N/C) - Secure Configuration Guidance
-              run: |
-                  echo "✅ [CT72/CT98] Manual secure configuration check:"
-                  echo "    - No 3rd party software/services distributed/deployed"
-                  echo "    - Dependencies configuration:"
-                  echo "        - LibAFL configured to *not* bind publicly by default"
-                  echo "    - Rust software builds with ASLR by default"
-                  echo "    - Features not used other than SIMICS version"
-                  echo "    - Compatibility settings used for SIMICS version"
-                  echo "    - No legacy features"
-            - name: (T186) (N/C) - Use recommended settings and latest patches for third party libraries and software 
-              run: |
-                  cargo audit
+      - name: Install Cargo Plugins
+        run: |
+          cargo install cargo-audit cargo-outdated
+      - name: CT256 (N/C) - Include security.md file in open source repos
+        run: |
+          [ -f SECURITY.md ] \
+            || ( echo "❗ [CT256] Missing SECURITY.md file" && exit 1 )
+          echo "✅ [CT256] SECURITY.md file found"
+      - name: CT37 (N/NA) - Scan release package for malware
+        run: |
+          # We mark this task as NA because we do not publish any release
+          # package, so we check that we indeed cannot publish anything
+          grep -q "publish = false" 'Cargo.toml' || ( echo "❗ [CT37] Crate {} is publishable" && exit 1 )
+          find . -mindepth 2 -type f -name 'Cargo.toml' -not -path './target/*' -print0 2> /dev/null \
+            | xargs -0 -i bash -c \
+              'grep -qE "publish.workspace = true|publish = false" {} || ( echo "❗ [CT37] Crate {} is publishable" && exit 1 )' \
+          || exit 1
+          echo "✅ [CT37] No release package is provided by this repository"
+      - name: (T152, T14, T174) (N/C) - Avoid asking for and using excessive permissions, Enforce Principle of least privilege, Test that the client application is not asking for excessive permissions
+        run: |
+          # All the crates I can find that escalate do so by setting uid at some
+          # point
+          find . -type f -name '*.rs' -print0 2> /dev/null \
+            | xargs -0 -i bash -c \
+              '! grep -Eq "sudo|setuid\(0\)" {} || ( echo "❗ [T152] sudo or setuid(0) found in {}" && exit 1 )' \
+            || exit 1
+          echo "✅ [T152] Elevated permissions not requested or used"
+      - name: (T349, T350) (N/C) - Protect audit information and logs against unauthorized access, Verify that audit information is sufficiently protected
+        run: |
+          # shellcheck disable=SC2016
+          find . -type f -name '*.rs' -not -path 'tests/*.rs' -print0 2> /dev/null \
+            | xargs -0 -i bash -c \
+              'MATCH=$(grep -A16 -E "File::|OpenOptions::" {} | grep -B16 -A16 -i "log"); if [ -n "${MATCH}" ]; then echo "${MATCH}" > /tmp/logmatch.$(printf {} | sed "s/\//-/g"); fi'
+          find /tmp -name 'logmatch.*' -print0 2> /dev/null \
+            | xargs -0 -i bash -c 'grep -qE "set_permissions.*0o[0-9]*700" {} || ( echo "❗ [T349] No set_permissions call with safe default permissions found after File:: or OpenOptions::" && exit 1 )'
+          echo "✅ [T349] Safe set_permissions call found for all File:: and OpenOptions:: with log mentioned"
+          echo "✅ [T350] Logs are protected. See T349."
+      - name: (T437, T438) (N/C) - Include log reduction and report generation capabilities, Verify that log reduction and report generation capabilities exist
+        run: |
+          RESULTS=$(find . -type f -name '*.rs' -not -path './target/*' -print0 2> /dev/null \
+            | xargs -0 -i bash -c \
+              'grep "with_filter" {}' | wc -l)
+          if [ "${RESULTS}" -eq 0 ]; then ( echo "❗ [T437] no 'with_filter' calls found to restrict tracing output" && exit 1 ); fi
+          echo "✅ [T437] 'with_filter' calls found to restrict tracing output"
+          echo "✅ [T438] Log reduction implemented with log levels. See T437."
+      - name: (CT247/CT200) (N/C) - Scan 3rd-Party Components for Vulnerabilities, Verify that project is not using vulnerable 3rd party components
+        run: |
+          # shellcheck disable=SC2086,SC2143
+          LATEST="$(find '.github/dependabot' -name '*.csv' -print0 \
+            | xargs -r -0 ls -1 -t \
+            | head -n 1)"
+          if ! find '.github/dependabot' -name '*.csv' -mtime -14 | grep -q '.'; then
+              echo "❗ [CT247/CT200] No dependabot report found from last 2 weeks. Run ./scripts/dependabot.sh."
+              exit 1
+          fi
+          if tail -n+2 "${LATEST}" | grep -qv ".github/actions/toolchain"; then
+              cat "${LATEST}"
+              echo "❗ [CT247/CT200] Vulnerabilities found outside of github actions. Please remediate them."
+              exit 1
+          fi
+          echo "✅ [CT247/CT200] No dependabot vulnerabilities found"
+      - name: (CT72/CT98) (N/C) - Secure Configuration Guidance
+        run: |
+          echo "✅ [CT72/CT98] Manual secure configuration check:"
+          echo "    - No 3rd party software/services distributed/deployed"
+          echo "    - Dependencies configuration:"
+          echo "        - LibAFL configured to *not* bind publicly by default"
+          echo "    - Rust software builds with ASLR by default"
+          echo "    - Features not used other than SIMICS version"
+          echo "    - Compatibility settings used for SIMICS version"
+          echo "    - No legacy features"
+      - name: (T186) (N/C) - Use recommended settings and latest patches for third party libraries and software
+        run: |
+          cargo audit
 
-                  if ! cargo outdated --exit-code 1; then
-                      echo "❗ [T186] Out of date third party dependencies found"
-                      exit 1
-                  fi
+          if ! cargo outdated --exit-code 1; then
+              echo "❗ [T186] Out of date third party dependencies found"
+              exit 1
+          fi
 
-                  echo "✅ [T186] No outdated or vulnerable third party dependencies found"
-
+          echo "✅ [T186] No outdated or vulnerable third party dependencies found"
