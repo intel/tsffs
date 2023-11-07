@@ -403,7 +403,7 @@ jobs:
         run: |
           /kaniko/trivy image --input /container.tar
 
-  minimal_x86_64_edk2:
+  scan_minimal_x86_64_edk2:
     container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.2
     runs-on: ubuntu-latest
     steps:
@@ -432,7 +432,7 @@ jobs:
         run: |
           /kaniko/trivy image --input /container.tar
 
-  minimal_x86_64_timeout:
+  scan_minimal_x86_64_timeout:
     container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.2
     runs-on: ubuntu-latest
     steps:
