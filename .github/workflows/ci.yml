@@ -67,9 +67,9 @@ jobs:
               run: |
                   mkdir -p "${HOME}/simics/ispm/" && \
                   curl --noproxy -L -o "${HOME}/simics/ispm.tar.gz" \
-                      "{{ env.PUBLIC_SIMICS_ISPM_URL }}" && \
+                      "${{ env.PUBLIC_SIMICS_ISPM_URL }}" && \
                   curl --noproxy -L -o "${HOME}/simics/simics.ispm" \
-                      "{{ env.PUBLIC_SIMICS_PKGS_URL }}" && \
+                      "${{ env.PUBLIC_SIMICS_PKGS_URL }}" && \
                   tar -C "${HOME}/simics/ispm" --strip-components=1 \
                       -xvf "${HOME}/simics/ispm.tar.gz" && \
                   ispm settings install-dir "${HOME}/simics" && \
@@ -93,7 +93,7 @@ jobs:
               run: |
                 mkdir -p .cargo
                 echo "[env]" > .cargo/config.toml
-                echo "SIMICS_BASE = \"${HOME}/simics/simics-{{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}\"" > .cargo/config.toml
+                echo "SIMICS_BASE = \"${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}\"" > .cargo/config.toml
 
             - name: Build Project
               run: |
@@ -103,8 +103,8 @@ jobs:
                   cargo clippy
             - name: Test Project
               run: |
-                  cargo test || ( echo "❗ Tests failed for SIMICS version ${{ matrix.simics_version }}" && exit 1 )
-                  echo "✅ Tests passed for SIMICS version ${{ matrix.simics_version }}"
+                  cargo test || ( echo "❗ Tests failed" && exit 1 )
+                  echo "✅ Tests passed"
             - name: Build Docs
               run: |
                   cargo doc --workspace --no-deps
@@ -143,9 +143,9 @@ jobs:
               run: |
                   mkdir -p "${HOME}/simics/ispm/" && \
                   curl --noproxy -L -o "${HOME}/simics/ispm.tar.gz" \
-                      "{{ env.PUBLIC_SIMICS_ISPM_URL }}" && \
+                      "${{ env.PUBLIC_SIMICS_ISPM_URL }}" && \
                   curl --noproxy -L -o "${HOME}/simics/simics.ispm" \
-                      "{{ env.PUBLIC_SIMICS_PKGS_URL }}" && \
+                      "${{ env.PUBLIC_SIMICS_PKGS_URL }}" && \
                   tar -C "${HOME}/simics/ispm" --strip-components=1 \
                       -xvf "${HOME}/simics/ispm.tar.gz" && \
                   ispm settings install-dir "${HOME}/simics" && \
@@ -169,7 +169,7 @@ jobs:
               run: |
                 mkdir -p .cargo
                 echo "[env]" > .cargo/config.toml
-                echo "SIMICS_BASE = \"${HOME}/simics/simics-{{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}\"" > .cargo/config.toml
+                echo "SIMICS_BASE = \"${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}\"" > .cargo/config.toml
 
             - name: CT39 - Clippy Check Project
               run: |
