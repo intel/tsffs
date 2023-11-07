@@ -1,3 +1,5 @@
+ARG DEBIAN_FRONTEND=noninteractive
+
 FROM ubuntu:22.04 AS buildroot
 
 RUN apt-get -y update && \

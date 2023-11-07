@@ -1,3 +1,5 @@
+ARG DEBIAN_FRONTEND=noninteractive
+
 FROM ghcr.io/tianocore/containers/ubuntu-22-build:a0dd931
 
 SHELL ["/bin/bash", "-c"]
