@@ -2,7 +2,6 @@
 
 # TSFFS: Target Software Fuzzer For SIMICS
 
-
 TSFFS is a snapshotting, coverage-guided fuzzer built on the
 [SIMICS](https://www.intel.com/content/www/us/en/developer/articles/tool/simics-simulator.html)
 full system simulator. TSFFS makes it easy to fuzz and triage crashes on traditionally
@@ -11,6 +10,7 @@ device firmware. TSSFS can even fuzz user-space applications on Linux and Window
 the [requirements](./docs/Requirements.md) to find out if TSSFS can fuzz your code.
 
 - [TSFFS: Target Software Fuzzer For SIMICS](#tsffs-target-software-fuzzer-for-simics)
+  - [Quick Start](#quick-start)
   - [Capabilities](#capabilities)
   - [Use Cases](#use-cases)
   - [Documentation](#documentation)
@@ -19,6 +19,24 @@ the [requirements](./docs/Requirements.md) to find out if TSSFS can fuzz your co
   - [Help Wanted / Roadmap](#help-wanted--roadmap)
   - [Why TSFFS](#why-tsffs)
   - [Authors](#authors)
+
+## Quick Start
+
+The fastest way to start using TSFFS is with our [dockerfile](Dockerfile). To set up
+TSFFS locally instead, read the [setup documentation](./docs/Setup.md).
+
+```sh
+git clone https://github.com/intel/tsffs
+cd tsffs
+docker build -t tsffs .
+docker run -it tsffs
+```
+
+Then, run the provided example target and fuzzing configuration:
+
+```sh
+./simics -no-gui --no-win ./fuzz.simics
+```
 
 ## Capabilities
 

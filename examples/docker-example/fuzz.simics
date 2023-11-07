@@ -1,0 +1,63 @@
+# Copyright (C) 2023 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+# Load the TSFFS module. The project has the TSFFS package added to it by the
+# ISPM command, this loads the known module into the simulator.
+load-module tsffs
+
+# Create the TSFFS fuzzer object
+@tsffs = SIM_create_object(SIM_get_class("tsffs"), "tsffs", [])
+
+# Set the log level for TSFFS to 3 (debug). Set to 4 (trace) or 1 (error) for additional
+# debug information or brevity, respectively
+tsffs.log-level 3
+
+# Set to start on magic harness. This is the "default" behavior for harnessing.
+@tsffs.iface.tsffs.set_start_on_harness(True)
+
+# Set to stop on magic harness. This is the "default" behavior for harnessing.
+@tsffs.iface.tsffs.set_stop_on_harness(True)
+
+# Set a virtual-time timeout of 3 seconds. If the target runs for this amount of time
+# without encountering a normal stop or another solution condition, it will be
+# considered a timeout.
+@tsffs.iface.tsffs.set_timeout(3.0)
+
+# Set page faults as an exception-type solution. When the CPU raises exception #14, the
+# input that caused it will be saved as a solution.
+@tsffs.iface.tsffs.add_exception_solution(14)
+
+# Set to generate a random corpus. This is only used for demonstration purposes.
+@tsffs.iface.tsffs.set_generate_random_corpus(True)
+
+# Public SIMICS uses SIMICS base version 6.0.169, so snapshots are not yet available
+@tsffs.iface.tsffs.set_use_snapshots(False)
+
+# Tokenize our UEFI executable to greatly enhance mutation efficacy
+@tsffs.iface.tsffs.tokenize_executable("%simics%/test.efi")
+
+# Load the UEFI shell target for the QSP-x86 board, using an x86-64 Golden Cove (Sapphire Rapids) processor class
+# We set disk0 to the minimal_boot_disk.craff provided, which includes the SimicsAgent.efi app we can use to download
+# our target UEFI application.
+load-target "qsp-x86/uefi-shell" namespace = qsp machine:hardware:storage:disk0:image = "minimal_boot_disk.craff"  machine:hardware:processor:class = "x86-goldencove-server"
+
+# Uncomment to disable QSP serial console output. This disables the target from printing.
+# qsp.serconsole.con.disable-cmd-line-output
+
+# This script branch runs when the model starts. It waits an appropriate amount of time,
+# then downloads the UEFI application we are fuzzing and runs it. The application is
+# compiled with a harness that uses magic instructions to signal the fuzzer, which will
+# enter the fuzzing loop once the harness code is reached.
+script-branch {
+    bp.time.wait-for seconds = 15
+    qsp.serconsole.con.input "\n"
+    bp.time.wait-for seconds = .5
+    qsp.serconsole.con.input "FS0:\n"
+    bp.time.wait-for seconds = .5
+    local $manager = (start-agent-manager)
+    qsp.serconsole.con.input ("SimicsAgent.efi --download " + (lookup-file "%simics%/test.efi") + "\n")
+    bp.time.wait-for seconds = .5
+    qsp.serconsole.con.input "test.efi\n"
+}
+
+run
