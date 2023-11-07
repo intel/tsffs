@@ -4,7 +4,7 @@ FROM ubuntu:22.04 AS buildroot
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get -y update && \
-    apt-get -y install \
+    yes Y | apt-get -y install \
         bash \
         bc \
         build-essential \
