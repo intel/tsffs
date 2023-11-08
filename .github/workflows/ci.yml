@@ -1,21 +1,4 @@
 ---
-# SDL task names take the form "<task_id> ([NE]/(NA|C|I|IP)) - <task_description>" where:
-# - N: No evidence required
-# - E: Evidence required
-# - NA: Not Applicable
-# - C: Complete
-# - I: Incomplete
-# - IP: In Progress
-#
-# List of SDL tasks that are NOT checked by this pipeline:
-# - CT636: Trade compliance classification: Published free of nonstandard crypto
-# - CT52: Obtain Open Source PBT Approval
-# - CT38: Conduct security progress reviews
-# - CT36: Register SW components in OneBOM
-# - CT25: Perform gap analysis on SDL plan
-# - CT23: Disposition security vulnerabilities
-# - CT22: Conduct manual code reviews
-# - CT47: Complete a risk assessment for reused components
 
 name: CI
 
@@ -289,7 +272,7 @@ jobs:
           echo "✅ [CT222] Hadolint Dockerfile check passed"
 
   scan_docker_example:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.3
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.4
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -318,7 +301,7 @@ jobs:
           /kaniko/trivy image --input /container.tar
 
   scan_minimal_riscv_64:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.3
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.4
     runs-on: ubuntu-latest
     env:
       DEBIAN_FRONTEND: noninteractive
@@ -349,7 +332,7 @@ jobs:
           /kaniko/trivy image --input /container.tar
 
   scan_minimal_riscv64_edk2:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.3
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.4
     runs-on: ubuntu-latest
     env:
       DEBIAN_FRONTEND: noninteractive
@@ -380,7 +363,7 @@ jobs:
           /kaniko/trivy image --input /container.tar
 
   scan_minimal_x86_64_breakpoint_edk2:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.3
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.4
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -409,7 +392,7 @@ jobs:
           /kaniko/trivy image --input /container.tar
 
   scan_minimal_x86_64_edk2:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.3
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.4
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -438,7 +421,7 @@ jobs:
           /kaniko/trivy image --input /container.tar
 
   scan_minimal_x86_64_timeout:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.3
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.4
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
