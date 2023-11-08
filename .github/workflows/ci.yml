@@ -63,14 +63,14 @@ jobs:
           components: rustfmt,clippy,miri
 
       - name: Cache SIMICS Dependencies
-        id: simics-packages
+        id: cache-simics-packages
         uses: actions/cache@v3
         with:
           path: ${HOME}/simics
           key: simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
 
       - name: Install SIMICS (External)
-        if: ${{ simics-packages.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-simics-packages.outputs.cache-hit != 'true' }}
         shell: bash
         run: |
           mkdir -p "${HOME}/simics/ispm/" && \
@@ -142,14 +142,14 @@ jobs:
           components: rustfmt,clippy,miri
 
       - name: Cache SIMICS Dependencies
-        id: simics-packages
+        id: cache-simics-packages
         uses: actions/cache@v3
         with:
           path: ${HOME}/simics
           key: simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
 
       - name: Install SIMICS (External)
-        if: ${{ simics-packages.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-simics-packages.outputs.cache-hit != 'true' }}
         shell: bash
         run: |
           mkdir -p "${HOME}/simics/ispm/" && \
