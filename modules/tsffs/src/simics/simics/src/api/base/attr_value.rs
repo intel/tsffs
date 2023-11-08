@@ -1394,11 +1394,11 @@ impl TryFrom<AttrValueType> for AttrValue {
     fn try_from(value: AttrValueType) -> Result<Self> {
         match value {
             AttrValueType::Nil => Ok(AttrValue::nil()),
-            AttrValueType::Bool(v) => v.into(),
-            AttrValueType::Signed(v) => v.into(),
-            AttrValueType::Unsigned(v) => v.into(),
-            AttrValueType::Float(v) => v.into(),
-            AttrValueType::String(v) => v.into(),
+            AttrValueType::Bool(v) => Ok(v.into()),
+            AttrValueType::Signed(v) => Ok(v.into()),
+            AttrValueType::Unsigned(v) => Ok(v.into()),
+            AttrValueType::Float(v) => Ok(v.into()),
+            AttrValueType::String(v) => Ok(v.into()),
             AttrValueType::List(v) => v.try_into(),
             AttrValueType::Dict(v) => v.try_into(),
         }

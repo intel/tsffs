@@ -1,6 +1,8 @@
 # hadolint global ignore=DL3008
 FROM ubuntu:22.04 AS buildroot
 
+RUN rm -rf /var/mail /var/spool/mail
+
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get -y update && \

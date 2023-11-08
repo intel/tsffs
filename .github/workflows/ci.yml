@@ -288,7 +288,7 @@ jobs:
           echo "✅ [CT222] Hadolint Dockerfile check passed"
 
   scan_docker_example:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.2
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.3
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -317,7 +317,7 @@ jobs:
           /kaniko/trivy image --input /container.tar
 
   scan_minimal_riscv_64:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.2
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.3
     runs-on: ubuntu-latest
     env:
       DEBIAN_FRONTEND: noninteractive
@@ -348,7 +348,7 @@ jobs:
           /kaniko/trivy image --input /container.tar
 
   scan_minimal_riscv64_edk2:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.2
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.3
     runs-on: ubuntu-latest
     env:
       DEBIAN_FRONTEND: noninteractive
@@ -379,7 +379,7 @@ jobs:
           /kaniko/trivy image --input /container.tar
 
   scan_minimal_x86_64_breakpoint_edk2:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.2
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.3
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -408,7 +408,7 @@ jobs:
           /kaniko/trivy image --input /container.tar
 
   scan_minimal_x86_64_edk2:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.2
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.3
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -437,7 +437,7 @@ jobs:
           /kaniko/trivy image --input /container.tar
 
   scan_minimal_x86_64_timeout:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.2
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.3
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
