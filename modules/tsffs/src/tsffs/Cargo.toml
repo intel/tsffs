@@ -29,7 +29,7 @@ simics = { workspace = true, features = ["link"] }
 simics-macro = { workspace = true }
 yaxpeax-arch = "0.2.7"
 yaxpeax-x86 = "1.2.0"
-typed-builder = "0.17.0"
+typed-builder = "0.18.0"
 getters.workspace = true
 serde_json.workspace = true
 goblin = "0.7.1"

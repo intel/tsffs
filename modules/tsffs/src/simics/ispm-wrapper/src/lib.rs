@@ -60,7 +60,7 @@ pub trait ToArgs {
 pub mod ispm {
     use std::{iter::repeat, path::PathBuf};
 
-    use derive_getters::Getters;
+    use getters::Getters;
     use typed_builder::TypedBuilder;
 
     use crate::{ToArgs, NON_INTERACTIVE_FLAG};
@@ -173,7 +173,7 @@ pub mod ispm {
         };
         use anyhow::Result;
         use command_ext::CommandExtCheck;
-        use derive_getters::Getters;
+        use getters::Getters;
         use serde_json::from_slice;
         use std::{iter::repeat, path::PathBuf, process::Command};
         use typed_builder::TypedBuilder;
@@ -276,7 +276,7 @@ pub mod ispm {
         };
         use anyhow::{anyhow, Result};
         use command_ext::CommandExtCheck;
-        use derive_getters::Getters;
+        use getters::Getters;
         use serde_json::from_slice;
         use std::{collections::HashSet, iter::once, path::Path, process::Command};
         use typed_builder::TypedBuilder;
