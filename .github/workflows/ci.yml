@@ -272,7 +272,7 @@ jobs:
           echo "✅ [CT222] Hadolint Dockerfile check passed"
 
   scan_docker_example:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.4
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.5
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -289,6 +289,8 @@ jobs:
             --build-arg "no_proxy=${no_proxy}" \
             --build-arg "NO_PROXY=${NO_PROXY}" \
             --build-arg "proxy=${HTTP_PROXY}" \
+            --ignore-path=/var/mail \
+            --ignore-path=/var/spool/mail \
             --snapshot-mode=redo \
             --use-new-run \
             --context . \
@@ -301,7 +303,7 @@ jobs:
           /kaniko/trivy image --input /container.tar
 
   scan_minimal_riscv_64:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.4
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.5
     runs-on: ubuntu-latest
     env:
       DEBIAN_FRONTEND: noninteractive
@@ -320,6 +322,8 @@ jobs:
             --build-arg "no_proxy=${no_proxy}" \
             --build-arg "NO_PROXY=${NO_PROXY}" \
             --build-arg "proxy=${HTTP_PROXY}" \
+            --ignore-path=/var/mail \
+            --ignore-path=/var/spool/mail \
             --snapshot-mode=redo \
             --use-new-run \
             --context modules/tsffs/tests/targets/minimal-riscv-64 \
@@ -332,7 +336,7 @@ jobs:
           /kaniko/trivy image --input /container.tar
 
   scan_minimal_riscv64_edk2:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.4
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.5
     runs-on: ubuntu-latest
     env:
       DEBIAN_FRONTEND: noninteractive
@@ -351,6 +355,8 @@ jobs:
             --build-arg "no_proxy=${no_proxy}" \
             --build-arg "NO_PROXY=${NO_PROXY}" \
             --build-arg "proxy=${HTTP_PROXY}" \
+            --ignore-path=/var/mail \
+            --ignore-path=/var/spool/mail \
             --snapshot-mode=redo \
             --use-new-run \
             --context modules/tsffs/tests/targets/minimal-riscv-64-edk2 \
@@ -363,7 +369,7 @@ jobs:
           /kaniko/trivy image --input /container.tar
 
   scan_minimal_x86_64_breakpoint_edk2:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.4
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.5
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -380,6 +386,8 @@ jobs:
             --build-arg "no_proxy=${no_proxy}" \
             --build-arg "NO_PROXY=${NO_PROXY}" \
             --build-arg "proxy=${HTTP_PROXY}" \
+            --ignore-path=/var/mail \
+            --ignore-path=/var/spool/mail \
             --snapshot-mode=redo \
             --use-new-run \
             --context modules/tsffs/tests/targets/minimal-x86_64-breakpoint-edk2 \
@@ -392,7 +400,7 @@ jobs:
           /kaniko/trivy image --input /container.tar
 
   scan_minimal_x86_64_edk2:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.4
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.5
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -409,6 +417,8 @@ jobs:
             --build-arg "no_proxy=${no_proxy}" \
             --build-arg "NO_PROXY=${NO_PROXY}" \
             --build-arg "proxy=${HTTP_PROXY}" \
+            --ignore-path=/var/mail \
+            --ignore-path=/var/spool/mail \
             --snapshot-mode=redo \
             --use-new-run \
             --context modules/tsffs/tests/targets/minimal-x86_64-edk2 \
@@ -421,7 +431,7 @@ jobs:
           /kaniko/trivy image --input /container.tar
 
   scan_minimal_x86_64_timeout:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.4
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.5
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -438,6 +448,8 @@ jobs:
             --build-arg "no_proxy=${no_proxy}" \
             --build-arg "NO_PROXY=${NO_PROXY}" \
             --build-arg "proxy=${HTTP_PROXY}" \
+            --ignore-path=/var/mail \
+            --ignore-path=/var/spool/mail \
             --snapshot-mode=redo \
             --use-new-run \
             --context modules/tsffs/tests/targets/minimal-x86_64-timeout \
