@@ -10,7 +10,11 @@ ARG PUBLIC_SIMICS_PKGS_URL="https://registrationcenter-download.intel.com/akdlm/
 ARG PUBLIC_SIMICS_ISPM_URL="https://registrationcenter-download.intel.com/akdlm/IRC_NAS/881ee76a-c24d-41c0-af13-5d89b2a857ff/intel-simics-package-manager-1.7.5-linux64.tar.gz"
 # Add cargo and ispm to the path
 ENV PATH="/root/.cargo/bin:/workspace/simics/ispm:${PATH}"
+
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# NOTE: Fix for kaniko
+RUN rm -rf /var/mail /var/spool/mail
 
 # Install local dependencies:
 # - Libraries and dependencies for SIMICS and ISPM

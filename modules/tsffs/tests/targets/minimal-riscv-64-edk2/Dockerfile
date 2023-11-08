@@ -4,6 +4,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
+RUN rm -rf /var/mail /var/spool/mail
+
 ENV EDK2_REPO_URL "https://github.com/tianocore/edk2.git"
 ENV EDK2_REPO_HASH "a671a14e63fdaa9490e5c61cf11346416f1d1463"
 ENV EDK2_PATH "/edk2"
