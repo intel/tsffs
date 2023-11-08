@@ -281,7 +281,7 @@ jobs:
           # Dont flake8/mypy/pylint because our only python files attempt to import
           # simics and fail
           VALIDATE_PYTHON_FLAKE8: false
-          VALIDATE_PYTHON_ISORT: false
+          VALIDATE_PYTHON_MYPY: false
           VALIDATE_PYTHON_PYLINT: false
         run: |
           /action/lib/linter.sh || ( echo "❗ [CT222] Super linter found an issue (possibly Hadolint)" && exit 1 )
