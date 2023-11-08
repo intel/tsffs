@@ -1,6 +1,6 @@
 # Copyright (C) 2023 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
-# hadolint global ignore=DL3041,3040
+# hadolint global ignore=DL3041,DL3040
 
 FROM fedora:38
 

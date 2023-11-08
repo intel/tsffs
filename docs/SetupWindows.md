@@ -22,7 +22,7 @@ link](https://github.com/brechtsanders/winlibs_mingw/releases/download/13.2.0-16
 Once downloaded, right-click the archive file and select `7-Zip: Extract Files` and
 extract to `C:\Program Files\mingw-w64`.
 
-Next, add MinGW to the `Path` in your environment variables. 
+Next, add MinGW to the `Path` in your environment variables.
 
 1. Open the `Edit the System Environment Variables` control panel option
 2. Select `Environment Variables`
@@ -50,28 +50,32 @@ rustup toolchain install nightly
 
 ### Install SIMICS
 
-Go to the [SIMICS download page](https://www.intel.com/content/www/us/en/developer/articles/tool/simics-simulator.html) and download:
+Go to the [SIMICS download
+page](https://www.intel.com/content/www/us/en/developer/articles/tool/simics-simulator.html)
+and download:
 
 * `simics-6-packages-VERSION-win64.ispm`
 * `intel-simics-package-manager-VERSION-win64.exe`
 
 Run the downloaded `.exe` file to install `ispm` using the default settings (for your
 user only).  Next, add ISPM to the `Path` in your
-environment variables. 
+environment variables.
 
 1. Open the `Edit the System Environment Variables` control panel option
 2. Select `Environment Variables`
 3. Highlight `Path` under `User variables for YOUR_USERNAME`
 4. Select `Edit...`. A new window will open.
 5. Select `New`
-6. Type `C:\Users\YOUR_USERNAME\AppData\Local\Programs\Intel Simics Package Manager`, replacing `YOUR_USERNAME` with your Windows user account name.
+6. Type `C:\Users\YOUR_USERNAME\AppData\Local\Programs\Intel Simics Package Manager`,
+   replacing `YOUR_USERNAME` with your Windows user account name.
 7. Select `OK`. The window will close.
 8. Select `OK` on the previous window.
 
 Close your terminal and open a new one. Run `ispm.exe --version` and ensure no error
 occurs.
 
-Next, install the downloaded SIMICS packages. Run the following, replacing VERSION with the version in your downloaded filename:
+Next, install the downloaded SIMICS packages. Run the following, replacing VERSION with
+the version in your downloaded filename:
 
 ```powershell
 mkdir ~/simics
