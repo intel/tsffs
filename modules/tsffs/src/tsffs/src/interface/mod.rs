@@ -20,7 +20,6 @@ use simics_macro::interface_impl;
 use std::{
     ffi::{c_char, CStr},
     fs::read,
-    path::PathBuf,
     str::FromStr,
 };
 
@@ -503,7 +502,7 @@ impl Tsffs {
         );
         self.configuration_mut()
             .architecture_hints_mut()
-            .insert(processor_number, ArchitectureHint::from_str(&hint)?);
+            .insert(processor_number, ArchitectureHint::from_str(hint)?);
 
         Ok(())
     }

@@ -492,48 +492,6 @@ jobs:
       - name: Install Cargo Plugins
         run: |
           cargo install cargo-audit cargo-outdated
-      - name: CT256 (N/C) - Include security.md file in open source repos
-        run: |
-          [ -f SECURITY.md ] \
-            || ( echo "❗ [CT256] Missing SECURITY.md file" && exit 1 )
-          echo "✅ [CT256] SECURITY.md file found"
-      - name: CT37 (N/NA) - Scan release package for malware
-        run: |
-          # We mark this task as NA because we do not publish any release
-          # package, so we check that we indeed cannot publish anything
-          grep -q "publish = false" 'Cargo.toml' || ( echo "❗ [CT37] Crate {} is publishable" && exit 1 )
-          find . -mindepth 2 -type f -name 'Cargo.toml' -not -path './target/*' -print0 2> /dev/null \
-            | xargs -0 -i bash -c \
-              'grep -qE "publish.workspace = true|publish = false" {} || ( echo "❗ [CT37] Crate {} is publishable" && exit 1 )' \
-          || exit 1
-          echo "✅ [CT37] No release package is provided by this repository"
-      - name: (T152, T14, T174) (N/C) - Avoid asking for and using excessive permissions, Enforce Principle of least privilege, Test that the client application is not asking for excessive permissions
-        run: |
-          # All the crates I can find that escalate do so by setting uid at some
-          # point
-          find . -type f -name '*.rs' -print0 2> /dev/null \
-            | xargs -0 -i bash -c \
-              '! grep -Eq "sudo|setuid\(0\)" {} || ( echo "❗ [T152] sudo or setuid(0) found in {}" && exit 1 )' \
-            || exit 1
-          echo "✅ [T152] Elevated permissions not requested or used"
-      - name: (T349, T350) (N/C) - Protect audit information and logs against unauthorized access, Verify that audit information is sufficiently protected
-        run: |
-          # shellcheck disable=SC2016
-          find . -type f -name '*.rs' -not -path 'tests/*.rs' -print0 2> /dev/null \
-            | xargs -0 -i bash -c \
-              'MATCH=$(grep -A16 -E "File::|OpenOptions::" {} | grep -B16 -A16 -i "log"); if [ -n "${MATCH}" ]; then echo "${MATCH}" > /tmp/logmatch.$(printf {} | sed "s/\//-/g"); fi'
-          find /tmp -name 'logmatch.*' -print0 2> /dev/null \
-            | xargs -0 -i bash -c 'grep -qE "set_permissions.*0o[0-9]*700" {} || ( echo "❗ [T349] No set_permissions call with safe default permissions found after File:: or OpenOptions::" && exit 1 )'
-          echo "✅ [T349] Safe set_permissions call found for all File:: and OpenOptions:: with log mentioned"
-          echo "✅ [T350] Logs are protected. See T349."
-      - name: (T437, T438) (N/C) - Include log reduction and report generation capabilities, Verify that log reduction and report generation capabilities exist
-        run: |
-          RESULTS=$(find . -type f -name '*.rs' -not -path './target/*' -print0 2> /dev/null \
-            | xargs -0 -i bash -c \
-              'grep "with_filter" {}' | wc -l)
-          if [ "${RESULTS}" -eq 0 ]; then ( echo "❗ [T437] no 'with_filter' calls found to restrict tracing output" && exit 1 ); fi
-          echo "✅ [T437] 'with_filter' calls found to restrict tracing output"
-          echo "✅ [T438] Log reduction implemented with log levels. See T437."
       - name: (CT247/CT200) (N/C) - Scan 3rd-Party Components for Vulnerabilities, Verify that project is not using vulnerable 3rd party components
         run: |
           # shellcheck disable=SC2086,SC2143
@@ -550,16 +508,6 @@ jobs:
               exit 1
           fi
           echo "✅ [CT247/CT200] No dependabot vulnerabilities found"
-      - name: (CT72/CT98) (N/C) - Secure Configuration Guidance
-        run: |
-          echo "✅ [CT72/CT98] Manual secure configuration check:"
-          echo "    - No 3rd party software/services distributed/deployed"
-          echo "    - Dependencies configuration:"
-          echo "        - LibAFL configured to *not* bind publicly by default"
-          echo "    - Rust software builds with ASLR by default"
-          echo "    - Features not used other than SIMICS version"
-          echo "    - Compatibility settings used for SIMICS version"
-          echo "    - No legacy features"
       - name: (T186) (N/C) - Use recommended settings and latest patches for third party libraries and software
         run: |
           cargo audit

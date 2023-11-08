@@ -71,7 +71,6 @@ command-ext = { path = "modules/tsffs/src/util/command-ext" }
 ffi-macro = { path = "modules/tsffs/src/util/ffi-macro" }
 getters = { path = "modules/tsffs/src/util/getters" }
 raw-cstr = { path = "modules/tsffs/src/util/raw-cstr" }
-tmp-dir = { path = "modules/tsffs/src/util/tmp-dir" }
 version-tools = { path = "modules/tsffs/src/util/version-tools" }
 
 anyhow = { version = "1.0.75" }

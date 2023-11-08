@@ -19,7 +19,6 @@ anyhow = { workspace = true }
 command-ext = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
-versions = { workspace = true, features = ["serde"] }
 version-tools = { workspace = true }
 
 derive-getters = "0.3.0"
