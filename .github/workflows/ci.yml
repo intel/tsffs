@@ -325,6 +325,7 @@ jobs:
             --ignore-path=/var/mail \
             --ignore-path=/var/spool/mail \
             --ignore-path=/usr/lib/libcrypto.so.3 \
+            --ignore-path=/usr/lib/libssl.so.3 \
             --snapshot-mode=redo \
             --use-new-run \
             --context modules/tsffs/tests/targets/minimal-riscv-64 \
@@ -359,6 +360,7 @@ jobs:
             --ignore-path=/var/mail \
             --ignore-path=/var/spool/mail \
             --ignore-path=/usr/lib/libcrypto.so.3 \
+            --ignore-path=/usr/lib/libssl.so.3 \
             --snapshot-mode=redo \
             --use-new-run \
             --context modules/tsffs/tests/targets/minimal-riscv-64-edk2 \
