@@ -1,6 +1,6 @@
 # Copyright (C) 2023 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
-# hadolint global ignore=DL3041
+# hadolint global ignore=DL3041,3040
 
 FROM fedora:38
 
@@ -57,7 +57,6 @@ RUN dnf -y update && \
         python3 \
         python3-pip \
         yamllint && \
-    dnf -y clean all && \
     python3 -m pip install --no-cache-dir \
         black==23.10.1 \
         flake8==6.1.0 \
