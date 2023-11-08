@@ -15,3 +15,7 @@ version = "0.1.0"
 anyhow = "1.0.75"
 command-ext = { path = "../src/util/command-ext" }
 simics-codegen = { path = "../src/simics/simics-codegen" }
+
+[dependencies]
+anyhow = "1.0.75"
+command-ext = { path = "../src/util/command-ext" }
