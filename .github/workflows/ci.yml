@@ -102,7 +102,7 @@ jobs:
           SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo clippy
       - name: Test Project
         run: |
-          SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo test -p command-ext raw-cstr tmp-dir version-tools || ( echo "❗ Tests failed" && exit 1 )
+          SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo test -p command-ext -p raw-cstr -p tmp-dir -p version-tools || ( echo "❗ Tests failed" && exit 1 )
           echo "✅ Tests passed"
       - name: Build Docs
         run: |
