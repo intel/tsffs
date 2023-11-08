@@ -13,6 +13,7 @@ const BOOT_DISK: &[u8] = include_bytes!("../rsrc/minimal_boot_disk.craff");
 const TEST_UEFI: &[u8] = include_bytes!("../targets/minimal-x86_64-crash/test.efi");
 
 #[test]
+#[cfg_attr(miri, ignore)]
 fn test_fuzz_gcc_x86_64_magic_crash() -> Result<()> {
     let script = indoc! {r#"
         load-module tsffs

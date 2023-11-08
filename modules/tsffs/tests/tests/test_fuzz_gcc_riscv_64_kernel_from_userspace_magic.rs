@@ -17,6 +17,7 @@ const TEST_MOD: &[u8] = include_bytes!("../targets/minimal-riscv-64/test-mod-use
 const TEST_KO: &[u8] = include_bytes!("../targets/minimal-riscv-64/test-mod.ko");
 
 #[test]
+#[cfg_attr(miri, ignore)]
 fn test_fuzz_gcc_riscv_64_kernel_from_userspace_magic() -> Result<()> {
     let script = indoc! {r#"
         load-module tsffs

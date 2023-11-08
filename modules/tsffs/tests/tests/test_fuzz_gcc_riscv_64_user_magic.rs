@@ -17,6 +17,7 @@ const FW_JUMP: &[u8] = include_bytes!("../targets/minimal-riscv-64/fw_jump.elf")
 const TEST: &[u8] = include_bytes!("../targets/minimal-riscv-64/test");
 
 #[test]
+#[cfg_attr(miri, ignore)]
 fn test_fuzz_gcc_riscv_64_user_magic() -> Result<()> {
     let script = indoc! {r#"
         load-module tsffs

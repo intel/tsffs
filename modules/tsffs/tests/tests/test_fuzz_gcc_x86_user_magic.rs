@@ -15,6 +15,7 @@ use tests::{Architecture, TestEnvSpec};
 const TEST_USER: &[u8] = include_bytes!("../targets/minimal-x86-user/test");
 
 #[test]
+#[cfg_attr(miri, ignore)]
 fn test_fuzz_gcc_x86_magic() -> Result<()> {
     let script = indoc! {r#"
         import simics

@@ -59,6 +59,7 @@ mod test {
     use crate::{CommandExtCheck, CommandExtError};
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     /// Check that a successful command returns a success output
     fn test_success() {
         let output = Command::new("echo").arg("x").check();
@@ -73,6 +74,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     /// Test that a command that doesn't exist returns a wrapped IO error
     fn test_nocmd() {
         let output = Command::new("asdfasdfasdfasdfjkljkljkl").check();
@@ -84,6 +86,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     /// Test that a command which fails by returning a nonzero status code returns a check error
     fn test_failure() {
         let output = Command::new("false").check();
