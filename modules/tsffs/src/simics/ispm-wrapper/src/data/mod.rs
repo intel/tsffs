@@ -4,7 +4,7 @@
 //! Data deserializable from ISPM commands and configurations
 
 use anyhow::Result;
-use derive_getters::Getters;
+use getters::Getters;
 use serde::Deserialize;
 use serde_json::from_slice;
 use std::{fmt::Display, fs::read, path::PathBuf};
