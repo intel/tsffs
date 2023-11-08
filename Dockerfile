@@ -19,7 +19,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # - Tools for creating a CRAFF image to load into a model
 # - Python, including checkers/linters
 # - Rust (will be on the PATH due to the ENV command above)
-RUN dnf -y update && \
+RUN ( dnf -y update  || true )&& \
     dnf -y install \
         alsa-lib \
         atk \
