@@ -182,7 +182,7 @@ jobs:
       - name: CT39 - MIRI Check Project
         run: |
           SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} \
-          MIRIFLAGS="-Zmiri-backtrace=full -Zmiri-disable-isolation -Zmiri-panic-on-unsupported" cargo \
+          MIRIFLAGS="-Zmiri-backtrace=full -Zmiri-disable-isolation -Zmiri-panic-on-unsupported" \
             cargo miri test -p command-ext -p raw-cstr -p tmp-dir -p version-tools \
             || ( echo "❗ [CT39 (2/2)] Failed MIRI static analysis checks" && exit 1 )
           echo "✅ [CT39 (2/2)] Passed MIRI static analysis checks"
