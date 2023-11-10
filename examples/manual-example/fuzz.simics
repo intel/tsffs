@@ -1,6 +1,9 @@
+# Read the start and stop addresses from the files containing them (see Dockerfile for
+# how they are generated)
 @simenv.start_addr = int(open("START_ADDRESS").read().strip(), 16)
 @simenv.stop_addr = int(open("STOP_ADDRESS").read().strip(), 16)
 
+# Configure the fuzzer
 load-module tsffs
 @tsffs = SIM_create_object(SIM_get_class("tsffs"), "tsffs", [])
 @tsffs.log_level = 4
@@ -11,11 +14,14 @@ load-module tsffs
 @tsffs.iface.tsffs.set_generate_random_corpus(True)
 @tsffs.iface.tsffs.set_use_snapshots(False)
 
+# load the target
 load-target "qsp-x86/uefi-shell" namespace = qsp machine:hardware:storage:disk0:image = "minimal_boot_disk.craff"
 
+# Set a breakpoint for start and stop events
 $start_bp = (bp.memory.break -x $start_addr)
 $stop_bp = (bp.memory.break -x $stop_addr)
 
+# Continuously wait for the start bp to occur after reset, and call the start method
 script-branch {
     while 1 {
         bp.wait-for-breakpoint id = $start_bp
@@ -26,6 +32,7 @@ script-branch {
     }
 }
 
+# Continuously wait for the stop bp to occur after reset, and call the start method
 script-branch {
     while 1 {
         bp.wait-for-breakpoint id = $stop_bp
@@ -34,6 +41,7 @@ script-branch {
     }
 }
 
+# Enter the EFI shell and run the EFI application
 script-branch {
     bp.console_string.wait-for qsp.serconsole.con "Shell>"
     qsp.serconsole.con.input "FS0:\n"
