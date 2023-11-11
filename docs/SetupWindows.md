@@ -3,6 +3,18 @@
 This guide will walk you through installing build dependencies, building, and
 installing TSFFS into your SIMICS installation on Windows.
 
+- [TSFF Setup (Windows)](#tsff-setup-windows)
+  - [Install System Dependencies](#install-system-dependencies)
+    - [Git](#git)
+    - [7-Zip](#7-zip)
+    - [Install MinGW-w64](#install-mingw-w64)
+    - [Install Rust](#install-rust)
+    - [Install SIMICS](#install-simics)
+  - [Build TSFFS](#build-tsffs)
+  - [Test TSFFS](#test-tsffs)
+  - [Troubleshooting](#troubleshooting)
+    - [I already have a MinGW installation!](#i-already-have-a-mingw-installation)
+
 ## Install System Dependencies
 
 ### Git
@@ -14,7 +26,9 @@ website](https://git-scm.com/download/win). The default options are acceptable.
 
 Download and install 7-Zip from the [website](https://www.7-zip.org/).
 
-### Install MinGW
+### Install MinGW-w64
+
+If you already have a MinGW-w64 installation, you can skip this step.
 
 Download the MinGW archive from [winlibs.com](https://winlibs.com/#download-release).
 Select the UCRT runtime *with* POSIX threads and LLVM/Clang/LLD/LLDB. Select the Win64
@@ -37,12 +51,13 @@ Next, add MinGW to the `Path` in your environment variables.
 7. Select `OK`. The window will close.
 8. Select `OK` on the previous window.
 
-Close your terminal and open a new terminal. Run `gcc --version` and ensure
-no error occurs.
+Close your terminal and open a new terminal. Run `gcc --version` and ensure no error
+occurs.
 
 ### Install Rust
 
-Go to [rustup.rs](https://rustup.rs/) and download `rustup-init.exe`. Run `rustup-init.exe` with the following arguments:
+Go to [rustup.rs](https://rustup.rs/) and download `rustup-init.exe`. Run
+`rustup-init.exe` with the following arguments:
 
 ```powershell
 rustup-init.exe --default-toolchain nightly --default-host x86_64-pc-windows-gnu -y
@@ -54,21 +69,22 @@ script).
 
 ### Install SIMICS
 
-Go to the [SIMICS download page](https://www.intel.com/content/www/us/en/developer/articles/tool/simics-simulator.html) and download:
+Go to the [SIMICS download page](https://www.intel.com/content/www/us/en/developer/articles/tool/simics-simulator.html) 
+and download:
 
 * `simics-6-packages-VERSION-win64.ispm`
 * `intel-simics-package-manager-VERSION-win64.exe`
 
 Run the downloaded `.exe` file to install `ispm` using the default settings (for your
-user only).  Next, add ISPM to the `Path` in your
-environment variables. 
+user only).  Next, add ISPM to the `Path` in your environment variables. 
 
 1. Open the `Edit the System Environment Variables` control panel option
 2. Select `Environment Variables`
 3. Highlight `Path` under `User variables for YOUR_USERNAME`
 4. Select `Edit...`. A new window will open.
 5. Select `New`
-6. Type `C:\Users\YOUR_USERNAME\AppData\Local\Programs\Intel Simics Package Manager`, replacing `YOUR_USERNAME` with your Windows user account name.
+6. Type `C:\Users\YOUR_USERNAME\AppData\Local\Programs\Intel Simics Package Manager`,
+   replacing `YOUR_USERNAME` with your Windows user account name.
 7. Select `OK`. The window will close.
 8. Select `OK` on the previous window.
 
@@ -105,10 +121,8 @@ ispm.exe packages -i win64/packages/simics-pkg-31337-6.0.0-win64.ispm --non-inte
 
 ## Test TSFFS
 
-We can test TSFFS by creating a new project with our minimal test case,
- a UEFI boot
-disk, and the same fuzz script used in the Linux docker example
- in the
+We can test TSFFS by creating a new project with our minimal test case, a UEFI boot
+disk, and the same fuzz script used in the Linux docker example in the
 [README](../README.md). Run the following from the root of this repository:
 
 ```powershell
@@ -121,3 +135,11 @@ cp harness\tsffs-gcc-x86_64.h $env:TEMP\TSFFS-Windows\
 cd $env:TEMP\TSFFS-Windows
 ./simics ./fuzz.simics
 ```
+
+## Troubleshooting
+
+### I already have a MinGW installation!
+
+If you already have a MinGW installation elsewhere, and you do not want to reinstall
+it to `C:\MinGW`, edit `compiler.mk` and point `CC=` and `CXX=` at your MinGW `gcc.exe`
+and `g++.exe` binaries, respectively.
