@@ -1,21 +1,4 @@
 ---
-# SDL task names take the form "<task_id> ([NE]/(NA|C|I|IP)) - <task_description>" where:
-# - N: No evidence required
-# - E: Evidence required
-# - NA: Not Applicable
-# - C: Complete
-# - I: Incomplete
-# - IP: In Progress
-#
-# List of SDL tasks that are NOT checked by this pipeline:
-# - CT636: Trade compliance classification: Published free of nonstandard crypto
-# - CT52: Obtain Open Source PBT Approval
-# - CT38: Conduct security progress reviews
-# - CT36: Register SW components in OneBOM
-# - CT25: Perform gap analysis on SDL plan
-# - CT23: Disposition security vulnerabilities
-# - CT22: Conduct manual code reviews
-# - CT47: Complete a risk assessment for reused components
 
 name: CI
 
@@ -102,7 +85,7 @@ jobs:
           SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo clippy
       - name: Test Project
         run: |
-          SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo test -p command-ext raw-cstr tmp-dir version-tools || ( echo "❗ Tests failed" && exit 1 )
+          SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo test -p command-ext -p raw-cstr -p tmp-dir -p version-tools || ( echo "❗ Tests failed" && exit 1 )
           echo "✅ Tests passed"
       - name: Build Docs
         run: |
@@ -182,7 +165,7 @@ jobs:
       - name: CT39 - MIRI Check Project
         run: |
           SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} \
-          MIRIFLAGS="-Zmiri-backtrace=full -Zmiri-disable-isolation -Zmiri-panic-on-unsupported" cargo \
+          MIRIFLAGS="-Zmiri-backtrace=full -Zmiri-disable-isolation -Zmiri-panic-on-unsupported" \
             cargo miri test -p command-ext -p raw-cstr -p tmp-dir -p version-tools \
             || ( echo "❗ [CT39 (2/2)] Failed MIRI static analysis checks" && exit 1 )
           echo "✅ [CT39 (2/2)] Passed MIRI static analysis checks"
@@ -289,7 +272,7 @@ jobs:
           echo "✅ [CT222] Hadolint Dockerfile check passed"
 
   scan_docker_example:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.3
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.5
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -306,6 +289,10 @@ jobs:
             --build-arg "no_proxy=${no_proxy}" \
             --build-arg "NO_PROXY=${NO_PROXY}" \
             --build-arg "proxy=${HTTP_PROXY}" \
+            --ignore-path=/var/mail \
+            --ignore-path=/var/spool/mail \
+            --ignore-path=/usr/lib/libcrypto.so.3 \
+            --ignore-path=/usr/lib/libssl.so.3 \
             --snapshot-mode=redo \
             --use-new-run \
             --context . \
@@ -318,7 +305,7 @@ jobs:
           /kaniko/trivy image --input /container.tar
 
   scan_minimal_riscv_64:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.3
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.5
     runs-on: ubuntu-latest
     env:
       DEBIAN_FRONTEND: noninteractive
@@ -337,6 +324,10 @@ jobs:
             --build-arg "no_proxy=${no_proxy}" \
             --build-arg "NO_PROXY=${NO_PROXY}" \
             --build-arg "proxy=${HTTP_PROXY}" \
+            --ignore-path=/var/mail \
+            --ignore-path=/var/spool/mail \
+            --ignore-path=/usr/lib/libcrypto.so.3 \
+            --ignore-path=/usr/lib/libssl.so.3 \
             --snapshot-mode=redo \
             --use-new-run \
             --context modules/tsffs/tests/targets/minimal-riscv-64 \
@@ -349,7 +340,7 @@ jobs:
           /kaniko/trivy image --input /container.tar
 
   scan_minimal_riscv64_edk2:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.3
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.5
     runs-on: ubuntu-latest
     env:
       DEBIAN_FRONTEND: noninteractive
@@ -368,6 +359,10 @@ jobs:
             --build-arg "no_proxy=${no_proxy}" \
             --build-arg "NO_PROXY=${NO_PROXY}" \
             --build-arg "proxy=${HTTP_PROXY}" \
+            --ignore-path=/var/mail \
+            --ignore-path=/var/spool/mail \
+            --ignore-path=/usr/lib/libcrypto.so.3 \
+            --ignore-path=/usr/lib/libssl.so.3 \
             --snapshot-mode=redo \
             --use-new-run \
             --context modules/tsffs/tests/targets/minimal-riscv-64-edk2 \
@@ -380,7 +375,7 @@ jobs:
           /kaniko/trivy image --input /container.tar
 
   scan_minimal_x86_64_breakpoint_edk2:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.3
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.5
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -397,6 +392,8 @@ jobs:
             --build-arg "no_proxy=${no_proxy}" \
             --build-arg "NO_PROXY=${NO_PROXY}" \
             --build-arg "proxy=${HTTP_PROXY}" \
+            --ignore-path=/var/mail \
+            --ignore-path=/var/spool/mail \
             --snapshot-mode=redo \
             --use-new-run \
             --context modules/tsffs/tests/targets/minimal-x86_64-breakpoint-edk2 \
@@ -409,7 +406,7 @@ jobs:
           /kaniko/trivy image --input /container.tar
 
   scan_minimal_x86_64_edk2:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.3
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.5
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -426,6 +423,8 @@ jobs:
             --build-arg "no_proxy=${no_proxy}" \
             --build-arg "NO_PROXY=${NO_PROXY}" \
             --build-arg "proxy=${HTTP_PROXY}" \
+            --ignore-path=/var/mail \
+            --ignore-path=/var/spool/mail \
             --snapshot-mode=redo \
             --use-new-run \
             --context modules/tsffs/tests/targets/minimal-x86_64-edk2 \
@@ -438,7 +437,7 @@ jobs:
           /kaniko/trivy image --input /container.tar
 
   scan_minimal_x86_64_timeout:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.3
+    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.5
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -455,6 +454,8 @@ jobs:
             --build-arg "no_proxy=${no_proxy}" \
             --build-arg "NO_PROXY=${NO_PROXY}" \
             --build-arg "proxy=${HTTP_PROXY}" \
+            --ignore-path=/var/mail \
+            --ignore-path=/var/spool/mail \
             --snapshot-mode=redo \
             --use-new-run \
             --context modules/tsffs/tests/targets/minimal-x86_64-timeout \

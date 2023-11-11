@@ -447,29 +447,28 @@ impl Tsffs {
     }
 
     pub fn cancel_timeout_event(&mut self) -> Result<()> {
-        let start_processor = self
-            .start_processor()
-            .ok_or_else(|| anyhow!("No start processor"))?;
-        let start_processor_time = start_processor.cycle().get_time()?;
-        let start_processor_cpu = start_processor.cpu();
-        let start_processor_clock = object_clock(start_processor_cpu)?;
-        match self
-            .timeout_event()
-            .find_next_time(start_processor_clock, start_processor_cpu)
-        {
-            Ok(next_time) => info!(
-                self.as_conf_object(),
-                "Cancelling event with next time {} (current time {})",
-                next_time,
-                start_processor_time
-            ),
-            Err(e) => info!(
-                self.as_conf_object(),
-                "Not cancelling event with next time due to error: {e}"
-            ),
+        if let Some(start_processor) = self.start_processor() {
+            let start_processor_time = start_processor.cycle().get_time()?;
+            let start_processor_cpu = start_processor.cpu();
+            let start_processor_clock = object_clock(start_processor_cpu)?;
+            match self
+                .timeout_event()
+                .find_next_time(start_processor_clock, start_processor_cpu)
+            {
+                Ok(next_time) => info!(
+                    self.as_conf_object(),
+                    "Cancelling event with next time {} (current time {})",
+                    next_time,
+                    start_processor_time
+                ),
+                Err(e) => info!(
+                    self.as_conf_object(),
+                    "Not cancelling event with next time due to error: {e}"
+                ),
+            }
+            self.timeout_event()
+                .cancel_time(start_processor_cpu, start_processor_clock)?;
         }
-        self.timeout_event()
-            .cancel_time(start_processor_cpu, start_processor_clock)?;
         Ok(())
     }
 }

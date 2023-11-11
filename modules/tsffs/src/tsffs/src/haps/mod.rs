@@ -208,7 +208,7 @@ impl Tsffs {
                 continue_simulation(0)?;
                 Ok(())
             })?;
-        } else {
+        } else if self.have_initial_snapshot() {
             self.cancel_timeout_event()?;
 
             let fuzzer_tx = self

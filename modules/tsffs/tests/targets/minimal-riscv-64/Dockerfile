@@ -3,8 +3,6 @@ FROM ubuntu:22.04 AS buildroot
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-RUN rm -rf /var/mail /var/spool/mail
-
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get -y update && \

@@ -40,7 +40,7 @@ to download an install the tested MinGW version (LLVM/Clang/LLD/LLDB+UCRT+POSIX,
 and
  extract to `C:\MinGW\`.
 
-Next, add MinGW to the `Path` in your environment variables. 
+Next, add MinGW to the `Path` in your environment variables.
 
 1. Open the `Edit the System Environment Variables` control panel option
 2. Select `Environment Variables`
@@ -69,7 +69,8 @@ script).
 
 ### Install SIMICS
 
-Go to the [SIMICS download page](https://www.intel.com/content/www/us/en/developer/articles/tool/simics-simulator.html) 
+Go to the [SIMICS download
+page](https://www.intel.com/content/www/us/en/developer/articles/tool/simics-simulator.html)
 and download:
 
 * `simics-6-packages-VERSION-win64.ispm`
