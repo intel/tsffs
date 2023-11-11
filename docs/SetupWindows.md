@@ -1,5 +1,8 @@
 # TSFF Setup (Windows)
 
+This guide will walk you through installing build dependencies, building, and
+installing TSFFS into your SIMICS installation on Windows.
+
 ## Install System Dependencies
 
 ### Git
@@ -15,12 +18,13 @@ Download and install 7-Zip from the [website](https://www.7-zip.org/).
 
 Download the MinGW archive from [winlibs.com](https://winlibs.com/#download-release).
 Select the UCRT runtime *with* POSIX threads and LLVM/Clang/LLD/LLDB. Select the Win64
-7-Zip archive.
-
-To download GCC 13.2.0, you can use [this direct
-link](https://github.com/brechtsanders/winlibs_mingw/releases/download/13.2.0-16.0.6-11.0.0-ucrt-r1/winlibs-x86_64-posix-seh-gcc-13.2.0-llvm-16.0.6-mingw-w64ucrt-11.0.0-r1.7z).
-Once downloaded, right-click the archive file and select `7-Zip: Extract Files` and
-extract to `C:\Program Files\mingw-w64`.
+7-Zip archive, or use the [direct
+link](https://github.com/brechtsanders/winlibs_mingw/releases/download/13.2.0-16.0.6-11.0.0-ucrt-r1/winlibs-x86_64-posix-seh-gcc-13.2.0-llvm-16.0.6-mingw-w64ucrt-11.0.0-r1.7z)
+to download an install the tested MinGW version (LLVM/Clang/LLD/LLDB+UCRT+POSIX, GCC
+13.2.0).
+ Once downloaded, right-click the archive file, select `7-Zip: Extract Files`
+and
+ extract to `C:\MinGW\`.
 
 Next, add MinGW to the `Path` in your environment variables. 
 
@@ -29,7 +33,7 @@ Next, add MinGW to the `Path` in your environment variables.
 3. Highlight `Path` under `User variables for YOUR_USERNAME`
 4. Select `Edit...`. A new window will open.
 5. Select `New`
-6. Type `C:\Program Files\mingw-w64\bin`
+6. Type `C:\MinGW\bin`
 7. Select `OK`. The window will close.
 8. Select `OK` on the previous window.
 
@@ -38,15 +42,15 @@ no error occurs.
 
 ### Install Rust
 
-Go to [rustup.rs](https://rustup.rs/) and download `rustup-init.exe`. Run the
-downloaded executable and follow all default instructions, including the guided
-installation of Visual Studio Community. After installation, close your terminal
-and open a new terminal. Run `cargo --version` and ensure no error occurs. Then,
-install the nightly toolchain with:
+Go to [rustup.rs](https://rustup.rs/) and download `rustup-init.exe`. Run `rustup-init.exe` with the following arguments:
 
 ```powershell
-rustup toolchain install nightly
+rustup-init.exe --default-toolchain nightly --default-host x86_64-pc-windows-gnu -y
 ```
+
+After installation, close your terminal and open a new terminal as prompted. Run `cargo
+--verison`. Ensure the version ends with `-nightly` (this is required to run the build
+script).
 
 ### Install SIMICS
 
@@ -71,7 +75,8 @@ environment variables.
 Close your terminal and open a new one. Run `ispm.exe --version` and ensure no error
 occurs.
 
-Next, install the downloaded SIMICS packages. Run the following, replacing VERSION with the version in your downloaded filename:
+Next, install the downloaded SIMICS packages. Run the following, replacing VERSION with
+the version in your downloaded filename:
 
 ```powershell
 mkdir ~/simics
@@ -83,9 +88,36 @@ You may be prompted to accept certificates, choose `Y`.
 
 ## Build TSFFS
 
-Clone TSFFS to your system (anywhere you like) with:
+Clone TSFFS to your system (anywhere you like) and build with:
 
 ```powershell
 git clone https://github.com/intel/tsffs
 cd tsffs
+ispm.exe projects $(pwd) --create --non-interactive --ignore-existing-files
+cargo -Zscript build.rs
+```
+
+Once built, install TSFFS to your SIMICS installation with:
+
+```powershell
+ispm.exe packages -i win64/packages/simics-pkg-31337-6.0.0-win64.ispm --non-interactive --trust-insecure-packages
+```
+
+## Test TSFFS
+
+We can test TSFFS by creating a new project with our minimal test case,
+ a UEFI boot
+disk, and the same fuzz script used in the Linux docker example
+ in the
+[README](../README.md). Run the following from the root of this repository:
+
+```powershell
+mkdir $env:TEMP\TSFFS-Windows
+ispm.exe projects $env:TEMP\TSFFS-Windows\ --create
+cp examples\docker-example\fuzz.simics $env:TEMP\TSFFS-Windows\
+cp modules\tsffs\tests\targets\minimal-x86_64\* $env:TEMP\TSFFS-Windows\
+cp modules\tsffs\tests\rsrc\minimal_boot_disk.craff $env:TEMP\TSFFS-Windows\
+cp harness\tsffs-gcc-x86_64.h $env:TEMP\TSFFS-Windows\
+cd $env:TEMP\TSFFS-Windows
+./simics ./fuzz.simics
 ```

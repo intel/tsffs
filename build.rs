@@ -27,7 +27,7 @@ use serde_json::{to_string, value::Value};
 use std::{
     collections::HashMap,
     env::current_dir,
-    fs::write,
+    fs::{create_dir_all, write},
     iter::once,
     path::{Path, PathBuf},
     process::Command,
@@ -36,7 +36,11 @@ use typed_builder::TypedBuilder;
 use walkdir::WalkDir;
 
 fn make() -> Result<()> {
+    #[cfg(unix)]
     Command::new("make").check()?;
+    #[cfg(windows)]
+    Command::new("mingw32-make.exe").check()?;
+
     Ok(())
 }
 
@@ -507,9 +511,7 @@ impl TryFrom<PackagesList> for PackageSpecs {
                                 .replace("$(SO)", if h == "linux64" { ".so" } else { ".dll" })
                         })
                         .filter_map(|f| match PathBuf::from(".").join(&f).canonicalize() {
-                            Ok(fc) => {
-                                Some((f.clone(), fc.to_string_lossy().to_string()))
-                            }
+                            Ok(fc) => Some((f.clone(), fc.to_string_lossy().to_string())),
                             Err(_) => None,
                         })
                         .chain(once((
@@ -559,10 +561,22 @@ fn create_package_specs(packages_list: PackagesList) -> Result<()> {
     //     .arg("config/dist")
     //     .check()?;
     let package_spec: PackageSpecs = packages_list.try_into()?;
-    write(
-        &PathBuf::from("linux64/package-specs.json"),
-        to_string(&package_spec)?.as_bytes(),
-    )?;
+    #[cfg(unix)]
+    {
+        create_dir_all("linux64")?;
+        write(
+            &PathBuf::from("linux64/package-specs.json"),
+            to_string(&package_spec)?.as_bytes(),
+        )?;
+    }
+    #[cfg(windows)]
+    {
+        create_dir_all("win64")?;
+        write(
+            &PathBuf::from("win64/package-specs.json"),
+            to_string(&package_spec)?.as_bytes(),
+        )?;
+    }
     Ok(())
 }
 
@@ -570,9 +584,16 @@ fn create_modcache<P>(directory: P) -> Result<()>
 where
     P: AsRef<Path>,
 {
+    #[cfg(unix)]
     Command::new(directory.as_ref().join("bin").join("create-modcache"))
         .arg("-p")
         .arg("linux64/package-specs.json")
+        .check()?;
+
+    #[cfg(windows)]
+    Command::new(directory.as_ref().join("bin").join("create-modcache.bat"))
+        .arg("-p")
+        .arg("win64/package-specs.json")
         .check()?;
     Ok(())
 }
@@ -581,11 +602,20 @@ fn create_packages<P>(directory: P) -> Result<()>
 where
     P: AsRef<Path>,
 {
+    #[cfg(unix)]
     Command::new(directory.as_ref().join("bin").join("create-packages"))
         .arg("--package-specs")
         .arg("linux64/package-specs.json")
         .arg("-o")
         .arg("linux64/packages")
+        .arg("31337")
+        .check()?;
+    #[cfg(windows)]
+    Command::new(directory.as_ref().join("bin").join("create-packages.bat"))
+        .arg("--package-specs")
+        .arg("win64/package-specs.json")
+        .arg("-o")
+        .arg("win64/packages")
         .arg("31337")
         .check()?;
     Ok(())

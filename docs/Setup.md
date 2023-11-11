@@ -1,4 +1,4 @@
-# TSFFS Setup
+# TSFFS Setup (Linux)
 
 The easiest way to get started with TSFFS is with our [docker
 setup](../README.md#quick-start).

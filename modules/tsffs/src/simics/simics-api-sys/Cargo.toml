@@ -17,7 +17,8 @@ version.workspace = true
 
 [build-dependencies]
 anyhow.workspace = true
-bindgen = "0.69.1"
+# bindgen = { git = "https://github.com/rust-lang/rust-bindgen", branch = "main" }
+bindgen = { path = 'C:\Users\rhart\hub\rust-bindgen\bindgen' }
 scraper = "0.18.1"
 walkdir = "2.4.0"
 

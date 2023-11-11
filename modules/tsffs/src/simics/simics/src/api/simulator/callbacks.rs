@@ -3,11 +3,13 @@
 
 //! Callbacks from the simulator to user code
 
+#[cfg(not(windows))]
+use crate::api::sys::SIM_notify_on_descriptor;
 use crate::{
     api::sys::{
-        notify_mode_t, socket_t, SIM_cancel_realtime_event, SIM_notify_on_descriptor,
-        SIM_notify_on_socket, SIM_process_pending_work, SIM_process_work, SIM_realtime_event,
-        SIM_register_work, SIM_run_alone, SIM_run_in_thread, SIM_thread_safe_callback,
+        notify_mode_t, socket_t, SIM_cancel_realtime_event, SIM_notify_on_socket,
+        SIM_process_pending_work, SIM_process_work, SIM_realtime_event, SIM_register_work,
+        SIM_run_alone, SIM_run_in_thread, SIM_thread_safe_callback,
     },
     Result,
 };
@@ -26,6 +28,7 @@ where
     closure()
 }
 
+#[cfg(not(windows))]
 #[simics_exception]
 /// Set a callback whenever a specific IO event occurs on the host on a given file descriptor.
 /// If `callback` is `None`, the callback is removed.

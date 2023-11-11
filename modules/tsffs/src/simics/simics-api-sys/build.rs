@@ -27,7 +27,7 @@
 //! - `LDFLAGS=-L/home/user/simics/simics-6.0.174/linux64/bin -z noexecstack -z relro -z now`
 //! - `LIBS=-lsimics-common -lvtutils`
 
-use anyhow::{anyhow, bail, ensure, Result};
+use anyhow::{anyhow, ensure, Result};
 use bindgen::{
     callbacks::{MacroParsingBehavior, ParseCallbacks},
     AliasVariation, Builder, EnumVariation, FieldVisibilityKind, MacroTypeVariation,
@@ -102,10 +102,12 @@ const AUTO_BINDINGS_FILENAME: &str = "bindings-auto.rs";
 /// generating bindings in auto (package-time) mode.
 const AUTO_BINDINGS_VERSION_FILENAME: &str = "version-auto.rs";
 
+#[cfg(not(windows))]
 /// The name of the binary/library/object subdirectory on linux systems
-const LINUX64_DIRNAME: &str = "linux64";
+const HOST_DIRNAME: &str = "linux64";
+#[cfg(windows)]
 /// The name of the binary/library/object subdirectory on windows systems
-const WIN64_DIRNAME: &str = "win64";
+const HOST_DIRNAME: &str = "win64";
 
 /// The path in SIMICS_BASE/HOST_TYPE/ of the HTML file containing HAP documentation required
 /// for high level codegen of builtin HAPs
@@ -173,6 +175,7 @@ where
     P: AsRef<Path>,
     S: AsRef<str>,
 {
+    let simics_include_path = simics_include_path.as_ref().to_path_buf().canonicalize()?;
     let mut include_paths = WalkDir::new(&simics_include_path)
         .into_iter()
         .filter_map(|p| p.ok())
@@ -186,7 +189,7 @@ where
                                 |e| {
                                     eprintln!(
                                         "cargo:warning=Failed to strip prefix {} from {}: {}",
-                                        simics_include_path.as_ref().display(),
+                                        simics_include_path.display(),
                                         p.display(),
                                         e
                                     );
@@ -287,13 +290,7 @@ fn main() -> Result<()> {
         base_dir_path.display()
     );
 
-    let hap_doc_path = if base_dir_path.join(LINUX64_DIRNAME).is_dir() {
-        base_dir_path.join(LINUX64_DIRNAME).join(HAP_DOC_PATH)
-    } else if base_dir_path.join(WIN64_DIRNAME).is_dir() {
-        base_dir_path.join(WIN64_DIRNAME).join(HAP_DOC_PATH)
-    } else {
-        bail!("No windows or linux subdirectory for base path");
-    };
+    let hap_doc_path = base_dir_path.join(HOST_DIRNAME).join(HAP_DOC_PATH);
 
     let hap_document =
         Html::parse_document(&String::from_utf8(read(&hap_doc_path).map_err(|e| {
@@ -410,27 +407,14 @@ fn main() -> Result<()> {
             Builder::default()
                 .clang_arg(var(PYTHON3_INCLUDE_ENV).or_else(|e| {
                     println!("cargo:warning=No environment variable {PYTHON3_INCLUDE_ENV} set. Using default include paths: {e}");
-                    if base_dir_path.join(LINUX64_DIRNAME).is_dir() {
-                        subdir(base_dir_path
-                            .join(LINUX64_DIRNAME)
-                            .join("include"))
-                            .and_then(|p| {
-                                p.to_str()
-                                .map(|s| format!("-I{}", s))
-                                .ok_or_else(|| anyhow!("Could not convert path to string"))
-                            })
-                    } else if base_dir_path.join(WIN64_DIRNAME).is_dir() {
-                        subdir(base_dir_path
-                            .join(WIN64_DIRNAME)
-                            .join("include"))
-                            .and_then(|p| {
-                                p.to_str()
-                                .map(|s| format!("-I{}", s))
-                                .ok_or_else(|| anyhow!("Could not convert path to string"))
-                            })
-                    } else {
-                        Err(anyhow!("No {LINUX64_DIRNAME} or {WIN64_DIRNAME} found in base path. It is likely invalid."))
-                    }
+                    subdir(base_dir_path
+                        .join(HOST_DIRNAME)
+                        .join("include"))
+                        .and_then(|p| {
+                            p.to_str()
+                            .map(|s| format!("-I{}", s))
+                            .ok_or_else(|| anyhow!("Could not convert path to string"))
+                        })
                 })?)
                 .clang_arg(format!("-I{}", include_paths_env,))
                 .clang_arg("-fretain-comments-from-system-headers")
@@ -638,6 +622,8 @@ fn main() -> Result<()> {
                 .blocklist_item("Py_MATH_TAU")
                 // Blocklisted because the doc comments cause doc tests to fail
                 .blocklist_function("_PyErr_TrySetFromCause")
+                // Blocklisted because packed and align reprs differ
+                .blocklist_type("__mingw_ldbl_type_t")
                 .bitfield_enum("event_class_flag_t")
                 .bitfield_enum("micro_checkpoint_flags_t")
                 .bitfield_enum("access_t")
@@ -664,27 +650,14 @@ fn main() -> Result<()> {
                 anyhow!("No environment variable {PYTHON3_LDFLAGS_ENV} found: {e}")
             }).or_else(|e| {
                 println!("cargo:warning=No environment variable {INCLUDE_PATHS_ENV} set. Using default include paths: {e}");
-                if base_dir_path.join(LINUX64_DIRNAME).is_dir() {
-                    base_dir_path
-                    .join(LINUX64_DIRNAME)
+                base_dir_path
+                    .join(HOST_DIRNAME)
                     .join("sys")
                     .join("lib")
                     .join("libpython3.so")
                     .to_str()
                     .map(|s| s.to_string())
                     .ok_or_else(|| anyhow!("Could not convert path to string"))
-                } else if base_dir_path.join(WIN64_DIRNAME).is_dir() {
-                    base_dir_path
-                    .join(WIN64_DIRNAME)
-                    .join("sys")
-                    .join("lib")
-                    .join("libpython3.dll")
-                    .to_str()
-                    .map(|s| s.to_string())
-                    .ok_or_else(|| anyhow!("Could not convert path to string"))
-                } else {
-                        Err(anyhow!("No {LINUX64_DIRNAME} or {WIN64_DIRNAME} found in base path. It is likely invalid."))
-                }
             })?);
 
         let libpython_dir = libpython_path
@@ -695,23 +668,12 @@ fn main() -> Result<()> {
         let link_search_paths = var(LDFLAGS_ENV)
             .or_else(|e| {
                 println!("cargo:warning=No environment variable {LDFLAGS_ENV} set. Using default include paths: {e}");
-                if base_dir_path.join(LINUX64_DIRNAME).is_dir() {
-                    base_dir_path
-                    .join(LINUX64_DIRNAME)
+                base_dir_path
+                    .join(HOST_DIRNAME)
                     .join("bin")
                     .to_str()
                     .map(|s| format!("-L{}", s))
                     .ok_or_else(|| anyhow!("Could not convert path to string"))
-                } else if base_dir_path.join(WIN64_DIRNAME).is_dir() {
-                    base_dir_path
-                    .join(WIN64_DIRNAME)
-                    .join("bin")
-                    .to_str()
-                    .map(|s| format!("-L{}", s))
-                    .ok_or_else(|| anyhow!("Could not convert path to string"))
-                } else {
-                        Err(anyhow!("No {LINUX64_DIRNAME} or {WIN64_DIRNAME} found in base path. It is likely invalid."))
-                }
             })?
             .split_whitespace()
             .filter_map(|s| s.starts_with("-L").then_some(s.replace("-L", "")))
@@ -719,11 +681,18 @@ fn main() -> Result<()> {
             .chain(once(libpython_dir))
             .collect::<Vec<_>>();
 
+        #[cfg(not(windows))]
         let libs = var(LIBS_ENV)
             .unwrap_or_else(|e| {
                 println!("cargo:warning=No environment variable {LIBS_ENV} set. Using default include paths: {e}");
                 "-lsimics-common -lvtutils".to_string()
             })
+            .split_whitespace()
+            .filter_map(|s| s.starts_with("-l").then_some(s.replace("-l", "")))
+            .collect::<Vec<_>>();
+
+        #[cfg(windows)]
+        let libs = "-lsimics-common -lvtutils"
             .split_whitespace()
             .filter_map(|s| s.starts_with("-l").then_some(s.replace("-l", "")))
             .collect::<Vec<_>>();
