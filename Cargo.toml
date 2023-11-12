@@ -79,7 +79,7 @@ anyhow = { version = "1.0.75" }
 # libafl_targets = { git = "https://github.com/novafacing/LibAFL", branch = "no-assert-normal" }
 libafl = { git = "https://github.com/novafacing/LibAFL", branch = "cmp-disable-features" }
 libafl_bolts = { git = "https://github.com/novafacing/LibAFL", branch = "cmp-disable-features" }
-libafl_targets = { git = "https://github.com/novafacing/LibAFL", branch = "cmp-disable-features" }
+libafl_targets = { git = "https://github.com/novafacing/LibAFL", branch = "cmp-disable-features", default-features = false, features = ["std"] }
 serde = { version = "1.0.188", features = ["derive"] }
 serde_json = { version = "1.0.107" }
 versions = { version = "5.0.1", features = ["serde"] }
