@@ -16,6 +16,7 @@ env:
   PUBLIC_SIMICS_ISPM_URL_WINDOWS: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/881ee76a-c24d-41c0-af13-5d89b2a857ff/intel-simics-package-manager-1.7.5-win64.exe"
   PUBLIC_SIMICS_PACKAGE_VERSION_1000: "6.0.169"
   MINGW_URL: "https://github.com/brechtsanders/winlibs_mingw/releases/download/13.2.0-16.0.6-11.0.0-ucrt-r1/winlibs-x86_64-posix-seh-gcc-13.2.0-llvm-16.0.6-mingw-w64ucrt-11.0.0-r1.7z"
+  MINGW_VERSION: "13.2.0-16.0.6-11.0.0-ucrt-r1"
 
 jobs:
   build_and_test:
@@ -68,7 +69,7 @@ jobs:
               -xvf "${HOME}/simics/ispm.tar.gz" && \
           ispm settings install-dir "${HOME}/simics" && \
           ispm packages --install-bundle "${HOME}/simics/simics.ispm" \
-              --non-interactive
+              --non-interactive --trust-insecure-packages
 
       - name: Build and Install TSFFS SIMICS Package
         run: |
@@ -101,16 +102,37 @@ jobs:
     name: Build and Test (Windows)
     runs-on: windows-latest
     steps:
+      - name: Add ISPM and MinGW to PATH
+        run: |
+          "C:\MinGW\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+          "C:\ISPM\" | Out-File -FilePath $env:GITHUB_PATH -Append
+
+      - name: Cache MinGW
+        id: cache-mingw
+        uses: actions/cache@v3
+        with:
+          path: C:\MinGW\
+          key: mingw-${{ env.MINGW_VERSION }}
+
       - name: Download and Extract MinGW-w64
+        if: ${{ steps.cache-mingw.outputs.cache-hit != 'true' }}
         run: |
           Invoke-WebRequest -URI ${{ env.MINGW_URL }} -OutFile mingw.7z
           7z x mingw.7z -oC:\MinGW\
-          "C:\MinGW\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
 
       - name: Download and Install Rust
         run: |
           Invoke-WebRequest -URI https://win.rustup.rs/x86_64 -o C:\rustup-init.exe
           C:\rustup-init.exe --default-toolchain nightly --default-host x86_64-pc-windows-gnu -y
+
+      - name: Cache SIMICS
+        id: cache-simics-packages-windows
+        uses: actions/cache@v3
+        with:
+          path:
+            - C:\ISPM\
+            - C:\SIMICS\
+          key: simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
 
       # ispm-installer.exe is a NSIS installer for the elctron build. We want the
       # default options, so we pass /S to install silently:
@@ -119,12 +141,13 @@ jobs:
       # NOTE: We use | Out-Null on the installer command to make powershell wait for it
       # to actually finish instead of forking it to the background
       - name: Download and Install ISPM
+        if: ${{ steps.cache-simics-packages-windows.outputs.cache-hit != 'true' }}
         run: |
           Invoke-WebRequest -URI ${{ env.PUBLIC_SIMICS_ISPM_URL_WINDOWS }} -o C:\ispm-installer.exe
           C:\ispm-installer.exe /S /D='C:\ISPM\' | Out-Null
-          "C:\ISPM\" | Out-File -FilePath $env:GITHUB_PATH -Append
       
       - name: Download and Install SIMICS Packages
+        if: ${{ steps.cache-simics-packages-windows.outputs.cache-hit != 'true' }}
         run: |
           Invoke-WebRequest -URI ${{ env.PUBLIC_SIMICS_PKGS_URL_WINDOWS }} -o C:\simics-6-packages.ispm
           ispm.exe settings install-dir C:\SIMICS\
@@ -139,8 +162,7 @@ jobs:
           ispm.exe projects $(pwd) --create --non-interactive --ignore-existing-files
           ./bin/project-setup.bat --mingw-dir C:\MinGW --ignore-existing-files --force
           cargo -Zscript build.rs
-          ispm.exe packages -i win64/packages/simics-pkg-31337-6.0.0-win64.ispm \
-            --non-interactive --trust-insecure-packages
+          ispm.exe packages -i win64/packages/simics-pkg-31337-6.0.0-win64.ispm --non-interactive --trust-insecure-packages
 
   static_analysis:
     name: Run Static Analysis
@@ -192,7 +214,7 @@ jobs:
               -xvf "${HOME}/simics/ispm.tar.gz" && \
           ispm settings install-dir "${HOME}/simics" && \
           ispm packages --install-bundle "${HOME}/simics/simics.ispm" \
-              --non-interactive
+              --non-interactive --trust-insecure-packages
 
       - name: Build and Install TSFFS SIMICS Package
         run: |
