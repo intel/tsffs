@@ -13,7 +13,7 @@ installing TSFFS into your SIMICS installation on Windows.
   - [Build TSFFS](#build-tsffs)
   - [Test TSFFS](#test-tsffs)
   - [Troubleshooting](#troubleshooting)
-    - [I already have a MinGW installation!](#i-already-have-a-mingw-installation)
+    - [I Already Have A MinGW Installation](#i-already-have-a-mingw-installation)
 
 ## Install System Dependencies
 
@@ -77,7 +77,7 @@ and download:
 * `intel-simics-package-manager-VERSION-win64.exe`
 
 Run the downloaded `.exe` file to install `ispm` using the default settings (for your
-user only).  Next, add ISPM to the `Path` in your environment variables. 
+user only).  Next, add ISPM to the `Path` in your environment variables.
 
 1. Open the `Edit the System Environment Variables` control panel option
 2. Select `Environment Variables`
@@ -140,7 +140,7 @@ cd $env:TEMP\TSFFS-Windows
 
 ## Troubleshooting
 
-### I already have a MinGW installation!
+### I Already Have A MinGW Installation
 
 If you already have a MinGW installation elsewhere, and you do not want to reinstall
 it to `C:\MinGW`, edit `compiler.mk` and point `CC=` and `CXX=` at your MinGW `gcc.exe`
