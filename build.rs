@@ -39,8 +39,10 @@ fn make() -> Result<()> {
     #[cfg(unix)]
     Command::new("make").check()?;
     #[cfg(windows)]
-    Command::new("mingw32-make.exe").check()?;
-
+    Command::new("mingw32-make.exe")
+        .arg("-E")
+        .arg("LDFLAGS=-lws2_32 -loleaut32 -lole32 -lbcrypt -luserenv -lntdll")
+        .check()?;
     Ok(())
 }
 
