@@ -134,6 +134,7 @@ jobs:
       - name: Setup, Build, and Install TSFFS
         run: |
           ispm.exe projects $(pwd) --create --non-interactive --ignore-existing-files
+          ./bin/project-setup.bat --mingw-dir C:\MinGW --ignore-existing-files --force
           cargo -Zscript build.rs
           ispm.exe packages -i win64/packages/simics-pkg-31337-6.0.0-win64.ispm \
             --non-interactive --trust-insecure-packages

@@ -111,6 +111,7 @@ Clone TSFFS to your system (anywhere you like) and build with:
 git clone https://github.com/intel/tsffs
 cd tsffs
 ispm.exe projects $(pwd) --create --non-interactive --ignore-existing-files
+./bin/project-setup.bat --mingw-dir C:\MinGW --ignore-existing-files --force
 cargo -Zscript build.rs
 ```
 
