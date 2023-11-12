@@ -345,7 +345,15 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        docker-build:
+        dockerfile:
+          - Dockerfile
+          - examples/manual-example/Dockerfile
+          - modules/tsffs/tests/targets/minimal-riscv-64/Dockerfile
+          - modules/tsffs/tests/targets/minimal-riscv-64-edk2/Dockerfile
+          - modules/tsffs/tests/targets/minimal-x86_64-breakpoint-edk2/Dockerfile
+          - modules/tsffs/tests/targets/minimal-x86_64-timeout/Dockerfile
+          - modules/tsffs/tests/targets/minimal-x86_64-edk2/Dockerfile
+        include:
           - dockerfile: Dockerfile
             context: .
           - dockerfile: examples/manual-example/Dockerfile
@@ -368,7 +376,7 @@ jobs:
 
       - name: Build Image
         run: |
-          docker build -t container -f ${{ matrix.docker-build.dockerfile }} ${{ matrix.docker-build.context }}
+          docker build -t container -f ${{ matrix.dockerfile }} ${{ matrix.context }}
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
