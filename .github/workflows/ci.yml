@@ -319,201 +319,39 @@ jobs:
           /action/lib/linter.sh || ( echo "❗ [CT222] Super linter found an issue (possibly Hadolint)" && exit 1 )
           echo "✅ [CT222] Hadolint Dockerfile check passed"
 
-  scan_docker_example:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.5
+  scan_containers:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        docker-build:
+          - dockerfile: Dockerfile
+            context: .
+          - dockerfile: examples/manual-example/Dockerfile
+            context: .
+          - dockerfile: modules/tsffs/tests/targets/minimal-riscv-64/Dockerfile
+            context: modules/tsffs/tests/targets/minimal-riscv-64/
+          - dockerfile: modules/tsffs/tests/targets/minimal-riscv-64-edk2/Dockerfile
+            context: modules/tsffs/tests/targets/minimal-riscv-64-edk2/
+          - dockerfile: modules/tsffs/tests/targets/minimal-x86_64-breakpoint-edk2/Dockerfile
+            context: modules/tsffs/tests/targets/minimal-x86_64-breakpoint-edk2/
+          - dockerfile: modules/tsffs/tests/targets/minimal-x86_64-timeout/Dockerfile
+            context: modules/tsffs/tests/targets/minimal-x86_64-timeout/
+          - dockerfile: modules/tsffs/tests/targets/minimal-x86_64-edk2/Dockerfile
+            context: modules/tsffs/tests/targets/minimal-x86_64-edk2/
     steps:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
           lfs: false
-      - name: Build Image
-        run: |
-          /kaniko/executor \
-            --build-arg "http_proxy=${http_proxy}" \
-            --build-arg "HTTP_PROXY=${HTTP_PROXY}" \
-            --build-arg "https_proxy=${https_proxy}" \
-            --build-arg "HTTPS_PROXY=${HTTPS_PROXY}" \
-            --build-arg "no_proxy=${no_proxy}" \
-            --build-arg "NO_PROXY=${NO_PROXY}" \
-            --build-arg "proxy=${HTTP_PROXY}" \
-            --ignore-path=/var/mail \
-            --ignore-path=/var/spool/mail \
-            --ignore-path=/usr/lib/libcrypto.so.3 \
-            --ignore-path=/usr/lib/libssl.so.3 \
-            --snapshot-mode=redo \
-            --use-new-run \
-            --context . \
-            --dockerfile Dockerfile \
-            --no-push \
-            --tar-path /container.tar \
-            --destination=image
-      - name: (T1187, T1186) (N/C) - Test if secrets are stored in Dockerfiles
-        run: |
-          /kaniko/trivy image --input /container.tar
 
-  scan_minimal_riscv_64:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.5
-    runs-on: ubuntu-latest
-    env:
-      DEBIAN_FRONTEND: noninteractive
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-          lfs: false
       - name: Build Image
         run: |
-          /kaniko/executor \
-            --build-arg "http_proxy=${http_proxy}" \
-            --build-arg "HTTP_PROXY=${HTTP_PROXY}" \
-            --build-arg "https_proxy=${https_proxy}" \
-            --build-arg "HTTPS_PROXY=${HTTPS_PROXY}" \
-            --build-arg "no_proxy=${no_proxy}" \
-            --build-arg "NO_PROXY=${NO_PROXY}" \
-            --build-arg "proxy=${HTTP_PROXY}" \
-            --ignore-path=/var/mail \
-            --ignore-path=/var/spool/mail \
-            --ignore-path=/usr/lib/libcrypto.so.3 \
-            --ignore-path=/usr/lib/libssl.so.3 \
-            --snapshot-mode=redo \
-            --use-new-run \
-            --context modules/tsffs/tests/targets/minimal-riscv-64 \
-            --dockerfile modules/tsffs/tests/targets/minimal-riscv-64/Dockerfile \
-            --no-push \
-            --tar-path /container.tar \
-            --destination=image
-      - name: (T1187, T1186) (N/C) - Test if secrets are stored in Dockerfiles
-        run: |
-          /kaniko/trivy image --input /container.tar
+          docker build -t container -f ${{ matrix.docker-build.dockerfile }} ${{ matrix.docker-build.context }}
 
-  scan_minimal_riscv64_edk2:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.5
-    runs-on: ubuntu-latest
-    env:
-      DEBIAN_FRONTEND: noninteractive
-    steps:
-      - uses: actions/checkout@v3
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
         with:
-          fetch-depth: 0
-          lfs: false
-      - name: Build Image
-        run: |
-          /kaniko/executor \
-            --build-arg "http_proxy=${http_proxy}" \
-            --build-arg "HTTP_PROXY=${HTTP_PROXY}" \
-            --build-arg "https_proxy=${https_proxy}" \
-            --build-arg "HTTPS_PROXY=${HTTPS_PROXY}" \
-            --build-arg "no_proxy=${no_proxy}" \
-            --build-arg "NO_PROXY=${NO_PROXY}" \
-            --build-arg "proxy=${HTTP_PROXY}" \
-            --ignore-path=/var/mail \
-            --ignore-path=/var/spool/mail \
-            --ignore-path=/usr/lib/libcrypto.so.3 \
-            --ignore-path=/usr/lib/libssl.so.3 \
-            --snapshot-mode=redo \
-            --use-new-run \
-            --context modules/tsffs/tests/targets/minimal-riscv-64-edk2 \
-            --dockerfile modules/tsffs/tests/targets/minimal-riscv-64-edk2/Dockerfile \
-            --no-push \
-            --tar-path /container.tar \
-            --destination=image
-      - name: (T1187, T1186) (N/C) - Test if secrets are stored in Dockerfiles
-        run: |
-          /kaniko/trivy image --input /container.tar
-
-  scan_minimal_x86_64_breakpoint_edk2:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.5
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-          lfs: false
-      - name: Build Image
-        run: |
-          /kaniko/executor \
-            --build-arg "http_proxy=${http_proxy}" \
-            --build-arg "HTTP_PROXY=${HTTP_PROXY}" \
-            --build-arg "https_proxy=${https_proxy}" \
-            --build-arg "HTTPS_PROXY=${HTTPS_PROXY}" \
-            --build-arg "no_proxy=${no_proxy}" \
-            --build-arg "NO_PROXY=${NO_PROXY}" \
-            --build-arg "proxy=${HTTP_PROXY}" \
-            --ignore-path=/var/mail \
-            --ignore-path=/var/spool/mail \
-            --snapshot-mode=redo \
-            --use-new-run \
-            --context modules/tsffs/tests/targets/minimal-x86_64-breakpoint-edk2 \
-            --dockerfile modules/tsffs/tests/targets/minimal-x86_64-breakpoint-edk2/Dockerfile \
-            --no-push \
-            --tar-path /container.tar \
-            --destination=image
-      - name: (T1187, T1186) (N/C) - Test if secrets are stored in Dockerfiles
-        run: |
-          /kaniko/trivy image --input /container.tar
-
-  scan_minimal_x86_64_edk2:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.5
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-          lfs: false
-      - name: Build Image
-        run: |
-          /kaniko/executor \
-            --build-arg "http_proxy=${http_proxy}" \
-            --build-arg "HTTP_PROXY=${HTTP_PROXY}" \
-            --build-arg "https_proxy=${https_proxy}" \
-            --build-arg "HTTPS_PROXY=${HTTPS_PROXY}" \
-            --build-arg "no_proxy=${no_proxy}" \
-            --build-arg "NO_PROXY=${NO_PROXY}" \
-            --build-arg "proxy=${HTTP_PROXY}" \
-            --ignore-path=/var/mail \
-            --ignore-path=/var/spool/mail \
-            --snapshot-mode=redo \
-            --use-new-run \
-            --context modules/tsffs/tests/targets/minimal-x86_64-edk2 \
-            --dockerfile modules/tsffs/tests/targets/minimal-x86_64-edk2/Dockerfile \
-            --no-push \
-            --tar-path /container.tar \
-            --destination=image
-      - name: (T1187, T1186) (N/C) - Test if secrets are stored in Dockerfiles
-        run: |
-          /kaniko/trivy image --input /container.tar
-
-  scan_minimal_x86_64_timeout:
-    container: novafacing/kaniko-trivy-alpine:kaniko-v1.12.1-debug-trivy-v0.44.1-0.0.5
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-          lfs: false
-      - name: Build Image
-        run: |
-          /kaniko/executor \
-            --build-arg "http_proxy=${http_proxy}" \
-            --build-arg "HTTP_PROXY=${HTTP_PROXY}" \
-            --build-arg "https_proxy=${https_proxy}" \
-            --build-arg "HTTPS_PROXY=${HTTPS_PROXY}" \
-            --build-arg "no_proxy=${no_proxy}" \
-            --build-arg "NO_PROXY=${NO_PROXY}" \
-            --build-arg "proxy=${HTTP_PROXY}" \
-            --ignore-path=/var/mail \
-            --ignore-path=/var/spool/mail \
-            --snapshot-mode=redo \
-            --use-new-run \
-            --context modules/tsffs/tests/targets/minimal-x86_64-timeout \
-            --dockerfile modules/tsffs/tests/targets/minimal-x86_64-timeout/Dockerfile \
-            --no-push \
-            --tar-path /container.tar \
-            --destination=image
-      - name: (T1187, T1186) (N/C) - Test if secrets are stored in Dockerfiles
-        run: |
-          /kaniko/trivy image --input /container.tar
+          image-ref: container 
 
   additional_sdl_checks:
     name: Perform Additional SDL Checks
