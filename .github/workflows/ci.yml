@@ -129,9 +129,9 @@ jobs:
         id: cache-simics-packages-windows
         uses: actions/cache@v3
         with:
-          path:
-            - C:\ISPM\
-            - C:\SIMICS\
+          path: |
+            C:\ISPM\
+            C:\SIMICS\
           key: simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
 
       # ispm-installer.exe is a NSIS installer for the elctron build. We want the
