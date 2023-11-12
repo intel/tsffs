@@ -12,7 +12,7 @@ ENV EDK2_PATH "/edk2"
 RUN apt-get -y update && \
     apt-get -y install autoconf automake autotools-dev curl python3 python3-pip \
     libmpc-dev libmpfr-dev libgmp-dev gawk build-essential bison flex gperf \
-    libtool patchutils bc zlib1g-dev libexpat-dev ninja-build git cmake libglib2.0-dev
+    libtool patchutils bc zlib1g-dev libexpat-dev ninja-build git cmake libglib2.0-dev texinfo
 
 RUN git clone https://github.com/riscv/riscv-gnu-toolchain /riscv-gnu-toolchain
 
