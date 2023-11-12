@@ -112,13 +112,16 @@ jobs:
           Invoke-WebRequest -URI https://win.rustup.rs/x86_64 -o C:\rustup-init.exe
           C:\rustup-init.exe --default-toolchain nightly --default-host x86_64-pc-windows-gnu -y
 
-      # ispm-installer.exe is a NCIS installer for the elctron build. We want the
+      # ispm-installer.exe is a NSIS installer for the elctron build. We want the
       # default options, so we pass /S to install silently:
       # https://nsis.sourceforge.io/Docs/Chapter3.html#installerusage
+      #
+      # NOTE: We use | Out-Null on the installer command to make powershell wait for it
+      # to actually finish instead of forking it to the background
       - name: Download and Install ISPM
         run: |
           Invoke-WebRequest -URI ${{ env.PUBLIC_SIMICS_ISPM_URL_WINDOWS }} -o C:\ispm-installer.exe
-          C:\ispm-installer.exe /S /D='C:\ISPM\'
+          C:\ispm-installer.exe /S /D='C:\ISPM\' | Out-Null
           "C:\ISPM\" | Out-File -FilePath $env:GITHUB_PATH -Append
       
       - name: Download and Install SIMICS Packages
