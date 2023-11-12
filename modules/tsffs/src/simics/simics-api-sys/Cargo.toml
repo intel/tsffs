@@ -17,8 +17,7 @@ version.workspace = true
 
 [build-dependencies]
 anyhow.workspace = true
-# bindgen = { git = "https://github.com/rust-lang/rust-bindgen", branch = "main" }
-bindgen = { path = 'C:\Users\rhart\hub\rust-bindgen\bindgen' }
+bindgen = { git = "https://github.com/novafacing/rust-bindgen", branch = "f16" }
 scraper = "0.18.1"
 walkdir = "2.4.0"
 
