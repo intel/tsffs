@@ -6,7 +6,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get -y update && \
-    yes Y | apt-get -y install \
+    apt-get -y install \
         bash \
         bc \
         build-essential \

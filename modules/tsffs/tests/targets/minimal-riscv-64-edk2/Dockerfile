@@ -10,7 +10,7 @@ ENV EDK2_PATH "/edk2"
 
 # Install riscv64-gcc
 RUN apt-get -y update && \
-    yes Y | apt-get -y install autoconf automake autotools-dev curl python3 python3-pip \
+    apt-get -y install autoconf automake autotools-dev curl python3 python3-pip \
     libmpc-dev libmpfr-dev libgmp-dev gawk build-essential bison flex gperf \
     libtool patchutils bc zlib1g-dev libexpat-dev ninja-build git cmake libglib2.0-dev
 
