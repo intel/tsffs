@@ -104,8 +104,11 @@ jobs:
     steps:
       - name: Add ISPM and MinGW to PATH
         run: |
-          'C:\MinGW\bin' | Out-File -FilePath $env:GITHUB_PATH -Append
-          'C:\ISPM\' | Out-File -FilePath $env:GITHUB_PATH -Append
+          PATH=$env:PATH
+          "C:\MinGW\bin" | Out-File -FilePath $env:GITHUB_PATH
+          "C:\ISPM\" | Out-File -FilePath $env:GITHUB_PATH -Append
+          "$PATH" | Out-FIle -FIlePath $env:GITHUB_PATH -Append
+          echo "Current PATH: " $env:GITHUB_PATH
 
       - name: Cache MinGW
         id: cache-mingw
