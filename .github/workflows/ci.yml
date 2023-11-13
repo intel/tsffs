@@ -150,12 +150,15 @@ jobs:
         run: |
           Invoke-WebRequest -URI ${{ env.PUBLIC_SIMICS_ISPM_URL_WINDOWS }} -o C:\ispm-installer.exe
           C:\ispm-installer.exe /S /D='C:\ISPM\' | Out-Null
+
+      - name: Set SIMICS Install Directory
+        run: |
+          ispm.exe settings install-dir C:\SIMICS\
       
       - name: Download and Install SIMICS Packages
         if: ${{ steps.cache-simics-packages-windows.outputs.cache-hit != 'true' }}
         run: |
           Invoke-WebRequest -URI ${{ env.PUBLIC_SIMICS_PKGS_URL_WINDOWS }} -o C:\simics-6-packages.ispm
-          ispm.exe settings install-dir C:\SIMICS\
           ispm.exe packages --install-bundle C:\simics-6-packages.ispm --non-interactive --trust-insecure-packages
 
       - uses: actions/checkout@v3
