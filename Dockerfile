@@ -104,7 +104,8 @@ RUN ispm projects /workspace/tsffs/ --create --ignore-existing-files --non-inter
     ./build.rs && \
     ispm packages \
         -i /workspace/tsffs/linux64/packages/simics-pkg-31337-6.0.0-linux64.ispm \
-        --non-interactive --trust-insecure-packages
+        --non-interactive --trust-insecure-packages && \
+    make clobber
 
 WORKDIR /workspace/projects/example/
 
