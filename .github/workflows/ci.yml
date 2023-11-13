@@ -66,7 +66,7 @@ jobs:
           curl --noproxy -L -o "${HOME}/simics/simics.ispm" \
               "${{ env.PUBLIC_SIMICS_PKGS_URL }}" && \
           tar -C "${HOME}/simics/ispm" --strip-components=1 \
-              -xvf "${HOME}/simics/ispm.tar.gz" && \
+              -xvf "${HOME}/simics/ispm.tar.gz"
 
       - name: Set up SIMICS Install Directory
         run: |
@@ -227,7 +227,7 @@ jobs:
           curl --noproxy -L -o "${HOME}/simics/simics.ispm" \
               "${{ env.PUBLIC_SIMICS_PKGS_URL }}" && \
           tar -C "${HOME}/simics/ispm" --strip-components=1 \
-              -xvf "${HOME}/simics/ispm.tar.gz" && \
+              -xvf "${HOME}/simics/ispm.tar.gz"
 
       - name: Set up SIMICS Install Directory
         run: |
