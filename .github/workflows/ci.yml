@@ -70,7 +70,7 @@ jobs:
 
       - name: Set up SIMICS Install Directory
         run: |
-          ispm settings install-dir "${HOME}/simics" && \
+          ispm settings install-dir "${HOME}/simics"
 
       - name: Install SIMICS Packages
         if: ${{ steps.cache-simics-packages.outputs.cache-hit != 'true' }}
@@ -231,7 +231,7 @@ jobs:
 
       - name: Set up SIMICS Install Directory
         run: |
-          ispm settings install-dir "${HOME}/simics" && \
+          ispm settings install-dir "${HOME}/simics"
 
       - name: Install SIMICS Packages
         if: ${{ steps.cache-simics-packages.outputs.cache-hit != 'true' }}
