@@ -40,8 +40,7 @@ fn make() -> Result<()> {
     Command::new("make").check()?;
     #[cfg(windows)]
     Command::new("mingw32-make.exe")
-        .arg("-E")
-        .arg("CCLDFLAGS_DYN=-lws2_32 -loleaut32 -lole32 -lbcrypt -luserenv -lntdll")
+        .arg("--eval=CCLDFLAGS_DYN=-lws2_32 -loleaut32 -lole32 -lbcrypt -luserenv -lntdll")
         .check()?;
     Ok(())
 }
