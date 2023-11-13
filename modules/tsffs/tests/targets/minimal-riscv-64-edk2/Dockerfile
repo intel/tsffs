@@ -11,9 +11,9 @@ RUN apt-get -y update && \
     libmpc-dev libmpfr-dev libgmp-dev gawk build-essential bison flex gperf \
     libtool patchutils bc zlib1g-dev libexpat-dev ninja-build git cmake libglib2.0-dev texinfo
 
+WORKDIR  /riscv-gnu-toolchain
 # RUN ./configure --with-arch=rv32gc --with-abi=ilp32d
-RUN git clone https://github.com/riscv/riscv-gnu-toolchain /riscv-gnu-toolchain && \
-    cd /riscv-gnu-toolchain && \
+RUN git clone https://github.com/riscv/riscv-gnu-toolchain . && \
     ./configure --enable-multilib && \
     make && \
     make install && \
