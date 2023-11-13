@@ -15,7 +15,7 @@ use simics::{
         continue_simulation, object_is_processor, quit, run_alone, set_log_level, AsConfObject,
         ConfObject, GenericTransaction, LogLevel,
     },
-    info,
+    info, trace,
 };
 
 impl Tsffs {
@@ -55,6 +55,16 @@ impl Tsffs {
                     }
 
                     self.save_repro_bookmark_if_needed()?;
+                    trace!(
+                        self.as_conf_object(),
+                        "Coverage hash (before): {:#x}",
+                        self.cmplog_hash()
+                    );
+                    trace!(
+                        self.as_conf_object(),
+                        "Cmplog hash (before): {:#x}",
+                        self.cmplog_hash()
+                    );
                 }
                 StopReason::ManualStart(start) => {
                     if !self.have_initial_snapshot() {
@@ -66,31 +76,58 @@ impl Tsffs {
                                 .start_processor()
                                 .ok_or_else(|| anyhow!("No start processor"))?;
                             (
-                                start_processor.get_manual_start_buffer(*start.buffer())?,
+                                if let Some(buffer) = start.buffer() {
+                                    Some(start_processor.get_manual_start_buffer(*buffer)?)
+                                } else {
+                                    None
+                                },
                                 match start.size() {
                                     ManualStartSize::MaximumSize(s) => {
-                                        StartSize::builder().initial_size(*s).build()
+                                        Some(StartSize::builder().initial_size(*s).build())
                                     }
                                     ManualStartSize::SizeAddress(a) => {
-                                        start_processor.get_manual_start_size(*a)?
+                                        Some(start_processor.get_manual_start_size(*a)?)
                                     }
+                                    ManualStartSize::NoSize => None,
                                 },
                             )
                         };
 
-                        *self.start_buffer_mut() = Some(start_buffer);
-                        *self.start_size_mut() = Some(start_size);
+                        *self.start_buffer_mut() = start_buffer;
+                        *self.start_size_mut() = start_size;
                         *self.start_time_mut() = SystemTime::now();
                         *self.coverage_enabled_mut() = true;
                         self.save_initial_snapshot()?;
-                        self.get_and_write_testcase()?;
+                        if self.start_buffer().is_some() && self.start_size().is_some() {
+                            self.get_and_write_testcase()?;
+                        }
                         self.post_timeout_event()?;
                     }
 
                     self.save_repro_bookmark_if_needed()?;
+                    trace!(
+                        self.as_conf_object(),
+                        "Coverage hash (before): {:#x}",
+                        self.cmplog_hash()
+                    );
+                    trace!(
+                        self.as_conf_object(),
+                        "Cmplog hash (before): {:#x}",
+                        self.cmplog_hash()
+                    );
                 }
                 StopReason::MagicStop(_) | StopReason::ManualStop(_) => {
                     self.cancel_timeout_event()?;
+                    trace!(
+                        self.as_conf_object(),
+                        "Coverage hash (after): {:#x}",
+                        self.cmplog_hash()
+                    );
+                    trace!(
+                        self.as_conf_object(),
+                        "Cmplog hash (after): {:#x}",
+                        self.cmplog_hash()
+                    );
 
                     if *self.repro_bookmark_set() {
                         *self.stopped_for_repro_mut() = true;
@@ -139,11 +176,24 @@ impl Tsffs {
 
                     self.restore_initial_snapshot()?;
 
-                    self.get_and_write_testcase()?;
+                    if self.start_buffer().is_some() && self.start_size().is_some() {
+                        self.get_and_write_testcase()?;
+                    }
+
                     self.post_timeout_event()?;
                 }
                 StopReason::Solution(solution) => {
                     self.cancel_timeout_event()?;
+                    trace!(
+                        self.as_conf_object(),
+                        "Coverage hash (after): {:#x}",
+                        self.cmplog_hash()
+                    );
+                    trace!(
+                        self.as_conf_object(),
+                        "Cmplog hash (after): {:#x}",
+                        self.cmplog_hash()
+                    );
 
                     if *self.repro_bookmark_set() {
                         *self.stopped_for_repro_mut() = true;
@@ -197,7 +247,9 @@ impl Tsffs {
 
                     self.restore_initial_snapshot()?;
 
-                    self.get_and_write_testcase()?;
+                    if self.start_buffer().is_some() && self.start_size().is_some() {
+                        self.get_and_write_testcase()?;
+                    }
                     self.post_timeout_event()?;
                 }
             }

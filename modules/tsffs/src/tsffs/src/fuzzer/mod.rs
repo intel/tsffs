@@ -33,7 +33,7 @@ use libafl_bolts::{
     AsMutSlice, AsSlice,
 };
 use libafl_targets::{AFLppCmpLogObserver, AFLppCmplogTracingStage};
-use simics::{api::AsConfObject, debug};
+use simics::{api::AsConfObject, debug, info};
 use std::{
     cell::RefCell, fmt::Debug, slice::from_raw_parts_mut, sync::mpsc::channel, thread::spawn,
     time::Duration,
@@ -76,6 +76,12 @@ impl Tsffs {
 
     /// Start the fuzzing thread.
     pub fn start_fuzzer_thread(&mut self) -> Result<()> {
+        if self.fuzz_thread().is_some() {
+            info!(self.as_conf_object(), "Fuzz thread already started but start_fuzzer_thread called. Returning without error.");
+            // We can only start the thread once
+            return Ok(());
+        }
+
         debug!(self.as_conf_object_mut(), "Starting fuzzer thread");
 
         let (tx, orx) = channel::<ExitKind>();

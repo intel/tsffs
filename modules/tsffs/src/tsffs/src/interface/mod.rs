@@ -14,7 +14,7 @@ use simics::{
         continue_simulation, get_processor_number, lookup_file, run_alone, sys::attr_value_t,
         AsConfObject, AttrValue, AttrValueType, BreakpointId, ConfObject, GenericAddress,
     },
-    debug, Result,
+    debug, trace, Result,
 };
 use simics_macro::interface_impl;
 use std::{
@@ -146,7 +146,6 @@ impl Tsffs {
     /// * `testcase_address` - The address to write test cases to
     /// * `size_address` - The address to write the size of each test case to (optional,
     /// `max_size` must be given if not provided).
-    /// * `virt` - Whether the provided addresses should be interpreted as virtual or physical
     ///
     /// If your target cannot take advantage of the written-back size pointer, use
     /// `start_with_max_size` instead.
@@ -172,9 +171,9 @@ impl Tsffs {
         Ok(())
     }
 
-    /// Interface method to manually start the fuzzing loop by taking a snapshot, saving the
-    /// testcase and size address and resuming execution of the simulation. This method does
-    /// not need to be called if `set_start_on_harness` is enabled.
+    /// Interface method to manually start the fuzzing loop by taking a snapshot, saving
+    /// the testcase and maximum testcase size and resuming execution of the simulation.
+    /// This method does not need to be called if `set_start_on_harness` is enabled.
     ///
     /// # Arguments
     ///
@@ -182,7 +181,10 @@ impl Tsffs {
     /// * `testcase_address` - The address to write test cases to
     /// * `maximum_size` - The maximum size of the test case. The actual size of each test case will
     ///   not be written back to the target software
-    /// * `virt` - Whether the provided addresses should be interpreted as virtual or physical
+    ///
+    /// If your target does not have a buffer readily available to receive testcase data or
+    /// you simply want to use it directly in some other way (e.g. by sending it to a network
+    /// port), use `start_without_buffer`
     pub fn start_with_maximum_size(
         &mut self,
         cpu: *mut ConfObject,
@@ -203,6 +205,43 @@ impl Tsffs {
         ))?;
 
         Ok(())
+    }
+
+    /// Interface method to manually start the fuzzing loop by taking a snapshot, saving
+    /// the testcase and maximum testcase size and resuming execution of the simulation.
+    /// This method does not need to be called if `set_start_on_harness` is enabled.
+    ///
+    /// # Arguments
+    ///
+    /// * `cpu` - The CPU to initially trace and post timeout events on. This should typically be
+    ///   the CPU that is running the code receiving the input this function returns.
+    ///
+    /// # Return Value
+    ///
+    /// Returns an [`AttrValue`] list of integers. Integers are `u8` sized, in the range 0-255.
+    pub fn start_without_buffer(&mut self, cpu: *mut ConfObject) -> Result<AttrValue> {
+        if !self.have_initial_snapshot() {
+            // Start the fuzzer thread early so we can get a testcase
+            self.start_fuzzer_thread()?;
+        }
+        let testcase = self.get_testcase()?;
+        *self.cmplog_enabled_mut() = *testcase.cmplog();
+        trace!(
+            self.as_conf_object(),
+            "Coverage hash (before): {:#x}",
+            self.cmplog_hash()
+        );
+        trace!(
+            self.as_conf_object(),
+            "Cmplog hash (before): {:#x}",
+            self.cmplog_hash()
+        );
+
+        self.stop_simulation(StopReason::ManualStart(
+            ManualStart::builder().processor(cpu).build(),
+        ))?;
+
+        testcase.testcase().clone().try_into()
     }
 
     /// Interface method to manually signal to stop a testcase execution. When this

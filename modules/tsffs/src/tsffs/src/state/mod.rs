@@ -15,6 +15,7 @@ use typed_builder::TypedBuilder;
 pub enum ManualStartSize {
     MaximumSize(u64),
     SizeAddress(u64),
+    NoSize,
 }
 
 #[derive(TypedBuilder, Getters, Serialize, Deserialize, Debug, Clone)]
@@ -23,7 +24,9 @@ pub struct ManualStart {
     #[builder(default = null_mut())]
     #[serde(skip, default = "null_mut")]
     processor: *mut ConfObject,
-    buffer: u64,
+    #[builder(default, setter(into, strip_option))]
+    buffer: Option<u64>,
+    #[builder(default = ManualStartSize::NoSize)]
     size: ManualStartSize,
 }
 

@@ -412,7 +412,10 @@ impl ArchitectureOperations for X86ArchitectureOperations {
         let mut testcase = testcase.to_vec();
         // NOTE: We have to handle both riscv64 and riscv32 here
 
-        testcase.truncate((*size.initial_size()) as usize);
+        let initial_size =
+            size.initial_size()
+                .ok_or_else(|| anyhow!("Expected initial size for start"))? as usize;
+        testcase.truncate(initial_size);
 
         testcase.chunks(4).try_for_each(|c| {
             trace!(

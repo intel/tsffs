@@ -8,7 +8,7 @@ use self::{
     x86_64::X86_64ArchitectureOperations,
 };
 use crate::{tracer::TraceEntry, traits::TracerDisassembler, StartBuffer, StartSize, CLASS_NAME};
-use anyhow::{bail, Error, Result};
+use anyhow::{anyhow, bail, Error, Result};
 use raw_cstr::AsRawCstr;
 use simics::{
     api::{
@@ -241,8 +241,11 @@ pub trait ArchitectureOperations {
         // NOTE: We have to handle both riscv64 and riscv32 here
         let addr_size =
             self.processor_info_v2().get_logical_address_width()? as usize / u8::BITS as usize;
+        let initial_size =
+            size.initial_size()
+                .ok_or_else(|| anyhow!("Expected initial size for start"))? as usize;
 
-        testcase.truncate((*size.initial_size()) as usize);
+        testcase.truncate(initial_size);
 
         testcase
             .chunks(addr_size)

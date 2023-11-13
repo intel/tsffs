@@ -37,7 +37,7 @@ use configuration::Configuration;
 use fuzzer::{ShutdownMessage, Testcase};
 use getters::Getters;
 use libafl::prelude::ExitKind;
-use libafl_bolts::prelude::OwnedMutSlice;
+use libafl_bolts::{prelude::OwnedMutSlice, AsSlice};
 use libafl_targets::AFLppCmpLogMap;
 use serde::{Deserialize, Serialize};
 #[cfg(simics_experimentatl_api_snapshots)]
@@ -46,7 +46,7 @@ use simics::{
     api::{
         break_simulation, discard_future, free_attribute, get_class, get_interface,
         get_processor_number, object_clock, restore_micro_checkpoint, run_command,
-        save_micro_checkpoint, AsConfObject, Class, ConfObject, CoreBreakpointMemopHap,
+        save_micro_checkpoint, AsConfObject, AttrValue, Class, ConfObject, CoreBreakpointMemopHap,
         CoreExceptionHap, CoreMagicInstructionHap, CoreSimulationStoppedHap,
         CpuInstrumentationSubscribeInterface, Event, EventClassFlag, HapHandle,
         MicroCheckpointFlags,
@@ -58,7 +58,9 @@ use state::StopReason;
 use std::{
     alloc::{alloc_zeroed, Layout},
     collections::HashMap,
+    mem::size_of,
     ptr::null_mut,
+    slice::from_raw_parts,
     sync::mpsc::{Receiver, Sender},
     thread::JoinHandle,
     time::SystemTime,
@@ -94,13 +96,14 @@ pub struct StartBuffer {
 
 #[derive(TypedBuilder, Getters, Serialize, Deserialize, Clone, Debug)]
 pub struct StartSize {
-    #[builder(default, setter(strip_option))]
+    #[builder(default, setter(into, strip_option))]
     /// The address of the magic start size value, and whether the address that translated
     /// to this physical address was virtual. The address must be physical.
     pub physical_address: Option<(u64, bool)>,
+    #[builder(default, setter(into, strip_option))]
     // NOTE: There is no need to save the size fo the size, it must be pointer-sized.
     /// The initial size of the magic start size
-    pub initial_size: u64,
+    pub initial_size: Option<u64>,
 }
 impl Tsffs {
     pub const COVERAGE_MAP_SIZE: usize = 128 * 1024;
@@ -390,9 +393,12 @@ impl Tsffs {
 }
 
 impl Tsffs {
+    /// Get a testcase from the fuzzer and write it to memory along with, optionally, a size
     pub fn get_and_write_testcase(&mut self) -> Result<()> {
         let testcase = self.get_testcase()?;
+
         *self.cmplog_enabled_mut() = *testcase.cmplog();
+
         // TODO: Fix cloning - refcell?
         let start_buffer = self
             .start_buffer()
@@ -407,6 +413,7 @@ impl Tsffs {
         let start_processor = self
             .start_processor()
             .ok_or_else(|| anyhow!("No start processor"))?;
+
         start_processor.write_start(testcase.testcase(), &start_buffer, &start_size)?;
 
         Ok(())
@@ -470,5 +477,18 @@ impl Tsffs {
                 .cancel_time(start_processor_cpu, start_processor_clock)?;
         }
         Ok(())
+    }
+
+    pub fn coverage_hash(&self) -> u32 {
+        crc32fast::hash(self.coverage_map().as_slice())
+    }
+
+    pub fn cmplog_hash(&self) -> u32 {
+        crc32fast::hash(unsafe {
+            from_raw_parts(
+                *self.aflpp_cmp_map_ptr() as *const u8,
+                size_of::<AFLppCmpLogMap>(),
+            )
+        })
     }
 }

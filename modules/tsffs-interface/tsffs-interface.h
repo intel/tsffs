@@ -18,6 +18,7 @@ SIM_INTERFACE(tsffs) {
     void (*set_stop_magic_number)(conf_object_t * obj, int64 magic_number);
     void (*start)(conf_object_t * obj, conf_object_t * cpu, generic_address_t testcase_address, generic_address_t size_address);
     void (*start_with_maximum_size)(conf_object_t * obj, conf_object_t * cpu, generic_address_t testcase_address, uint32 maximum_size);
+    attr_value_t (*start_without_buffer)(conf_object_t * obj, conf_object_t * cpu);
     void (*stop)(conf_object_t * obj);
     void (*solution)(conf_object_t * obj, uint64 id, char * message);
     void (*set_use_snapshots)(conf_object_t * obj, bool use_snapshots);

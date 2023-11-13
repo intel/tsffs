@@ -13,6 +13,6 @@ rule copy
     command = cp $in $out
 
 build test.o: cc test.c
-    cflags = -O0  -g
+    cflags = -O0  -g -gcodeview -gdwarf-5 -gembed-source -fstandalone-debug
 build test.efi: link test.o
-    ldflags = -debug
+    ldflags = -debug -debugtype:pdata

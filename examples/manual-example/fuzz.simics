@@ -13,6 +13,7 @@ load-module tsffs
 @tsffs.iface.tsffs.add_exception_solution(14)
 @tsffs.iface.tsffs.set_generate_random_corpus(True)
 @tsffs.iface.tsffs.set_use_snapshots(False)
+@tsffs.iface.tsffs.tokenize_executable("%simics%/test.efi")
 
 # load the target
 load-target "qsp-x86/uefi-shell" namespace = qsp machine:hardware:storage:disk0:image = "minimal_boot_disk.craff"
