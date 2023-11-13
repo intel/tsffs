@@ -83,10 +83,10 @@ RUN mkdir -p /workspace/simics/ispm/ && \
     mkdir -p /workspace/simics-6-packages/ && \
     tar -xvf /workspace/simics/simics.ispm -C /workspace/simics-6-packages/ && \
     ispm packages \
-        -i /workspace/simics-6-packages/simics-pkg-1000-6.0.169-win64.ispm \
-        -i /workspace/simics-6-packages/simics-pkg-1030-6.0.4-win64.ispm \
-        -i /workspace/simics-6-packages/simics-pkg-2096-6.0.70-win64.ispm \
-        -i /workspace/simics-6-packages/simics-pkg-8112-6.0.17-win64.ispm \
+        -i /workspace/simics-6-packages/simics-pkg-1000-6.0.169-linux64.ispm \
+        -i /workspace/simics-6-packages/simics-pkg-1030-6.0.4-linux64.ispm \
+        -i /workspace/simics-6-packages/simics-pkg-2096-6.0.70-linux64.ispm \
+        -i /workspace/simics-6-packages/simics-pkg-8112-6.0.17-linux64.ispm \
         --non-interactive --trust-insecure-packages && \
     rm /workspace/simics/ispm.tar.gz /workspace/simics/simics.ispm && \
     rm -rf /workspace/simics-6-packages/
