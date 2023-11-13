@@ -53,8 +53,8 @@ jobs:
         id: cache-simics-packages
         uses: actions/cache@v3
         with:
-          path: ${HOME}/simics
-          key: simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
+          path: ~/simics
+          key: simics-linux-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
 
       - name: Install SIMICS (External)
         if: ${{ steps.cache-simics-packages.outputs.cache-hit != 'true' }}
@@ -67,9 +67,17 @@ jobs:
               "${{ env.PUBLIC_SIMICS_PKGS_URL }}" && \
           tar -C "${HOME}/simics/ispm" --strip-components=1 \
               -xvf "${HOME}/simics/ispm.tar.gz" && \
+
+      - name: Set up SIMICS Install Directory
+        run: |
           ispm settings install-dir "${HOME}/simics" && \
+
+      - name: Install SIMICS Packages
+        if: ${{ steps.cache-simics-packages.outputs.cache-hit != 'true' }}
+        run: |
           ispm packages --install-bundle "${HOME}/simics/simics.ispm" \
               --non-interactive --trust-insecure-packages
+
 
       - name: Build and Install TSFFS SIMICS Package
         run: |
@@ -137,7 +145,7 @@ jobs:
           path: |
             C:\ISPM\
             C:\SIMICS\
-          key: simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
+          key: simics-windows-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
 
       # ispm-installer.exe is a NSIS installer for the elctron build. We want the
       # default options, so we pass /S to install silently:
@@ -206,8 +214,8 @@ jobs:
         id: cache-simics-packages
         uses: actions/cache@v3
         with:
-          path: ${HOME}/simics
-          key: simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
+          path: ~/simics
+          key: simics-linux-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
 
       - name: Install SIMICS (External)
         if: ${{ steps.cache-simics-packages.outputs.cache-hit != 'true' }}
@@ -220,7 +228,14 @@ jobs:
               "${{ env.PUBLIC_SIMICS_PKGS_URL }}" && \
           tar -C "${HOME}/simics/ispm" --strip-components=1 \
               -xvf "${HOME}/simics/ispm.tar.gz" && \
+
+      - name: Set up SIMICS Install Directory
+        run: |
           ispm settings install-dir "${HOME}/simics" && \
+
+      - name: Install SIMICS Packages
+        if: ${{ steps.cache-simics-packages.outputs.cache-hit != 'true' }}
+        run: |
           ispm packages --install-bundle "${HOME}/simics/simics.ispm" \
               --non-interactive --trust-insecure-packages
 
@@ -354,22 +369,24 @@ jobs:
     strategy:
       matrix:
         dockerfile:
-          - Dockerfile
-          - examples/manual-example/Dockerfile
-          - modules/tsffs/tests/targets/minimal-riscv-64/Dockerfile
-          - modules/tsffs/tests/targets/minimal-riscv-64-edk2/Dockerfile
+          # NOTE: These containers exceed the GitHub size limit and must be scanned manually
+          # - Dockerfile
+          # - examples/manual-example/Dockerfile
+          # - modules/tsffs/tests/targets/minimal-riscv-64/Dockerfile
+          # - modules/tsffs/tests/targets/minimal-riscv-64-edk2/Dockerfile
           - modules/tsffs/tests/targets/minimal-x86_64-breakpoint-edk2/Dockerfile
           - modules/tsffs/tests/targets/minimal-x86_64-timeout/Dockerfile
           - modules/tsffs/tests/targets/minimal-x86_64-edk2/Dockerfile
         include:
-          - dockerfile: Dockerfile
-            context: .
-          - dockerfile: examples/manual-example/Dockerfile
-            context: .
-          - dockerfile: modules/tsffs/tests/targets/minimal-riscv-64/Dockerfile
-            context: modules/tsffs/tests/targets/minimal-riscv-64/
-          - dockerfile: modules/tsffs/tests/targets/minimal-riscv-64-edk2/Dockerfile
-            context: modules/tsffs/tests/targets/minimal-riscv-64-edk2/
+          # NOTE: These containers exceed the GitHub size limit and must be scanned manually
+          # - dockerfile: Dockerfile
+          #   context: .
+          # - dockerfile: examples/manual-example/Dockerfile
+          #   context: .
+          # - dockerfile: modules/tsffs/tests/targets/minimal-riscv-64/Dockerfile
+          #   context: modules/tsffs/tests/targets/minimal-riscv-64/
+          # - dockerfile: modules/tsffs/tests/targets/minimal-riscv-64-edk2/Dockerfile
+          #   context: modules/tsffs/tests/targets/minimal-riscv-64-edk2/
           - dockerfile: modules/tsffs/tests/targets/minimal-x86_64-breakpoint-edk2/Dockerfile
             context: modules/tsffs/tests/targets/minimal-x86_64-breakpoint-edk2/
           - dockerfile: modules/tsffs/tests/targets/minimal-x86_64-timeout/Dockerfile
