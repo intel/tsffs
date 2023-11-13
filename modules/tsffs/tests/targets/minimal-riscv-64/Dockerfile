@@ -24,24 +24,22 @@ RUN git clone \
 
 WORKDIR /buildroot
 
+# Build user-space test program
+RUN mkdir -p /test/usr/
 COPY test-kernel-modules /test/test-kernel-modules/
-
 COPY simics_simple_riscv_defconfig configs/simics_simple_riscv_defconfig
+COPY test.c /test/usr/test.c
+COPY test-mod.c /test/usr/test-mod.c
+COPY test-mod-userspace.c /test/usr/test-mod-userspace.c
+COPY tsffs-gcc-riscv64.h /test/usr/tsffs-gcc-riscv64.h
 
 # Build Linux, Linux Kernel Modules & RootFS
 RUN make BR2_EXTERNAL=/test/test-kernel-modules/ simics_simple_riscv_defconfig && \
     make && \
-    tar -C output/images -czvf images.tar.gz Image fw_jump.elf rootfs.ext2
-
-# Build user-space test program
-RUN mkdir -p /test/usr/
-
-COPY test.c /test/usr/test.c
-COPY test-mod.c /test/usr/test-mod.c
-COPY test-mod-userspace.c /test/usr/test-mod-userspace.c
-
-COPY tsffs-gcc-riscv64.h /test/usr/tsffs-gcc-riscv64.h
-
-RUN /buildroot/output/host/bin/riscv64-buildroot-linux-gnu-gcc -o /test/usr/test /test/usr/test.c && \
+    tar -C output/images -czvf images.tar.gz Image fw_jump.elf rootfs.ext2 && \
+    cp images.tar.gz /test/ && \
+    /buildroot/output/host/bin/riscv64-buildroot-linux-gnu-gcc -o /test/usr/test /test/usr/test.c && \
     /buildroot/output/host/bin/riscv64-buildroot-linux-gnu-gcc -o /test/usr/test-mod /test/usr/test-mod.c && \
-    /buildroot/output/host/bin/riscv64-buildroot-linux-gnu-gcc -o /test/usr/test-mod-userspace /test/usr/test-mod-userspace.c
+    /buildroot/output/host/bin/riscv64-buildroot-linux-gnu-gcc -o /test/usr/test-mod-userspace /test/usr/test-mod-userspace.c && \
+    make clean
+

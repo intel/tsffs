@@ -1,12 +1,9 @@
 # hadolint global ignore=DL3008
-FROM ghcr.io/tianocore/containers/ubuntu-22-build:a0dd931
+FROM ghcr.io/tianocore/containers/ubuntu-22-build:a0dd931 AS riscv-gnu-toolchain-edk2
+
 ENV DEBIAN_FRONTEND=noninteractive
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-
-ENV EDK2_REPO_URL "https://github.com/tianocore/edk2.git"
-ENV EDK2_REPO_HASH "a671a14e63fdaa9490e5c61cf11346416f1d1463"
-ENV EDK2_PATH "/edk2"
 
 # Install riscv64-gcc
 RUN apt-get -y update && \
@@ -14,17 +11,26 @@ RUN apt-get -y update && \
     libmpc-dev libmpfr-dev libgmp-dev gawk build-essential bison flex gperf \
     libtool patchutils bc zlib1g-dev libexpat-dev ninja-build git cmake libglib2.0-dev texinfo
 
-RUN git clone https://github.com/riscv/riscv-gnu-toolchain /riscv-gnu-toolchain
-
-WORKDIR /riscv-gnu-toolchain
-
-# 32-bit
 # RUN ./configure --with-arch=rv32gc --with-abi=ilp32d
-RUN ./configure --enable-multilib && \
+RUN git clone https://github.com/riscv/riscv-gnu-toolchain /riscv-gnu-toolchain && \
+    cd /riscv-gnu-toolchain && \
+    ./configure --enable-multilib && \
     make && \
-    make install
+    make install && \
+    rm -rf /riscv-gnu-toolchain
+
+
+FROM riscv-gnu-toolchain-edk2 AS riscv-edk2
+
+ENV DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
 
 ENV GCC_RISCV64_PREFIX="riscv64-unknown-elf-"
+ENV EDK2_REPO_URL "https://github.com/tianocore/edk2.git"
+ENV EDK2_REPO_HASH "a671a14e63fdaa9490e5c61cf11346416f1d1463"
+ENV EDK2_PATH "/edk2"
+
     
 RUN git clone "${EDK2_REPO_URL}" "${EDK2_PATH}" && \
     git -C "${EDK2_PATH}" checkout "${EDK2_REPO_HASH}" && \
