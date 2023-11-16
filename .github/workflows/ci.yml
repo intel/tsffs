@@ -28,7 +28,7 @@ jobs:
       - name: Add ISPM to PATH
         run: |
           echo "/simics/ispm/" >> "${GITHUB_PATH}"
-          echo "/root/.cargo/bin/" >> "${GITHUB_PATH}"
+          echo "${HOME}/.cargo/bin/" >> "${GITHUB_PATH}"
 
       - name: Install Dependencies
         shell: bash
