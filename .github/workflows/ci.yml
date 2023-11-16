@@ -57,8 +57,8 @@ jobs:
         shell: bash
         run: |
           mkdir -p "/simics/ispm/" && \
-          aim "${PUBLIC_SIMICS_ISPM_URL}" /simics/ispm.tar.gz && \
-          aim "${PUBLIC_SIMICS_PKGS_URL}" /simics/simics.ispm  && \
+          "${HOME}/.cargo/bin/aim" "${PUBLIC_SIMICS_ISPM_URL}" /simics/ispm.tar.gz && \
+          "${HOME}/.cargo/bin/aim" "${PUBLIC_SIMICS_PKGS_URL}" /simics/simics.ispm  && \
           tar -C "/simics/ispm" --strip-components=1 \
               -xvf "/simics/ispm.tar.gz"
 
