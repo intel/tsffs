@@ -77,13 +77,13 @@ jobs:
         if: github.event_name == 'push'
         run: |
           git clone https://github.com/${{ github.event.repository }}.git .
-          git checkout ${{ github.sha }}
+          git checkout ${{ github.ref_name }}
 
       - name: Checkout Repository
         if: github.event_name == 'pull_request'
         run: |
           git clone https://github.com/${{ github.event.pull_request.head.repo.owner.login }}/${{ github.event.pull_request.head.repo.name }}.git .
-          git checkout ${{ github.sha }}
+          git checkout ${{ github.ref_name }}
 
       - name: Build and Install TSFFS SIMICS Package
         run: |
