@@ -44,7 +44,7 @@ jobs:
           /tmp/rustup-init -y  --default-toolchain nightly && \
           source "$HOME/.cargo/env" && \
           cargo install aim && \
-          aim https://ftp.gnu.org/gnu/make/make-4.4.tar.gz /tmp/make-4.4.tar.gz && \
+          aim http://ftp.gnu.org/gnu/make/make-4.4.tar.gz /tmp/make-4.4.tar.gz && \
           tar -C /tmp/ -xvf /tmp/make-4.4.tar.gz && \
           cd /tmp/make-4.4/ && \
           ./configure && \
