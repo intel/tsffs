@@ -75,9 +75,7 @@ jobs:
           ispm packages --install-bundle "/simics/simics.ispm" \
                     --non-interactive --trust-insecure-packages
 
-      - uses: actions/checkout@v2
-        with:
-          lfs: true
+      - uses: actions/checkout@v1
 
       - name: Build and Install TSFFS SIMICS Package
         run: |
