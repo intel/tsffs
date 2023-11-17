@@ -90,7 +90,7 @@ jobs:
           ispm projects "$(pwd)" --create --ignore-existing-files \
             --non-interactive
           bin/project-setup --force
-          cargo build.rs
+          cargo -Zscript build.rs
 
   build_and_test:
     name: Build and Test
