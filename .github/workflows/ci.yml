@@ -77,9 +77,11 @@ jobs:
         run: |
           if [ -n "${{ github.event.pull_request }}" ]; then
             # Workflow is running for a pull request
+            echo git clone https://github.com/${{ github.repository_owner }}/${{ github.repository_name }}.git .
             git clone https://github.com/${{ github.repository_owner }}/${{ github.repository_name }}.git .
           else
             # Workflow is running for a push event
+            echo git clone https://github.com/${{ github.repository }}.git .
             git clone https://github.com/${{ github.repository }}.git .
           fi
 
