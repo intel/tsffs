@@ -3,6 +3,21 @@
 TSFFS provides a set of common options that are usable no matter what type of harnessing
 is desired.
 
+- [Common Options](#common-options)
+  - [Solution Configuration](#solution-configuration)
+    - [Setting the Timeout](#setting-the-timeout)
+    - [Setting Exception Solutions](#setting-exception-solutions)
+    - [Setting Breakpoint Solutions](#setting-breakpoint-solutions)
+  - [Fuzzer Settings](#fuzzer-settings)
+    - [Using Snapshots](#using-snapshots)
+    - [Using CMPLog](#using-cmplog)
+    - [Set Corpus and Solutions Directory](#set-corpus-and-solutions-directory)
+    - [Enable Random Corpus Generation](#enable-random-corpus-generation)
+    - [Set an Iteration Limit](#set-an-iteration-limit)
+    - [Adding Tokens From Target Software](#adding-tokens-from-target-software)
+    - [Setting an Architecture Hint](#setting-an-architecture-hint)
+    - [Adding a Trace Processor](#adding-a-trace-processor)
+
 ## Solution Configuration
 
 TSFFS can be configured to treat various events as
@@ -223,7 +238,7 @@ tsffs.iface.tsffs.add_architecture_hint(qsp.mb.cpu0.core[0][0], "i386")
 ### Adding a Trace Processor
 
 By default, only the processor core that either executes the start harness or is passed
-to the [manual start API](#manual-startstop) is traced during execution. When fuzzing
+to the [manual start API](../harnessing/black-box.md) is traced during execution. When fuzzing
 code running on multiple cores, the additional cores can be added with:
 
 ```python

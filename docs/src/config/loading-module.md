@@ -3,6 +3,11 @@
 Before TSFFS can be used, the module must be loaded, an instance of the fuzzer must be
 created and instantiated, and the fuzzer must be configured for your target.
 
+- [Loading \& Initializing TSFFS](#loading--initializing-tsffs)
+  - [Loading the Module](#loading-the-module)
+  - [Initializing the Fuzzer](#initializing-the-fuzzer)
+  - [Configuring the Fuzzer](#configuring-the-fuzzer)
+
 ## Loading the Module
 
 The TSFFS module can be loaded by running (in a SIMICS script):

@@ -2,7 +2,7 @@
 
 This guide will walk you through installing build dependencies, building, and installing
 TSFFS into your SIMICS installation on Windows. All console commands in this document
-should be run in PowerShell (the default shell on recent Windows versions). 
+should be run in PowerShell (the default shell on recent Windows versions).
 
 - [Setup (Windows)](#setup-windows)
   - [Install System Dependencies](#install-system-dependencies)

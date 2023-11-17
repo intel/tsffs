@@ -5,6 +5,10 @@ the [Linux](../setup/linux.md#build-tsffs) and
 [Windows](../setup/windows.md#build-tsffs) documents), TSFFS will be available to add
 when creating projects.
 
+- [Installing In Projects](#installing-in-projects)
+  - [In New Projects](#in-new-projects)
+  - [In Existing Projects](#in-existing-projects)
+
 ## In New Projects
 
 Projects are created using `ispm` (Intel Simics Package Manager). The command below
@@ -13,7 +17,8 @@ Platform [QSP] x86), 8112 (QSP CPU), and 31337 (TSFFS), each with the latest ver
 except SIMICS base, which here is specified as 6.0.169. All that is required to create
 a new project with the TSFFS package included is to add it after the `--create` flag
 to `ispm`. Using the `-latest` version is recommended for simplicity, but if you are a
-TSFFS developer and need to test specific versions the version of any package may be specified in the same way as the SIMICS base package here.
+TSFFS developer and need to test specific versions the version of any package may be
+specified in the same way as the SIMICS base package here.
 
 ```sh
 ispm projects /path/to/new-project --create 1000-6.0.169 2096-latest 8112-latest 31337-latest

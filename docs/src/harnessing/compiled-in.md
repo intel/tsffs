@@ -8,17 +8,18 @@
 
 ## Using Provided Headers
 
-The TSFFS project provides harnessing headers for each supported combination of architecture and
-build toolchain. These headers can be found in the `harness` directory in the repository.
+The TSFFS project provides harnessing headers for each supported combination of
+architecture and build toolchain. These headers can be found in the `harness` directory
+in the repository.
 
 Each header provides the macros `HARNESS_START` and `HARNESS_STOP`.
 
 
-`HARNESS_START(testcase_ptr, size_ptr)` takes two arguments, a buffer for the
-fuzzer to write testcases into each fuzzing iteration and a pointer to a pointer-sized
-variable, which the fuzzer will write the size of each testcase to each fuzzing iteration.
-The variable pointed to by `size_pointer` should be initially equal to the maximum size
-of a testcase, typically the size of the buffer passed as the first argument.
+`HARNESS_START(testcase_ptr, size_ptr)` takes two arguments, a buffer for the fuzzer to
+write testcases into each fuzzing iteration and a pointer to a pointer-sized variable,
+which the fuzzer will write the size of each testcase to each fuzzing iteration.  The
+variable pointed to by `size_pointer` should be initially equal to the maximum size of a
+testcase, typically the size of the buffer passed as the first argument.
 
 `HARNESS_STOP` takes no arguments.
 

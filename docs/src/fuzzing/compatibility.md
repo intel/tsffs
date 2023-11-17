@@ -1,4 +1,4 @@
-# Compatibility 
+# Compatibility
 
 There are a small number of requirements for the target software for this fuzzer to
 support it as a fuzz target. If your project meets the requirements here, it is likely

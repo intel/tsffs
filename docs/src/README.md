@@ -75,12 +75,12 @@ fuzzing.
 
 Some terminology in this document might be unfamiliar, or used in an unfamiliar way.
 
-- _Solution_: Any condition that is a *goal* of a fuzzing campaign. Most fuzzing
+- *Solution*: Any condition that is a *goal* of a fuzzing campaign. Most fuzzing
   campaigns look for crashes or hangs in the target software, both of which are types of
   solutions. However, at the firmware level, other conditions may also be considered
   exceptional, and are considered solutions as well. For example, some firmware is only
   permitted to write to specific memory regions, and a write outside of them is
   problematic but will not cause a crash in the traditional sense.
-- _Target Software_: Because TSFFS is capable of fuzzing the full stack of software from
+- *Target Software*: Because TSFFS is capable of fuzzing the full stack of software from
   initial firmware through user-space applications, any software under test by the
   fuzzer is referred to as *target software*.

@@ -6,6 +6,12 @@ This guide will walk you through local installation of the fuzzer instead. This 
 recommended for both internal users and external users who want to move beyond the
 initial examples.
 
+- [Setup (Linux)](#setup-linux)
+  - [Install Local Dependencies](#install-local-dependencies)
+  - [Install Rust](#install-rust)
+  - [Install SIMICS](#install-simics)
+  - [Build TSFFS](#build-tsffs)
+
 ## Install Local Dependencies
 
 The TSFFS fuzzer module, its example cases, and the SIMICS installation process require
