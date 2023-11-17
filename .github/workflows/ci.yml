@@ -19,6 +19,74 @@ env:
   MINGW_VERSION: "13.2.0-16.0.6-11.0.0-ucrt-r1"
 
 jobs:
+  build_fedora:
+    # Builds using 
+    name: Build Fedora
+    container: fedora:20
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add ISPM to PATH
+        run: |
+          echo "/simics/ispm/" >> "${GITHUB_PATH}"
+          echo "${HOME}/.cargo/bin/" >> "${GITHUB_PATH}"
+          echo "${HOME}/n/bin/" >> "${GITHUB_PATH}"
+
+      - name: Install Dependencies
+        shell: bash
+        run: |
+          yum -y update && \
+          yum -y distribution-synchronization && \
+          yum -y install \
+          clang clang-devel cmake curl dosfstools gcc git glibc-devel glibc-devel.i686 \
+          glibc-static glibc-static.i686 llvm llvm-libs llvm-static make mtools ninja-build \
+          openssl openssl-libs python3 python3-pip 'perl(IPC::Cmd)' && \
+          curl http://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init -o /tmp/rustup-init && \
+          chmod +x /tmp/rustup-init && \
+          /tmp/rustup-init -y  --default-toolchain nightly && \
+          source "$HOME/.cargo/env" && \
+          cargo install aim && \
+          aim https://bit.ly/n-install /tmp/n-install && \
+          chmod +x /tmp/n-install && \
+          /tmp/n-install -y 14.17.3
+
+      - name: Cache SIMICS Dependencies
+        id: cache-simics-packages-builder
+        uses: actions/cache@v3
+        with:
+          path: /simics
+          key: simics-linux-builder-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
+
+      - name: Download SIMICS
+        if: ${{ steps.cache-simics-packages-builder.outputs.cache-hit != 'true' }}
+        shell: bash
+        run: |
+          mkdir -p "/simics/ispm/" && \
+          aim "${PUBLIC_SIMICS_ISPM_URL}" /simics/ispm.tar.gz && \
+          aim "${PUBLIC_SIMICS_PKGS_URL}" /simics/simics.ispm  && \
+          tar -C "/simics/ispm" --strip-components=1 \
+              -xvf "/simics/ispm.tar.gz"
+
+      - name: Set up SIMICS Install Directory
+        run: |
+          ispm settings install-dir "/simics"
+
+      - name: Install SIMICS Packages
+        if: ${{ steps.cache-simics-packages-builder.outputs.cache-hit != 'true' }}
+        run: |
+          ispm packages --install-bundle "/simics/simics.ispm" \
+                    --non-interactive --trust-insecure-packages
+
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Build and Install TSFFS SIMICS Package
+        run: |
+          ispm projects "$(pwd)" --create --ignore-existing-files \
+            --non-interactive
+          bin/project-setup --force
+          ./build.rs
+
   build_and_test:
     name: Build and Test
     container: fedora:38
@@ -40,7 +108,7 @@ jobs:
             llvm-static make mesa-libgbm mtools ninja-build openssl \
             openssl-devel openssl-libs python3 python3-pip yamllint
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           lfs: true
 
@@ -169,7 +237,7 @@ jobs:
           Invoke-WebRequest -URI ${{ env.PUBLIC_SIMICS_PKGS_URL_WINDOWS }} -o C:\simics-6-packages.ispm
           ispm.exe packages --install-bundle C:\simics-6-packages.ispm --non-interactive --trust-insecure-packages
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           lfs: true
 
@@ -201,7 +269,7 @@ jobs:
             llvm-static make mesa-libgbm mtools ninja-build openssl \
             openssl-devel openssl-libs python3 python3-pip yamllint
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           lfs: true
 
@@ -280,7 +348,7 @@ jobs:
             llvm-static make mesa-libgbm mtools ninja-build openssl \
             openssl-devel openssl-libs python3 python3-pip yamllint
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           lfs: true
 
@@ -337,7 +405,7 @@ jobs:
     container: github/super-linter
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           lfs: false
@@ -394,7 +462,7 @@ jobs:
           - dockerfile: modules/tsffs/tests/targets/minimal-x86_64-edk2/Dockerfile
             context: modules/tsffs/tests/targets/minimal-x86_64-edk2/
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           lfs: false
@@ -424,7 +492,7 @@ jobs:
             llvm-static make mesa-libgbm mtools ninja-build openssl \
             openssl-devel openssl-libs python3 python3-pip yamllint
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           lfs: false
       - uses: dtolnay/rust-toolchain@nightly
