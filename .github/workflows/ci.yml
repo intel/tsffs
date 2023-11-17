@@ -36,7 +36,7 @@ jobs:
           yum -y update && \
           yum -y distribution-synchronization && \
           yum -y install \
-          cmake curl dosfstools gcc git glibc-devel glibc-devel.i686 \
+          curl dosfstools gcc git glibc-devel glibc-devel.i686 \
           glibc-static glibc-static.i686 make mtools ninja-build \
           openssl openssl-libs python3 python3-pip 'perl(IPC::Cmd)' && \
           curl -L http://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init -o /tmp/rustup-init && \
@@ -49,7 +49,10 @@ jobs:
           cd /tmp/make-4.4/ && \
           ./configure && \
           make && \
-          make install
+          make install && \
+          aim https://github.com/Kitware/CMake/releases/download/v3.28.0-rc5/cmake-3.28.0-rc5-linux-x86_64.sh /tmp/cmake-3.28.0-rc5-linux-x86_64.sh && \
+          chmod +x /tmp/cmake-3.28.0-rc5-linux-x86_64.sh && \
+          /tmp/cmake-3.28.0-rc5-linux-x86_64.sh --skip-license
 
       - name: Cache LLVM
         id: cache-builder-llvm
@@ -62,7 +65,7 @@ jobs:
         if: ${{ steps.cache-builder-llvm.outputs.cache-hit != 'true' }}
         run: |
           aim https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.1/llvm-project-17.0.1.src.tar.xz /tmp/llvm-project-17.0.1.src.tar.xz && \
-          tar -C /tmp/ -xvf /tmp/llvm-project-17.0.1.src.tar.xz && \
+          tar -C /tmp/ -xvf /tmp/llvm-project-17.0.1.src.tar.xz > /dev/null && \
           mkdir /tmp/llvm-project-17.0.1.src/build/ && \
           cmake -B /tmp/llvm-project-17.0.1.src/build/ -S /tmp/llvm-project-17.0.1.src/llvm/ -DLLVM_ENABLE_PROJECTS=clang -DCMAKE_BUILD_TYPE=Release -G "Unix Makefiles" -DLLVM_TARGETS_TO_BUILD=X86 && \
           make -C /tmp/llvm-project-17.0.1.src/build/
