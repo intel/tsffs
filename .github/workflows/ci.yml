@@ -40,7 +40,7 @@ jobs:
           clang clang-devel cmake curl dosfstools gcc git glibc-devel glibc-devel.i686 \
           glibc-static glibc-static.i686 llvm llvm-libs llvm-static make mtools ninja-build \
           openssl openssl-libs python3 python3-pip 'perl(IPC::Cmd)' && \
-          curl http://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init -o /tmp/rustup-init && \
+          curl -L http://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init -o /tmp/rustup-init && \
           chmod +x /tmp/rustup-init && \
           /tmp/rustup-init -y  --default-toolchain nightly && \
           source "$HOME/.cargo/env" && \
