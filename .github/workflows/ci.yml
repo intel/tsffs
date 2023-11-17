@@ -47,7 +47,7 @@ jobs:
           cargo install aim && \
           aim https://bit.ly/n-install /tmp/n-install && \
           chmod +x /tmp/n-install && \
-          /tmp/n-install -y 14
+          /tmp/n-install -y 14.17.3
 
       - name: Cache SIMICS Dependencies
         id: cache-simics-packages-builder
