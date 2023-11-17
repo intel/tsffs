@@ -74,8 +74,9 @@ jobs:
         run: |
           ispm packages --install-bundle "/simics/simics.ispm" \
                     --non-interactive --trust-insecure-packages
-
-      - uses: actions/checkout@v1
+      - name: Checkout Repository
+        run: |
+          git clone https://github.com/${{ github.repository }}.git .
 
       - name: Build and Install TSFFS SIMICS Package
         run: |
