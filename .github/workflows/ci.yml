@@ -36,8 +36,8 @@ jobs:
           yum -y update && \
           yum -y distribution-synchronization && \
           yum -y install \
-          clang clang-devel cmake curl dosfstools gcc git glibc-devel glibc-devel.i686 \
-          glibc-static glibc-static.i686 llvm llvm-libs llvm-static make mtools ninja-build \
+          cmake curl dosfstools gcc git glibc-devel glibc-devel.i686 \
+          glibc-static glibc-static.i686 make mtools ninja-build \
           openssl openssl-libs python3 python3-pip 'perl(IPC::Cmd)' && \
           curl -L http://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init -o /tmp/rustup-init && \
           chmod +x /tmp/rustup-init && \
@@ -50,6 +50,26 @@ jobs:
           ./configure && \
           make && \
           make install
+
+      - name: Cache LLVM
+        id: cache-builder-llvm
+        uses: actions/cache@v3
+        with:
+          path: /tmp/llvm-project-17.0.1.src/build/
+          key: cache-builder-llvm-17.0.1
+
+      - name: Build Clang+LLVM
+        if: ${{ steps.cache-builder-llvm.outputs.cache-hit != 'true' }}
+        run: |
+          aim https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.1/llvm-project-17.0.1.src.tar.xz /tmp/llvm-project-17.0.1.src.tar.xz && \
+          tar -C /tmp/ -xvf /tmp/llvm-project-17.0.1.src.tar.xz && \
+          mkdir /tmp/llvm-project-17.0.1.src/build/ && \
+          cmake -B /tmp/llvm-project-17.0.1.src/build/ -S /tmp/llvm-project-17.0.1.src/llvm/ -DLLVM_ENABLE_PROJECTS=clang -DCMAKE_BUILD_TYPE=Release -G "Unix Makefiles" -DLLVM_TARGETS_TO_BUILD=X86 && \
+          make -C /tmp/llvm-project-17.0.1.src/build/
+
+      - name: Install Clang+LLVM
+        run: |
+          make -C /tmp/llvm-project-17.0.1.src/build/ install
 
       - name: Cache SIMICS Dependencies
         id: cache-simics-packages-builder
