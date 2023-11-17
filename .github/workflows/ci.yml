@@ -26,7 +26,7 @@ jobs:
     steps:
       - name: Add ISPM to PATH
         run: |
-          { echo "/simics/ispm/"; echo "${HOME}/.cargo/bin/"; echo "${HOME}/n/bin/" } \
+          { echo "/simics/ispm/"; echo "${HOME}/.cargo/bin/"; echo "${HOME}/n/bin/"; } \
             >> "${GITHUB_PATH}"
 
       - name: Install Dependencies
@@ -76,6 +76,7 @@ jobs:
       - name: Checkout Repository
         run: |
           git clone https://github.com/${{ github.repository }}.git .
+          git checkout ${{ github.sha }}
 
       - name: Build and Install TSFFS SIMICS Package
         run: |
