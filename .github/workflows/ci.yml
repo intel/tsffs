@@ -36,12 +36,12 @@ jobs:
           yum -y update && \
           yum -y distribution-synchronization && \
           yum -y install \
-          curl dosfstools gcc gcc-c++ git glibc-devel glibc-devel.i686 \
+          coreutils curl dosfstools gcc gcc-c++ git glibc-devel glibc-devel.i686 \
           glibc-static glibc-static.i686 libxml2 make mtools ninja-build \
-          openssl openssl-libs python3 python3-pip 'perl(IPC::Cmd)' zlib && \
+          openssl openssl-libs python3 python3-pip 'perl(IPC::Cmd)' which zlib && \
           curl -L http://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init -o /tmp/rustup-init && \
-          alternatives --install /usr/bin/python python $(which python3) 100 && \
-          alternatives --install /bin/python python $(which python3) 100 && \
+          alternatives --install /usr/bin/python python "$(which python3)" 100 && \
+          alternatives --install /bin/python python "$(which python3)" 100 && \
           chmod +x /tmp/rustup-init && \
           /tmp/rustup-init -y  --default-toolchain nightly && \
           source "$HOME/.cargo/env" && \
