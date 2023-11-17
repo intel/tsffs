@@ -29,6 +29,7 @@ jobs:
           { echo "/simics/ispm/"; echo "${HOME}/.cargo/bin/"; echo "${HOME}/n/bin/"; } \
             >> "${GITHUB_PATH}"
 
+      # NOTE: make <4.1 not supported, so we build it from source
       - name: Install Dependencies
         shell: bash
         run: |
@@ -43,9 +44,12 @@ jobs:
           /tmp/rustup-init -y  --default-toolchain nightly && \
           source "$HOME/.cargo/env" && \
           cargo install aim && \
-          aim https://bit.ly/n-install /tmp/n-install && \
-          chmod +x /tmp/n-install && \
-          /tmp/n-install -y 14.17.3
+          aim https://ftp.gnu.org/gnu/make/make-4.4.tar.gz /tmp/make-4.4.tar.gz && \
+          tar -C /tmp/ -xvf /tmp/make-4.4.tar.gz && \
+          cd /tmp/make-4.4/ && \
+          ./configure && \
+          make && \
+          make install
 
       - name: Cache SIMICS Dependencies
         id: cache-simics-packages-builder
