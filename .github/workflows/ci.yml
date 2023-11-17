@@ -76,7 +76,7 @@ jobs:
       - name: Checkout Repository
         if: github.event_name == 'push'
         run: |
-          git clone https://github.com/${{ github.repository_owner }}/${{ github.repository_name }}.git .
+          git clone https://github.com/${{ github.event.repository }}.git .
           git checkout ${{ github.sha }}
 
       - name: Checkout Repository

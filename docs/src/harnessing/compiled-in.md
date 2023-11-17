@@ -124,7 +124,7 @@ tsffs.iface.tsffs.set_start_magic_number(4)
 ```
 
 With this runtime configuration, the first harness will be ignored, and only the second
-set of harness calls will be used. 
+set of harness calls will be used.
 
 
 ## Troubleshooting

@@ -8,7 +8,7 @@ that is appropriate.
 
 Harnessing in this way can be done using the api. Note that the API method still takes
 a CPU object. When called, the initial snapshot is still captured in the same way as
-with other [black box](black-box.md) harnessing methods. 
+with other [black box](black-box.md) harnessing methods.
 
 ```python
 tsffs.iface.tsffs.start_without_buffer(cpu)

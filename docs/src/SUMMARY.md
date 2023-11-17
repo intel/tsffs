@@ -2,7 +2,7 @@
 
 [Introduction](README.md)
 
-# User Guide
+## User Guide
 
 - [Setting Up](setup/README.md)
   - [Using Docker](setup/docker.md)
@@ -24,7 +24,7 @@
   - [Optimizing For Fuzzing](fuzzing/optimizing-for-fuzzing.md)
   - [Analyzing Results](fuzzing/analyzing-results.md)
 
-# Reference Guide
+## Reference Guide
 
 - [Internals](internals/README.md)
   - [Build Internals](internals/build.md)
