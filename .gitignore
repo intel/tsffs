@@ -9,6 +9,7 @@ config.mk
 .modcache
 simics*
 GNUmakefile*
+*~
 
 
 .cargo/
