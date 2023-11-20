@@ -65,7 +65,7 @@ use std::{
     thread::JoinHandle,
     time::SystemTime,
 };
-use tracer::tsffs::on_instruction_after;
+use tracer::tsffs::{on_instruction_after, on_instruction_before};
 use typed_builder::TypedBuilder;
 use util::Utils;
 
@@ -305,6 +305,11 @@ impl Tsffs {
             cpu_interface.register_instruction_after_cb(
                 null_mut(),
                 Some(on_instruction_after),
+                self as *mut Self as *mut _,
+            )?;
+            cpu_interface.register_instruction_before_cb(
+                null_mut(),
+                Some(on_instruction_before),
                 self as *mut Self as *mut _,
             )?;
         }

@@ -286,6 +286,25 @@ impl Tsffs {
             }
         }
 
+        Ok(())
+    }
+
+    #[ffi(arg(rest), arg(self))]
+    /// Callback after each instruction executed
+    ///
+    /// # Arguments
+    ///
+    /// * `obj`
+    /// * `cpu` - The processor the instruction is being executed by
+    /// * `handle` - An opaque handle to the instruction being executed
+    pub fn on_instruction_before(
+        &mut self,
+        _obj: *mut ConfObject,
+        cpu: *mut ConfObject,
+        handle: *mut instruction_handle_t,
+    ) -> Result<()> {
+        let processor_number = get_processor_number(cpu)?;
+
         if *self.configuration().cmplog() && *self.cmplog_enabled() {
             if let Some(arch) = self.processors_mut().get_mut(&processor_number) {
                 match arch.trace_cmp(handle) {
