@@ -254,14 +254,14 @@ impl Tsffs {
 #[ffi(from_ptr, expect, self_ty = "*mut c_void")]
 impl Tsffs {
     #[ffi(arg(rest), arg(self))]
-    /// Callback before each instruction executed
+    /// Callback after each instruction executed
     ///
     /// # Arguments
     ///
     /// * `obj`
     /// * `cpu` - The processor the instruction is being executed by
     /// * `handle` - An opaque handle to the instruction being executed
-    pub fn on_instruction_before(
+    pub fn on_instruction_after(
         &mut self,
         _obj: *mut ConfObject,
         cpu: *mut ConfObject,

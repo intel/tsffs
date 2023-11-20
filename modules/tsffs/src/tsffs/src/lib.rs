@@ -65,7 +65,7 @@ use std::{
     thread::JoinHandle,
     time::SystemTime,
 };
-use tracer::tsffs::on_instruction_before;
+use tracer::tsffs::on_instruction_after;
 use typed_builder::TypedBuilder;
 use util::Utils;
 
@@ -302,9 +302,9 @@ impl Tsffs {
                 };
             self.processors_mut().insert(cpu_number, architecture);
             let mut cpu_interface: CpuInstrumentationSubscribeInterface = get_interface(cpu)?;
-            cpu_interface.register_instruction_before_cb(
+            cpu_interface.register_instruction_after_cb(
                 null_mut(),
-                Some(on_instruction_before),
+                Some(on_instruction_after),
                 self as *mut Self as *mut _,
             )?;
         }
