@@ -918,7 +918,8 @@ impl TracerDisassembler for Disassembler {
         if let Some(last) = self.last {
             if matches!(
                 last.opcode(),
-                Opcode::JA
+                Opcode::JMP
+                    | Opcode::JA
                     | Opcode::JB
                     | Opcode::JRCXZ
                     | Opcode::JG
@@ -945,19 +946,36 @@ impl TracerDisassembler for Disassembler {
         false
     }
 
-    /// Check if an instruction is a call instruction
+    /// Check if an instruction is a call instruction (loosely defined, this includes interrupts)
     fn last_was_call(&self) -> bool {
         if let Some(last) = self.last {
-            return matches!(last.opcode(), Opcode::CALL | Opcode::CALLF);
+            return matches!(
+                last.opcode(),
+                Opcode::CALL
+                    | Opcode::CALLF
+                    | Opcode::INT
+                    | Opcode::INTO
+                    | Opcode::SYSCALL
+                    | Opcode::SYSENTER
+            );
         }
 
         false
     }
 
-    /// Check if an instruction is a ret instruction
+    /// Check if an instruction is a ret instruction (loosely defined, this includes interrupts)
     fn last_was_ret(&self) -> bool {
         if let Some(last) = self.last {
-            return matches!(last.opcode(), Opcode::RETF | Opcode::RETURN);
+            return matches!(
+                last.opcode(),
+                Opcode::RETF
+                    | Opcode::RETURN
+                    | Opcode::IRET
+                    | Opcode::IRETD
+                    | Opcode::IRETQ
+                    | Opcode::SYSRET
+                    | Opcode::SYSEXIT
+            );
         }
 
         false
