@@ -9,7 +9,8 @@ use std::env::home_dir;
 // NOTE: Use of deprecated home_dir is ok because the "incorrect" windows behavior is actually
 // correct for SIMICS' use case.
 use anyhow::{anyhow, Result};
-use std::path::PathBuf;
+use command_ext::CommandExtCheck;
+use std::{path::PathBuf, process::Command};
 
 pub mod data;
 
@@ -39,6 +40,7 @@ impl Internal {
         return Ok(home_dir.join(".config").join(Self::PRODUCT_NAME));
 
         #[cfg(windows)]
+        // This comes from the ispm source, it's hardcoded there and we hardcode it here
         return Ok(home_dir
             .join("AppData")
             .join("Local")
@@ -49,6 +51,15 @@ impl Internal {
     /// Retrieve the path to the ISPM configuration file
     pub fn cfg_file_path() -> Result<PathBuf> {
         Ok(Self::app_data_path()?.join(Self::CFG_FILENAME))
+    }
+
+    pub fn is_internal() -> Result<bool> {
+        const IS_INTERNAL_MSG: &str = "This is an Intel internal release";
+
+        Ok(
+            String::from_utf8(Command::new(ISPM_NAME).arg("help").check()?.stdout)?
+                .contains(IS_INTERNAL_MSG),
+        )
     }
 }
 
@@ -201,6 +212,7 @@ pub mod ispm {
         }
 
         #[derive(TypedBuilder, Getters, Clone, Debug)]
+        #[getters(mutable)]
         pub struct InstallOptions {
             #[builder(default, setter(into))]
             /// Packages to install by number/version

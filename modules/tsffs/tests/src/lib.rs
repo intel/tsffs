@@ -3,7 +3,7 @@
 
 //! SIMICS test utilities for test environment setup and configuration
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, ensure, Result};
 use getters::Getters;
 use ispm_wrapper::{
     data::ProjectPackage,
@@ -13,15 +13,85 @@ use ispm_wrapper::{
         projects::CreateOptions,
         GlobalOptions,
     },
+    Internal,
 };
 use std::{
     collections::HashSet,
-    fs::{create_dir_all, read_dir, write},
+    fs::{copy, create_dir_all, read_dir, write},
     path::{Path, PathBuf},
 };
 use typed_builder::TypedBuilder;
+use walkdir::WalkDir;
 
 include!(concat!(env!("OUT_DIR"), "/tests.rs"));
+
+/// Copy the contents of one directory to another, recursively, overwriting files if they exist but
+/// without replacing directories or their contents if they already exist
+pub fn copy_dir_contents<P>(src_dir: P, dst_dir: P) -> Result<()>
+where
+    P: AsRef<Path>,
+{
+    let src_dir = src_dir.as_ref().to_path_buf();
+    ensure!(src_dir.is_dir(), "Source must be a directory");
+    let dst_dir = dst_dir.as_ref().to_path_buf();
+    if !dst_dir.is_dir() {
+        create_dir_all(&dst_dir)?;
+    }
+
+    for (src, dst) in WalkDir::new(&src_dir)
+        .into_iter()
+        .filter_map(|p| p.ok())
+        .filter_map(|p| {
+            let src = p.path().to_path_buf();
+            match src.strip_prefix(&src_dir) {
+                Ok(suffix) => Some((src.clone(), dst_dir.join(suffix))),
+                Err(_) => None,
+            }
+        })
+    {
+        if src.is_dir() {
+            create_dir_all(&dst)?;
+        } else if src.is_file() {
+            copy(&src, &dst)?;
+        }
+    }
+    Ok(())
+}
+
+/// Abstract install procedure for public and internal ISPM
+pub fn local_or_remote_pkg_install(mut options: InstallOptions) -> Result<()> {
+    if Internal::is_internal()? {
+        ispm::packages::install(&options)?;
+    } else {
+        let installed = ispm::packages::list(options.global())?;
+
+        for package in options.packages() {
+            let Some(installed) = installed.installed_packages() else {
+                bail!("Did not get any installed packages");
+            };
+            let Some(available) = installed.iter().find(|p| {
+                p.package_number() == package.package_number() && p.version() == package.version()
+            }) else {
+                bail!("Did not find package {package:?}");
+            };
+            let Some(path) = available.paths().first() else {
+                bail!("No paths for available package {available:?}");
+            };
+            let Some(install_dir) = options.global().install_dir() else {
+                bail!("No install dir for global options {options:?}");
+            };
+
+            copy_dir_contents(install_dir, path)?;
+        }
+
+        // Clear the remote packages to install, we can install local paths no problem
+        options.packages_mut().clear();
+
+        ispm::packages::install(&options)?;
+    }
+
+    Ok(())
+}
 
 #[derive(Debug)]
 pub enum Architecture {
@@ -150,8 +220,8 @@ impl TestEnv {
         .map_err(|e| eprintln!("Not uninstalling package: {}", e))
         .ok();
 
-        ispm::packages::install(
-            &InstallOptions::builder()
+        local_or_remote_pkg_install(
+            InstallOptions::builder()
                 .package_paths([PathBuf::from(cargo_manifest_dir.as_ref())
                     .join("../../../")
                     .join("linux64")
@@ -204,8 +274,8 @@ impl TestEnv {
         // Install nonrepo packages which do not use a possibly-provided package repo
         if !spec.extra_nonrepo_packages.is_empty() {
             println!("installing extra nonrepo packages");
-            ispm::packages::install(
-                &InstallOptions::builder()
+            local_or_remote_pkg_install(
+                InstallOptions::builder()
                     .global(
                         GlobalOptions::builder()
                             .install_dir(&simics_home_dir)
@@ -232,8 +302,8 @@ impl TestEnv {
         if let Some(package_repo) = &spec.package_repo {
             if !packages.is_empty() {
                 println!("Installing extra and arch packages with package repo");
-                ispm::packages::install(
-                    &InstallOptions::builder()
+                local_or_remote_pkg_install(
+                    InstallOptions::builder()
                         .packages(packages.clone())
                         .global(
                             GlobalOptions::builder()
@@ -247,8 +317,8 @@ impl TestEnv {
             }
         } else if !packages.is_empty() {
             println!("Installing extra and arch packages without package repo");
-            ispm::packages::install(
-                &InstallOptions::builder()
+            local_or_remote_pkg_install(
+                InstallOptions::builder()
                     .packages(packages.clone())
                     .global(
                         GlobalOptions::builder()
@@ -265,8 +335,8 @@ impl TestEnv {
         if spec.install_all {
             if let Some(package_repo) = &spec.package_repo {
                 println!("Installing all packages without package repo");
-                ispm::packages::install(
-                    &InstallOptions::builder()
+                local_or_remote_pkg_install(
+                    InstallOptions::builder()
                         .install_all(spec.install_all)
                         .global(
                             GlobalOptions::builder()

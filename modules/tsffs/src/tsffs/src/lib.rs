@@ -46,7 +46,7 @@ use simics::{
     api::{
         break_simulation, discard_future, free_attribute, get_class, get_interface,
         get_processor_number, object_clock, restore_micro_checkpoint, run_command,
-        save_micro_checkpoint, AsConfObject, AttrValue, Class, ConfObject, CoreBreakpointMemopHap,
+        save_micro_checkpoint, AsConfObject, Class, ConfObject, CoreBreakpointMemopHap,
         CoreExceptionHap, CoreMagicInstructionHap, CoreSimulationStoppedHap,
         CpuInstrumentationSubscribeInterface, Event, EventClassFlag, HapHandle,
         MicroCheckpointFlags,
