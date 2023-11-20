@@ -12,9 +12,9 @@ use ffi_macro::ffi;
 use simics::{
     api::{
         continue_simulation, get_processor_number, lookup_file, run_alone, sys::attr_value_t,
-        AsConfObject, AttrValue, AttrValueType, BreakpointId, ConfObject, GenericAddress,
+        version, AsConfObject, AttrValue, AttrValueType, BreakpointId, ConfObject, GenericAddress,
     },
-    debug, trace, Result,
+    debug, error, trace, Result,
 };
 use simics_macro::interface_impl;
 use std::{
@@ -276,10 +276,26 @@ impl Tsffs {
 
     /// Interface method to set the fuzzer to use the experimental snapshots interface
     /// instead of the micro checkpoints interface for snapshot save and restore operations
-    pub fn set_use_snapshots(&mut self, use_snapshots: bool) {
+    pub fn set_use_snapshots(&mut self, use_snapshots: bool) -> Result<()> {
         debug!(self.as_conf_object(), "use_snapshots({use_snapshots})");
 
-        *self.configuration_mut().use_snapshots_mut() = use_snapshots;
+        #[cfg(not(simics_experimental_api_snapshots))]
+        {}
+
+        if cfg!(simics_experimental_api_snapshots) {
+            *self.configuration_mut().use_snapshots_mut() = use_snapshots;
+        } else if !cfg!(simics_experimental_api_snapshots) && use_snapshots {
+            let version = version()?;
+
+            error!(
+                self.as_conf_object(),
+                "Not enabling snapshots, API is unsupported for target SIMICS version {version}",
+            );
+        } else {
+            // NOTE: We don't report an error if snapshots are turned off when they are unsupported
+        }
+
+        Ok(())
     }
 
     /// Interface method to set the execution timeout in seconds

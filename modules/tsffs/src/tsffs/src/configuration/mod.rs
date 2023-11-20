@@ -23,6 +23,10 @@ impl Configuration {
     pub const DEFAULT_SOLUTIONS_DIRECTORY_NAME: &'static str = "solutions";
     pub const DEFAULT_EXECUTOR_TIMEOUT: u64 = 60;
     pub const DEFAULT_INITIAL_RANDOM_CORPUS_SIZE: usize = 8;
+    #[cfg(simics_experimental_api_snapshots)]
+    pub const DEFAULT_USE_SNAPSHOTS: bool = true;
+    #[cfg(not(simics_experimental_api_snapshots))]
+    pub const DEFAULT_USE_SNAPSHOTS: bool = false;
 }
 
 #[derive(TypedBuilder, Getters, Debug, Clone, TryIntoAttrValueTypeDict)]
@@ -48,7 +52,7 @@ pub struct Configuration {
     start_on_harness: bool,
     #[builder(default = false)]
     stop_on_harness: bool,
-    #[builder(default = false)]
+    #[builder(default = Configuration::DEFAULT_USE_SNAPSHOTS)]
     use_snapshots: bool,
     #[builder(default = Configuration::DEFAULT_MAGIC_START)]
     magic_start: i64,
