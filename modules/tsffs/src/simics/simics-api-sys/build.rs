@@ -27,7 +27,7 @@
 //! - `LDFLAGS=-L/home/user/simics/simics-6.0.174/linux64/bin -z noexecstack -z relro -z now`
 //! - `LIBS=-lsimics-common -lvtutils`
 
-use anyhow::{anyhow, ensure, Result};
+use anyhow::{anyhow, bail, ensure, Result};
 use bindgen::{
     callbacks::{MacroParsingBehavior, ParseCallbacks},
     AliasVariation, Builder, EnumVariation, FieldVisibilityKind, MacroTypeVariation,
@@ -47,7 +47,8 @@ use walkdir::WalkDir;
 // NOTE: The following environment variables are set under the SIMICS package make system
 //
 // PYTHON: The path to SIMICS's mini-python
-// PYTHON3_LDFLAGS: The path to SIMICS's libpython3.so
+// PYTHON3_LDFLAGS: The path to SIMICS's libpython3.so. Starting in 6.0.177, this variable can
+// be empty, in which case we use a fallback.
 // LIBS: `-lsimics-common -lvtutils`
 // CXX_INCLUDE_PATHS: Path to SIMICS_BASE/linux64/api
 // PYTHON3: The path to SIMICS's mini-python
@@ -648,7 +649,7 @@ fn main() -> Result<()> {
         let libpython_path =
             PathBuf::from(var(PYTHON3_LDFLAGS_ENV).map_err(|e| {
                 anyhow!("No environment variable {PYTHON3_LDFLAGS_ENV} found: {e}")
-            }).or_else(|e| {
+            }).and_then(|v| if v.is_empty() { bail!("Environment variable {PYTHON3_LDFLAGS_ENV} is empty") } else { Ok(v) }).or_else(|e| {
                 println!("cargo:warning=No environment variable {INCLUDE_PATHS_ENV} set. Using default include paths: {e}");
                 base_dir_path
                     .join(HOST_DIRNAME)
