@@ -238,7 +238,7 @@ tsffs.iface.tsffs.add_architecture_hint(qsp.mb.cpu0.core[0][0], "i386")
 ### Adding a Trace Processor
 
 By default, only the processor core that either executes the start harness or is passed
-to the [manual start API](../harnessing/black-box.md) is traced during execution. When fuzzing
+to the [manual start API](../harnessing/closed-box.md) is traced during execution. When fuzzing
 code running on multiple cores, the additional cores can be added with:
 
 ```python
