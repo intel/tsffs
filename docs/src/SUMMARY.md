@@ -26,6 +26,8 @@
 
 ## Reference Guide
 
-- [Internals](internals/README.md)
-  - [Build Internals](internals/build.md)
+- [Developer Documentation](developer/README.md)
+  - [Build Internals](developer/build.md)
+  - [Refreshing Build Environment](developer/refresh.md)
+  - [Building Against A Specific SIMICS Version](developer/specific-simics-version.md)
 

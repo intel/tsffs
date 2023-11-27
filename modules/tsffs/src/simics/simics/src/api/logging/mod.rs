@@ -67,7 +67,7 @@ where
 
     #[cfg(simics_deprecated_api_sim_log)]
     unsafe {
-        VT_log_info(level as i32, device, LOG_GROUP, msg_cstring.as_ptr());
+        VT_log_info(level as i32, device, LOG_GROUP as u64, msg_cstring.as_ptr());
     }
 
     Ok(())
@@ -102,7 +102,7 @@ where
 
     #[cfg(simics_deprecated_api_sim_log)]
     unsafe {
-        VT_log_error(device, LOG_GROUP, msg_cstring.as_ptr());
+        VT_log_error(device, LOG_GROUP as u64, msg_cstring.as_ptr());
     };
 
     Ok(())
@@ -136,7 +136,7 @@ where
 
     #[cfg(simics_deprecated_api_sim_log)]
     unsafe {
-        VT_log_critical(device, LOG_GROUP, msg_cstring.as_ptr());
+        VT_log_critical(device, LOG_GROUP as u64, msg_cstring.as_ptr());
     };
 
     Ok(())
@@ -180,7 +180,7 @@ pub fn log_unimplemented(level: LogLevel, device: *mut ConfObject, msg: String) 
 
     #[cfg(simics_deprecated_api_sim_log)]
     unsafe {
-        VT_log_unimplemented(level as i32, device, LOG_GROUP, msg_cstring.as_ptr());
+        VT_log_unimplemented(level as i32, device, LOG_GROUP as u64, msg_cstring.as_ptr());
     };
 
     Ok(())

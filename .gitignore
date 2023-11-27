@@ -28,6 +28,7 @@ dist-packages/
 dist/
 distfile-list/
 doc-src/
+doc/
 linux64/
 logs/
 packageinfo/
