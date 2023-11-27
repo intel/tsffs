@@ -699,6 +699,8 @@ fn main() -> Result<()> {
             .collect::<Vec<_>>();
 
         link_search_paths.iter().for_each(|p| {
+            // NOTE: These are removed by cargo, which is why we use absolute paths.
+            // We emit them just for posterity
             println!("cargo:rustc-link-search=native={}", p.display());
             // NOTE: This is needed for the recursive linking step against libpython from
             // libsimics-common.so

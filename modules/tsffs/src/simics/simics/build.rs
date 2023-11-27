@@ -14,6 +14,12 @@ use simics_codegen::{simics_hap_codegen, simics_interface_codegen};
 const INTERFACES_FILE: &str = "interfaces.rs";
 const HAPS_FILE: &str = "haps.rs";
 
+/// Configuration indicating that the experimental snapshots API is available
+pub const CFG_SIMICS_EXPERIMENTAL_API_SNAPSHOTS: &str = "simics_experimental_api_snapshots";
+/// Configuration indicating that SIM_log_info is deprecated and should be replaced with VT_log_info
+/// until an API update
+pub const CFG_SIMICS_SIM_LOG_INFO_API_DEPRECATED: &str = "simics_deprecated_api_sim_log";
+
 fn main() -> Result<()> {
     let out_dir = PathBuf::from(
         var(OUT_DIR_ENV)
@@ -48,6 +54,12 @@ fn main() -> Result<()> {
         // Bail out if we are targeting a version before 6.0.163. We don't test any earlier than
         // this.
         panic!("Target SIMICS API version is too old. The minimum version supported is 6.0.163.");
+    }
+
+    if VersionConstraint::from_str(">=6.0.173")?.matches(&simics_api_version) {
+        // Enable the experimental snapshots api for versions over 6.0.173 (where the API first
+        // appears)
+        println!("cargo:rustc-cfg=simics_experimental_api_snapshots");
     }
 
     if VersionConstraint::from_str(">=6.0.173")?.matches(&simics_api_version) {

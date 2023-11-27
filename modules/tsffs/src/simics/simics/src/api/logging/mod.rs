@@ -5,12 +5,17 @@
 
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
+#[cfg(not(simics_deprecated_api_sim_log))]
+use crate::api::sys::{
+    SIM_log_critical, SIM_log_error, SIM_log_info, SIM_log_spec_violation, SIM_log_unimplemented,
+};
+#[cfg(simics_deprecated_api_sim_log)]
+use crate::api::sys::{
+    VT_log_critical, VT_log_error, VT_log_info, VT_log_spec_violation, VT_log_unimplemented,
+};
 use crate::{
     api::{
-        sys::{
-            SIM_log_critical, SIM_log_error, SIM_log_info, SIM_log_level, SIM_log_register_groups,
-            SIM_log_spec_violation, SIM_log_unimplemented, SIM_set_log_level,
-        },
+        sys::{SIM_log_level, SIM_log_register_groups, SIM_set_log_level},
         ConfObject,
     },
     Error, Result,
@@ -55,9 +60,15 @@ where
 {
     let msg_cstring = CString::new(msg.as_ref())?;
 
+    #[cfg(not(simics_deprecated_api_sim_log))]
     unsafe {
         SIM_log_info(level as i32, device, LOG_GROUP, msg_cstring.as_ptr());
     };
+
+    #[cfg(simics_deprecated_api_sim_log)]
+    unsafe {
+        VT_log_info(level as i32, device, LOG_GROUP, msg_cstring.as_ptr());
+    }
 
     Ok(())
 }
@@ -84,8 +95,14 @@ where
 {
     let msg_cstring = CString::new(msg.as_ref())?;
 
+    #[cfg(not(simics_deprecated_api_sim_log))]
     unsafe {
         SIM_log_error(device, LOG_GROUP, msg_cstring.as_ptr());
+    };
+
+    #[cfg(simics_deprecated_api_sim_log)]
+    unsafe {
+        VT_log_error(device, LOG_GROUP, msg_cstring.as_ptr());
     };
 
     Ok(())
@@ -112,8 +129,14 @@ where
 {
     let msg_cstring = CString::new(msg.as_ref())?;
 
+    #[cfg(not(simics_deprecated_api_sim_log))]
     unsafe {
         SIM_log_critical(device, LOG_GROUP, msg_cstring.as_ptr());
+    };
+
+    #[cfg(simics_deprecated_api_sim_log)]
+    unsafe {
+        VT_log_critical(device, LOG_GROUP, msg_cstring.as_ptr());
     };
 
     Ok(())
@@ -128,8 +151,14 @@ where
 pub fn log_spec_violation(level: LogLevel, device: *mut ConfObject, msg: String) -> Result<()> {
     let msg_cstring = CString::new(msg)?;
 
+    #[cfg(not(simics_deprecated_api_sim_log))]
     unsafe {
         SIM_log_spec_violation(level as i32, device, LOG_GROUP, msg_cstring.as_ptr());
+    };
+
+    #[cfg(simics_deprecated_api_sim_log)]
+    unsafe {
+        VT_log_spec_violation(level as i32, device, LOG_GROUP as u64, msg_cstring.as_ptr());
     };
 
     Ok(())
@@ -144,8 +173,14 @@ pub fn log_spec_violation(level: LogLevel, device: *mut ConfObject, msg: String)
 pub fn log_unimplemented(level: LogLevel, device: *mut ConfObject, msg: String) -> Result<()> {
     let msg_cstring = CString::new(msg)?;
 
+    #[cfg(not(simics_deprecated_api_sim_log))]
     unsafe {
         SIM_log_unimplemented(level as i32, device, LOG_GROUP, msg_cstring.as_ptr());
+    };
+
+    #[cfg(simics_deprecated_api_sim_log)]
+    unsafe {
+        VT_log_unimplemented(level as i32, device, LOG_GROUP, msg_cstring.as_ptr());
     };
 
     Ok(())

@@ -10,6 +10,9 @@ config.mk
 simics*
 GNUmakefile*
 *~
+compiler.mk
+*.project-setup.new
+documentation
 
 
 .cargo/
@@ -26,4 +29,5 @@ logs/
 packageinfo/
 packageinfo/
 target/
+targets/
 win64/
