@@ -13,6 +13,7 @@ should be run in PowerShell (the default shell on recent Windows versions).
     - [Install SIMICS](#install-simics)
   - [Build TSFFS](#build-tsffs)
   - [Test TSFFS](#test-tsffs)
+  - [Set Up For Local Development](#set-up-for-local-development)
   - [Troubleshooting](#troubleshooting)
     - [I Already Have A MinGW Installation](#i-already-have-a-mingw-installation)
     - [Command is Unrecognized](#command-is-unrecognized)
@@ -148,6 +149,51 @@ cp harness\tsffs-gcc-x86_64.h $env:TEMP\TSFFS-Windows\
 cd $env:TEMP\TSFFS-Windows
 ./simics ./fuzz.simics
 ```
+
+## Set Up For Local Development
+
+End users can skip this step, it is only necessary if you will be developing the fuzzer.
+
+If you want to develop TSFFS locally, it is helpful to be able to run normal `cargo`
+commands to build, run clippy and rust analyzer, and so forth.
+
+To set up your environment for local development, note the installed SIMICS base version
+you would like to target. For example, SIMICS 6.0.169. For local development, it is
+generally best to pick the most recent installed version. You can print the latest
+version you have installed by running (`jq` can be installed with `winget install
+stedolan.jq`):
+
+```sh
+ispm packages --list-installed --json | jq -r '[ .installedPackages[] | select(.pkgNumber == 1000) ] | ([ .[].version ] | max_by(split(".") | map(tonumber))) as $m | first(first(.[]|select(.version == $m)).paths[0])'
+```
+
+On the author's system, for example, this prints:
+
+```txt
+C:\Users\YOUR_USERNAME\simics\simics-6.0.169
+```
+
+Add this path in the `[env]` section of `.cargo/config.toml` as the variable
+`SIMICS_BASE` in your local TSFFS repository. Using this path, `.cargo/config.toml`
+would look like:
+
+```toml
+[env]
+SIMICS_BASE = "C:\Users\YOUR_USERNAME\simics\simics-6.0.169"
+```
+
+This lets `cargo` find your SIMICS installation, and it uses several fallback methods to
+find the SIMICS libraries to link with. Paths to the libraries are provided via the
+SIMICS Makefile system, which is used by the `./build.rs` script above, hence this step
+is only needed for local development.
+
+Finally, check that your configuration is correct by running:
+
+```sh
+cargo clippy
+```
+
+The process should complete without error.
 
 ## Troubleshooting
 
