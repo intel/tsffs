@@ -1,0 +1,18 @@
+# Copyright (C) 2023 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+rule cc
+    command = clang -target x86_64-pc-win32-coff -fno-stack-protector -fshort-wchar $
+        -mno-red-zone $cflags -c $in -o $out
+
+rule link
+    command = lld-link $ldflags -filealign:16 -subsystem:efi_application -nodefaultlib -dll $
+        -entry:UefiMain $in -out:$out
+
+rule copy
+    command = cp $in $out
+
+build test.o: cc test.c
+    cflags = -O0  -g -gcodeview -gdwarf-5 -gembed-source -fstandalone-debug
+build test.efi: link test.o
+    ldflags = -debug -debugtype:pdata

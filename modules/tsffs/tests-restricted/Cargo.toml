@@ -1,0 +1,21 @@
+# Copyright (C) 2023 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "tests-restricted"
+description = "Tests for the TSFFS fuzzer"
+edition = "2021"
+license = "Apache 2.0"
+publish = false
+version = "0.1.0"
+
+[dev-dependencies]
+
+[build-dependencies]
+anyhow = "1.0.75"
+command-ext = { path = "../src/util/command-ext" }
+simics-codegen = { path = "../src/simics/simics-codegen" }
+
+[dependencies]
+anyhow = "1.0.75"
+command-ext = { path = "../src/util/command-ext" }

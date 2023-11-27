@@ -1,0 +1,122 @@
+# A bunch of macros used to simplify shortcut and documentation inclusion in
+# packages:
+#
+# The high-level ones are probably the ones you are interested in:
+# * doc()
+# * doc-files()
+
+Main-version: 6
+
+# Start-menu (or equivalent) shortcut that includes the <file> it
+# points at, the <name> of the shortcut, the arguments used to execute <file>
+# and the working directory <wdir> when executing it.
+Link: shortcut-and-file(file, name, args, wdir)
+Link-name: {name}
+Link-args: {args}
+Link-wdir: {wdir}
+Link-target: {file}
+  {file}
+
+# Start-menu (or equivalent) shortcut that includes the <file> it
+# points at, the <name> of the shortcut, the arguments used to execute <file>
+# and the working directory <wdir> when executing it and a custom <icon>.
+Link: shortcut-and-file-with-icon(file, name, args, wdir, icon)
+Link-name: {name}
+Link-args: {args}
+Link-wdir: {wdir}
+Link-target: {file}
+Link-icon: {icon}
+  {file}
+
+# All documentation formats corresponding to the document <name>
+Group: doc-files(name)
+Directory: $(HOST)/doc/html/{name}/[filelist.json]
+Directory-Suffixes: .css, .js, .html, .png, .json, .svg
+
+Group: doc-files-pdf-only(name)
+       [$(HOST)/]doc/{name}.pdf
+
+# same as doc-files(), but with shortcutname for backward compatibility
+Group: doc-files-and-shortcut(name,shortcutname)
+  @doc-files({name})
+
+# Generic template for a reference manual in all formats and its start menu shortcut
+Group: refmanual(name, dname)
+Doc-make: refmanual-{name}
+  @doc-files(reference-manual-{name})
+
+Group: online-release-notes(name)
+Doc-make: rn-online
+# dummy format
+Doc-formats: neu
+  $(HOST)/doc/{name}.rndata
+
+# generic template for a release-notes document in all formats and its
+# start menu shortcut
+Group: release-notes(name)
+Doc-make: rn-{name}
+Doc-formats: text,html
+  [$(HOST)/doc/]RELEASENOTES-{name}.html
+  [$(HOST)/doc/RELEASENOTES-{name}.text/]RELEASENOTES-{name}$(TXT)
+  @doc-files(RELEASENOTES-{name})
+  @online-release-notes({name})
+
+# distribute a file as-is on unix, and with DOS-style newlines and a
+# .txt suffix on Windows
+Group: text-file(path)
+Doc-make: txt-files
+  (-windows) {path}
+  (+windows) [$(HOST)/doc/txt-files/]{path}.txt
+
+# generic template for a target guide in all formats and its start menu shortcut
+Group: targetguide(name, dname)
+Doc-make: targetguide-{name}
+  @doc-files(target-guide-{name})
+
+# Same as doc-files, but including the makefile rule to build the document
+Group: doc(name)
+Doc-make: {name}
+  @doc-files({name})
+
+# Same as doc(), shortcut for backward compatibility
+Group: doc-and-shortcut(name,shortcutname)
+Doc-make: {name}
+  @doc-files({name})
+
+Group: doc-pdf-only(name)
+Doc-formats: pdf
+Doc-make: {name}
+   @doc-files-pdf-only({name})
+
+Group: doc-md(name)
+Make: doc/{name}
+Directory: $(HOST)/doc/html/{name}/[filelist.json]
+Directory-Suffixes: .css, .js, .html, .png, .json, .svg
+
+Group: module_load(name)
+  $(HOST)/lib/python-py3/simmod/{name}/module_load.py
+
+Group: simics_start(name)
+  @module_py({name}/simics_start)
+
+Group: module_py(filename)
+  $(HOST)/lib/python-py3/simmod/{filename}.py
+
+Group: module_load_py(name)
+  $(HOST)/lib/python-py3/simmod/{name}/module_load.py
+
+Group: simics_start_py(name)
+  @module_py({name}/simics_start)
+
+Group: interface_module(filename)
+  $(HOST)/lib/{filename}$(SO)
+
+Group: core-build(f)
+  (+win64)   win64/{f}
+  (+linux64) linux64/{f}
+
+# Use this to distribute .py files
+# Do not distribute separate .py source
+Group: core-py(f)
+  (+win64)   win64/{f}.py
+  (+linux64) linux64/{f}.py

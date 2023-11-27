@@ -53,8 +53,8 @@ echo "================="
 echo "Formatting Python"
 echo "================="
 
-fd '.*\.py$' -x black --config "${SCRIPT_DIR}/../.github/linters/.python-black" {}
-fd '.*\.py$' -x isort --settings-path "${SCRIPT_DIR}/../.github/linters/.isort.cfg" {}
+fd '.*\.py$' -x black 
+fd '.*\.py$' -x isort --profile black 
 
 echo "================="
 echo "Formatting Markdown"

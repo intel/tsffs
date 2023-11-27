@@ -1,0 +1,28 @@
+# Copyright (C) 2023 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "simics-codegen"
+categories.workspace = true
+description = "Code generation for high level SIMICS API bindings"
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+publish.workspace = true
+readme.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+quote = "1.0.26"
+syn = { version = "2.0.15", features = ["full"] }
+proc-macro2 = "1.0.56"
+darling = "0.20.3"
+
+[dev-dependencies]
+anyhow.workspace = true
+raw-cstr.workspace = true
+trybuild = { version = "1.0.80", features = ["diff"] }
+
+[features]

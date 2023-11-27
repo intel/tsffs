@@ -1,0 +1,5 @@
+config BR2_PACKAGE_TEST_MOD
+    bool "test-mod"
+    depends on BR2_LINUX_KERNEL
+    help
+        Test kernel module for TSFFS fuzzing

@@ -1,4 +1,4 @@
-# Copyright (C) 2023 Intel Corporation
+#  Copyright (C) 2023 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 
 [workspace.package]
@@ -16,75 +16,74 @@ license = "Apache-2.0"
 publish = false
 readme = "README.md"
 repository = "https://github.com/intel/tsffs"
-version = "0.1.0"
+version = "0.2.0"
+
+[workspace.metadata]
+build-id = 1
+version = "6.0.0"
 
 [workspace]
 resolver = "2"
 members = [
-    # Include file for harnessing
-    "include",
-    # Provide simics 
-    # Provide real simics APIs
-    "simics-api-sys",
-    "simics-api",
-    "simics-api-macro",
-    "simics",
-    "simics-cli",
-    "simics-tests",
-    "simics-link",
-    "simics-fuzz",
-    # Modules
-    "tsffs_module",
-    # Utilities
-    "util/raw-cstr",
-    "util/version-tools",
-    "util/ffi-macro",
-    "util/artifact-dependency",
-    "util/tmp-dir",
+    "modules/tsffs/tests",
+    "modules/tsffs/tests-restricted",
+    "modules/tsffs/src/tsffs",
+    "modules/tsffs/src/simics/ispm-wrapper",
+    "modules/tsffs/src/simics/simics-api-sys",
+    "modules/tsffs/src/simics/simics-macro",
+    "modules/tsffs/src/simics/simics-codegen",
+    "modules/tsffs/src/simics/simics",
+
+    "modules/tsffs/src/util/command-ext",
+    "modules/tsffs/src/util/ffi-macro",
+    "modules/tsffs/src/util/getters",
+    "modules/tsffs/src/util/raw-cstr",
+    "modules/tsffs/src/util/tmp-dir",
+    "modules/tsffs/src/util/version-tools",
 ]
 default-members = [
-    # Include file for harnessing
-    "include",
-    # Provide simics 
-    # Provide real simics APIs
-    "simics-api-sys",
-    "simics-api",
-    "simics-api-macro",
-    "simics",
-    "simics-cli",
-    "simics-tests",
-    "simics-link",
-    "simics-fuzz",
-    # Modules
-    "tsffs_module",
-    # Utilities
-    "util/raw-cstr",
-    "util/version-tools",
-    "util/ffi-macro",
-    "util/artifact-dependency",
-    "util/tmp-dir",
+    "modules/tsffs/tests",
+    "modules/tsffs/tests-restricted",
+    "modules/tsffs/src/tsffs",
+    "modules/tsffs/src/simics/ispm-wrapper",
+    "modules/tsffs/src/simics/simics-api-sys",
+    "modules/tsffs/src/simics/simics-macro",
+    "modules/tsffs/src/simics/simics-codegen",
+    "modules/tsffs/src/simics/simics",
+
+    "modules/tsffs/src/util/command-ext",
+    "modules/tsffs/src/util/ffi-macro",
+    "modules/tsffs/src/util/getters",
+    "modules/tsffs/src/util/raw-cstr",
+    "modules/tsffs/src/util/tmp-dir",
+    "modules/tsffs/src/util/version-tools",
 ]
-exclude = ["docs/videos/adv", "tests/userland-examples", "tests/cc"]
+exclude = []
 
 [workspace.dependencies]
-artifact-dependency = { path = "./util/artifact-dependency" }
-simics-link = { path = "./simics-link" }
-simics = { path = "./simics" }
-simics-fuzz = { path = "./simics-fuzz" }
-tsffs_module = { path = "./tsffs_module" }
-simics-api-sys = { path = "./simics-api-sys" }
-simics-api = { path = "./simics-api" }
-simics-api-macro = { path = "./simics-api-macro" }
-tmp-dir = { path = "./util/tmp-dir" }
-raw-cstr = { path = "./util/raw-cstr" }
-version-tools = { path = "./util/version-tools" }
-ffi-macro = { path = "./util/ffi-macro" }
-libafl = { git = "https://github.com/AFLplusplus/LibAFL", rev = "defe9084aed5a80ac32fe9a1f3ff00baf97738c6" }
-libafl_bolts = { git = "https://github.com/AFLplusplus/LibAFL", rev = "defe9084aed5a80ac32fe9a1f3ff00baf97738c6" }
-anyhow = "1.0.74"
-# Match these versions to cargo_metadata -- it breaks on current versions
-serde = "1.0.183"
-serde_json = "1.0.104"
+simics-api-sys = { path = "modules/tsffs/src/simics/simics-api-sys" }
+simics-macro = { path = "modules/tsffs/src/simics/simics-macro" }
+simics-codegen = { path = "modules/tsffs/src/simics/simics-codegen" }
+simics = { path = "modules/tsffs/src/simics/simics" }
+ispm-wrapper = { path = "modules/tsffs/src/simics/ispm-wrapper" }
+
+command-ext = { path = "modules/tsffs/src/util/command-ext" }
+ffi-macro = { path = "modules/tsffs/src/util/ffi-macro" }
+getters = { path = "modules/tsffs/src/util/getters" }
+raw-cstr = { path = "modules/tsffs/src/util/raw-cstr" }
+version-tools = { path = "modules/tsffs/src/util/version-tools" }
+
+anyhow = { version = "1.0.75" }
+# libafl = { git = "https://github.com/novafacing/LibAFL", branch = "no-assert-normal" }
+# libafl_bolts = { git = "https://github.com/novafacing/LibAFL", branch = "no-assert-normal" }
+# libafl_targets = { git = "https://github.com/novafacing/LibAFL", branch = "no-assert-normal" }
+libafl = { git = "https://github.com/novafacing/LibAFL", branch = "cmp-disable-features" }
+libafl_bolts = { git = "https://github.com/novafacing/LibAFL", branch = "cmp-disable-features" }
+libafl_targets = { git = "https://github.com/novafacing/LibAFL", branch = "cmp-disable-features", default-features = false, features = ["std"] }
+serde = { version = "1.0.188", features = ["derive"] }
+serde_json = { version = "1.0.107" }
+versions = { version = "5.0.1", features = ["serde"] }
+
 
 [profile.dev]
 rpath = true

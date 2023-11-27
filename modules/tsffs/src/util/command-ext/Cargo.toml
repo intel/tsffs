@@ -1,0 +1,17 @@
+# Copyright (C) 2023 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "command-ext"
+authors = ["Rowan Hart <rowan.hart@intel.com>"]
+description = "Extension traits for std::process::Command"
+edition = "2021"
+license = "Apache-2.0"
+publish = false
+repository = "https://github.com/intel/tsffs"
+version = "0.1.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+thiserror = "1.0.48"

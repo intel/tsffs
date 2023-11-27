@@ -1,0 +1,31 @@
+# Copyright (C) 2023 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "tests"
+categories.workspace = true
+description = "Tests for the TSFFS fuzzer"
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+publish.workspace = true
+readme.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+command-ext.workspace = true
+getters.workspace = true
+indoc = "2.0.4"
+ispm-wrapper.workspace = true
+typed-builder = "0.18.0"
+walkdir = "2.4.0"
+
+[dev-dependencies]
+
+[build-dependencies]
+anyhow.workspace = true
+command-ext.workspace = true
+simics-codegen.workspace = true

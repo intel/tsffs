@@ -1,2 +1,10 @@
-simics-api-sys/packages
-target
+config.mk
+.package-list
+.modcache
+Dockerfile
+.project-properties/
+bin/
+linux64/
+win64/
+packageinfo/
+target/
