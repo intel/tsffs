@@ -7,9 +7,16 @@ Cargo.lock
 config.mk
 .package-list
 .modcache
-simics*
+simics
+!simics/
+simics-eclipse
+simics-gui
+simics-old
 GNUmakefile*
 *~
+compiler.mk
+*.project-setup.new
+documentation
 
 
 .cargo/
@@ -21,9 +28,11 @@ dist-packages/
 dist/
 distfile-list/
 doc-src/
+doc/
 linux64/
 logs/
 packageinfo/
 packageinfo/
 target/
+targets/
 win64/

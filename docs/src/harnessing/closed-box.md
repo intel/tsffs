@@ -1,6 +1,6 @@
-# Black Box Harnessing
+# Closed Box Harnessing
 
-- [Black Box Harnessing](#black-box-harnessing)
+- [Closed Box Harnessing](#closed-box-harnessing)
   - [Disabling Compiled-in/Magic Harnesses](#disabling-compiled-inmagic-harnesses)
   - [Triggering Manual Stops/Solutions](#triggering-manual-stopssolutions)
 
@@ -26,7 +26,7 @@ int main() {
 }
 ```
 
-Can be harnessed in a black-box fashion by creating a script-branch to wait until the
+Can be harnessed in a closed-box fashion by creating a script-branch to wait until the
 simulation reaches a specified address, timeout, HAP, or any other condition. First, we
 can disable magic harnesses (this is not strictly necessary unless any magic harnesses
 actually exist in the target software, but it is good practice).
