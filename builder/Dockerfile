@@ -1,3 +1,4 @@
+# hadolint global ignore=DL3033,3044
 FROM fedora:20
 
 ENV PATH="${PATH}:/simics/ispm/"
@@ -8,7 +9,8 @@ RUN yum -y update && \
         coreutils \
         gcc \
         gcc-c++ \
-        make
+        make && \
+    yum clean all
 
 COPY . /tsffs
 
@@ -34,7 +36,7 @@ RUN mkdir -p /llvm/tools/clang && \
     mkdir -p /llvm/build && \
     pushd /llvm/build && \
     cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE="MinSizeRel" -DLLVM_TARGETS_TO_BUILD="X86" .. && \
-    make -j$(nproc) && \
+    make -j "$(nproc)" && \
     make install && \
     make clean && \
     rm -rf /llvm/build/ && \
@@ -44,9 +46,6 @@ RUN mkdir -p /simics/ispm && \
     tar -C /simics/ispm --strip-components=1 -xvf /tsffs/builder/rsrc/ispm.tar.gz && \
     ispm settings install-dir /simics && \
     ispm packages --install-bundle /tsffs/builder/rsrc/simics.ispm --non-interactive --trust-insecure-packages && \
-    ispm projects $(pwd) --create --ignore-existing-files --non-interactive && \
-    bin/project-setup --force
-
-
-
-    
+    ispm projects "$(pwd)" --create --ignore-existing-files --non-interactive && \
+    bin/project-setup --force && \
+    cargo -Zscript build.rs
