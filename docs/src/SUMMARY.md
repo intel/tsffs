@@ -14,7 +14,7 @@
   - [Common Options](config/common-options.md)
 - [Harnessing Fuzzing Targets](harnessing/README.md)
   - [Using a Compiled-in Harness](harnessing/compiled-in.md)
-  - [Using Black-Box Testcase Injection](harnessing/black-box.md)
+  - [Using Closed-Box Testcase Injection](harnessing/closed-box.md)
   - [Using Testcase Data Manually](harnessing/manual.md)
 - [Running A Fuzzing Campaign](fuzzing/README.md)
   - [Checking Target Software Compatibility](fuzzing/compatibility.md)
@@ -26,6 +26,8 @@
 
 ## Reference Guide
 
-- [Internals](internals/README.md)
-  - [Build Internals](internals/build.md)
+- [Developer Documentation](developer/README.md)
+  - [Build Internals](developer/build.md)
+  - [Refreshing Build Environment](developer/refresh.md)
+  - [Building Against A Specific SIMICS Version](developer/specific-simics-version.md)
 

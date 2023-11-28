@@ -7,7 +7,11 @@ Cargo.lock
 config.mk
 .package-list
 .modcache
-simics*
+simics
+!simics/
+simics-eclipse
+simics-gui
+simics-old
 GNUmakefile*
 *~
 compiler.mk
