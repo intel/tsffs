@@ -16,6 +16,7 @@ env:
   PUBLIC_SIMICS_PACKAGE_VERSION_1000: "6.0.169"
   MINGW_URL: "https://github.com/brechtsanders/winlibs_mingw/releases/download/13.2.0-16.0.6-11.0.0-ucrt-r1/winlibs-x86_64-posix-seh-gcc-13.2.0-llvm-16.0.6-mingw-w64ucrt-11.0.0-r1.7z"
   MINGW_VERSION: "13.2.0-16.0.6-11.0.0-ucrt-r1"
+  TSFFS_SIMICS_PKG_VERSION: "6.0.0"
 
 jobs:
   build_and_test:
@@ -28,7 +29,6 @@ jobs:
           echo "${HOME}/simics/ispm/" >> "${GITHUB_PATH}"
 
       - name: Install Dependencies
-        shell: bash
         run: |
           dnf -y update && \
           dnf -y install \
@@ -57,7 +57,6 @@ jobs:
 
       - name: Install SIMICS (External)
         if: ${{ steps.cache-simics-packages.outputs.cache-hit != 'true' }}
-        shell: bash
         run: |
           mkdir -p "${HOME}/simics/ispm/" && \
           curl --noproxy -L -o "${HOME}/simics/ispm.tar.gz" \
@@ -84,7 +83,7 @@ jobs:
           bin/project-setup --force
           ./build.rs
           ispm packages \
-            -i linux64/packages/simics-pkg-31337-6.0.0-linux64.ispm \
+            -i linux64/packages/simics-pkg-31337-${{ env.TSFFS_SIMICS_PKG_VERSION }}-linux64.ispm \
             --non-interactive --trust-insecure-packages
 
       - name: Build Project
@@ -175,7 +174,13 @@ jobs:
           ispm.exe projects $(pwd) --create --non-interactive --ignore-existing-files
           ./bin/project-setup.bat --mingw-dir C:\MinGW\ --ignore-existing-files --force
           cargo -Zscript build.rs
-          ispm.exe packages -i win64/packages/simics-pkg-31337-6.0.0-win64.ispm --non-interactive --trust-insecure-packages
+          ispm.exe packages -i win64/packages/simics-pkg-31337-${{ env.TSFFS_SIMICS_PKG_VERSION }}-win64.ispm --non-interactive --trust-insecure-packages
+
+      - name: Upload Distribution Package
+        uses: actions/upload-artifact@v3
+        with:
+          name: simics-pkg-31337-${{ env.TSFFS_SIMICS_PKG_VERSION }}-win64.ispm
+          path: win64/packages/simics-pkg-31337-${{ env.TSFFS_SIMICS_PKG_VERSION }}-linux64.ispm
 
   static_analysis:
     name: Run Static Analysis
@@ -187,7 +192,6 @@ jobs:
           echo "${HOME}/simics/ispm/" >> "${GITHUB_PATH}"
 
       - name: Install Dependencies
-        shell: bash
         run: |
           dnf -y update && \
           dnf -y install \
@@ -216,7 +220,6 @@ jobs:
 
       - name: Install SIMICS (External)
         if: ${{ steps.cache-simics-packages.outputs.cache-hit != 'true' }}
-        shell: bash
         run: |
           mkdir -p "${HOME}/simics/ispm/" && \
           curl --noproxy -L -o "${HOME}/simics/ispm.tar.gz" \
@@ -243,7 +246,7 @@ jobs:
           bin/project-setup --force
           ./build.rs
           ispm packages \
-            -i linux64/packages/simics-pkg-31337-6.0.0-linux64.ispm \
+            -i linux64/packages/simics-pkg-31337-${{ env.TSFFS_SIMICS_PKG_VERSION }}-linux64.ispm \
             --non-interactive --trust-insecure-packages
 
       - name: CT39 - Clippy Check Project
@@ -260,13 +263,55 @@ jobs:
             || ( echo "❗ [CT39 (2/2)] Failed MIRI static analysis checks" && exit 1 )
           echo "✅ [CT39 (2/2)] Passed MIRI static analysis checks"
 
+  build_dist:
+    name: Build for Distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Cache Builder Dependencies
+        id: cache-builder-dependencies
+        uses: actions/cache@v3
+        with:
+          path: builder/rsrc
+          key: cache-builder-dependencies
+
+      - name: Download Builder Dependencies
+        if: ${{ steps.cache-builder-dependencies.outputs.cache-hit != 'true' }}
+        run: |
+          mkdir -p builder/rsrc
+          curl -o builder/rsrc/cfe-5.0.2.src.tar.xz https://releases.llvm.org/5.0.2/cfe-5.0.2.src.tar.xz
+          curl -o builder/rsrc/llvm-5.0.2.src.tar.xz https://releases.llvm.org/5.0.2/llvm-5.0.2.src.tar.xz
+          curl -o builder/rsrc/make-4.4.1.tar.gz https://ftp.gnu.org/gnu/make/make-4.4.1.tar.gz
+          curl -o builder/rsrc/rustup-init https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
+          curl -L -o builder/rsrc/ispm.tar.gz \
+              "${{ env.PUBLIC_SIMICS_ISPM_URL }}" && \
+          curl -L -o builder/rsrc/simics.ispm \
+              "${{ env.PUBLIC_SIMICS_PKGS_URL }}" && \
+          curl -L -o builder/rsrc/cmake-3.28.0-rc5-linux-x86_64.tar.gz https://github.com/Kitware/CMake/releases/download/v3.28.0-rc5/cmake-3.28.0-rc5-linux-x86_64.tar.gz && \
+          chmod +x builder/rsrc/rustup-init
+
+      - name: Build Distribution Package
+        run: |
+          docker build -t tsffs-dist -f builder/Dockerfile .
+          docker create --name tsffs-dist tsffs-dist bash
+          docker cp tsffs-dist:/tsffs/linux64/packages/simics-pkg-31337-${{ env.TSFFS_SIMICS_PKG_VERSION }}-linux64.ispm simics-pkg-31337-${{ env.TSFFS_SIMICS_PKG_VERSION }}-linux64.ispm
+          docker rm -f tsffs-dist
+
+      - name: Upload Distribution Package
+        uses: actions/upload-artifact@v3
+        with:
+          name: simics-pkg-31337-${{ env.TSFFS_SIMICS_PKG_VERSION }}-linux64.ispm
+          path: simics-pkg-31337-${{ env.TSFFS_SIMICS_PKG_VERSION }}-linux64.ispm
+
   fuzz_tests:
     name: Run Fuzz Tests
     container: fedora:38
     runs-on: ubuntu-latest
     steps:
       - name: Install Dependencies
-        shell: bash
         run: |
           dnf -y update && \
           dnf -y install \
