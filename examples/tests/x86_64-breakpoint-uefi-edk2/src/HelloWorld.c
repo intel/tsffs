@@ -47,7 +47,6 @@ UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable) {
     SetMem((VOID *)input, input_size, 0x44);
   }
 
-
   HARNESS_STOP();
 
   return EFI_SUCCESS;

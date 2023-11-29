@@ -1,13 +1,9 @@
-import simics
 import cli
+import simics
 
 simics.SIM_load_module("tsffs")
 
-tsffs = simics.SIM_create_object(
-    simics.SIM_get_class("tsffs"),
-    "tsffs",
-    []
-)
+tsffs = simics.SIM_create_object(simics.SIM_get_class("tsffs"), "tsffs", [])
 simics.SIM_set_log_level(tsffs, 1)
 tsffs.iface.tsffs.set_start_on_harness(False)
 tsffs.iface.tsffs.set_stop_on_harness(False)
@@ -18,16 +14,17 @@ tsffs.iface.tsffs.set_iterations(1000)
 tsffs.iface.tsffs.set_use_snapshots(False)
 
 simics.SIM_load_target(
-    "qsp-x86/uefi-shell", # Target
-    "qsp", # Namespace
+    "qsp-x86/uefi-shell",  # Target
+    "qsp",  # Namespace
     [],  # Presets
-    [ # Cmdline args
+    [  # Cmdline args
         ["machine:hardware:storage:disk0:image", "minimal_boot_disk.craff"],
-        ["machine:hardware:processor:class", "x86-goldencove-server"]
-    ]
+        ["machine:hardware:processor:class", "x86-goldencove-server"],
+    ],
 )
 
 qsp = simics.SIM_get_object("qsp")
+
 
 def on_magic(o, e, r):
     # Wait for magic stop -- in reality this could wait for any stop
@@ -35,6 +32,7 @@ def on_magic(o, e, r):
     if r == 2:
         print("Got magic stop...")
         tsffs.iface.tsffs.stop()
+
 
 def start_script_branch():
     # Wait for magic start -- in reality this could wait for any
@@ -44,9 +42,13 @@ def start_script_branch():
     print("Got magic start...")
 
     # In reality, you probably have a known buffer in mind to fuzz
-    testcase_address_regno = conf.qsp.mb.cpu0.core[0][0].iface.int_register.get_number("rdi")
+    testcase_address_regno = conf.qsp.mb.cpu0.core[0][0].iface.int_register.get_number(
+        "rdi"
+    )
     print("testcase address regno: ", testcase_address_regno)
-    testcase_address = conf.qsp.mb.cpu0.core[0][0].iface.int_register.read(testcase_address_regno)
+    testcase_address = conf.qsp.mb.cpu0.core[0][0].iface.int_register.read(
+        testcase_address_regno
+    )
     print("testcase address: ", testcase_address)
     size_regno = conf.qsp.mb.cpu0.core[0][0].iface.int_register.get_number("rsi")
     print("size regno: ", size_regno)
@@ -60,31 +62,36 @@ def start_script_branch():
         "size address",
         hex(size_address),
         "virt",
-        virt
+        virt,
     )
-    
+
     tsffs.iface.tsffs.start(
         conf.qsp.mb.cpu0.core[0][0],
         testcase_address,
         size_address,
     )
 
+
 def startup_script_branch():
-    cli.global_cmds.wait_for_global_time(seconds=15.0, _relative = True)
+    cli.global_cmds.wait_for_global_time(seconds=15.0, _relative=True)
     qsp.serconsole.con.iface.con_input.input_str("\n")
-    cli.global_cmds.wait_for_global_time(seconds=1.0, _relative = True)
+    cli.global_cmds.wait_for_global_time(seconds=1.0, _relative=True)
     qsp.serconsole.con.iface.con_input.input_str("FS0:\n")
-    cli.global_cmds.wait_for_global_time(seconds=1.0, _relative = True)
+    cli.global_cmds.wait_for_global_time(seconds=1.0, _relative=True)
     cli.global_cmds.start_agent_manager()
     qsp.serconsole.con.iface.con_input.input_str(
-        "SimicsAgent.efi --download " + simics.SIM_lookup_file("%simics%/test.efi") + "\n"
+        "SimicsAgent.efi --download "
+        + simics.SIM_lookup_file("%simics%/test.efi")
+        + "\n"
     )
-    cli.global_cmds.wait_for_global_time(seconds=3.0, _relative = True)
+    cli.global_cmds.wait_for_global_time(seconds=3.0, _relative=True)
     qsp.serconsole.con.iface.con_input.input_str("test.efi\n")
 
+
 def exit_script_branch():
-    cli.global_cmds.wait_for_global_time(seconds=240.0, _relative = True)
+    cli.global_cmds.wait_for_global_time(seconds=240.0, _relative=True)
     simics.SIM_quit(1)
+
 
 simics.SIM_hap_add_callback("Core_Magic_Instruction", on_magic, None)
 cli.sb_create(start_script_branch)

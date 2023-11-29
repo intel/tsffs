@@ -8,9 +8,9 @@
 use anyhow::Result;
 use command_ext::CommandExtCheck;
 use indoc::indoc;
-use std::{process::Command, path::PathBuf};
-use tests::{Architecture, TestEnvSpec};
 use ispm_wrapper::data::ProjectPackage;
+use std::{path::PathBuf, process::Command};
+use tests::{Architecture, TestEnvSpec};
 
 #[test]
 #[cfg_attr(miri, ignore)]
@@ -19,15 +19,13 @@ fn test_x86_64_edk2_magic() -> Result<()> {
         .name("test_x86_64_edk2_magic")
         .cargo_manifest_dir(env!("CARGO_MANIFEST_DIR"))
         .cargo_target_tmpdir(env!("CARGO_TARGET_TMPDIR"))
-        .directories([
-            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("..")
-                .join("..")
-                .join("..")
-                .join("examples")
-                .join("tests")
-                .join("x86_64-uefi-edk2")
-        ])
+        .directories([PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join("..")
+            .join("examples")
+            .join("tests")
+            .join("x86_64-uefi-edk2")])
         .arch(Architecture::X86)
         .build()
         .to_env()?;
@@ -45,7 +43,6 @@ fn test_x86_64_edk2_magic() -> Result<()> {
     println!("{output_str}");
 
     Ok(())
-
 }
 #[test]
 #[cfg_attr(miri, ignore)]
@@ -54,15 +51,13 @@ fn test_x86_64_magic_crash() -> Result<()> {
         .name("test_x86_64_magic_crash")
         .cargo_manifest_dir(env!("CARGO_MANIFEST_DIR"))
         .cargo_target_tmpdir(env!("CARGO_TARGET_TMPDIR"))
-        .directories([
-            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("..")
-                .join("..")
-                .join("..")
-                .join("examples")
-                .join("tests")
-                .join("x86_64-crash-uefi")
-        ])
+        .directories([PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join("..")
+            .join("examples")
+            .join("tests")
+            .join("x86_64-crash-uefi")])
         .arch(Architecture::X86)
         .build()
         .to_env()?;
@@ -80,7 +75,6 @@ fn test_x86_64_magic_crash() -> Result<()> {
     println!("{output_str}");
 
     Ok(())
-
 }
 
 #[test]
@@ -90,15 +84,13 @@ fn test_x86_64_timeout_edk2() -> Result<()> {
         .name("test_x86_64_timeout_edk2")
         .cargo_manifest_dir(env!("CARGO_MANIFEST_DIR"))
         .cargo_target_tmpdir(env!("CARGO_TARGET_TMPDIR"))
-        .directories([
-            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("..")
-                .join("..")
-                .join("..")
-                .join("examples")
-                .join("tests")
-                .join("x86_64-timeout-uefi-edk2")
-        ])
+        .directories([PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join("..")
+            .join("examples")
+            .join("tests")
+            .join("x86_64-timeout-uefi-edk2")])
         .arch(Architecture::X86)
         .build()
         .to_env()?;
@@ -116,7 +108,6 @@ fn test_x86_64_timeout_edk2() -> Result<()> {
     println!("{output_str}");
 
     Ok(())
-
 }
 
 #[test]
@@ -126,15 +117,13 @@ fn test_x86_64_magic() -> Result<()> {
         .name("test_x86_64_magic")
         .cargo_manifest_dir(env!("CARGO_MANIFEST_DIR"))
         .cargo_target_tmpdir(env!("CARGO_TARGET_TMPDIR"))
-        .directories([
-            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("..")
-                .join("..")
-                .join("..")
-                .join("examples")
-                .join("tests")
-                .join("x86_64-uefi")
-        ])
+        .directories([PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join("..")
+            .join("examples")
+            .join("tests")
+            .join("x86_64-uefi")])
         .arch(Architecture::X86)
         .build()
         .to_env()?;
@@ -152,7 +141,6 @@ fn test_x86_64_magic() -> Result<()> {
     println!("{output_str}");
 
     Ok(())
-
 }
 
 #[test]
@@ -162,15 +150,13 @@ fn test_x86_64_manual() -> Result<()> {
         .name("test_x86_64_manual")
         .cargo_manifest_dir(env!("CARGO_MANIFEST_DIR"))
         .cargo_target_tmpdir(env!("CARGO_TARGET_TMPDIR"))
-        .directories([
-            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("..")
-                .join("..")
-                .join("..")
-                .join("examples")
-                .join("tests")
-                .join("x86_64-uefi")
-        ])
+        .directories([PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join("..")
+            .join("examples")
+            .join("tests")
+            .join("x86_64-uefi")])
         .arch(Architecture::X86)
         .extra_packages([ProjectPackage::builder()
             .package_number(1030)
@@ -192,7 +178,6 @@ fn test_x86_64_manual() -> Result<()> {
     println!("{output_str}");
 
     Ok(())
-
 }
 
 #[test]
@@ -202,15 +187,13 @@ fn test_x86_64_manual_max() -> Result<()> {
         .name("test_x86_64_manual_max")
         .cargo_manifest_dir(env!("CARGO_MANIFEST_DIR"))
         .cargo_target_tmpdir(env!("CARGO_TARGET_TMPDIR"))
-        .directories([
-            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("..")
-                .join("..")
-                .join("..")
-                .join("examples")
-                .join("tests")
-                .join("x86_64-uefi")
-        ])
+        .directories([PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join("..")
+            .join("examples")
+            .join("tests")
+            .join("x86_64-uefi")])
         .arch(Architecture::X86)
         .extra_packages([ProjectPackage::builder()
             .package_number(1030)
@@ -232,5 +215,4 @@ fn test_x86_64_manual_max() -> Result<()> {
     println!("{output_str}");
 
     Ok(())
-
 }

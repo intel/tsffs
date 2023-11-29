@@ -9,7 +9,7 @@ use anyhow::Result;
 use command_ext::CommandExtCheck;
 use indoc::indoc;
 use ispm_wrapper::data::ProjectPackage;
-use std::{process::Command, path::PathBuf};
+use std::{path::PathBuf, process::Command};
 use tests::{Architecture, TestEnvSpec};
 
 #[test]
@@ -19,15 +19,13 @@ fn test_x86_64_edk2_magic() -> Result<()> {
         .name("x86_64-edk2-magic")
         .cargo_manifest_dir(env!("CARGO_MANIFEST_DIR"))
         .cargo_target_tmpdir(env!("CARGO_TARGET_TMPDIR"))
-        .directories([
-            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("..")
-                .join("..")
-                .join("..")
-                .join("examples")
-                .join("tests")
-                .join("x86-user")
-        ])
+        .directories([PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join("..")
+            .join("examples")
+            .join("tests")
+            .join("x86-user")])
         .arch(Architecture::X86)
         .extra_packages([
             ProjectPackage::builder()
@@ -55,5 +53,4 @@ fn test_x86_64_edk2_magic() -> Result<()> {
     println!("{output_str}");
 
     Ok(())
-
 }

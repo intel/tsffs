@@ -7,7 +7,7 @@
 use anyhow::Result;
 use command_ext::CommandExtCheck;
 use indoc::indoc;
-use std::{process::Command, path::PathBuf};
+use std::{path::PathBuf, process::Command};
 use tests::{Architecture, TestEnvSpec};
 
 #[test]
@@ -17,15 +17,13 @@ fn test_riscv_64_kernel_from_userspace_magic() -> Result<()> {
         .name("test_riscv_64_kernel_from_userspace_magic")
         .cargo_manifest_dir(env!("CARGO_MANIFEST_DIR"))
         .cargo_target_tmpdir(env!("CARGO_TARGET_TMPDIR"))
-        .directories([
-            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("..")
-                .join("..")
-                .join("..")
-                .join("examples")
-                .join("tests")
-                .join("riscv-64")
-        ])
+        .directories([PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join("..")
+            .join("examples")
+            .join("tests")
+            .join("riscv-64")])
         .arch(Architecture::Riscv)
         .build()
         .to_env()?;
@@ -51,15 +49,13 @@ fn test_riscv_64_kernel_magic() -> Result<()> {
         .name("test_riscv_64_kernel_magic")
         .cargo_manifest_dir(env!("CARGO_MANIFEST_DIR"))
         .cargo_target_tmpdir(env!("CARGO_TARGET_TMPDIR"))
-        .directories([
-            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("..")
-                .join("..")
-                .join("..")
-                .join("examples")
-                .join("tests")
-                .join("riscv-64")
-        ])
+        .directories([PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join("..")
+            .join("examples")
+            .join("tests")
+            .join("riscv-64")])
         .arch(Architecture::Riscv)
         .build()
         .to_env()?;
@@ -86,15 +82,13 @@ fn test_riscv_64_userspace_magic() -> Result<()> {
         .name("test_riscv_64_userspace_magic")
         .cargo_manifest_dir(env!("CARGO_MANIFEST_DIR"))
         .cargo_target_tmpdir(env!("CARGO_TARGET_TMPDIR"))
-        .directories([
-            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("..")
-                .join("..")
-                .join("..")
-                .join("examples")
-                .join("tests")
-                .join("riscv-64")
-        ])
+        .directories([PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join("..")
+            .join("examples")
+            .join("tests")
+            .join("riscv-64")])
         .arch(Architecture::Riscv)
         .build()
         .to_env()?;

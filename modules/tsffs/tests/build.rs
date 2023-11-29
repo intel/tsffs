@@ -1,13 +1,8 @@
 use anyhow::{anyhow, Result};
 use command_ext::CommandExtCheck;
-use simics_codegen::simics_tests;
-use std::{
-    env::var,
-    fs::write,
-    path::PathBuf,
-    process::Command,
-};
 use ispm_wrapper::ispm::{self, GlobalOptions};
+use simics_codegen::simics_tests;
+use std::{env::var, fs::write, path::PathBuf, process::Command};
 
 const CARGO_MANIFEST_DIR: &str = "CARGO_MANIFEST_DIR";
 const OUT_DIR_ENV: &str = "OUT_DIR";
@@ -42,7 +37,14 @@ fn main() -> Result<()> {
 
     Command::new(targets_dir.join("build.sh"))
         .current_dir(targets_dir)
-        .env("SIMICS_BASE", base.paths().first().ok_or_else(|| anyhow!("No path to base package"))?.to_string_lossy().to_string())
+        .env(
+            "SIMICS_BASE",
+            base.paths()
+                .first()
+                .ok_or_else(|| anyhow!("No path to base package"))?
+                .to_string_lossy()
+                .to_string(),
+        )
         .check()
         .expect("failed to build");
     println!("cargo:rerun-if-changed=build.rs");

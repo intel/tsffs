@@ -263,7 +263,7 @@ impl TestEnv {
     where
         P: AsRef<Path>,
     {
-        for directory in directories{
+        for directory in directories {
             copy_dir_contents(directory, &project_dir.as_ref().to_path_buf())?;
         }
 
