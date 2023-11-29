@@ -30,11 +30,11 @@ fn test_x86_64_edk2_magic() -> Result<()> {
         .extra_packages([
             ProjectPackage::builder()
                 .package_number(1030)
-                .version("latest")
+                .version("6.0.4")
                 .build(),
             ProjectPackage::builder()
                 .package_number(4094)
-                .version("latest")
+                .version("6.0.14")
                 .build(),
         ])
         .build()

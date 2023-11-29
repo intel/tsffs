@@ -160,7 +160,7 @@ fn test_x86_64_manual() -> Result<()> {
         .arch(Architecture::X86)
         .extra_packages([ProjectPackage::builder()
             .package_number(1030)
-            .version("latest")
+            .version("6.0.4")
             .build()])
         .build()
         .to_env()?;
@@ -197,7 +197,7 @@ fn test_x86_64_manual_max() -> Result<()> {
         .arch(Architecture::X86)
         .extra_packages([ProjectPackage::builder()
             .package_number(1030)
-            .version("latest")
+            .version("6.0.4")
             .build()])
         .build()
         .to_env()?;

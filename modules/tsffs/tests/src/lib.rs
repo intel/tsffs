@@ -105,33 +105,33 @@ impl Architecture {
             Architecture::X86 => vec![
                 ProjectPackage::builder()
                     .package_number(1000)
-                    .version("latest")
+                    .version("6.0.169")
                     .build(),
                 // QSP-x86
                 ProjectPackage::builder()
                     .package_number(2096)
-                    .version("latest")
+                    .version("6.0.70")
                     .build(),
                 // QSP-CPU
                 ProjectPackage::builder()
                     .package_number(8112)
-                    .version("latest")
+                    .version("6.0.17")
                     .build(),
             ],
             Architecture::Riscv => vec![
                 ProjectPackage::builder()
                     .package_number(1000)
-                    .version("latest")
+                    .version("6.0.169")
                     .build(),
                 // RISC-V-CPU
                 ProjectPackage::builder()
                     .package_number(2050)
-                    .version("latest")
+                    .version("6.0.57")
                     .build(),
                 // RISC-V-Simple
                 ProjectPackage::builder()
                     .package_number(2053)
-                    .version("latest")
+                    .version("6.0.4")
                     .build(),
             ],
         }
