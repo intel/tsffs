@@ -14,8 +14,11 @@
 
 
 USER_BUILD_ID=tsffs:1
+
 ifeq ($(HOST_TYPE),win64)
 	LIBS=-lws2_32 -loleaut32 -lole32 -lbcrypt -luserenv -lntdll
-else
+endif
+
+ifeq ($(HOST_TYPE),linux64)
 	LDFLAGS=-Wl,--gc-sections
 endif

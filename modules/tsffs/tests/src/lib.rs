@@ -72,7 +72,7 @@ pub fn local_or_remote_pkg_install(mut options: InstallOptions) -> Result<()> {
             let Some(available) = installed.iter().find(|p| {
                 p.package_number() == package.package_number() && p.version() == package.version()
             }) else {
-                bail!("Did not find package {package:?}");
+                bail!("Did not find package {package:?} in {installed:?}");
             };
             let Some(path) = available.paths().first() else {
                 bail!("No paths for available package {available:?}");
