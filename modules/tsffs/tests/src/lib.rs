@@ -16,6 +16,7 @@ use ispm_wrapper::{
     Internal,
 };
 use std::{
+    alloc::Global,
     collections::HashSet,
     fs::{copy, create_dir_all, read_dir, write},
     path::{Path, PathBuf},
@@ -63,7 +64,7 @@ pub fn local_or_remote_pkg_install(mut options: InstallOptions) -> Result<()> {
     if Internal::is_internal()? {
         ispm::packages::install(&options)?;
     } else {
-        let installed = ispm::packages::list(options.global())?;
+        let installed = ispm::packages::list(&GlobalOptions::default())?;
 
         for package in options.packages() {
             let Some(installed) = installed.installed_packages() else {
