@@ -16,7 +16,6 @@ use ispm_wrapper::{
     Internal,
 };
 use std::{
-    alloc::Global,
     collections::HashSet,
     fs::{copy, create_dir_all, read_dir, write},
     path::{Path, PathBuf},
