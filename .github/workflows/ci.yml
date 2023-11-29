@@ -85,7 +85,6 @@ jobs:
           name: test-artifacts
           path: examples/tests/
 
-
   build_and_test:
     name: Build and Test (Linux)
     container: fedora:38
@@ -120,6 +119,11 @@ jobs:
         with:
           name: test-artifacts
           path: examples/tests/
+
+      - name: Take Ownership of Test Dependencies
+        run: |
+          ls -lahR examples/tests/
+          chown "${USER}:${USER}" examples/tests/
 
       - uses: dtolnay/rust-toolchain@nightly
         with:
