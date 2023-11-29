@@ -74,12 +74,12 @@ jobs:
           key: cache-test-artifacts-${{ hashFiles('examples/tests/**/*') }}
 
       - name: Build Test Artifacts
+        if: ${{ steps.cache-test-artifacts.outputs.cache-hit != 'true' }}
         run: |
           cd examples/tests/
           ./build.sh
 
       - name: Upload Test Artifacts
-        if: ${{ steps.cache-test-artifacts.outputs.cache-hit != 'true' }}
         uses: actions/upload-artifact@v3
         with:
           name: test-artifacts
