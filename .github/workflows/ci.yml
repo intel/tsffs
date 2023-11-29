@@ -29,8 +29,8 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          apt-get -y update && \
-          apt-get -y install \
+          sudo apt-get -y update && \
+          sudo apt-get -y install \
             clang libclang-dev cmake curl dosfstools g++ gcc git llvm make \
             mtools ninja-build openssl libssl-dev python3 python3-pip
 
