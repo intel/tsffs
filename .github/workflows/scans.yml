@@ -51,9 +51,9 @@ jobs:
           # - examples/manual-example/Dockerfile
           # - modules/tsffs/tests/targets/minimal-riscv-64/Dockerfile
           # - modules/tsffs/tests/targets/minimal-riscv-64-edk2/Dockerfile
-          - examples/tests/targets/x86_64-breakpoint-uefi-edk2/Dockerfile
-          - examples/tests/targets/x86_64-timeout-uefi-edk2/Dockerfile
-          - examples/tests/targets/x86_64-uefi-edk2/Dockerfile
+          - examples/tests/x86_64-breakpoint-uefi-edk2/Dockerfile
+          - examples/tests/x86_64-timeout-uefi-edk2/Dockerfile
+          - examples/tests/x86_64-uefi-edk2/Dockerfile
         include:
           # NOTE: These containers exceed the GitHub size limit and must be scanned manually
           # - dockerfile: Dockerfile
@@ -64,12 +64,12 @@ jobs:
           #   context: modules/tsffs/tests/targets/minimal-riscv-64/
           # - dockerfile: modules/tsffs/tests/targets/minimal-riscv-64-edk2/Dockerfile
           #   context: modules/tsffs/tests/targets/minimal-riscv-64-edk2/
-          - dockerfile: examples/tests/targets/x86_64-breakpoint-uefi-edk2/Dockerfile
-            context: examples/tests/targets/x86_64-breakpoint-uefi-edk2/
-          - dockerfile: examples/tests/targets/x86_64-timeout-uefi-edk2/Dockerfile
-            context: examples/tests/targets/x86_64-timeout-uefi-edk2/
-          - dockerfile: examples/tests/targets/x86_64-uefi-edk2/Dockerfile
-            context: examples/tests/targets/x86_64-uefi-edk2/
+          - dockerfile: examples/tests/x86_64-breakpoint-uefi-edk2/Dockerfile
+            context: examples/tests/x86_64-breakpoint-uefi-edk2/
+          - dockerfile: examples/tests/x86_64-timeout-uefi-edk2/Dockerfile
+            context: examples/tests/x86_64-timeout-uefi-edk2/
+          - dockerfile: examples/tests/x86_64-uefi-edk2/Dockerfile
+            context: examples/tests/x86_64-uefi-edk2/
 
     steps:
       - uses: actions/checkout@v4
