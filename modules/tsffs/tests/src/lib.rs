@@ -52,7 +52,14 @@ where
         if src.is_dir() {
             create_dir_all(&dst)?;
         } else if src.is_file() {
-            copy(&src, &dst)?;
+            copy(&src, &dst).map_err(|e| {
+                anyhow!(
+                    "Failed to copy file from {} to {}: {}",
+                    src.display(),
+                    dst.display(),
+                    e
+                )
+            })?;
         }
     }
     Ok(())
@@ -81,7 +88,22 @@ pub fn local_or_remote_pkg_install(mut options: InstallOptions) -> Result<()> {
                 bail!("No install dir for global options {options:?}");
             };
 
-            copy_dir_contents(install_dir, path)?;
+            let package_install_dir = install_dir
+                .components()
+                .last()
+                .ok_or_else(|| {
+                    anyhow!(
+                        "No final component in install dir {}",
+                        install_dir.display()
+                    )
+                })?
+                .as_os_str()
+                .to_str()
+                .ok_or_else(|| anyhow!("Could not convert component to string"))?
+                .to_string();
+
+            create_dir_all(&install_dir.join(&package_install_dir))?;
+            copy_dir_contents(path, &install_dir.join(&package_install_dir))?;
         }
 
         // Clear the remote packages to install, we can install local paths no problem
