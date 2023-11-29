@@ -48,4 +48,5 @@ RUN mkdir -p /simics/ispm && \
     ispm packages --install-bundle /tsffs/.github/builder/rsrc/simics.ispm --non-interactive --trust-insecure-packages && \
     ispm projects "$(pwd)" --create --ignore-existing-files --non-interactive && \
     bin/project-setup --force && \
+    echo "LDFLAGS=-Wl,--gc-sections" >> config-user.mk && \
     cargo -Zscript build.rs
