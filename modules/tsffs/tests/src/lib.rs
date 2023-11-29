@@ -157,6 +157,8 @@ pub struct TestEnvSpec {
     tsffs: bool,
     #[builder(default, setter(into))]
     files: Vec<(String, Vec<u8>)>,
+    #[builder(default, setter(into))]
+    directories: Vec<PathBuf>,
     #[builder(default, setter(into, strip_option))]
     simics_home: Option<PathBuf>,
     #[builder(default, setter(into, strip_option))]
@@ -252,6 +254,17 @@ impl TestEnv {
                 }
             }
             write(target, content)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn install_directories<P>(project_dir: P, directories: &Vec<PathBuf>) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
+        for directory in directories{
+            copy_dir_contents(directory, &project_dir.as_ref().to_path_buf())?;
         }
 
         Ok(())
@@ -394,6 +407,7 @@ impl TestEnv {
         .ok();
 
         Self::install_files(&project_dir, &spec.files)?;
+        Self::install_directories(&project_dir, &spec.directories)?;
 
         Ok(Self {
             test_base,

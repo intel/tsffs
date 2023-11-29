@@ -131,7 +131,7 @@ jobs:
 
       - name: (T186) (N/C) - Use recommended settings and latest patches for third party libraries and software
         run: |
-          cargo generate-lockfile --locked
+          cargo generate-lockfile
 
           cargo audit
 

@@ -29,3 +29,4 @@ walkdir = "2.4.0"
 anyhow.workspace = true
 command-ext.workspace = true
 simics-codegen.workspace = true
+ispm-wrapper.workspace = true
