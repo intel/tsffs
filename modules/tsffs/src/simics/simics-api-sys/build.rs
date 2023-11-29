@@ -38,6 +38,7 @@ use std::{
     collections::HashSet,
     env::var,
     ffi::OsStr,
+    fmt::Write,
     fs::{read, read_dir, write},
     iter::once,
     path::{Path, PathBuf},
@@ -340,30 +341,34 @@ fn main() -> Result<()> {
     let hap_code = haps_names
         .iter()
         .zip(haps_code_indices_descriptions.iter())
-        .map(|(name, (code, maybe_index, maybe_description))| {
-            let mut hap_name_name = name.to_ascii_uppercase();
-            hap_name_name += "_HAP_NAME";
-            let mut hap_callback_name = name.to_ascii_lowercase();
-            hap_callback_name += "_hap_callback";
-            let code = code
-                .replace("(*)", &format!("(*{})", hap_callback_name))
-                .replace(['/', '-'], "_");
-            let comment = format!(
-                "/**\n * Index: {}\n * Description: {}\n */",
-                maybe_index
-                    .as_ref()
-                    .unwrap_or(&"Indices not supported".to_string()),
-                maybe_description
-                    .as_ref()
-                    .unwrap_or(&"No description".to_string())
-            );
+        .try_fold(
+            String::default(),
+            |mut s, (name, (code, maybe_index, maybe_description))| {
+                let mut hap_name_name = name.to_ascii_uppercase();
+                hap_name_name += "_HAP_NAME";
+                let mut hap_callback_name = name.to_ascii_lowercase();
+                hap_callback_name += "_hap_callback";
+                let code = code
+                    .replace("(*)", &format!("(*{})", hap_callback_name))
+                    .replace(['/', '-'], "_");
+                let comment = format!(
+                    "/**\n * Index: {}\n * Description: {}\n */",
+                    maybe_index
+                        .as_ref()
+                        .unwrap_or(&"Indices not supported".to_string()),
+                    maybe_description
+                        .as_ref()
+                        .unwrap_or(&"No description".to_string())
+                );
 
-            format!(
-                "#define {} \"{}\"\n{}\ntypedef {}\n",
-                hap_name_name, name, comment, code
-            )
-        })
-        .collect::<String>();
+                write!(
+                    &mut s,
+                    "#define {} \"{}\"\n{}\ntypedef {}\n",
+                    hap_name_name, name, comment, code
+                )
+                .and_then(|_| Ok(s))
+            },
+        )?;
 
     let simics_base_version = base_dir_path
                 .file_name()

@@ -7,16 +7,15 @@
 
 use anyhow::Result;
 use command_ext::CommandExtCheck;
-use indoc::indoc;
 use ispm_wrapper::data::ProjectPackage;
 use std::{path::PathBuf, process::Command};
 use tests::{Architecture, TestEnvSpec};
 
 #[test]
 #[cfg_attr(miri, ignore)]
-fn test_x86_64_edk2_magic() -> Result<()> {
+fn test_x86_user_magic() -> Result<()> {
     let env = TestEnvSpec::builder()
-        .name("x86_64-edk2-magic")
+        .name("x86-user")
         .cargo_manifest_dir(env!("CARGO_MANIFEST_DIR"))
         .cargo_target_tmpdir(env!("CARGO_TARGET_TMPDIR"))
         .directories([PathBuf::from(env!("CARGO_MANIFEST_DIR"))
