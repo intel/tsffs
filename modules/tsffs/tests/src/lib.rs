@@ -87,7 +87,9 @@ pub fn local_or_remote_pkg_install(mut options: InstallOptions) -> Result<()> {
         // Clear the remote packages to install, we can install local paths no problem
         options.packages_mut().clear();
 
-        ispm::packages::install(&options)?;
+        if !options.package_paths().is_empty() {
+            ispm::packages::install(&options)?;
+        }
     }
 
     Ok(())
