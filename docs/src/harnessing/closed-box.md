@@ -43,6 +43,13 @@ should be a processor instance, for example on the QSP platform
 with new testcases, and whose address space will be used for virtual address
 translation.
 
+Both testcases also take a `virt: bool` as their final argument, to specify whether the
+addresses passed are virtual addresses or physical addresses. If `False`, the addresses
+will *not* be translated, which can allow circumventing issues where the address is
+accessible, but the page table does not contain an identity mapping for it. A physical
+address that is identity mapped may be passed with either a `True` or `False` value of
+`virt`.
+
 The first API takes two memory addresses, and is equivalent to the [compiled in
 `HARNESS_START`](compiled-in.md#using-provided-headers) macro. When called, the fuzzer
 will save the passed-in addresses (which may be virtual or physical), read the
@@ -52,7 +59,7 @@ testcase pointer, and the size of the testcase will be written to the provided s
 pointer. This API is called like:
 
 ```python
-tsffs.iface.tsffs.start(cpu, testcase_address, size_address)
+tsffs.iface.tsffs.start(cpu, testcase_address, size_address, True)
 ```
 
 The second API takes one memory address and a maximum size. Testcases will be written
@@ -60,7 +67,7 @@ to the provided testcase address, and will be truncated to the provided maximum 
 This API is called like:
 
 ```python
-tsffs.iface.tsffs.start_with_maximum_size(cpu, testcase_address, maximum_size)
+tsffs.iface.tsffs.start_with_maximum_size(cpu, testcase_address, maximum_size, True)
 ```
 
 ## Triggering Manual Stops/Solutions

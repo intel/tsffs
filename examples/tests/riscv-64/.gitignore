@@ -1,0 +1,12 @@
+*.elf
+Image
+*.tar.gz
+*.ext2
+test
+test-mod
+!test-mod/
+test-mod-userspace
+test-mod.ko
+*.h
+*.craff
+*.fs

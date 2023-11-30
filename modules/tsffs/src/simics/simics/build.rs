@@ -69,5 +69,11 @@ fn main() -> Result<()> {
         println!("cargo:rustc-cfg={CFG_SIMICS_DEPRECATED_API_SIM_LOG}");
     }
 
+    if VersionConstraint::from_str(">=6.0.173")?.matches(&simics_api_version) {
+        // Enable the experimental snapshots api for versions over 6.0.173 (where the API first
+        // appears)
+        println!("cargo:rustc-cfg={CFG_SIMICS_EXPERIMENTAL_API_SNAPSHOTS}");
+    }
+
     Ok(())
 }

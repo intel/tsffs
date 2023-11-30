@@ -154,6 +154,7 @@ impl Tsffs {
         cpu: *mut ConfObject,
         testcase_address: GenericAddress,
         size_address: GenericAddress,
+        virt: bool,
     ) -> Result<()> {
         debug!(
             self.as_conf_object(),
@@ -165,6 +166,7 @@ impl Tsffs {
                 .processor(cpu)
                 .buffer(testcase_address)
                 .size(ManualStartSize::SizeAddress(size_address))
+                .virt(virt)
                 .build(),
         ))?;
 
@@ -190,6 +192,7 @@ impl Tsffs {
         cpu: *mut ConfObject,
         testcase_address: GenericAddress,
         maximum_size: u32,
+        virt: bool,
     ) -> Result<()> {
         debug!(
             self.as_conf_object(),
@@ -201,6 +204,7 @@ impl Tsffs {
                 .processor(cpu)
                 .buffer(testcase_address)
                 .size(ManualStartSize::MaximumSize(maximum_size as u64))
+                .virt(virt)
                 .build(),
         ))?;
 

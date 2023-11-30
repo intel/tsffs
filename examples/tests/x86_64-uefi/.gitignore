@@ -1,0 +1,6 @@
+.ninja_log
+test.efi
+test.lib
+test.o
+*.h
+*.craff

@@ -28,6 +28,8 @@ pub struct ManualStart {
     buffer: Option<u64>,
     #[builder(default = ManualStartSize::NoSize)]
     size: ManualStartSize,
+    #[builder(default)]
+    virt: bool,
 }
 
 #[derive(TypedBuilder, Getters, Serialize, Deserialize, Debug, Clone)]

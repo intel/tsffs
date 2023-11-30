@@ -17,7 +17,8 @@ use ispm_wrapper::{
 };
 use std::{
     collections::HashSet,
-    fs::{copy, create_dir_all, read_dir, write},
+    env::var,
+    fs::{copy, create_dir_all, read_dir, remove_dir_all, write},
     path::{Path, PathBuf},
 };
 use typed_builder::TypedBuilder;
@@ -52,7 +53,14 @@ where
         if src.is_dir() {
             create_dir_all(&dst)?;
         } else if src.is_file() {
-            copy(&src, &dst)?;
+            if let Err(e) = copy(&src, &dst) {
+                eprintln!(
+                    "Warning: failed to copy file from {} to {}: {}",
+                    src.display(),
+                    dst.display(),
+                    e
+                );
+            }
         }
     }
     Ok(())
@@ -63,7 +71,7 @@ pub fn local_or_remote_pkg_install(mut options: InstallOptions) -> Result<()> {
     if Internal::is_internal()? {
         ispm::packages::install(&options)?;
     } else {
-        let installed = ispm::packages::list(options.global())?;
+        let installed = ispm::packages::list(&GlobalOptions::default())?;
 
         for package in options.packages() {
             let Some(installed) = installed.installed_packages() else {
@@ -72,7 +80,7 @@ pub fn local_or_remote_pkg_install(mut options: InstallOptions) -> Result<()> {
             let Some(available) = installed.iter().find(|p| {
                 p.package_number() == package.package_number() && p.version() == package.version()
             }) else {
-                bail!("Did not find package {package:?}");
+                bail!("Did not find package {package:?} in {installed:?}");
             };
             let Some(path) = available.paths().first() else {
                 bail!("No paths for available package {available:?}");
@@ -81,13 +89,30 @@ pub fn local_or_remote_pkg_install(mut options: InstallOptions) -> Result<()> {
                 bail!("No install dir for global options {options:?}");
             };
 
-            copy_dir_contents(install_dir, path)?;
+            let package_install_dir = install_dir
+                .components()
+                .last()
+                .ok_or_else(|| {
+                    anyhow!(
+                        "No final component in install dir {}",
+                        install_dir.display()
+                    )
+                })?
+                .as_os_str()
+                .to_str()
+                .ok_or_else(|| anyhow!("Could not convert component to string"))?
+                .to_string();
+
+            create_dir_all(&install_dir.join(&package_install_dir))?;
+            copy_dir_contents(path, &install_dir.join(&package_install_dir))?;
         }
 
         // Clear the remote packages to install, we can install local paths no problem
         options.packages_mut().clear();
 
-        ispm::packages::install(&options)?;
+        if !options.package_paths().is_empty() {
+            ispm::packages::install(&options)?;
+        }
     }
 
     Ok(())
@@ -105,33 +130,33 @@ impl Architecture {
             Architecture::X86 => vec![
                 ProjectPackage::builder()
                     .package_number(1000)
-                    .version("latest")
+                    .version("6.0.169")
                     .build(),
                 // QSP-x86
                 ProjectPackage::builder()
                     .package_number(2096)
-                    .version("latest")
+                    .version("6.0.70")
                     .build(),
                 // QSP-CPU
                 ProjectPackage::builder()
                     .package_number(8112)
-                    .version("latest")
+                    .version("6.0.17")
                     .build(),
             ],
             Architecture::Riscv => vec![
                 ProjectPackage::builder()
                     .package_number(1000)
-                    .version("latest")
+                    .version("6.0.169")
                     .build(),
                 // RISC-V-CPU
                 ProjectPackage::builder()
                     .package_number(2050)
-                    .version("latest")
+                    .version("6.0.57")
                     .build(),
                 // RISC-V-Simple
                 ProjectPackage::builder()
                     .package_number(2053)
-                    .version("latest")
+                    .version("6.0.4")
                     .build(),
             ],
         }
@@ -157,6 +182,8 @@ pub struct TestEnvSpec {
     tsffs: bool,
     #[builder(default, setter(into))]
     files: Vec<(String, Vec<u8>)>,
+    #[builder(default, setter(into))]
+    directories: Vec<PathBuf>,
     #[builder(default, setter(into, strip_option))]
     simics_home: Option<PathBuf>,
     #[builder(default, setter(into, strip_option))]
@@ -252,6 +279,17 @@ impl TestEnv {
                 }
             }
             write(target, content)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn install_directories<P>(project_dir: P, directories: &Vec<PathBuf>) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
+        for directory in directories {
+            copy_dir_contents(directory, &project_dir.as_ref().to_path_buf())?;
         }
 
         Ok(())
@@ -394,6 +432,7 @@ impl TestEnv {
         .ok();
 
         Self::install_files(&project_dir, &spec.files)?;
+        Self::install_directories(&project_dir, &spec.directories)?;
 
         Ok(Self {
             test_base,
@@ -401,5 +440,17 @@ impl TestEnv {
             project_dir,
             simics_home_dir,
         })
+    }
+
+    pub fn cleanup(&mut self) -> Result<()> {
+        remove_dir_all(self.test_dir()).map_err(|e| anyhow!("Error cleaning up: {e}"))
+    }
+
+    pub fn cleanup_if_env(&mut self) -> Result<()> {
+        if let Ok(_cleanup) = var("TSFFS_TEST_CLEANUP_EACH") {
+            self.cleanup()?;
+        }
+
+        Ok(())
     }
 }

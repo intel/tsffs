@@ -1,0 +1,5 @@
+.ninja_log
+test
+*.h
+*.fs
+*.craff

@@ -1,0 +1,143 @@
+---
+name: Scan And Validate
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  super_lint:
+    name: Run Super Linter
+    container: github/super-linter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: false
+
+      - name: (CT222) (E/C) - Use hadolint to evaluate Dockerfile configuration
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Rust validation is handled by build_and_test
+          VALIDATE_RUST_2015: false
+          VALIDATE_RUST_2018: false
+          VALIDATE_RUST_2021: false
+          VALIDATE_RUST_CLIPPY: false
+          # We have no non-example CPP in the codebase
+          VALIDATE_CPP: false
+          VALIDATE_CLANG_FORMAT: false
+          VALIDATE_JSCPD: false
+          # This is way too pedantic
+          VALIDATE_NATURAL_LANGUAGE: false
+          # Dont flake8/mypy/pylint because our only python files attempt to import
+          # simics and fail
+          VALIDATE_PYTHON_FLAKE8: false
+          VALIDATE_PYTHON_MYPY: false
+          VALIDATE_PYTHON_PYLINT: false
+        run: |
+          /action/lib/linter.sh || ( echo "❗ [CT222] Super linter found an issue (possibly Hadolint)" && exit 1 )
+          echo "✅ [CT222] Hadolint Dockerfile check passed"
+
+  scan_containers:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dockerfile:
+          # NOTE: These containers exceed the GitHub size limit and must be scanned manually
+          # - Dockerfile
+          # - examples/manual-example/Dockerfile
+          # - modules/tsffs/tests/targets/minimal-riscv-64/Dockerfile
+          # - modules/tsffs/tests/targets/minimal-riscv-64-edk2/Dockerfile
+          - examples/tests/x86_64-breakpoint-uefi-edk2/Dockerfile
+          - examples/tests/x86_64-timeout-uefi-edk2/Dockerfile
+          - examples/tests/x86_64-uefi-edk2/Dockerfile
+        include:
+          # NOTE: These containers exceed the GitHub size limit and must be scanned manually
+          # - dockerfile: Dockerfile
+          #   context: .
+          # - dockerfile: examples/manual-example/Dockerfile
+          #   context: .
+          # - dockerfile: modules/tsffs/tests/targets/minimal-riscv-64/Dockerfile
+          #   context: modules/tsffs/tests/targets/minimal-riscv-64/
+          # - dockerfile: modules/tsffs/tests/targets/minimal-riscv-64-edk2/Dockerfile
+          #   context: modules/tsffs/tests/targets/minimal-riscv-64-edk2/
+          - dockerfile: examples/tests/x86_64-breakpoint-uefi-edk2/Dockerfile
+            context: examples/tests/x86_64-breakpoint-uefi-edk2/
+          - dockerfile: examples/tests/x86_64-timeout-uefi-edk2/Dockerfile
+            context: examples/tests/x86_64-timeout-uefi-edk2/
+          - dockerfile: examples/tests/x86_64-uefi-edk2/Dockerfile
+            context: examples/tests/x86_64-uefi-edk2/
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: false
+
+      - name: Build Image
+        run: |
+          docker build -t container -f ${{ matrix.dockerfile }} ${{ matrix.context }}
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: container
+
+  additional_sdl_checks:
+    name: Perform Additional SDL Checks
+    container: fedora:38
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Dependencies
+        run: |
+          dnf -y update && \
+          dnf -y install \
+            g++ gcc git git-lfs glibc-devel make openssl openssl-devel openssl-libs
+
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          toolchain: nightly
+          components: rustfmt,clippy,miri
+
+      - name: Install Cargo Plugins
+        run: |
+          cargo install cargo-audit cargo-outdated
+
+      - name: (CT247/CT200) (N/C) - Scan 3rd-Party Components for Vulnerabilities
+        run: |
+          # shellcheck disable=SC2086,SC2143
+          LATEST="$(find '.github/dependabot' -name '*.csv' -print0 \
+            | xargs -r -0 ls -1 -t \
+            | head -n 1)"
+
+          if ! find '.github/dependabot' -name '*.csv' -mtime -14 | grep -q '.'; then
+              echo "❗ [CT247/CT200] No dependabot report found from last 2 weeks. Run ./scripts/dependabot.sh."
+              exit 1
+          fi
+
+          if tail -n+2 "${LATEST}" | grep -qv ".github/actions/toolchain"; then
+              cat "${LATEST}"
+              echo "❗ [CT247/CT200] Vulnerabilities found outside of github actions. Please remediate them."
+              exit 1
+          fi
+          echo "✅ [CT247/CT200] No dependabot vulnerabilities found"
+
+      - name: (T186) (N/C) - Use recommended settings and latest patches for third party libraries and software
+        run: |
+          cargo generate-lockfile
+
+          cargo audit
+
+          if ! cargo outdated --exit-code 1; then
+              echo "❗ [T186] Out of date third party dependencies found"
+              exit 1
+          fi
+
+          echo "✅ [T186] No outdated or vulnerable third party dependencies found"

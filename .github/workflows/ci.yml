@@ -1,5 +1,5 @@
 ---
-name: CI
+name: Build And Test
 
 on:
   push:
@@ -16,11 +16,11 @@ env:
   PUBLIC_SIMICS_PACKAGE_VERSION_1000: "6.0.169"
   MINGW_URL: "https://github.com/brechtsanders/winlibs_mingw/releases/download/13.2.0-16.0.6-11.0.0-ucrt-r1/winlibs-x86_64-posix-seh-gcc-13.2.0-llvm-16.0.6-mingw-w64ucrt-11.0.0-r1.7z"
   MINGW_VERSION: "13.2.0-16.0.6-11.0.0-ucrt-r1"
+  TSFFS_SIMICS_PKG_VERSION: "6.0.0"
 
 jobs:
-  build_and_test:
-    name: Build and Test
-    container: fedora:38
+  build_test_artifacts:
+    name: Build Test Artifacts
     runs-on: ubuntu-latest
     steps:
       - name: Add ISPM to PATH
@@ -28,7 +28,74 @@ jobs:
           echo "${HOME}/simics/ispm/" >> "${GITHUB_PATH}"
 
       - name: Install Dependencies
-        shell: bash
+        run: |
+          sudo apt-get -y update && \
+          sudo apt-get -y install \
+            clang libclang-dev cmake curl dosfstools g++ gcc git llvm make \
+            mtools ninja-build openssl libssl-dev python3 python3-pip
+
+      - name: Cache SIMICS Dependencies
+        id: cache-simics-packages
+        uses: actions/cache@v3
+        with:
+          path: ~/simics
+          key: simics-linux-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
+
+      - name: Install SIMICS (External)
+        if: ${{ steps.cache-simics-packages.outputs.cache-hit != 'true' }}
+        run: |
+          mkdir -p "${HOME}/simics/ispm/" && \
+          curl --noproxy -L -o "${HOME}/simics/ispm.tar.gz" \
+              "${{ env.PUBLIC_SIMICS_ISPM_URL }}" && \
+          curl --noproxy -L -o "${HOME}/simics/simics.ispm" \
+              "${{ env.PUBLIC_SIMICS_PKGS_URL }}" && \
+          tar -C "${HOME}/simics/ispm" --strip-components=1 \
+              -xvf "${HOME}/simics/ispm.tar.gz"
+
+      - name: Set up SIMICS Install Directory
+        run: |
+          ispm settings install-dir "${HOME}/simics"
+
+      - name: Install SIMICS Packages
+        if: ${{ steps.cache-simics-packages.outputs.cache-hit != 'true' }}
+        run: |
+          ispm packages --install-bundle "${HOME}/simics/simics.ispm" \
+              --non-interactive --trust-insecure-packages
+
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Cache Test Artifacts
+        id: cache-test-artifacts
+        uses: actions/cache@v3
+        with:
+          path: examples/tests
+          key: cache-test-artifacts-${{ hashFiles('examples/tests/**/*') }}
+
+      - name: Build Test Artifacts
+        if: ${{ steps.cache-test-artifacts.outputs.cache-hit != 'true' }}
+        run: |
+          cd examples/tests/
+          ./build.sh
+
+      - name: Upload Test Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-artifacts
+          path: examples/tests/
+
+  build_and_test:
+    name: Build and Test (Linux)
+    container: fedora:38
+    runs-on: ubuntu-latest
+    needs: build_test_artifacts
+    steps:
+      - name: Add ISPM to PATH
+        run: |
+          echo "${HOME}/simics/ispm/" >> "${GITHUB_PATH}"
+
+      - name: Install Dependencies
         run: |
           dnf -y update && \
           dnf -y install \
@@ -42,6 +109,22 @@ jobs:
       - uses: actions/checkout@v4
         with:
           lfs: true
+
+      - name: Delete Un-Built Test Dependencies
+        run: |
+          rm -rf examples/tests/
+
+      - name: Download Test Dependencies
+        uses: actions/download-artifact@v3
+        with:
+          name: test-artifacts
+          path: examples/tests/
+
+      - name: Take Ownership of Test Dependencies
+        run: |
+          ls -lahR examples/tests/
+          chown -R "${USER}:${USER}" examples/tests/
+          chmod -R 0755 examples/tests/
 
       - uses: dtolnay/rust-toolchain@nightly
         with:
@@ -57,7 +140,6 @@ jobs:
 
       - name: Install SIMICS (External)
         if: ${{ steps.cache-simics-packages.outputs.cache-hit != 'true' }}
-        shell: bash
         run: |
           mkdir -p "${HOME}/simics/ispm/" && \
           curl --noproxy -L -o "${HOME}/simics/ispm.tar.gz" \
@@ -84,25 +166,39 @@ jobs:
           bin/project-setup --force
           ./build.rs
           ispm packages \
-            -i linux64/packages/simics-pkg-31337-6.0.0-linux64.ispm \
+            -i linux64/packages/simics-pkg-31337-${{ env.TSFFS_SIMICS_PKG_VERSION }}-linux64.ispm \
             --non-interactive --trust-insecure-packages
 
       - name: Build Project
         run: |
           SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo build
-      - name: Check Project
+
+      - name: CT39 - Clippy Check Project
         run: |
-          SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo clippy
+          SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo clippy \
+            || ( echo "❗ [CT39 (1/2)] Failed clippy static analysis checks" && exit 1 )
+          echo "✅ [CT39 (1/2)] Passed clippy static analysis checks"
+
       - name: Test Project
         run: |
-          SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo test -p command-ext -p raw-cstr -p tmp-dir -p version-tools || ( echo "❗ Tests failed" && exit 1 )
+          TSFFS_TEST_CLEANUP_EACH=1 SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo test -p command-ext -p raw-cstr -p tmp-dir -p version-tools -p tests -- --nocapture || ( echo "❗ Tests failed" && exit 1 )
           echo "✅ Tests passed"
+
       - name: Build Docs
         run: |
           SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo doc --workspace --no-deps
+
       - name: Test Docs
         run: |
           SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo test --doc
+
+      - name: CT39 - MIRI Check Project
+        run: |
+          SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} \
+          MIRIFLAGS="-Zmiri-backtrace=full -Zmiri-disable-isolation -Zmiri-panic-on-unsupported" \
+            cargo miri test -p command-ext -p raw-cstr -p tmp-dir -p version-tools \
+            || ( echo "❗ [CT39 (2/2)] Failed MIRI static analysis checks" && exit 1 )
+          echo "✅ [CT39 (2/2)] Passed MIRI static analysis checks"
 
   build_windows:
     name: Build and Test (Windows)
@@ -175,90 +271,50 @@ jobs:
           ispm.exe projects $(pwd) --create --non-interactive --ignore-existing-files
           ./bin/project-setup.bat --mingw-dir C:\MinGW\ --ignore-existing-files --force
           cargo -Zscript build.rs
-          ispm.exe packages -i win64/packages/simics-pkg-31337-6.0.0-win64.ispm --non-interactive --trust-insecure-packages
+          ispm.exe packages -i win64/packages/simics-pkg-31337-${{ env.TSFFS_SIMICS_PKG_VERSION }}-win64.ispm --non-interactive --trust-insecure-packages
 
-  static_analysis:
-    name: Run Static Analysis
-    container: fedora:38
+      - name: Upload Distribution Package
+        uses: actions/upload-artifact@v3
+        with:
+          name: simics-pkg-31337-${{ env.TSFFS_SIMICS_PKG_VERSION }}-win64.ispm
+          path: win64/packages/simics-pkg-31337-${{ env.TSFFS_SIMICS_PKG_VERSION }}-win64.ispm
+
+  build_dist:
+    name: Build for Distribution
     runs-on: ubuntu-latest
     steps:
-      - name: Add ISPM to PATH
-        run: |
-          echo "${HOME}/simics/ispm/" >> "${GITHUB_PATH}"
-
-      - name: Install Dependencies
-        shell: bash
-        run: |
-          dnf -y update && \
-          dnf -y install \
-            alsa-lib atk clang clang-libs clang-resource-filesystem \
-            clang-tools-extra cmake cups curl dosfstools g++ gcc git \
-            git-lfs glibc-devel glibc-devel.i686 glibc-static \
-            glibc-static.i686 gtk3 lld lld-devel lld-libs llvm llvm-libs \
-            llvm-static make mesa-libgbm mtools ninja-build openssl \
-            openssl-devel openssl-libs python3 python3-pip yamllint
-
       - uses: actions/checkout@v4
         with:
           lfs: true
 
-      - uses: dtolnay/rust-toolchain@nightly
-        with:
-          toolchain: nightly
-          components: rustfmt,clippy,miri
-
-      - name: Cache SIMICS Dependencies
-        id: cache-simics-packages
+      - name: Cache Builder Dependencies
+        id: cache-builder-dependencies
         uses: actions/cache@v3
         with:
-          path: ~/simics
-          key: simics-linux-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
+          path: .github/builder/rsrc
+          key: cache-builder-dependencies
 
-      - name: Install SIMICS (External)
-        if: ${{ steps.cache-simics-packages.outputs.cache-hit != 'true' }}
-        shell: bash
+      - name: Download Builder Dependencies
+        if: ${{ steps.cache-builder-dependencies.outputs.cache-hit != 'true' }}
         run: |
-          mkdir -p "${HOME}/simics/ispm/" && \
-          curl --noproxy -L -o "${HOME}/simics/ispm.tar.gz" \
+          mkdir -p .github/builder/rsrc
+          curl -L -o .github/builder/rsrc/ispm.tar.gz \
               "${{ env.PUBLIC_SIMICS_ISPM_URL }}" && \
-          curl --noproxy -L -o "${HOME}/simics/simics.ispm" \
-              "${{ env.PUBLIC_SIMICS_PKGS_URL }}" && \
-          tar -C "${HOME}/simics/ispm" --strip-components=1 \
-              -xvf "${HOME}/simics/ispm.tar.gz"
+          curl -L -o .github/builder/rsrc/simics.ispm \
+              "${{ env.PUBLIC_SIMICS_PKGS_URL }}"
 
-      - name: Set up SIMICS Install Directory
+      - name: Build Distribution Package
         run: |
-          ispm settings install-dir "${HOME}/simics"
+          docker build -t tsffs-dist -f .github/builder/Dockerfile .
+          docker create --name tsffs-dist tsffs-dist bash
+          docker cp tsffs-dist:/tsffs/linux64/packages/simics-pkg-31337-${{ env.TSFFS_SIMICS_PKG_VERSION }}-linux64.ispm simics-pkg-31337-${{ env.TSFFS_SIMICS_PKG_VERSION }}-linux64.ispm
+          docker rm -f tsffs-dist
 
-      - name: Install SIMICS Packages
-        if: ${{ steps.cache-simics-packages.outputs.cache-hit != 'true' }}
-        run: |
-          ispm packages --install-bundle "${HOME}/simics/simics.ispm" \
-              --non-interactive --trust-insecure-packages
-
-      - name: Build and Install TSFFS SIMICS Package
-        run: |
-          ispm projects "$(pwd)" --create --ignore-existing-files \
-            --non-interactive
-          bin/project-setup --force
-          ./build.rs
-          ispm packages \
-            -i linux64/packages/simics-pkg-31337-6.0.0-linux64.ispm \
-            --non-interactive --trust-insecure-packages
-
-      - name: CT39 - Clippy Check Project
-        run: |
-          SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo clippy \
-            || ( echo "❗ [CT39 (1/2)] Failed clippy static analysis checks" && exit 1 )
-          echo "✅ [CT39 (1/2)] Passed clippy static analysis checks"
-
-      - name: CT39 - MIRI Check Project
-        run: |
-          SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} \
-          MIRIFLAGS="-Zmiri-backtrace=full -Zmiri-disable-isolation -Zmiri-panic-on-unsupported" \
-            cargo miri test -p command-ext -p raw-cstr -p tmp-dir -p version-tools \
-            || ( echo "❗ [CT39 (2/2)] Failed MIRI static analysis checks" && exit 1 )
-          echo "✅ [CT39 (2/2)] Passed MIRI static analysis checks"
+      - name: Upload Distribution Package
+        uses: actions/upload-artifact@v3
+        with:
+          name: simics-pkg-31337-${{ env.TSFFS_SIMICS_PKG_VERSION }}-linux64.ispm
+          path: simics-pkg-31337-${{ env.TSFFS_SIMICS_PKG_VERSION }}-linux64.ispm
 
   fuzz_tests:
     name: Run Fuzz Tests
@@ -266,7 +322,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install Dependencies
-        shell: bash
         run: |
           dnf -y update && \
           dnf -y install \
@@ -328,133 +383,3 @@ jobs:
 
           echo "✅ [CT632] Fuzz test completed"
           exit 0
-
-  super_lint:
-    name: Run Super Linter
-    container: github/super-linter
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          lfs: false
-      - name: (CT222) (E/C) - Use hadolint to evaluate Dockerfile configuration
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Rust validation is handled by build_and_test
-          VALIDATE_RUST_2015: false
-          VALIDATE_RUST_2018: false
-          VALIDATE_RUST_2021: false
-          VALIDATE_RUST_CLIPPY: false
-          # We have no non-example CPP in the codebase
-          VALIDATE_CPP: false
-          VALIDATE_CLANG_FORMAT: false
-          VALIDATE_JSCPD: false
-          # This is way too pedantic
-          VALIDATE_NATURAL_LANGUAGE: false
-          # Dont flake8/mypy/pylint because our only python files attempt to import
-          # simics and fail
-          VALIDATE_PYTHON_FLAKE8: false
-          VALIDATE_PYTHON_MYPY: false
-          VALIDATE_PYTHON_PYLINT: false
-        run: |
-          /action/lib/linter.sh || ( echo "❗ [CT222] Super linter found an issue (possibly Hadolint)" && exit 1 )
-          echo "✅ [CT222] Hadolint Dockerfile check passed"
-
-  scan_containers:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        dockerfile:
-          # NOTE: These containers exceed the GitHub size limit and must be scanned manually
-          # - Dockerfile
-          # - examples/manual-example/Dockerfile
-          # - modules/tsffs/tests/targets/minimal-riscv-64/Dockerfile
-          # - modules/tsffs/tests/targets/minimal-riscv-64-edk2/Dockerfile
-          - modules/tsffs/tests/targets/minimal-x86_64-breakpoint-edk2/Dockerfile
-          - modules/tsffs/tests/targets/minimal-x86_64-timeout/Dockerfile
-          - modules/tsffs/tests/targets/minimal-x86_64-edk2/Dockerfile
-        include:
-          # NOTE: These containers exceed the GitHub size limit and must be scanned manually
-          # - dockerfile: Dockerfile
-          #   context: .
-          # - dockerfile: examples/manual-example/Dockerfile
-          #   context: .
-          # - dockerfile: modules/tsffs/tests/targets/minimal-riscv-64/Dockerfile
-          #   context: modules/tsffs/tests/targets/minimal-riscv-64/
-          # - dockerfile: modules/tsffs/tests/targets/minimal-riscv-64-edk2/Dockerfile
-          #   context: modules/tsffs/tests/targets/minimal-riscv-64-edk2/
-          - dockerfile: modules/tsffs/tests/targets/minimal-x86_64-breakpoint-edk2/Dockerfile
-            context: modules/tsffs/tests/targets/minimal-x86_64-breakpoint-edk2/
-          - dockerfile: modules/tsffs/tests/targets/minimal-x86_64-timeout/Dockerfile
-            context: modules/tsffs/tests/targets/minimal-x86_64-timeout/
-          - dockerfile: modules/tsffs/tests/targets/minimal-x86_64-edk2/Dockerfile
-            context: modules/tsffs/tests/targets/minimal-x86_64-edk2/
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          lfs: false
-
-      - name: Build Image
-        run: |
-          docker build -t container -f ${{ matrix.dockerfile }} ${{ matrix.context }}
-
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: container
-
-  additional_sdl_checks:
-    name: Perform Additional SDL Checks
-    container: fedora:38
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install Dependencies
-        run: |
-          dnf -y update && \
-          dnf -y install \
-            alsa-lib atk clang clang-libs clang-resource-filesystem \
-            clang-tools-extra cmake cups curl dosfstools g++ gcc git \
-            git-lfs glibc-devel glibc-devel.i686 glibc-static \
-            glibc-static.i686 gtk3 lld lld-devel lld-libs llvm llvm-libs \
-            llvm-static make mesa-libgbm mtools ninja-build openssl \
-            openssl-devel openssl-libs python3 python3-pip yamllint
-
-      - uses: actions/checkout@v4
-        with:
-          lfs: false
-      - uses: dtolnay/rust-toolchain@nightly
-        with:
-          toolchain: nightly
-          components: rustfmt,clippy,miri
-
-      - name: Install Cargo Plugins
-        run: |
-          cargo install cargo-audit cargo-outdated
-      - name: (CT247/CT200) (N/C) - Scan 3rd-Party Components for Vulnerabilities, Verify that project is not using vulnerable 3rd party components
-        run: |
-          # shellcheck disable=SC2086,SC2143
-          LATEST="$(find '.github/dependabot' -name '*.csv' -print0 \
-            | xargs -r -0 ls -1 -t \
-            | head -n 1)"
-          if ! find '.github/dependabot' -name '*.csv' -mtime -14 | grep -q '.'; then
-              echo "❗ [CT247/CT200] No dependabot report found from last 2 weeks. Run ./scripts/dependabot.sh."
-              exit 1
-          fi
-          if tail -n+2 "${LATEST}" | grep -qv ".github/actions/toolchain"; then
-              cat "${LATEST}"
-              echo "❗ [CT247/CT200] Vulnerabilities found outside of github actions. Please remediate them."
-              exit 1
-          fi
-          echo "✅ [CT247/CT200] No dependabot vulnerabilities found"
-      - name: (T186) (N/C) - Use recommended settings and latest patches for third party libraries and software
-        run: |
-          cargo audit
-
-          if ! cargo outdated --exit-code 1; then
-              echo "❗ [T186] Out of date third party dependencies found"
-              exit 1
-          fi
-
-          echo "✅ [T186] No outdated or vulnerable third party dependencies found"
