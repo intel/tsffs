@@ -187,45 +187,62 @@ pub trait ArchitectureOperations {
             .build())
     }
 
-    fn get_manual_start_buffer(&mut self, buffer_address: GenericAddress) -> Result<StartBuffer> {
-        let physical_address_block = self
-            .processor_info_v2()
-            // NOTE: Do we need to support segmented memory via logical_to_physical?
-            .logical_to_physical(buffer_address, Access::Sim_Access_Read)?;
+    fn get_manual_start_buffer(
+        &mut self,
+        buffer_address: GenericAddress,
+        virt: bool,
+    ) -> Result<StartBuffer> {
+        let physical_address = if virt {
+            let physical_address_block = self
+                .processor_info_v2()
+                // NOTE: Do we need to support segmented memory via logical_to_physical?
+                .logical_to_physical(buffer_address, Access::Sim_Access_Read)?;
 
-        if physical_address_block.valid == 0 {
-            bail!(
-                "Invalid linear address for given buffer address {:#x}",
-                buffer_address
-            );
+            if physical_address_block.valid == 0 {
+                bail!(
+                    "Invalid linear address for given buffer address {:#x}",
+                    buffer_address
+                );
+            }
+
+            physical_address_block.address
         } else {
-            Ok(StartBuffer::builder()
-                .physical_address(physical_address_block.address)
-                .virt(physical_address_block.address != buffer_address)
-                .build())
-        }
+            buffer_address
+        };
+
+        Ok(StartBuffer::builder()
+            .physical_address(physical_address)
+            .virt(physical_address != buffer_address)
+            .build())
     }
 
     /// Returns the initial start size for non-magic instructions by reading it from a given
     /// (possibly virtual) address
-    fn get_manual_start_size(&mut self, size_address: GenericAddress) -> Result<StartSize> {
-        let physical_address_block = self
-            .processor_info_v2()
-            // NOTE: Do we need to support segmented memory via logical_to_physical?
-            .logical_to_physical(size_address, Access::Sim_Access_Read)?;
+    fn get_manual_start_size(
+        &mut self,
+        size_address: GenericAddress,
+        virt: bool,
+    ) -> Result<StartSize> {
+        let physical_address = if virt {
+            let physical_address_block = self
+                .processor_info_v2()
+                // NOTE: Do we need to support segmented memory via logical_to_physical?
+                .logical_to_physical(size_address, Access::Sim_Access_Read)?;
 
-        if physical_address_block.valid == 0 {
-            bail!("Invalid linear address given for start buffer : {size_address:#x}");
-        }
+            if physical_address_block.valid == 0 {
+                bail!("Invalid linear address given for start buffer : {size_address:#x}");
+            }
+
+            physical_address_block.address
+        } else {
+            size_address
+        };
 
         let size_size = self.processor_info_v2().get_logical_address_width()? / u8::BITS as i32;
-        let size = read_phys_memory(self.cpu(), physical_address_block.address, size_size)?;
+        let size = read_phys_memory(self.cpu(), physical_address, size_size)?;
 
         Ok(StartSize::builder()
-            .physical_address((
-                physical_address_block.address,
-                physical_address_block.address != size_address,
-            ))
+            .physical_address((physical_address, physical_address != size_address))
             .initial_size(size)
             .build())
     }
@@ -361,19 +378,27 @@ impl ArchitectureOperations for Architecture {
         }
     }
 
-    fn get_manual_start_buffer(&mut self, buffer_address: GenericAddress) -> Result<StartBuffer> {
+    fn get_manual_start_buffer(
+        &mut self,
+        buffer_address: GenericAddress,
+        virt: bool,
+    ) -> Result<StartBuffer> {
         match self {
-            Architecture::X86_64(x86_64) => x86_64.get_manual_start_buffer(buffer_address),
-            Architecture::I386(i386) => i386.get_manual_start_buffer(buffer_address),
-            Architecture::RISCV(riscv) => riscv.get_manual_start_buffer(buffer_address),
+            Architecture::X86_64(x86_64) => x86_64.get_manual_start_buffer(buffer_address, virt),
+            Architecture::I386(i386) => i386.get_manual_start_buffer(buffer_address, virt),
+            Architecture::RISCV(riscv) => riscv.get_manual_start_buffer(buffer_address, virt),
         }
     }
 
-    fn get_manual_start_size(&mut self, size_address: GenericAddress) -> Result<StartSize> {
+    fn get_manual_start_size(
+        &mut self,
+        size_address: GenericAddress,
+        virt: bool,
+    ) -> Result<StartSize> {
         match self {
-            Architecture::X86_64(x86_64) => x86_64.get_manual_start_size(size_address),
-            Architecture::I386(i386) => i386.get_manual_start_size(size_address),
-            Architecture::RISCV(riscv) => riscv.get_manual_start_size(size_address),
+            Architecture::X86_64(x86_64) => x86_64.get_manual_start_size(size_address, virt),
+            Architecture::I386(i386) => i386.get_manual_start_size(size_address, virt),
+            Architecture::RISCV(riscv) => riscv.get_manual_start_size(size_address, virt),
         }
     }
 

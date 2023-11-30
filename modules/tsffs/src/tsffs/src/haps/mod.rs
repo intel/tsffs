@@ -77,7 +77,10 @@ impl Tsffs {
                                 .ok_or_else(|| anyhow!("No start processor"))?;
                             (
                                 if let Some(buffer) = start.buffer() {
-                                    Some(start_processor.get_manual_start_buffer(*buffer)?)
+                                    Some(
+                                        start_processor
+                                            .get_manual_start_buffer(*buffer, *start.virt())?,
+                                    )
                                 } else {
                                     None
                                 },
@@ -85,9 +88,9 @@ impl Tsffs {
                                     ManualStartSize::MaximumSize(s) => {
                                         Some(StartSize::builder().initial_size(*s).build())
                                     }
-                                    ManualStartSize::SizeAddress(a) => {
-                                        Some(start_processor.get_manual_start_size(*a)?)
-                                    }
+                                    ManualStartSize::SizeAddress(a) => Some(
+                                        start_processor.get_manual_start_size(*a, *start.virt())?,
+                                    ),
                                     ManualStartSize::NoSize => None,
                                 },
                             )

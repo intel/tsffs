@@ -7,7 +7,6 @@
 
 use anyhow::Result;
 use command_ext::CommandExtCheck;
-use indoc::indoc;
 use ispm_wrapper::data::ProjectPackage;
 use std::{path::PathBuf, process::Command};
 use tests::{Architecture, TestEnvSpec};

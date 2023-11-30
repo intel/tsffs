@@ -344,49 +344,67 @@ impl ArchitectureOperations for X86ArchitectureOperations {
             .build())
     }
 
-    fn get_manual_start_buffer(&mut self, buffer_address: GenericAddress) -> Result<StartBuffer> {
-        let physical_address_block = self
-            .processor_info_v2()
-            // NOTE: Do we need to support segmented memory via logical_to_physical?
-            .logical_to_physical(buffer_address, Access::Sim_Access_Read)?;
+    fn get_manual_start_buffer(
+        &mut self,
+        buffer_address: GenericAddress,
+        virt: bool,
+    ) -> Result<StartBuffer> {
+        let physical_address = if virt {
+            let physical_address_block = self
+                .processor_info_v2()
+                // NOTE: Do we need to support segmented memory via logical_to_physical?
+                .logical_to_physical(buffer_address, Access::Sim_Access_Read)?;
 
-        if physical_address_block.valid == 0 {
-            bail!(
-                "Invalid linear address for given buffer address {:#x}",
-                buffer_address
-            );
+            if physical_address_block.valid == 0 {
+                bail!(
+                    "Invalid linear address for given buffer address {:#x}",
+                    buffer_address
+                );
+            }
+            physical_address_block.address
         } else {
-            trace!(
-                get_object(CLASS_NAME)?,
-                "Got physical address {:#x} from logical address for manual start buffer",
-                physical_address_block.address
-            );
-            Ok(StartBuffer::builder()
-                .physical_address(physical_address_block.address)
-                .virt(physical_address_block.address != buffer_address)
-                .build())
-        }
+            buffer_address
+        };
+
+        trace!(
+            get_object(CLASS_NAME)?,
+            "Got physical address {:#x} from logical address for manual start buffer",
+            physical_address
+        );
+        Ok(StartBuffer::builder()
+            .physical_address(physical_address)
+            .virt(physical_address != buffer_address)
+            .build())
     }
 
     /// Returns the initial start size for non-magic instructions by reading it from a given
     /// (possibly virtual) address
-    fn get_manual_start_size(&mut self, size_address: GenericAddress) -> Result<StartSize> {
-        let physical_address_block = self
-            .processor_info_v2()
-            // NOTE: Do we need to support segmented memory via logical_to_physical?
-            .logical_to_physical(size_address, Access::Sim_Access_Read)?;
+    fn get_manual_start_size(
+        &mut self,
+        size_address: GenericAddress,
+        virt: bool,
+    ) -> Result<StartSize> {
+        let physical_address = if virt {
+            let physical_address_block = self
+                .processor_info_v2()
+                // NOTE: Do we need to support segmented memory via logical_to_physical?
+                .logical_to_physical(size_address, Access::Sim_Access_Read)?;
 
-        if physical_address_block.valid == 0 {
-            bail!("Invalid linear address given for start buffer : {size_address:#x}");
-        }
+            if physical_address_block.valid == 0 {
+                bail!("Invalid linear address given for start buffer : {size_address:#x}");
+            }
+            physical_address_block.address
+        } else {
+            size_address
+        };
 
         trace!(
             get_object(CLASS_NAME)?,
             "Got physical address {:#x} from logical address for manual start buffer size",
-            physical_address_block.address
+            physical_address
         );
 
-        let size = read_phys_memory(self.cpu(), physical_address_block.address, 4)?;
+        let size = read_phys_memory(self.cpu(), physical_address, 4)?;
 
         trace!(
             get_object(CLASS_NAME)?,
@@ -394,10 +412,7 @@ impl ArchitectureOperations for X86ArchitectureOperations {
         );
 
         Ok(StartSize::builder()
-            .physical_address((
-                physical_address_block.address,
-                physical_address_block.address != size_address,
-            ))
+            .physical_address((physical_address, physical_address != size_address))
             .initial_size(size)
             .build())
     }
