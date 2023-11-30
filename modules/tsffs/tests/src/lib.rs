@@ -52,14 +52,14 @@ where
         if src.is_dir() {
             create_dir_all(&dst)?;
         } else if src.is_file() {
-            copy(&src, &dst).map_err(|e| {
-                anyhow!(
-                    "Failed to copy file from {} to {}: {}",
+            if let Err(e) = copy(&src, &dst) {
+                eprintln!(
+                    "Warning: failed to copy file from {} to {}: {}",
                     src.display(),
                     dst.display(),
                     e
-                )
-            })?;
+                );
+            }
         }
     }
     Ok(())
