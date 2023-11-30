@@ -181,7 +181,7 @@ jobs:
 
       - name: Test Project
         run: |
-          SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo test -p command-ext -p raw-cstr -p tmp-dir -p version-tools -p tests -- --nocapture || ( echo "❗ Tests failed" && exit 1 )
+          TSFFS_TEST_CLEANUP_EACH=1 SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo test -p command-ext -p raw-cstr -p tmp-dir -p version-tools -p tests -- --nocapture || ( echo "❗ Tests failed" && exit 1 )
           echo "✅ Tests passed"
 
       - name: Build Docs
@@ -298,16 +298,10 @@ jobs:
         if: ${{ steps.cache-builder-dependencies.outputs.cache-hit != 'true' }}
         run: |
           mkdir -p .github/builder/rsrc
-          curl -o .github/builder/rsrc/cfe-5.0.2.src.tar.xz https://releases.llvm.org/5.0.2/cfe-5.0.2.src.tar.xz
-          curl -o .github/builder/rsrc/llvm-5.0.2.src.tar.xz https://releases.llvm.org/5.0.2/llvm-5.0.2.src.tar.xz
-          curl -o .github/builder/rsrc/make-4.4.1.tar.gz https://ftp.gnu.org/gnu/make/make-4.4.1.tar.gz
-          curl -o .github/builder/rsrc/rustup-init https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
           curl -L -o .github/builder/rsrc/ispm.tar.gz \
               "${{ env.PUBLIC_SIMICS_ISPM_URL }}" && \
           curl -L -o .github/builder/rsrc/simics.ispm \
               "${{ env.PUBLIC_SIMICS_PKGS_URL }}" && \
-          curl -L -o .github/builder/rsrc/cmake-3.28.0-rc5-linux-x86_64.tar.gz https://github.com/Kitware/CMake/releases/download/v3.28.0-rc5/cmake-3.28.0-rc5-linux-x86_64.tar.gz && \
-          chmod +x .github/builder/rsrc/rustup-init
 
       - name: Build Distribution Package
         run: |

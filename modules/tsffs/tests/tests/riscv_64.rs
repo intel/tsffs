@@ -13,7 +13,7 @@ use tests::{Architecture, TestEnvSpec};
 #[test]
 #[cfg_attr(miri, ignore)]
 fn test_riscv_64_kernel_from_userspace_magic() -> Result<()> {
-    let env = TestEnvSpec::builder()
+    let mut env = TestEnvSpec::builder()
         .name("test_riscv_64_kernel_from_userspace_magic")
         .cargo_manifest_dir(env!("CARGO_MANIFEST_DIR"))
         .cargo_target_tmpdir(env!("CARGO_TARGET_TMPDIR"))
@@ -37,7 +37,10 @@ fn test_riscv_64_kernel_from_userspace_magic() -> Result<()> {
         .check()?;
 
     let output_str = String::from_utf8_lossy(&output.stdout);
+
     println!("{output_str}");
+
+    env.cleanup_if_env()?;
 
     Ok(())
 }
@@ -45,7 +48,7 @@ fn test_riscv_64_kernel_from_userspace_magic() -> Result<()> {
 #[test]
 #[cfg_attr(miri, ignore)]
 fn test_riscv_64_kernel_magic() -> Result<()> {
-    let env = TestEnvSpec::builder()
+    let mut env = TestEnvSpec::builder()
         .name("test_riscv_64_kernel_magic")
         .cargo_manifest_dir(env!("CARGO_MANIFEST_DIR"))
         .cargo_target_tmpdir(env!("CARGO_TARGET_TMPDIR"))
@@ -72,13 +75,15 @@ fn test_riscv_64_kernel_magic() -> Result<()> {
 
     println!("{output_str}");
 
+    env.cleanup_if_env()?;
+
     Ok(())
 }
 
 #[test]
 #[cfg_attr(miri, ignore)]
 fn test_riscv_64_userspace_magic() -> Result<()> {
-    let env = TestEnvSpec::builder()
+    let mut env = TestEnvSpec::builder()
         .name("test_riscv_64_userspace_magic")
         .cargo_manifest_dir(env!("CARGO_MANIFEST_DIR"))
         .cargo_target_tmpdir(env!("CARGO_TARGET_TMPDIR"))
@@ -104,6 +109,8 @@ fn test_riscv_64_userspace_magic() -> Result<()> {
     let output_str = String::from_utf8_lossy(&output.stdout);
 
     println!("{output_str}");
+
+    env.cleanup_if_env()?;
 
     Ok(())
 }

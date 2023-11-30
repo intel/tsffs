@@ -14,7 +14,7 @@ use tests::{Architecture, TestEnvSpec};
 #[test]
 #[cfg_attr(miri, ignore)]
 fn test_x86_user_magic() -> Result<()> {
-    let env = TestEnvSpec::builder()
+    let mut env = TestEnvSpec::builder()
         .name("x86-user")
         .cargo_manifest_dir(env!("CARGO_MANIFEST_DIR"))
         .cargo_target_tmpdir(env!("CARGO_TARGET_TMPDIR"))
@@ -50,6 +50,8 @@ fn test_x86_user_magic() -> Result<()> {
     let output_str = String::from_utf8_lossy(&output.stdout);
 
     println!("{output_str}");
+
+    env.cleanup_if_env()?;
 
     Ok(())
 }

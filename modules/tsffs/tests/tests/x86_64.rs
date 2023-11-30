@@ -15,7 +15,7 @@ use tests::{Architecture, TestEnvSpec};
 #[test]
 #[cfg_attr(miri, ignore)]
 fn test_x86_64_edk2_magic() -> Result<()> {
-    let env = TestEnvSpec::builder()
+    let mut env = TestEnvSpec::builder()
         .name("test_x86_64_edk2_magic")
         .cargo_manifest_dir(env!("CARGO_MANIFEST_DIR"))
         .cargo_target_tmpdir(env!("CARGO_TARGET_TMPDIR"))
@@ -41,13 +41,14 @@ fn test_x86_64_edk2_magic() -> Result<()> {
     let output_str = String::from_utf8_lossy(&output.stdout);
 
     println!("{output_str}");
+    env.cleanup_if_env()?;
 
     Ok(())
 }
 #[test]
 #[cfg_attr(miri, ignore)]
 fn test_x86_64_magic_crash() -> Result<()> {
-    let env = TestEnvSpec::builder()
+    let mut env = TestEnvSpec::builder()
         .name("test_x86_64_magic_crash")
         .cargo_manifest_dir(env!("CARGO_MANIFEST_DIR"))
         .cargo_target_tmpdir(env!("CARGO_TARGET_TMPDIR"))
@@ -73,6 +74,7 @@ fn test_x86_64_magic_crash() -> Result<()> {
     let output_str = String::from_utf8_lossy(&output.stdout);
 
     println!("{output_str}");
+    env.cleanup_if_env()?;
 
     Ok(())
 }
@@ -80,7 +82,7 @@ fn test_x86_64_magic_crash() -> Result<()> {
 #[test]
 #[cfg_attr(miri, ignore)]
 fn test_x86_64_timeout_edk2() -> Result<()> {
-    let env = TestEnvSpec::builder()
+    let mut env = TestEnvSpec::builder()
         .name("test_x86_64_timeout_edk2")
         .cargo_manifest_dir(env!("CARGO_MANIFEST_DIR"))
         .cargo_target_tmpdir(env!("CARGO_TARGET_TMPDIR"))
@@ -106,6 +108,7 @@ fn test_x86_64_timeout_edk2() -> Result<()> {
     let output_str = String::from_utf8_lossy(&output.stdout);
 
     println!("{output_str}");
+    env.cleanup_if_env()?;
 
     Ok(())
 }
@@ -113,7 +116,7 @@ fn test_x86_64_timeout_edk2() -> Result<()> {
 #[test]
 #[cfg_attr(miri, ignore)]
 fn test_x86_64_magic() -> Result<()> {
-    let env = TestEnvSpec::builder()
+    let mut env = TestEnvSpec::builder()
         .name("test_x86_64_magic")
         .cargo_manifest_dir(env!("CARGO_MANIFEST_DIR"))
         .cargo_target_tmpdir(env!("CARGO_TARGET_TMPDIR"))
@@ -139,6 +142,7 @@ fn test_x86_64_magic() -> Result<()> {
     let output_str = String::from_utf8_lossy(&output.stdout);
 
     println!("{output_str}");
+    env.cleanup_if_env()?;
 
     Ok(())
 }
@@ -146,7 +150,7 @@ fn test_x86_64_magic() -> Result<()> {
 #[test]
 #[cfg_attr(miri, ignore)]
 fn test_x86_64_manual() -> Result<()> {
-    let env = TestEnvSpec::builder()
+    let mut env = TestEnvSpec::builder()
         .name("test_x86_64_manual")
         .cargo_manifest_dir(env!("CARGO_MANIFEST_DIR"))
         .cargo_target_tmpdir(env!("CARGO_TARGET_TMPDIR"))
@@ -176,6 +180,7 @@ fn test_x86_64_manual() -> Result<()> {
     let output_str = String::from_utf8_lossy(&output.stdout);
 
     println!("{output_str}");
+    env.cleanup_if_env()?;
 
     Ok(())
 }
@@ -183,7 +188,7 @@ fn test_x86_64_manual() -> Result<()> {
 #[test]
 #[cfg_attr(miri, ignore)]
 fn test_x86_64_manual_max() -> Result<()> {
-    let env = TestEnvSpec::builder()
+    let mut env = TestEnvSpec::builder()
         .name("test_x86_64_manual_max")
         .cargo_manifest_dir(env!("CARGO_MANIFEST_DIR"))
         .cargo_target_tmpdir(env!("CARGO_TARGET_TMPDIR"))
@@ -213,6 +218,8 @@ fn test_x86_64_manual_max() -> Result<()> {
     let output_str = String::from_utf8_lossy(&output.stdout);
 
     println!("{output_str}");
+
+    env.cleanup_if_env()?;
 
     Ok(())
 }

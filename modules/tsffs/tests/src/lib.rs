@@ -17,7 +17,8 @@ use ispm_wrapper::{
 };
 use std::{
     collections::HashSet,
-    fs::{copy, create_dir_all, read_dir, write},
+    env::var,
+    fs::{copy, create_dir_all, read_dir, remove_dir_all, write},
     path::{Path, PathBuf},
 };
 use typed_builder::TypedBuilder;
@@ -439,5 +440,17 @@ impl TestEnv {
             project_dir,
             simics_home_dir,
         })
+    }
+
+    pub fn cleanup(&mut self) -> Result<()> {
+        remove_dir_all(self.test_dir()).map_err(|e| anyhow!("Error cleaning up: {e}"))
+    }
+
+    pub fn cleanup_if_env(&mut self) -> Result<()> {
+        if let Ok(_cleanup) = var("TSFFS_TEST_CLEANUP_EACH") {
+            self.cleanup()?;
+        }
+
+        Ok(())
     }
 }
