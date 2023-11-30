@@ -110,7 +110,7 @@ jobs:
         run: |
           cargo install cargo-audit cargo-outdated
 
-      - name: (CT247/CT200) (N/C) - Scan 3rd-Party Components for Vulnerabilities, Verify that project is not using vulnerable 3rd party components
+      - name: (CT247/CT200) (N/C) - Scan 3rd-Party Components for Vulnerabilities
         run: |
           # shellcheck disable=SC2086,SC2143
           LATEST="$(find '.github/dependabot' -name '*.csv' -print0 \

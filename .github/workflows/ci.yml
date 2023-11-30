@@ -301,7 +301,7 @@ jobs:
           curl -L -o .github/builder/rsrc/ispm.tar.gz \
               "${{ env.PUBLIC_SIMICS_ISPM_URL }}" && \
           curl -L -o .github/builder/rsrc/simics.ispm \
-              "${{ env.PUBLIC_SIMICS_PKGS_URL }}" && \
+              "${{ env.PUBLIC_SIMICS_PKGS_URL }}"
 
       - name: Build Distribution Package
         run: |
