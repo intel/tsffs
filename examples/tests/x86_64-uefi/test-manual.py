@@ -69,6 +69,7 @@ def start_script_branch():
         conf.qsp.mb.cpu0.core[0][0],
         testcase_address,
         size_address,
+        True,
     )
 
 
