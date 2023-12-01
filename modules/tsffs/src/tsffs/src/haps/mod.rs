@@ -360,6 +360,12 @@ impl Tsffs {
                 && magic_number == *self.configuration().magic_stop()
             {
                 self.stop_simulation(StopReason::MagicStop(Stop::default()))?;
+            } else if *self.configuration().stop_on_harness()
+                && magic_number == *self.configuration().magic_assert()
+            {
+                self.stop_simulation(StopReason::Solution(
+                    Solution::builder().kind(SolutionKind::Manual).build(),
+                ))?;
             }
         }
         Ok(())

@@ -221,38 +221,29 @@ impl Tsffs {
 
             let mut manager = SimpleEventManager::new(monitor);
 
-            let mut executor = TimeoutExecutor::new(
-                InProcessExecutor::new(
-                    &mut harness,
-                    tuple_list!(edges_observer, time_observer),
-                    &mut fuzzer,
-                    &mut state,
-                    &mut manager,
-                )?,
-                Duration::from_secs(*configuration.executor_timeout()),
-            );
+            let mut executor = InProcessExecutor::new(
+                &mut harness,
+                tuple_list!(edges_observer, time_observer),
+                &mut fuzzer,
+                &mut state,
+                &mut manager,
+            )?;
 
-            let aflpp_cmp_executor = TimeoutExecutor::new(
-                InProcessExecutor::new(
-                    &mut aflpp_cmp_harness,
-                    tuple_list!(aflpp_cmp_observer),
-                    &mut fuzzer,
-                    &mut state,
-                    &mut manager,
-                )?,
-                Duration::from_secs(*configuration.executor_timeout()),
-            );
+            let aflpp_cmp_executor = InProcessExecutor::new(
+                &mut aflpp_cmp_harness,
+                tuple_list!(aflpp_cmp_observer),
+                &mut fuzzer,
+                &mut state,
+                &mut manager,
+            )?;
 
-            let tracing_executor = TimeoutExecutor::new(
-                InProcessExecutor::new(
-                    &mut tracing_harness,
-                    tuple_list!(cmplog_observer),
-                    &mut fuzzer,
-                    &mut state,
-                    &mut manager,
-                )?,
-                Duration::from_secs(*configuration.executor_timeout()),
-            );
+            let tracing_executor = InProcessExecutor::new(
+                &mut tracing_harness,
+                tuple_list!(cmplog_observer),
+                &mut fuzzer,
+                &mut state,
+                &mut manager,
+            )?;
 
             let input_to_state_stage = StdMutationalStage::new(StdScheduledMutator::new(
                 tuple_list!(I2SRandReplace::new()),

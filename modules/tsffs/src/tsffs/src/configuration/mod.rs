@@ -19,6 +19,9 @@ impl Configuration {
     /// The default stop magic mnumber the fuzzer expects to be triggered, either
     /// via an in-target macro or another means.
     pub const DEFAULT_MAGIC_STOP: i64 = 2;
+    /// The default assert magic mnumber the fuzzer expects to be triggered, either
+    /// via an in-target macro or another means.
+    pub const DEFAULT_MAGIC_ASSERT: i64 = 3;
     pub const DEFAULT_CORPUS_DIRECTORY_NAME: &'static str = "corpus";
     pub const DEFAULT_SOLUTIONS_DIRECTORY_NAME: &'static str = "solutions";
     pub const DEFAULT_EXECUTOR_TIMEOUT: u64 = 60;
@@ -58,6 +61,8 @@ pub struct Configuration {
     magic_start: i64,
     #[builder(default = Configuration::DEFAULT_MAGIC_STOP)]
     magic_stop: i64,
+    #[builder(default = Configuration::DEFAULT_MAGIC_ASSERT)]
+    magic_assert: i64,
     #[builder(default, setter(strip_option))]
     iterations: Option<usize>,
     #[builder(default)]
