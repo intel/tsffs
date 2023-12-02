@@ -51,7 +51,7 @@ use simics::{
         CpuInstrumentationSubscribeInterface, Event, EventClassFlag, HapHandle,
         MicroCheckpointFlags,
     },
-    info,
+    info, trace,
 };
 use simics_macro::{class, interface, AsConfObject};
 use state::StopReason;
@@ -191,6 +191,8 @@ pub struct Tsffs {
     fuzzer_rx: Option<Receiver<Testcase>>,
     #[builder(default)]
     fuzzer_shutdown: Option<Sender<ShutdownMessage>>,
+    #[builder(default)]
+    fuzzer_messages: Option<Receiver<String>>,
 
     // Fuzzer coverage maps
     #[builder(default = OwnedMutSlice::from(vec![0; Tsffs::COVERAGE_MAP_SIZE]))]
@@ -410,11 +412,13 @@ impl Tsffs {
             .as_ref()
             .ok_or_else(|| anyhow!("No start buffer"))?
             .clone();
+
         let start_size = self
             .start_size()
             .as_ref()
             .ok_or_else(|| anyhow!("No start size"))?
             .clone();
+
         let start_processor = self
             .start_processor()
             .ok_or_else(|| anyhow!("No start processor"))?;
@@ -433,7 +437,7 @@ impl Tsffs {
         let start_processor_cpu = start_processor.cpu();
         let start_processor_clock = object_clock(start_processor_cpu)?;
         let timeout_time = *self.configuration().timeout() + start_processor_time;
-        info!(
+        trace!(
             self.as_conf_object(),
             "Posting event on processor at time {} for {}s (time {})",
             start_processor_time,
@@ -467,13 +471,15 @@ impl Tsffs {
                 .timeout_event()
                 .find_next_time(start_processor_clock, start_processor_cpu)
             {
-                Ok(next_time) => info!(
+                Ok(next_time) => trace!(
                     self.as_conf_object(),
                     "Cancelling event with next time {} (current time {})",
                     next_time,
                     start_processor_time
                 ),
-                Err(e) => info!(
+                // NOTE: This is not an error, it almost always means we did not find a next
+                // time, which always happens if the timeout goes off.
+                Err(e) => trace!(
                     self.as_conf_object(),
                     "Not cancelling event with next time due to error: {e}"
                 ),

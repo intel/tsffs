@@ -12,10 +12,9 @@ use anyhow::{anyhow, bail, Error, Result};
 use raw_cstr::AsRawCstr;
 use simics::{
     api::{
-        get_object, read_phys_memory, sys::instruction_handle_t, write_phys_memory, Access,
-        AttrValueType, ConfObject, CpuInstructionQueryInterface,
-        CpuInstrumentationSubscribeInterface, CycleInterface, GenericAddress, IntRegisterInterface,
-        ProcessorInfoV2Interface,
+        get_object, read_phys_memory, sys::instruction_handle_t, write_byte, Access, AttrValueType,
+        ConfObject, CpuInstructionQueryInterface, CpuInstrumentationSubscribeInterface,
+        CycleInterface, GenericAddress, IntRegisterInterface, ProcessorInfoV2Interface,
     },
     trace,
 };
@@ -262,22 +261,37 @@ pub trait ArchitectureOperations {
             size.initial_size()
                 .ok_or_else(|| anyhow!("Expected initial size for start"))? as usize;
 
+        let physical_memory = self.processor_info_v2().get_physical_memory()?;
+
+        trace!(
+            get_object(CLASS_NAME)?,
+            "Truncating testcase to {initial_size} bytes (from {} bytes)",
+            testcase.len()
+        );
+
         testcase.truncate(initial_size);
 
-        testcase
-            .chunks(addr_size)
-            .try_for_each(|c| write_phys_memory(self.cpu(), buffer.physical_address, c))?;
-
-        let value = testcase
-            .len()
-            .to_le_bytes()
-            .iter()
-            .take(addr_size)
-            .cloned()
-            .collect::<Vec<_>>();
+        testcase.iter().enumerate().try_for_each(|(i, c)| {
+            let physical_address = buffer.physical_address + (i as u64);
+            write_byte(physical_memory, physical_address, *c)
+        })?;
 
         if let Some((address, _)) = size.physical_address {
-            write_phys_memory(self.cpu(), address, value.as_slice())?;
+            testcase
+                .len()
+                .to_le_bytes()
+                .iter()
+                .take(addr_size)
+                .enumerate()
+                .try_for_each(|(i, c)| {
+                    let physical_address = address + (i as u64);
+                    write_byte(physical_memory, physical_address, *c)
+                })?;
+        } else {
+            trace!(
+                get_object(CLASS_NAME)?,
+                "Not writing testcase size, no physical address saved for size"
+            );
         }
 
         Ok(())

@@ -14,16 +14,14 @@ All headers define the following:
   equal to the maximum testcase size (i.e. the size of `*addr_ptr`).
 * `HARNESS_STOP()` - The macro used to signal the fuzzer to stop the current execution,
   restore the snapshot taken at the location of `HARNESS_START`, and start another
-  execution with a new testcase.
+  execution with a new testcase, without saving the input (no error or solution
+  occurred).
+* `HARNESS_ASSERT()` - The macro used to signal the fuzzer to stop the current
+  execution, restore the snapshot taken at the location of `HARNESS_START`, and start
+  another execution with a new testcase, while saving the input (an error or solution
+  occurred).
 
 Some architectures or programming environments require an assembly file in addition to
 the provided header file. Notably, MSVC does not support intrinsics when compiling
 edk2-based UEFI code, and does not support inline assembly, so assembly files are
 necessary.
-
-| Architecture | Compiler | Programming Environment | Header/Support File(s)                             |
-| ------------ | -------- | ----------------------- | -------------------------------------------------- |
-| x86_64       | gcc      | Generic (non-edk2)      | [tsffs-gcc-x86_64.h](tsffs-gcc-x86_64.h)           |
-| x86          | gcc      | Generic (non-edk2)      | [tsffs-gcc-x86.h](tsffs-gcc-x86.h)                 |
-| x86_64       | gcc      | edk2                    | [tsffs-gcc-x86_64-edk2.h](tsffs-gcc-x86_64-edk2.h) |
-| x86          | gcc      | edk2                    | [tsffs-gcc-x86-edk2.h](tsffs-gcc-x86-edk2.h)       |

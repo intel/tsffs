@@ -43,7 +43,13 @@ int main() {
     }
 
     // Do something with buffer and size
-    function_under_test(buffer, size);
+    int retval = function_under_test(buffer, size);
+
+    if (retval == SOMETHING_IMPOSSIBLE_HAPPENED) {
+        /// Some exceptional condition occurred -- note, don't use this for normal "bad" return
+        /// values, use it for instances where something that you are fuzzing for happened.
+        HARNESS_ASSERT();
+    }
     
     // Stop normally
     HARNESS_STOP();
