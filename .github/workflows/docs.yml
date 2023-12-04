@@ -87,10 +87,7 @@ jobs:
 
       - name: Generate Crate Documentation
         run: |
-          mkdir -p .cargo/
-          echo "[env]" > .cargo/config.toml
-          echo 'SIMICS_BASE = "'"${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}"'"' > .cargo/config.toml
-          RUSTDOCFLAGS="--enable-index-page -Zunstable-options" TSFFS_TESTS_SKIP_BUILD=1 cargo doc --document-private-items --workspace --no-deps
+          SIMICS_BASE="${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}" RUSTDOCFLAGS="--enable-index-page -Zunstable-options" TSFFS_TESTS_SKIP_BUILD=1 cargo doc --document-private-items --workspace --no-deps
           cp -a target/doc/ docs/book/crates/
 
       - name: Setup Pages

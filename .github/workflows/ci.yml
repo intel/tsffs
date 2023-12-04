@@ -16,7 +16,7 @@ env:
   PUBLIC_SIMICS_PACKAGE_VERSION_1000: "6.0.169"
   MINGW_URL: "https://github.com/brechtsanders/winlibs_mingw/releases/download/13.2.0-16.0.6-11.0.0-ucrt-r1/winlibs-x86_64-posix-seh-gcc-13.2.0-llvm-16.0.6-mingw-w64ucrt-11.0.0-r1.7z"
   MINGW_VERSION: "13.2.0-16.0.6-11.0.0-ucrt-r1"
-  TSFFS_SIMICS_PKG_VERSION: "6.0.0"
+  TSFFS_SIMICS_PKG_VERSION: "6.0.1"
 
 jobs:
   build_test_artifacts:

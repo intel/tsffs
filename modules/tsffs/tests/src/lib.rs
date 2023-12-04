@@ -253,7 +253,7 @@ impl TestEnv {
                     .join("../../../")
                     .join("linux64")
                     .join("packages")
-                    .join("simics-pkg-31337-6.0.0-linux64.ispm")])
+                    .join("simics-pkg-31337-6.0.1-linux64.ispm")])
                 .global(
                     GlobalOptions::builder()
                         .install_dir(simics_home_dir.as_ref())

@@ -159,14 +159,14 @@ steps for us:
 ./build.rs
 ```
 
-This will produce a file `linux64/packages/simics-pkg-31337-6.0.0-linux64.ispm`. We can
+This will produce a file `linux64/packages/simics-pkg-31337-6.0.1-linux64.ispm`. We can
 then install this package into our local SIMICS installation. This in turn allows us to
 add the TSFFS package to our SIMICS projects for use. Note the
 `--trust-insecure-packages` flag is required because this package is not built and
 signed by the SIMICS team, but by ourselves.
 
 ```sh
-ispm packages -i linux64/packages/simics-pkg-31337-6.0.0-linux64.ispm \
+ispm packages -i linux64/packages/simics-pkg-31337-6.0.1-linux64.ispm \
     --non-interactive --trust-insecure-packages
 ```
 

@@ -36,6 +36,8 @@ fn main() -> Result<()> {
     println!("cargo:rerun-if-changed={}", targets_dir.display());
 
     if var("TSFFS_TESTS_SKIP_BUILD").is_ok() {
+        println!("Skipping test build");
+    } else {
         Command::new(targets_dir.join("build.sh"))
             .current_dir(targets_dir)
             .env(

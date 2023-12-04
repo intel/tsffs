@@ -130,7 +130,7 @@ cargo -Zscript build.rs
 Once built, install TSFFS to your SIMICS installation with:
 
 ```powershell
-ispm.exe packages -i win64/packages/simics-pkg-31337-6.0.0-win64.ispm --non-interactive --trust-insecure-packages
+ispm.exe packages -i win64/packages/simics-pkg-31337-6.0.1-win64.ispm --non-interactive --trust-insecure-packages
 ```
 
 ## Test TSFFS
