@@ -24,7 +24,7 @@ Installed Addon Packages
  Package Number  Name             Version    Installed Paths
  2096            QSP-x86          6.0.70     /home/rhart/simics/simics-qsp-x86-6.0.70
  8112            QSP-CPU          6.0.17     /home/rhart/simics/simics-qsp-cpu-6.0.17
- 31337           TSFFS            6.0.0      /home/rhart/simics/simics-tsffs-6.0.0 
+ 31337           TSFFS            6.0.1      /home/rhart/simics/simics-tsffs-6.0.1
 ```
 
 in the list!

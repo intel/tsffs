@@ -34,7 +34,7 @@ If all SIMICS packages are installed into an `install-dir` together, the TSFFS p
 can be added by adding a line like:
 
 ```txt
-../simics-tsffs-6.0.0/
+../simics-tsffs-6.0.1/
 ```
 
 to your `.package-list` file, then running `bin/project-setup`.
@@ -42,5 +42,5 @@ to your `.package-list` file, then running `bin/project-setup`.
 If your SIMICS packages are not all installed together, the path can be absolute, like:
 
 ```txt
-/absolute/path/to/installed/simics-tsffs-6.0.0/
+/absolute/path/to/installed/simics-tsffs-6.0.1/
 ```
