@@ -37,7 +37,6 @@ members = [
     "modules/tsffs/src/util/ffi-macro",
     "modules/tsffs/src/util/getters",
     "modules/tsffs/src/util/raw-cstr",
-    "modules/tsffs/src/util/tmp-dir",
     "modules/tsffs/src/util/version-tools",
 ]
 default-members = [
@@ -53,7 +52,6 @@ default-members = [
     "modules/tsffs/src/util/ffi-macro",
     "modules/tsffs/src/util/getters",
     "modules/tsffs/src/util/raw-cstr",
-    "modules/tsffs/src/util/tmp-dir",
     "modules/tsffs/src/util/version-tools",
 ]
 exclude = []
