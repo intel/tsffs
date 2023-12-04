@@ -1,5 +1,5 @@
 # hadolint global ignore=DL3033,SC3044
-FROM novafacing/fedora-rustc-oldcompat:0.0.1
+FROM novafacing/fedora-rustc-oldcompat:0.0.2
 
 ENV PATH="${PATH}:/simics/ispm/"
 ENV PATH="${PATH}:/root/.cargo/bin/"
