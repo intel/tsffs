@@ -24,6 +24,13 @@
   - [Optimizing For Fuzzing](fuzzing/optimizing-for-fuzzing.md)
   - [Analyzing Results](fuzzing/analyzing-results.md)
 
+## Tutorials
+
+- [Tutorials](tutorials/README.md)
+  - [Fuzzing an x86_64 EDK2 UEFI Application](tutorials/edk2-uefi.md)
+  - [Fuzzing a RISC-V Kernel Module](tutorials/kernel-module.md)
+  - [Fuzzing an x86 user-space application](tutorials/userspace-app.md)
+
 ## Reference Guide
 
 - [Developer Documentation](developer/README.md)
