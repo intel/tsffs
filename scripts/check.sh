@@ -45,6 +45,11 @@ if ! command -v docker &>/dev/null; then
     exit 1
 fi
 
+if ! command -v gitleaks &>/dev/null; then
+    echo "gitleaks must be installed! Install from https://github.com/gitleaks/gitleaks"
+    exit 1
+fi
+
 echo "================="
 echo "Running clippy..."
 echo "================="
@@ -92,3 +97,9 @@ echo "Running hadolint..."
 echo "================="
 
 fd 'Dockerfile.*$' -x bash -c "echo {}:; docker run --rm -v ${SCRIPT_DIR}/../.github/linters/.hadolint.yaml:/.config/hadolint.yaml -i hadolint/hadolint < {}"
+
+echo "================="
+echo "Running gitleaks..."
+echo "================="
+
+gitleaks detect

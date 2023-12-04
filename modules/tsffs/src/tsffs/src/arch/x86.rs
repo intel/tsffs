@@ -14,8 +14,8 @@ use libafl::prelude::CmpValues;
 use raw_cstr::AsRawCstr;
 use simics::{
     api::{
-        get_interface, get_object, read_phys_memory, sys::instruction_handle_t, write_phys_memory,
-        Access, ConfObject, CpuInstructionQueryInterface, CpuInstrumentationSubscribeInterface,
+        get_interface, get_object, read_phys_memory, sys::instruction_handle_t, write_byte, Access,
+        ConfObject, CpuInstructionQueryInterface, CpuInstrumentationSubscribeInterface,
         CycleInterface, GenericAddress, IntRegisterInterface, ProcessorInfoV2Interface,
     },
     trace,
@@ -425,43 +425,52 @@ impl ArchitectureOperations for X86ArchitectureOperations {
         size: &StartSize,
     ) -> Result<()> {
         let mut testcase = testcase.to_vec();
-        // NOTE: We have to handle both riscv64 and riscv32 here
+        let physical_memory = self.processor_info_v2().get_physical_memory()?;
 
         let initial_size =
             size.initial_size()
                 .ok_or_else(|| anyhow!("Expected initial size for start"))? as usize;
+
+        trace!(
+            get_object(CLASS_NAME)?,
+            "Truncating testcase to {initial_size} bytes (from {} bytes)",
+            testcase.len()
+        );
+
         testcase.truncate(initial_size);
 
-        testcase.chunks(4).try_for_each(|c| {
+        testcase.iter().enumerate().try_for_each(|(i, c)| {
+            let physical_address = buffer.physical_address + (i as u64);
             trace!(
                 get_object(CLASS_NAME)?,
-                "Writing testcase bytes {:?} to physical memory {:#x}",
+                "Writing testcase byte {:?} to physical memory {:#x}",
                 c,
-                buffer.physical_address
+                physical_address
             );
-            write_phys_memory(self.cpu(), buffer.physical_address, c)
+            write_byte(physical_memory, physical_address, *c)
         })?;
 
-        let value = testcase
-            .len()
-            .to_le_bytes()
-            .iter()
-            .take(4)
-            .cloned()
-            .collect::<Vec<_>>();
-
         if let Some((address, _)) = size.physical_address {
+            testcase
+                .len()
+                .to_le_bytes()
+                .iter()
+                .take(4)
+                .enumerate()
+                .try_for_each(|(i, c)| {
+                    let physical_address = address + (i as u64);
+                    write_byte(physical_memory, physical_address, *c)
+                })?;
+        } else {
             trace!(
                 get_object(CLASS_NAME)?,
-                "Writing testcase size {:?} to physical memory {:#x}",
-                &value,
-                address
+                "Not writing testcase size, no physical address saved for size"
             );
-            write_phys_memory(self.cpu(), address, value.as_slice())?;
         }
 
         Ok(())
     }
+
     fn trace_pc(&mut self, instruction_query: *mut instruction_handle_t) -> Result<TraceEntry> {
         let instruction_bytes = self
             .cpu_instruction_query

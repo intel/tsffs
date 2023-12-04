@@ -4,8 +4,12 @@ name: Deploy Documentation
 on:
   push:
     branches: ["main"]
-
   workflow_dispatch:
+
+env:
+  PUBLIC_SIMICS_PKGS_URL: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/881ee76a-c24d-41c0-af13-5d89b2a857ff/simics-6-packages-2023-31-linux64.ispm"
+  PUBLIC_SIMICS_ISPM_URL: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/881ee76a-c24d-41c0-af13-5d89b2a857ff/intel-simics-package-manager-1.7.5-linux64.tar.gz"
+  PUBLIC_SIMICS_PACKAGE_VERSION_1000: "6.0.169"
 
 permissions:
   contents: read
@@ -25,6 +29,15 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
+      - name: Add ISPM to PATH
+        run: |
+          echo "${HOME}/simics/ispm/" >> "${GITHUB_PATH}"
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get -y update && \
+          sudo apt-get -y install curl
+
       - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@nightly
@@ -35,8 +48,50 @@ jobs:
 
       - name: Build mdBook
         run: |
-          cd docs
+          pushd docs || exit 1
           mdbook build
+          popd || exit 1
+
+      - name: Cache SIMICS Dependencies
+        id: cache-simics-packages
+        uses: actions/cache@v3
+        with:
+          path: ~/simics
+          key: simics-linux-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
+
+      - name: Install SIMICS (External)
+        if: ${{ steps.cache-simics-packages.outputs.cache-hit != 'true' }}
+        run: |
+          mkdir -p "${HOME}/simics/ispm/" && \
+          curl --noproxy '*.intel.com' -L -o "${HOME}/simics/ispm.tar.gz" \
+              "${{ env.PUBLIC_SIMICS_ISPM_URL }}" && \
+          curl --noproxy '*.intel.com' -L -o "${HOME}/simics/simics.ispm" \
+              "${{ env.PUBLIC_SIMICS_PKGS_URL }}" && \
+          tar -C "${HOME}/simics/ispm" --strip-components=1 \
+              -xvf "${HOME}/simics/ispm.tar.gz"
+
+      - name: Set up SIMICS Install Directory
+        run: |
+          ispm settings install-dir "${HOME}/simics"
+
+      - name: Install SIMICS Packages
+        if: ${{ steps.cache-simics-packages.outputs.cache-hit != 'true' }}
+        run: |
+          ispm packages --install-bundle "${HOME}/simics/simics.ispm" \
+              --non-interactive --trust-insecure-packages
+
+      - name: Generate SIMICS Documentation
+        run: |
+          ispm projects "$(pwd)" --create --ignore-existing-files --non-interactive
+          ./documentation -o docs/book/simics --dont-open --project "$(pwd)"
+
+      - name: Generate Crate Documentation
+        run: |
+          mkdir -p .cargo/
+          echo "[env]" > .cargo/config.toml
+          echo 'SIMICS_BASE = "'"${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}"'"' > .cargo/config.toml
+          RUSTDOCFLAGS="--enable-index-page -Zunstable-options" TSFFS_TESTS_SKIP_BUILD=1 cargo doc --document-private-items --workspace --no-deps
+          cp -a target/doc/ docs/book/crates/
 
       - name: Setup Pages
         uses: actions/configure-pages@v3

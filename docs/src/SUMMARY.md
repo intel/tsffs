@@ -24,8 +24,15 @@
   - [Optimizing For Fuzzing](fuzzing/optimizing-for-fuzzing.md)
   - [Analyzing Results](fuzzing/analyzing-results.md)
 
+## Tutorials
+
+- [Tutorials](tutorials/README.md)
+  - [Fuzzing an x86_64 EDK2 UEFI Application](tutorials/edk2-uefi/README.md)
+  - [Fuzzing a RISC-V Kernel Module](tutorials/kernel-module/README.md)
+
 ## Reference Guide
 
+- [SIMICS and Crate Documentation](documentation/README.md)
 - [Developer Documentation](developer/README.md)
   - [Build Internals](developer/build.md)
   - [Refreshing Build Environment](developer/refresh.md)

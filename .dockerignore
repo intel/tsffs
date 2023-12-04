@@ -8,3 +8,8 @@ linux64/
 win64/
 packageinfo/
 target/
+documentation
+simics
+simics-eclipse
+simics-gui
+compiler.mk

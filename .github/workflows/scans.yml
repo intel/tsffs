@@ -37,6 +37,9 @@ jobs:
           VALIDATE_PYTHON_FLAKE8: false
           VALIDATE_PYTHON_MYPY: false
           VALIDATE_PYTHON_PYLINT: false
+          # If gitleaks finds anything, it is too late. Suggested in developer docs in
+          # pre-commit instead. Too many false positives (X509VerifyCert, for example)
+          VALIDATE_GITLEAKS: false
         run: |
           /action/lib/linter.sh || ( echo "❗ [CT222] Super linter found an issue (possibly Hadolint)" && exit 1 )
           echo "✅ [CT222] Hadolint Dockerfile check passed"

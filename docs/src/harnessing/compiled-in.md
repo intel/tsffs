@@ -43,7 +43,13 @@ int main() {
     }
 
     // Do something with buffer and size
-    function_under_test(buffer, size);
+    int retval = function_under_test(buffer, size);
+
+    if (retval == SOMETHING_IMPOSSIBLE_HAPPENED) {
+        /// Some exceptional condition occurred -- note, don't use this for normal "bad" return
+        /// values, use it for instances where something that you are fuzzing for happened.
+        HARNESS_ASSERT();
+    }
     
     // Stop normally
     HARNESS_STOP();
@@ -84,6 +90,9 @@ most 11, so it is possible to create a target software with up to 10 different h
 limitation of the instructions SIMICS understands as *magic*, some of which only support
 an immediate `0<=n<=12` (with magic numbers 0 and 12 *being reserved by SIMICS).
 
+For convenience, definitions are provided for all the alternative magic numbers
+available, through the definitions `MAGIC_ALT_0` through `MAGIC_ALT_7`.
+
 ```c
 #include "tsffs-gcc-x86_64.h"
 
@@ -91,7 +100,7 @@ int main() {
     char buf[20];
     size_t size = sizeof(buf);
 
-    __arch_harness_start(1, buf, &size);
+    __arch_harness_start(MAGIC_START, buf, &size);
 
     if (size < 3) {
         // Stop early if there is not enough data
@@ -103,7 +112,7 @@ int main() {
     // Stop normally on success
     HARNESS_STOP();
 
-    __arch_harness_start(3, result, &size);
+    __arch_harness_start(MAGIC_ALT_0, result, &size);
 
     second_function_under_test(result);
 
@@ -119,7 +128,6 @@ And configuration settings like:
 ```python
 tsffs.iface.tsffs.set_start_on_harness(True)
 tsffs.iface.tsffs.set_stop_on_harness(True)
-tsffs.iface.tsffs.set_start_magic_number(3)
 tsffs.iface.tsffs.set_start_magic_number(4)
 ```
 

@@ -17,6 +17,7 @@ GNUmakefile*
 compiler.mk
 *.project-setup.new
 documentation
+!documentation/
 
 
 .cargo/
@@ -36,3 +37,4 @@ packageinfo/
 target/
 targets/
 win64/
+packages/

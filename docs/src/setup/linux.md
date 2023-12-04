@@ -2,9 +2,9 @@
 
 The easiest way to get started with TSFFS is with our [docker setup](docker.md).
 
-This guide will walk you through local installation of the fuzzer instead. This is
-recommended for both internal users and external users who want to move beyond the
-initial examples.
+This guide will walk you through local build and installation of the fuzzer instead.
+This is recommended for both internal users and external users who want to move beyond
+the initial examples.
 
 - [Setup (Linux)](#setup-linux)
   - [Install Local Dependencies](#install-local-dependencies)
@@ -61,7 +61,7 @@ private Wind River or Intel SIMICS should follow internal documentation availabl
 You can also download via the direct links as shown below. You can download these files
 anywhere, we suggest your `Downloads` directory. In subsequent commands, if you downloaded
 directly from the download page, replace `ispm.tar.gz` with the full name of the `ispm`
-tarball you downloaded, and likewise with `simics-6-packages`
+tarball you downloaded, and likewise with `simics-6-packages`.
 
 ```sh
 curl --noproxy -L -o $HOME/Downloads/ispm.tar.gz \

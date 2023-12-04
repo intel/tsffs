@@ -12,10 +12,10 @@ use anyhow::{anyhow, Result};
 use libafl::prelude::ExitKind;
 use simics::{
     api::{
-        continue_simulation, object_is_processor, quit, run_alone, set_log_level, AsConfObject,
-        ConfObject, GenericTransaction, LogLevel,
+        continue_simulation, log_level, object_is_processor, quit, run_alone, set_log_level,
+        AsConfObject, ConfObject, GenericTransaction, LogLevel,
     },
-    info, trace,
+    debug, info, trace,
 };
 
 impl Tsffs {
@@ -26,8 +26,20 @@ impl Tsffs {
             return Ok(());
         }
 
+        let mut messages = Vec::new();
+
+        if let Some(fuzzer_messages) = self.fuzzer_messages_mut() {
+            while let Ok(message) = fuzzer_messages.try_recv() {
+                messages.push(message);
+            }
+        }
+
+        messages
+            .iter()
+            .for_each(|m| info!(self.as_conf_object(), "{m}"));
+
         if let Some(reason) = self.stop_reason_mut().take() {
-            info!(self.as_conf_object(), "on_simulation_stopped({reason:?})");
+            debug!(self.as_conf_object(), "on_simulation_stopped({reason:?})");
 
             match reason {
                 StopReason::MagicStart(magic_start) => {
@@ -44,6 +56,11 @@ impl Tsffs {
                                 start_processor.get_magic_start_size()?,
                             )
                         };
+
+                        debug!(
+                            self.as_conf_object(),
+                            "Start buffer: {start_buffer:?} Start size: {start_size:?}"
+                        );
 
                         *self.start_buffer_mut() = Some(start_buffer);
                         *self.start_size_mut() = Some(start_size);
@@ -96,6 +113,11 @@ impl Tsffs {
                             )
                         };
 
+                        debug!(
+                            self.as_conf_object(),
+                            "Start buffer: {start_buffer:?} Start size: {start_size:?}"
+                        );
+
                         *self.start_buffer_mut() = start_buffer;
                         *self.start_size_mut() = start_size;
                         *self.start_time_mut() = SystemTime::now();
@@ -134,7 +156,11 @@ impl Tsffs {
 
                     if *self.repro_bookmark_set() {
                         *self.stopped_for_repro_mut() = true;
-                        set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
+                        let current_log_level = log_level(self.as_conf_object_mut())?;
+
+                        if current_log_level < LogLevel::Info as u32 {
+                            set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
+                        }
 
                         info!(
                             self.as_conf_object(),
@@ -154,8 +180,11 @@ impl Tsffs {
                     {
                         let duration = SystemTime::now().duration_since(*self.start_time())?;
 
+                        let current_log_level = log_level(self.as_conf_object_mut())?;
                         // Set the log level so this message always prints
-                        set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
+                        if current_log_level < LogLevel::Info as u32 {
+                            set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
+                        }
 
                         info!(
                             self.as_conf_object(),
@@ -181,6 +210,11 @@ impl Tsffs {
 
                     if self.start_buffer().is_some() && self.start_size().is_some() {
                         self.get_and_write_testcase()?;
+                    } else {
+                        debug!(
+                            self.as_conf_object(),
+                            "Missing start buffer or size, not writing testcase."
+                        );
                     }
 
                     self.post_timeout_event()?;
@@ -200,7 +234,11 @@ impl Tsffs {
 
                     if *self.repro_bookmark_set() {
                         *self.stopped_for_repro_mut() = true;
-                        set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
+                        let current_log_level = log_level(self.as_conf_object_mut())?;
+
+                        if current_log_level < LogLevel::Info as u32 {
+                            set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
+                        }
 
                         info!(
                             self.as_conf_object(),
@@ -252,12 +290,18 @@ impl Tsffs {
 
                     if self.start_buffer().is_some() && self.start_size().is_some() {
                         self.get_and_write_testcase()?;
+                    } else {
+                        debug!(
+                            self.as_conf_object(),
+                            "Missing start buffer or size, not writing testcase."
+                        );
                     }
+
                     self.post_timeout_event()?;
                 }
             }
 
-            info!(self.as_conf_object(), "Resuming simulation");
+            debug!(self.as_conf_object(), "Resuming simulation");
 
             run_alone(|| {
                 continue_simulation(0)?;
@@ -344,7 +388,7 @@ impl Tsffs {
         trigger_obj: *mut ConfObject,
         magic_number: i64,
     ) -> Result<()> {
-        info!(
+        trace!(
             self.as_conf_object(),
             "on_magic_instruction({magic_number})"
         );
@@ -360,6 +404,12 @@ impl Tsffs {
                 && magic_number == *self.configuration().magic_stop()
             {
                 self.stop_simulation(StopReason::MagicStop(Stop::default()))?;
+            } else if *self.configuration().stop_on_harness()
+                && magic_number == *self.configuration().magic_assert()
+            {
+                self.stop_simulation(StopReason::Solution(
+                    Solution::builder().kind(SolutionKind::Manual).build(),
+                ))?;
             }
         }
         Ok(())

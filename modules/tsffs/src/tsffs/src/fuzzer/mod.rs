@@ -11,8 +11,7 @@ use libafl::{
         CachedOnDiskCorpus, Corpus, CorpusId, CrashFeedback, ExitKind, HasTargetBytes,
         HitcountsMapObserver, I2SRandReplace, InProcessExecutor, MaxMapFeedback, OnDiskCorpus,
         RandBytesGenerator, SimpleEventManager, SimpleMonitor, StdCmpValuesObserver,
-        StdMOptMutator, StdMapObserver, StdScheduledMutator, TimeFeedback, TimeObserver,
-        TimeoutExecutor, Tokens,
+        StdMOptMutator, StdMapObserver, StdScheduledMutator, TimeFeedback, TimeObserver, Tokens,
     },
     schedulers::{
         powersched::PowerSchedule, IndexesLenTimeMinimizerScheduler, StdWeightedScheduler,
@@ -33,10 +32,9 @@ use libafl_bolts::{
     AsMutSlice, AsSlice,
 };
 use libafl_targets::{AFLppCmpLogObserver, AFLppCmplogTracingStage};
-use simics::{api::AsConfObject, debug, info};
+use simics::{api::AsConfObject, debug, warn};
 use std::{
     cell::RefCell, fmt::Debug, slice::from_raw_parts_mut, sync::mpsc::channel, thread::spawn,
-    time::Duration,
 };
 
 pub mod tokenize;
@@ -52,11 +50,16 @@ impl Debug for Testcase {
         f.debug_struct("Testcase")
             .field(
                 "testcase",
-                &&self.testcase[..(if self.testcase.len() < 8 {
+                &format!(
+                    "{:?}{} ({} bytes)",
+                    &self.testcase[..(if self.testcase.len() < 32 {
+                        self.testcase.len()
+                    } else {
+                        32
+                    })],
+                    if self.testcase.len() >= 32 { "..." } else { "" },
                     self.testcase.len()
-                } else {
-                    8
-                })],
+                ),
             )
             .field("cmplog", &self.cmplog)
             .finish()
@@ -77,7 +80,7 @@ impl Tsffs {
     /// Start the fuzzing thread.
     pub fn start_fuzzer_thread(&mut self) -> Result<()> {
         if self.fuzz_thread().is_some() {
-            info!(self.as_conf_object(), "Fuzz thread already started but start_fuzzer_thread called. Returning without error.");
+            warn!(self.as_conf_object(), "Fuzz thread already started but start_fuzzer_thread called. Returning without error.");
             // We can only start the thread once
             return Ok(());
         }
@@ -87,10 +90,12 @@ impl Tsffs {
         let (tx, orx) = channel::<ExitKind>();
         let (otx, rx) = channel::<Testcase>();
         let (stx, srx) = channel::<ShutdownMessage>();
+        let (mtx, mrx) = channel::<String>();
 
         self.fuzzer_tx = Some(tx);
         self.fuzzer_rx = Some(rx);
         self.fuzzer_shutdown = Some(stx);
+        self.fuzzer_messages = Some(mrx);
 
         let client = RefCell::new((otx, orx));
         let configuration = self.configuration().clone();
@@ -215,44 +220,35 @@ impl Tsffs {
 
             let monitor = {
                 SimpleMonitor::new(move |s| {
-                    println!("{}", s);
+                    mtx.send(s).expect("Failed to send monitor message");
                 })
             };
 
             let mut manager = SimpleEventManager::new(monitor);
 
-            let mut executor = TimeoutExecutor::new(
-                InProcessExecutor::new(
-                    &mut harness,
-                    tuple_list!(edges_observer, time_observer),
-                    &mut fuzzer,
-                    &mut state,
-                    &mut manager,
-                )?,
-                Duration::from_secs(*configuration.executor_timeout()),
-            );
+            let mut executor = InProcessExecutor::new(
+                &mut harness,
+                tuple_list!(edges_observer, time_observer),
+                &mut fuzzer,
+                &mut state,
+                &mut manager,
+            )?;
 
-            let aflpp_cmp_executor = TimeoutExecutor::new(
-                InProcessExecutor::new(
-                    &mut aflpp_cmp_harness,
-                    tuple_list!(aflpp_cmp_observer),
-                    &mut fuzzer,
-                    &mut state,
-                    &mut manager,
-                )?,
-                Duration::from_secs(*configuration.executor_timeout()),
-            );
+            let aflpp_cmp_executor = InProcessExecutor::new(
+                &mut aflpp_cmp_harness,
+                tuple_list!(aflpp_cmp_observer),
+                &mut fuzzer,
+                &mut state,
+                &mut manager,
+            )?;
 
-            let tracing_executor = TimeoutExecutor::new(
-                InProcessExecutor::new(
-                    &mut tracing_harness,
-                    tuple_list!(cmplog_observer),
-                    &mut fuzzer,
-                    &mut state,
-                    &mut manager,
-                )?,
-                Duration::from_secs(*configuration.executor_timeout()),
-            );
+            let tracing_executor = InProcessExecutor::new(
+                &mut tracing_harness,
+                tuple_list!(cmplog_observer),
+                &mut fuzzer,
+                &mut state,
+                &mut manager,
+            )?;
 
             let input_to_state_stage = StdMutationalStage::new(StdScheduledMutator::new(
                 tuple_list!(I2SRandReplace::new()),
@@ -370,7 +366,8 @@ impl Tsffs {
     }
 
     pub fn get_testcase(&mut self) -> Result<Testcase> {
-        Ok(if let Some(testcase) = self.repro_testcase() {
+        let testcase = if let Some(testcase) = self.repro_testcase() {
+            debug!(self.as_conf_object(), "Using repro testcase");
             Testcase {
                 testcase: testcase.clone(),
                 cmplog: false,
@@ -381,33 +378,10 @@ impl Tsffs {
                 .ok_or_else(|| anyhow!("Fuzzer receiver not set"))?
                 .recv()
                 .map_err(|e| anyhow!("Error receiving from fuzzer: {e}"))?
-        })
+        };
+
+        debug!(self.as_conf_object(), "Testcase: {testcase:?}");
+
+        Ok(testcase)
     }
 }
-
-// impl Tsffs {
-//     fn on_init(&mut self) -> Result<()> {
-//         Ok(())
-//     }
-//
-//     fn on_simulation_stopped(&mut self, reason: &StopReason) -> Result<()> {
-//         info!(
-//             self.as_conf_object(),
-//             "Stopped in fuzzer with reason {:?}", reason
-//         );
-//         match reason {
-//             StopReason::MagicStart(_) | StopReason::Start(_) => {
-//                 if self.fuzz_thread().is_none() {
-//                     self.start()?;
-//                 }
-//             }
-//             StopReason::MagicStop(_) | StopReason::Stop(_) | StopReason::Solution(_) => {
-//                 if let Some(tx) = self.tx().as_ref() {
-//                     tx.send(ModuleMessage::Status(reason.clone()))
-//                         .map_err(|e| anyhow!("Failed to send status message: {e}"))?;
-//                 }
-//             }
-//         }
-//         Ok(())
-//     }
-// }
