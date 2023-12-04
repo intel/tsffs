@@ -35,19 +35,21 @@ fn main() -> Result<()> {
 
     println!("cargo:rerun-if-changed={}", targets_dir.display());
 
-    Command::new(targets_dir.join("build.sh"))
-        .current_dir(targets_dir)
-        .env(
-            "SIMICS_BASE",
-            base.paths()
-                .first()
-                .ok_or_else(|| anyhow!("No path to base package"))?
-                .to_string_lossy()
-                .to_string(),
-        )
-        .check()
-        .expect("failed to build");
-    println!("cargo:rerun-if-changed=build.rs");
+    if var("TSFFS_TESTS_SKIP_BUILD").is_ok() {
+        Command::new(targets_dir.join("build.sh"))
+            .current_dir(targets_dir)
+            .env(
+                "SIMICS_BASE",
+                base.paths()
+                    .first()
+                    .ok_or_else(|| anyhow!("No path to base package"))?
+                    .to_string_lossy()
+                    .to_string(),
+            )
+            .check()
+            .expect("failed to build");
+        println!("cargo:rerun-if-changed=build.rs");
+    }
 
     Ok(())
 }
