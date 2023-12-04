@@ -4,8 +4,8 @@ load-module tsffs
 tsffs.log-level 4
 @tsffs.iface.tsffs.set_start_on_harness(True)
 @tsffs.iface.tsffs.set_stop_on_harness(True)
-@tsffs.iface.tsffs.set_start_magic_number(3)
-@tsffs.iface.tsffs.set_stop_magic_number(4)
+@tsffs.iface.tsffs.set_start_magic_number(4)
+@tsffs.iface.tsffs.set_stop_magic_number(5)
 @tsffs.iface.tsffs.set_timeout(3.0)
 @tsffs.iface.tsffs.add_exception_solution(14)
 @tsffs.iface.tsffs.set_generate_random_corpus(True)
