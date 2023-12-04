@@ -10,6 +10,7 @@ for more info
 
 from os.path import abspath, dirname, join
 from typing import Iterable, List
+
 from edk2toolext.environment.uefi_build import UefiBuilder
 from edk2toolext.invocables.edk2_platform_build import BuildSettingsManager
 from edk2toolext.invocables.edk2_setup import RequiredSubmodule, SetupSettingsManager

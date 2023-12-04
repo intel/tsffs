@@ -42,8 +42,9 @@
 /// has occurred and the testcase input should be saved as a solution
 #define MAGIC_ASSERT (0x0003U)
 
-/// Alternative magic numbers that can be used for start and stop events in conjunction with
-/// setting the magic number for each event via the SIMICS or SIMICS Python script interface
+/// Alternative magic numbers that can be used for start and stop events in
+/// conjunction with setting the magic number for each event via the SIMICS or
+/// SIMICS Python script interface
 #define MAGIC_ALT_0 (0x0004U)
 #define MAGIC_ALT_1 (0x0005U)
 #define MAGIC_ALT_2 (0x0006U)
