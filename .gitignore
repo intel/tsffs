@@ -17,6 +17,7 @@ GNUmakefile*
 compiler.mk
 *.project-setup.new
 documentation
+!documentation/
 
 
 .cargo/

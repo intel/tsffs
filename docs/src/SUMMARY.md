@@ -32,8 +32,7 @@
 
 ## Reference Guide
 
-- [SIMICS Documentation](https://intel.github.io/tsffs/simics/)
-- [Crate Documenation](https://intel.github.io/tsffs/tsffs/)
+- [SIMICS and Crate Documentation](documentation/README.md)
 - [Developer Documentation](developer/README.md)
   - [Build Internals](developer/build.md)
   - [Refreshing Build Environment](developer/refresh.md)

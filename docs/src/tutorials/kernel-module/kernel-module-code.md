@@ -1,7 +1,8 @@
 # Kernel Module Code
 
 Next, create `src/tutorial-kernel-modules/package/kernel-modules/tutorial-mod/Makefile`,
-which will be more familiar to Linux Kernel developers:
+which will be more familiar to Linux Kernel developers (note -- you may need to convert
+space indentation to tabs when pasting the contents below):
 
 ```makefile
 obj-m += $(addsuffix .o, $(notdir $(basename $(wildcard $(BR2_EXTERNAL_TUTORIAL_KERNEL_MODULES_PATH)/package/kernel-modules/tutorial-mod/*.c))))
@@ -9,10 +10,10 @@ obj-m += $(addsuffix .o, $(notdir $(basename $(wildcard $(BR2_EXTERNAL_TUTORIAL_
 .PHONY: all clean
 
 all:
-	$(MAKE) -C '/lib/modules/$(shell uname -r)/build' M='$(PWD)' modules
+    $(MAKE) -C '/lib/modules/$(shell uname -r)/build' M='$(PWD)' modules
 
 clean:
-	$(MAKE) -C '$(LINUX_DIR)' M='$(PWD)' clean
+    $(MAKE) -C '$(LINUX_DIR)' M='$(PWD)' clean
 ```
 
 This in turn invokes the standard KBuild process, specifying our current directory

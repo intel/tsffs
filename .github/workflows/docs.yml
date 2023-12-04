@@ -91,7 +91,7 @@ jobs:
           echo "[env]" > .cargo/config.toml
           echo 'SIMICS_BASE = "'"${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}"'"' > .cargo/config.toml
           RUSTDOCFLAGS="--enable-index-page -Zunstable-options" TSFFS_TESTS_SKIP_BUILD=1 cargo doc --document-private-items --workspace --no-deps
-          cp -a target/doc/ docs/book/tsffs/
+          cp -a target/doc/ docs/book/crates/
 
       - name: Setup Pages
         uses: actions/configure-pages@v3
