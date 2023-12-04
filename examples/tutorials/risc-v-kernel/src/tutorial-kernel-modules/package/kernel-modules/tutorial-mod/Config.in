@@ -1,0 +1,5 @@
+config BR2_PACKAGE_TUTORIAL_MOD
+    bool "tutorial-mod"
+    depends on BR2_LINUX_KERNEL
+    help
+        Tutorial kernel module for TSFFS fuzzing
