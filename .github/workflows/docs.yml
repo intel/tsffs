@@ -90,6 +90,11 @@ jobs:
           SIMICS_BASE="${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}" RUSTDOCFLAGS="--enable-index-page -Zunstable-options" TSFFS_TESTS_SKIP_BUILD=1 cargo doc --document-private-items --workspace --no-deps
           cp -a target/doc/ docs/book/crates/
 
+      - name: Set Documentation Permissions
+        run: |
+          chown -R $USER:$USER docs
+          chmod -R 755 docs
+
       - name: Setup Pages
         uses: actions/configure-pages@v3
 
