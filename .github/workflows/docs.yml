@@ -92,7 +92,7 @@ jobs:
 
       - name: Set Documentation Permissions
         run: |
-          chown -R $USER:$USER docs
+          chown -R "$USER:$USER" docs
           chmod -R 755 docs
           chmod -c -R +rX docs/ | while read line; do
             echo "::warning title=Invalid file permissions automatically fixed::$line"
