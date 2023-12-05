@@ -92,9 +92,15 @@ jobs:
 
       - name: Set Documentation Permissions
         run: |
+<<<<<<< HEAD
           sudo chown -R "$USER:$USER" docs
           sudo chmod -R 755 docs
           sudo chmod -c -R +rX docs/ | while read -r line; do
+=======
+          chown -R "$USER:$USER" docs
+          chmod -R 755 docs
+          chmod -c -R +rX docs/ | while read -r line; do
+>>>>>>> 2c92e923df903cfa77f0a54c4728ca72aa4315b1
             echo "::warning title=Invalid file permissions automatically fixed::$line"
           done
 
