@@ -20,7 +20,6 @@
   - [Checking Target Software Compatibility](fuzzing/compatibility.md)
   - [Choosing A Harnessing Method](fuzzing/choose-harnessing-method.md)
   - [Running the Fuzzer](fuzzing/running-fuzzer.md)
-  - [Verifying Progress](fuzzing/verifying-progress.md)
   - [Optimizing For Fuzzing](fuzzing/optimizing-for-fuzzing.md)
   - [Analyzing Results](fuzzing/analyzing-results.md)
 
@@ -28,7 +27,20 @@
 
 - [Tutorials](tutorials/README.md)
   - [Fuzzing an x86_64 EDK2 UEFI Application](tutorials/edk2-uefi/README.md)
+    - [Writing the Application](tutorials/edk2-uefi/writing-the-application.md)
+    - [Building the Application](tutorials/edk2-uefi/building-the-application.md)
+    - [Testing the Application](tutorials/edk2-uefi/testing-the-application.md)
+    - [Configuring the Fuzzer](tutorials/edk2-uefi/configuring-the-fuzzer.md)
+    - [Running the Fuzzer](tutorials/edk2-uefi/running-the-fuzzer.md)
+    - [Reproducing Runs](tutorials/edk2-uefi/reproducing-runs.md)
+    - [Optimizing For Speed](tutorials/edk2-uefi/optimizing-for-speed.md)
   - [Fuzzing a RISC-V Kernel Module](tutorials/kernel-module/README.md)
+    - [Target Software Outline](tutorials/kernel-module/target-software-outline.md)
+    - [Target Software Boilerplate](tutorials/kernel-module/target-software-boilerplate.md)
+    - [Kernel Module Code](tutorials/kernel-module/kernel-module-code.md)
+    - [Kernel Module Harnessing](tutorials/kernel-module/kernel-module-harnessing.md)
+    - [Updating the Build Configuration](tutorials/kernel-module/build-configuration-updates.md)
+    - [Running the Fuzzer](tutorials/kernel-module/running-the-fuzzer.md)
 
 ## Reference Guide
 
