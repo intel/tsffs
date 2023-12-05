@@ -94,7 +94,7 @@ jobs:
         run: |
           chown -R "$USER:$USER" docs
           chmod -R 755 docs
-          chmod -c -R +rX docs/ | while read line; do
+          chmod -c -R +rX docs/ | while read -r line; do
             echo "::warning title=Invalid file permissions automatically fixed::$line"
           done
 
