@@ -4,7 +4,7 @@
 //! Definitions for tracking the state of the fuzzer
 
 use anyhow::{anyhow, Error, Result};
-use getters::Getters;
+use getters2::Getters;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, to_string};
 use simics::api::ConfObject;
@@ -23,12 +23,14 @@ pub enum ManualStartSize {
 pub struct ManualStart {
     #[builder(default = null_mut())]
     #[serde(skip, default = "null_mut")]
+    #[getters(deref)]
     processor: *mut ConfObject,
     #[builder(default, setter(into, strip_option))]
     buffer: Option<u64>,
     #[builder(default = ManualStartSize::NoSize)]
     size: ManualStartSize,
     #[builder(default)]
+    #[getters(deref)]
     virt: bool,
 }
 
@@ -37,6 +39,7 @@ pub struct ManualStart {
 pub struct MagicStart {
     #[builder(default = null_mut())]
     #[serde(skip, default = "null_mut")]
+    #[getters(deref)]
     processor: *mut ConfObject,
 }
 

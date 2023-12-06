@@ -17,7 +17,7 @@ version.workspace = true
 [dependencies]
 anyhow = { workspace = true }
 command-ext.workspace = true
-getters.workspace = true
+getters2 = "0.1.2"
 indoc = "2.0.4"
 ispm-wrapper.workspace = true
 typed-builder = "0.18.0"

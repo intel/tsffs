@@ -258,7 +258,7 @@ pub trait ArchitectureOperations {
         let addr_size =
             self.processor_info_v2().get_logical_address_width()? as usize / u8::BITS as usize;
         let initial_size =
-            size.initial_size()
+            size.initial_size_ref()
                 .ok_or_else(|| anyhow!("Expected initial size for start"))? as usize;
 
         let physical_memory = self.processor_info_v2().get_physical_memory()?;

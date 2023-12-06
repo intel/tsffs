@@ -30,7 +30,7 @@ simics-macro = { workspace = true }
 yaxpeax-arch = "0.2.7"
 yaxpeax-x86 = "1.2.0"
 typed-builder = "0.18.0"
-getters.workspace = true
+getters2 = "0.1.2"
 serde_json.workspace = true
 goblin = "0.7.1"
 yaxpeax-riscv = { git = "https://github.com/novafacing/yaxpeax-riscv", version = "0.1.0", features = [

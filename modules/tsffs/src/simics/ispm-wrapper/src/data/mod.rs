@@ -4,7 +4,7 @@
 //! Data deserializable from ISPM commands and configurations
 
 use anyhow::Result;
-use getters::Getters;
+use getters2::Getters;
 use serde::Deserialize;
 use serde_json::from_slice;
 use std::{fmt::Display, fs::read, path::PathBuf};
@@ -159,15 +159,19 @@ impl Settings {
 /// A package that is already installed
 pub struct InstalledPackage {
     #[serde(rename = "pkgNumber")]
+    #[getters(deref)]
     /// The package number
     package_number: isize,
     #[serde(deserialize_with = "version_constraint_from_string")]
+    #[getters(clone)]
     /// The package version
     version: VersionConstraint,
     #[builder(setter(into))]
+    #[getters(clone)]
     /// The package name
     name: String,
     #[builder(default, setter(into))]
+    #[getters(clone)]
     /// Paths to this installed package
     paths: Vec<PathBuf>,
 }
@@ -204,6 +208,7 @@ pub struct Packages {
 /// A package which is added to a project
 pub struct ProjectPackage {
     #[serde(rename = "pkgNumber")]
+    #[getters(deref)]
     /// The package number
     package_number: isize,
     #[serde(deserialize_with = "version_constraint_from_string")]

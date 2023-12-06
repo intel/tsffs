@@ -229,7 +229,7 @@ impl Tsffs {
             self.start_fuzzer_thread()?;
         }
         let testcase = self.get_testcase()?;
-        *self.cmplog_enabled_mut() = *testcase.cmplog();
+        *self.cmplog_enabled_mut() = testcase.cmplog_deref();
         trace!(
             self.as_conf_object(),
             "Coverage hash (before): {:#x}",
@@ -245,7 +245,7 @@ impl Tsffs {
             ManualStart::builder().processor(cpu).build(),
         ))?;
 
-        testcase.testcase().clone().try_into()
+        testcase.testcase_clone().try_into()
     }
 
     /// Interface method to manually signal to stop a testcase execution. When this
@@ -466,7 +466,7 @@ impl Tsffs {
     }
 
     pub fn get_configuration(&mut self) -> Result<attr_value_t> {
-        let value: AttrValueType = self.configuration().clone().try_into()?;
+        let value: AttrValueType = self.configuration_clone().try_into()?;
         Ok(AttrValue::try_from(value)?.into())
     }
 
@@ -590,7 +590,7 @@ impl Tsffs {
 
         *self.repro_testcase_mut() = Some(contents);
 
-        if *self.iterations() > 0 {
+        if self.iterations_deref() > 0 {
             // We've done an iteration already, so we need to reset and run
             self.restore_initial_snapshot()?;
             self.get_and_write_testcase()?;

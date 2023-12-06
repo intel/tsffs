@@ -3,7 +3,7 @@ use std::{
     path::PathBuf,
 };
 
-use getters::Getters;
+use getters2::Getters;
 use simics::api::{lookup_file, BreakpointId};
 use simics_macro::TryIntoAttrValueTypeDict;
 use typed_builder::TypedBuilder;
@@ -33,7 +33,7 @@ impl Configuration {
 }
 
 #[derive(TypedBuilder, Getters, Debug, Clone, TryIntoAttrValueTypeDict)]
-#[getters(mutable)]
+#[getters(deref, mutable)]
 pub struct Configuration {
     #[builder(default = false)]
     /// Whether any breakpoint that occurs during fuzzing is treated as a fault
@@ -42,9 +42,11 @@ pub struct Configuration {
     /// Whether any CPU exception that occurs during fuzzing is treated as a solution
     all_exceptions_are_solutions: bool,
     #[builder(default)]
+    #[getters(skip_deref, clone)]
     /// The set of specific exception numbers that are treated as a solution
     exceptions: BTreeSet<i64>,
     #[builder(default)]
+    #[getters(skip_deref, clone)]
     /// The set of breakpoints to treat as solutions
     breakpoints: BTreeSet<BreakpointId>,
     #[builder(default = Configuration::DEFAULT_TIMEOUT_SECONDS)]
@@ -66,14 +68,18 @@ pub struct Configuration {
     #[builder(default, setter(strip_option))]
     iterations: Option<usize>,
     #[builder(default)]
+    #[getters(skip_deref, clone)]
     tokens: Vec<Vec<u8>>,
     #[builder(default = lookup_file("%simics%").expect("No simics project root found").join(Configuration::DEFAULT_CORPUS_DIRECTORY_NAME))]
+    #[getters(skip_deref, clone)]
     corpus_directory: PathBuf,
     #[builder(default = lookup_file("%simics%").expect("No simics project root found").join(Configuration::DEFAULT_SOLUTIONS_DIRECTORY_NAME))]
+    #[getters(skip_deref, clone)]
     solutions_directory: PathBuf,
     #[builder(default = false)]
     generate_random_corpus: bool,
     #[builder(default)]
+    #[getters(skip_deref, clone)]
     token_files: Vec<PathBuf>,
     #[builder(default = Configuration::DEFAULT_EXECUTOR_TIMEOUT)]
     /// The executor timeout in seconds
@@ -83,6 +89,7 @@ pub struct Configuration {
     #[builder(default = true)]
     cmplog: bool,
     #[builder(default)]
+    #[getters(skip_deref, clone)]
     architecture_hints: HashMap<i32, ArchitectureHint>,
 }
 

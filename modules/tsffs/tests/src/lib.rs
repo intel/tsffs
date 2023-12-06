@@ -4,7 +4,7 @@
 //! SIMICS test utilities for test environment setup and configuration
 
 use anyhow::{anyhow, bail, ensure, Result};
-use getters::Getters;
+use getters2::Getters;
 use ispm_wrapper::{
     data::ProjectPackage,
     ispm::{
@@ -73,19 +73,20 @@ pub fn local_or_remote_pkg_install(mut options: InstallOptions) -> Result<()> {
     } else {
         let installed = ispm::packages::list(&GlobalOptions::default())?;
 
-        for package in options.packages() {
-            let Some(installed) = installed.installed_packages() else {
+        for package in options.packages_ref() {
+            let Some(installed) = installed.installed_packages_ref() else {
                 bail!("Did not get any installed packages");
             };
             let Some(available) = installed.iter().find(|p| {
-                p.package_number() == package.package_number() && p.version() == package.version()
+                p.package_number_deref() == package.package_number_deref()
+                    && p.version_ref() == package.version_ref()
             }) else {
                 bail!("Did not find package {package:?} in {installed:?}");
             };
-            let Some(path) = available.paths().first() else {
+            let Some(path) = available.paths_ref().first() else {
                 bail!("No paths for available package {available:?}");
             };
-            let Some(install_dir) = options.global().install_dir() else {
+            let Some(install_dir) = options.global_ref().install_dir_ref() else {
                 bail!("No install dir for global options {options:?}");
             };
 
@@ -110,7 +111,7 @@ pub fn local_or_remote_pkg_install(mut options: InstallOptions) -> Result<()> {
         // Clear the remote packages to install, we can install local paths no problem
         options.packages_mut().clear();
 
-        if !options.package_paths().is_empty() {
+        if !options.package_paths_ref().is_empty() {
             ispm::packages::install(&options)?;
         }
     }
@@ -212,7 +213,7 @@ pub struct TestEnv {
 
 impl TestEnv {
     pub fn simics_base_dir(&self) -> Result<PathBuf> {
-        read_dir(self.simics_home_dir())?
+        read_dir(self.simics_home_dir_ref())?
             .filter_map(|d| d.ok())
             .filter(|d| d.path().is_dir())
             .map(|d| d.path())
@@ -392,11 +393,11 @@ impl TestEnv {
                         .build(),
                 )?;
 
-                if let Some(installed) = installed.installed_packages() {
+                if let Some(installed) = installed.installed_packages_ref() {
                     installed_packages.extend(installed.iter().map(|ip| {
                         ProjectPackage::builder()
-                            .package_number(*ip.package_number())
-                            .version(ip.version().clone())
+                            .package_number(ip.package_number_deref())
+                            .version(ip.version_clone())
                             .build()
                     }));
                 }
@@ -443,7 +444,7 @@ impl TestEnv {
     }
 
     pub fn cleanup(&mut self) -> Result<()> {
-        remove_dir_all(self.test_dir()).map_err(|e| anyhow!("Error cleaning up: {e}"))
+        remove_dir_all(self.test_dir_ref()).map_err(|e| anyhow!("Error cleaning up: {e}"))
     }
 
     pub fn cleanup_if_env(&mut self) -> Result<()> {

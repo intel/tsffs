@@ -3,7 +3,7 @@
 
 use crate::Tsffs;
 use anyhow::{anyhow, Result};
-use getters::Getters;
+use getters2::Getters;
 use libafl::{
     feedback_or, feedback_or_fast,
     prelude::{
@@ -41,7 +41,9 @@ pub mod tokenize;
 
 #[derive(Getters, Clone, PartialEq, Eq)]
 pub struct Testcase {
+    #[getters(clone)]
     testcase: Vec<u8>,
+    #[getters(deref)]
     cmplog: bool,
 }
 
@@ -79,7 +81,7 @@ impl Tsffs {
 
     /// Start the fuzzing thread.
     pub fn start_fuzzer_thread(&mut self) -> Result<()> {
-        if self.fuzz_thread().is_some() {
+        if self.fuzz_thread_ref().is_some() {
             warn!(self.as_conf_object(), "Fuzz thread already started but start_fuzzer_thread called. Returning without error.");
             // We can only start the thread once
             return Ok(());
@@ -98,16 +100,16 @@ impl Tsffs {
         self.fuzzer_messages = Some(mrx);
 
         let client = RefCell::new((otx, orx));
-        let configuration = self.configuration().clone();
+        let configuration = self.configuration_clone();
         let coverage_map = unsafe {
             from_raw_parts_mut(
                 self.coverage_map_mut().as_mut_slice().as_mut_ptr(),
                 Self::COVERAGE_MAP_SIZE,
             )
         };
-        let aflpp_cmp_map = Box::leak(unsafe { Box::from_raw(*self.aflpp_cmp_map_ptr()) });
-        let aflpp_cmp_map_dup = Box::leak(unsafe { Box::from_raw(*self.aflpp_cmp_map_ptr()) });
-        let cmplog_enabled = *self.configuration().cmplog();
+        let aflpp_cmp_map = Box::leak(unsafe { Box::from_raw(*self.aflpp_cmp_map_ptr_ref()) });
+        let aflpp_cmp_map_dup = Box::leak(unsafe { Box::from_raw(*self.aflpp_cmp_map_ptr_ref()) });
+        let cmplog_enabled = *self.configuration_ref().cmplog_ref();
 
         // NOTE: We do *not* use `run_in_thread` because it causes the fuzzer to block when HAPs arrive
         // which prevents forward progress.
@@ -174,12 +176,12 @@ impl Tsffs {
             let timeout_feedback = TimeFeedback::new(Self::TIMEOUT_FEEDBACK_NAME);
 
             let solutions = OnDiskCorpus::with_meta_format(
-                configuration.solutions_directory(),
+                configuration.solutions_directory_ref(),
                 OnDiskMetadataFormat::JsonPretty,
             )?;
 
             let corpus = CachedOnDiskCorpus::with_meta_format(
-                configuration.corpus_directory(),
+                configuration.corpus_directory_ref(),
                 Self::CORPUS_CACHE_SIZE,
                 Some(OnDiskMetadataFormat::Json),
             )?;
@@ -203,10 +205,10 @@ impl Tsffs {
 
             let mut tokens = Tokens::default();
             configuration
-                .token_files()
+                .token_files_ref()
                 .iter()
                 .try_for_each(|f| tokens.add_from_file(f).map(|_| ()))?;
-            tokens.add_tokens(configuration.tokens());
+            tokens.add_tokens(configuration.tokens_ref());
             state.add_metadata(tokens);
 
             let scheduler =
@@ -270,11 +272,11 @@ impl Tsffs {
             );
             let tracing_stage = TracingStage::new(tracing_executor);
             let synchronize_corpus_stage =
-                SyncFromDiskStage::with_from_file(configuration.corpus_directory().clone());
+                SyncFromDiskStage::with_from_file(configuration.corpus_directory_clone());
             let dump_corpus_stage = DumpToDiskStage::new(
                 |input: &BytesInput, _state: &_| input.target_bytes().as_slice().to_vec(),
-                configuration.corpus_directory(),
-                configuration.solutions_directory(),
+                configuration.corpus_directory_ref(),
+                configuration.solutions_directory_ref(),
             )?;
 
             if state.must_load_initial_inputs() {
@@ -282,17 +284,17 @@ impl Tsffs {
                     &mut fuzzer,
                     &mut executor,
                     &mut manager,
-                    &[configuration.corpus_directory().clone()],
+                    &[configuration.corpus_directory_ref().clone()],
                 )?;
 
-                if state.corpus().count() < 1 && *configuration.generate_random_corpus() {
+                if state.corpus().count() < 1 && *configuration.generate_random_corpus_ref() {
                     let mut generator = RandBytesGenerator::new(64);
                     state.generate_initial_inputs(
                         &mut fuzzer,
                         &mut executor,
                         &mut generator,
                         &mut manager,
-                        *configuration.initial_random_corpus_size(),
+                        configuration.initial_random_corpus_size_deref(),
                     )?;
                 }
             }
@@ -366,7 +368,7 @@ impl Tsffs {
     }
 
     pub fn get_testcase(&mut self) -> Result<Testcase> {
-        let testcase = if let Some(testcase) = self.repro_testcase() {
+        let testcase = if let Some(testcase) = self.repro_testcase_ref() {
             debug!(self.as_conf_object(), "Using repro testcase");
             Testcase {
                 testcase: testcase.clone(),
