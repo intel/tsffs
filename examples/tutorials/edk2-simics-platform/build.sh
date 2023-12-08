@@ -12,3 +12,4 @@ docker cp "${CONTAINER_NAME}:/workspace/Build/SimicsOpenBoardPkg/BoardX58Ich10/D
 docker rm -f "${CONTAINER_NAME}"
 mkdir -p "${SCRIPT_DIR}/project/targets/qsp-x86/images/"
 cp "${SCRIPT_DIR}/FV/BOARDX58ICH10.fd" "${SCRIPT_DIR}/project/targets/qsp-x86/images/BOARDX58ICH10.fd"
+cp "${SCRIPT_DIR}/../../rsrc/minimal_boot_disk.craff" "${SCRIPT_DIR}/project/minimal_boot_disk.craff"

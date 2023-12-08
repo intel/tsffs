@@ -35,5 +35,3 @@ WORKDIR /workspace/edk2-platforms/Platform/Intel
 RUN source /workspace/edk2/edksetup.sh && \
     python build_bios.py -p BoardX58Ich10X64 -d -t GCC
     
-    
-

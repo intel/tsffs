@@ -1,0 +1,58 @@
+run-script "%simics%/targets/qsp-x86/hardware.yml" namespace = machine:hardware
+
+
+local $system = (params.get machine:hardware:output:system)
+
+
+instantiate-components $system
+
+# Add Simics UEFI meta-data device
+if (params.get machine:uefi_device:name) {
+        @name = f"{simenv.system}.{params['machine:uefi_device:name']}"
+        @dev = SIM_create_object("simics-uefi", name, [])
+        @getattr(conf, simenv.system).mb.nb.pci_bus.devices.append([0, 7, dev])
+        @dev.video_mode = params['machine:uefi_device:video_mode']
+}
+
+## Name system
+$system->system_info = (params.get machine:system_info)
+
+## Set a time quantum that provides reasonable performance
+set-time-quantum cell = $system.cell seconds = 0.0001
+
+## Set up Ethernet
+run-script "%simics%/targets/common/ethernet-setup.yml" namespace = network:switch
+if (params.get network:switch:create_network) {
+    local $ethernet_switch = (params.get network:switch:ethernet_switch:name)
+    connect ($ethernet_switch.get-free-connector) (params.get machine:hardware:output:eth_slot)
+    instantiate-components (params.get network:switch:ethernet_switch:name)
+}
+run-script "%simics%/targets/common/sn-setup.yml" namespace = network:service_node
+
+local $system = (params.get machine:hardware:output:system)
+
+local $system = (params.get machine:hardware:output:system)
+
+script-branch {
+        local $con = $system.serconsole.con
+        # NOTE: We have to modify this from the included target because
+        # the custom BIOS doesn't print the original message until the menu appears
+        bp.console_string.wait-for $con "End Load Options Dumping"
+        bp.time.wait-for seconds = 5.0
+        echo "Got load options dump"
+        echo "Opening EFI shell"
+        $con.input -e Esc
+        bp.time.wait-for seconds = 5.0
+
+        $con.input -e Down
+        $con.input -e Down
+        $con.input -e Enter
+        bp.time.wait-for seconds = 5.0
+
+        foreach $i in (range 6) {
+                $con.input -e Down
+        }
+
+        $con.input -e Enter
+        $con.input -e Enter
+}
