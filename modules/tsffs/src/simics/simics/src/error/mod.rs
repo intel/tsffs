@@ -51,10 +51,10 @@ pub enum Error {
     NonHomogeneousList,
     #[error("AttrValue dictionary is non-homogeneous")]
     NonHomogeneousDict,
-
     #[error("Could not convert to string")]
     ToString,
-
+    #[error("File {file} was not found in lookup")]
+    FileLookup { file: String },
     #[error("Failed to create class {name}: {message}")]
     CreateClass { name: String, message: String },
     #[error("Failed to register {name}: {message}")]

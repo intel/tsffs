@@ -14,7 +14,6 @@ use crate::{
     },
     Error, Result,
 };
-use anyhow::anyhow;
 use raw_cstr::raw_cstr;
 use simics_macro::simics_exception;
 use std::path::Path;
@@ -94,12 +93,7 @@ where
     Ok(unsafe {
         SIM_load_binary(
             obj,
-            raw_cstr(file.as_ref().to_str().ok_or_else(|| {
-                anyhow!(
-                    "Could not convert file name {} to string",
-                    file.as_ref().display()
-                )
-            })?)?,
+            raw_cstr(file.as_ref().to_str().ok_or(Error::ToString)?)?,
             offset,
             use_pa,
             verbose,
@@ -121,12 +115,7 @@ where
     unsafe {
         SIM_load_file(
             obj,
-            raw_cstr(file.as_ref().to_str().ok_or_else(|| {
-                anyhow!(
-                    "Could not convert file name {} to string",
-                    file.as_ref().display()
-                )
-            })?)?,
+            raw_cstr(file.as_ref().to_str().ok_or(Error::ToString)?)?,
             paddr,
             verbose,
         )

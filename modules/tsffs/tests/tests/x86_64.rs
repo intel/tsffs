@@ -222,3 +222,37 @@ fn test_x86_64_manual_max() -> Result<()> {
 
     Ok(())
 }
+
+#[test]
+#[cfg_attr(miri, ignore)]
+fn test_x86_64_edk2_magic_call_all_apis() -> Result<()> {
+    let mut env = TestEnvSpec::builder()
+        .name("test_x86_64_edk2_magic_call_all_apis")
+        .cargo_manifest_dir(env!("CARGO_MANIFEST_DIR"))
+        .cargo_target_tmpdir(env!("CARGO_TARGET_TMPDIR"))
+        .directories([PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join("..")
+            .join("examples")
+            .join("tests")
+            .join("x86_64-uefi-edk2")])
+        .arch(Architecture::X86)
+        .build()
+        .to_env()?;
+
+    let output = Command::new("./simics")
+        .current_dir(env.project_dir())
+        .arg("--batch-mode")
+        .arg("-no-gui")
+        .arg("--no-win")
+        .arg("test-call-all-apis.simics")
+        .check()?;
+
+    let output_str = String::from_utf8_lossy(&output.stdout);
+
+    println!("{output_str}");
+    env.cleanup_if_env()?;
+
+    Ok(())
+}

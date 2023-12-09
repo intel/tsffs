@@ -37,6 +37,14 @@ pub enum LogLevel {
     Trace = 4,
 }
 
+/// Sanitize a string for logging (i.e. as if with printf)
+fn sanitize<S>(s: S) -> String
+where
+    S: AsRef<str>,
+{
+    s.as_ref().replace('%', "%%")
+}
+
 #[simics_exception]
 /// Log an info-level message through the SIMICS logging functions
 ///
@@ -93,7 +101,7 @@ pub fn log_error<S>(device: *mut ConfObject, msg: S) -> Result<()>
 where
     S: AsRef<str>,
 {
-    let msg_cstring = CString::new(msg.as_ref())?;
+    let msg_cstring = CString::new(sanitize(msg.as_ref()))?;
 
     #[cfg(not(simics_deprecated_api_sim_log))]
     unsafe {
@@ -127,7 +135,7 @@ pub fn log_critical<S>(device: *mut ConfObject, msg: S) -> Result<()>
 where
     S: AsRef<str>,
 {
-    let msg_cstring = CString::new(msg.as_ref())?;
+    let msg_cstring = CString::new(sanitize(msg.as_ref()))?;
 
     #[cfg(not(simics_deprecated_api_sim_log))]
     unsafe {
@@ -149,7 +157,7 @@ where
 ///
 /// All Contexts
 pub fn log_spec_violation(level: LogLevel, device: *mut ConfObject, msg: String) -> Result<()> {
-    let msg_cstring = CString::new(msg)?;
+    let msg_cstring = CString::new(sanitize(msg))?;
 
     #[cfg(not(simics_deprecated_api_sim_log))]
     unsafe {
@@ -171,7 +179,7 @@ pub fn log_spec_violation(level: LogLevel, device: *mut ConfObject, msg: String)
 ///
 /// All Contexts
 pub fn log_unimplemented(level: LogLevel, device: *mut ConfObject, msg: String) -> Result<()> {
-    let msg_cstring = CString::new(msg)?;
+    let msg_cstring = CString::new(sanitize(msg))?;
 
     #[cfg(not(simics_deprecated_api_sim_log))]
     unsafe {

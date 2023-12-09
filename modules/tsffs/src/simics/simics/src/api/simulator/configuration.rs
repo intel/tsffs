@@ -14,7 +14,6 @@ use crate::{
     },
     Error, Result,
 };
-use anyhow::anyhow;
 use raw_cstr::raw_cstr;
 use simics_macro::simics_exception;
 use std::{
@@ -35,14 +34,7 @@ pub fn read_configuration<P>(file: P) -> Result<()>
 where
     P: AsRef<Path>,
 {
-    unsafe {
-        SIM_read_configuration(raw_cstr(file.as_ref().to_str().ok_or_else(|| {
-            anyhow!(
-                "Could not convert file path {} to string",
-                file.as_ref().display()
-            )
-        })?)?)
-    };
+    unsafe { SIM_read_configuration(raw_cstr(file.as_ref().to_str().ok_or(Error::ToString)?)?) };
     Ok(())
 }
 
@@ -141,12 +133,7 @@ where
     unsafe {
         SIM_add_configuration(
             object_list,
-            raw_cstr(file.as_ref().to_str().ok_or_else(|| {
-                anyhow!(
-                    "Could not convert file path {} to string",
-                    file.as_ref().display()
-                )
-            })?)?,
+            raw_cstr(file.as_ref().to_str().ok_or(Error::ToString)?)?,
         )
     };
     Ok(())
@@ -195,12 +182,7 @@ where
 {
     unsafe {
         SIM_write_configuration_to_file(
-            raw_cstr(file.as_ref().to_str().ok_or_else(|| {
-                anyhow!(
-                    "Could not convert file path {} to string",
-                    file.as_ref().display()
-                )
-            })?)?,
+            raw_cstr(file.as_ref().to_str().ok_or(Error::ToString)?)?,
             flags,
         )
     };
