@@ -30,7 +30,7 @@ fn test_x86_64_edk2_magic() -> Result<()> {
         .to_env()?;
 
     let output = Command::new("./simics")
-        .current_dir(env.project_dir())
+        .current_dir(env.project_dir_ref())
         .arg("--batch-mode")
         .arg("-no-gui")
         .arg("--no-win")
@@ -63,7 +63,7 @@ fn test_x86_64_magic_crash() -> Result<()> {
         .to_env()?;
 
     let output = Command::new("./simics")
-        .current_dir(env.project_dir())
+        .current_dir(env.project_dir_ref())
         .arg("--batch-mode")
         .arg("-no-gui")
         .arg("--no-win")
@@ -97,7 +97,7 @@ fn test_x86_64_timeout_edk2() -> Result<()> {
         .to_env()?;
 
     let output = Command::new("./simics")
-        .current_dir(env.project_dir())
+        .current_dir(env.project_dir_ref())
         .arg("--batch-mode")
         .arg("-no-gui")
         .arg("--no-win")
@@ -131,7 +131,7 @@ fn test_x86_64_magic() -> Result<()> {
         .to_env()?;
 
     let output = Command::new("./simics")
-        .current_dir(env.project_dir())
+        .current_dir(env.project_dir_ref())
         .arg("--batch-mode")
         .arg("-no-gui")
         .arg("--no-win")
@@ -169,7 +169,7 @@ fn test_x86_64_manual() -> Result<()> {
         .to_env()?;
 
     let output = Command::new("./simics")
-        .current_dir(env.project_dir())
+        .current_dir(env.project_dir_ref())
         .arg("--batch-mode")
         .arg("-no-gui")
         .arg("--no-win")
@@ -207,7 +207,7 @@ fn test_x86_64_manual_max() -> Result<()> {
         .to_env()?;
 
     let output = Command::new("./simics")
-        .current_dir(env.project_dir())
+        .current_dir(env.project_dir_ref())
         .arg("--batch-mode")
         .arg("-no-gui")
         .arg("--no-win")
