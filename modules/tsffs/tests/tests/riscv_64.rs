@@ -28,7 +28,7 @@ fn test_riscv_64_kernel_from_userspace_magic() -> Result<()> {
         .to_env()?;
 
     let output = Command::new("./simics")
-        .current_dir(env.project_dir())
+        .current_dir(env.project_dir_ref())
         .arg("--batch-mode")
         .arg("-no-gui")
         .arg("--no-win")
@@ -63,7 +63,7 @@ fn test_riscv_64_kernel_magic() -> Result<()> {
         .to_env()?;
 
     let output = Command::new("./simics")
-        .current_dir(env.project_dir())
+        .current_dir(env.project_dir_ref())
         .arg("--batch-mode")
         .arg("-no-gui")
         .arg("--no-win")
@@ -98,7 +98,7 @@ fn test_riscv_64_userspace_magic() -> Result<()> {
         .to_env()?;
 
     let output = Command::new("./simics")
-        .current_dir(env.project_dir())
+        .current_dir(env.project_dir_ref())
         .arg("--batch-mode")
         .arg("-no-gui")
         .arg("--no-win")
