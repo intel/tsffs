@@ -1092,6 +1092,7 @@ pub fn interface_impl(args: TokenStream, input: TokenStream) -> TokenStream {
         }
 
         #[derive(Debug)]
+        #[repr(C)]
         pub struct #internal_interface_name {
             #(#internal_interface_fields),*
         }
