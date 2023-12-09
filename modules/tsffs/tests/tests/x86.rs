@@ -40,7 +40,7 @@ fn test_x86_user_magic() -> Result<()> {
         .to_env()?;
 
     let output = Command::new("./simics")
-        .current_dir(env.project_dir_ref())
+        .current_dir(env.project_dir())
         .arg("--batch-mode")
         .arg("-no-gui")
         .arg("--no-win")
