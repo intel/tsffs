@@ -4,6 +4,7 @@
 //! SIMICS test utilities for test environment setup and configuration
 
 use anyhow::{anyhow, bail, ensure, Result};
+use cargo_metadata::MetadataCommand;
 use getters::Getters;
 use ispm_wrapper::{
     data::ProjectPackage,
@@ -225,6 +226,15 @@ impl TestEnv {
 }
 
 impl TestEnv {
+    fn current_tsffs_version() -> Result<String> {
+        let metadata = MetadataCommand::new().exec()?;
+        metadata
+            .workspace_metadata
+            .get("version")
+            .and_then(|v| v.as_str())
+            .map(|v| v.to_string())
+            .ok_or_else(|| anyhow!("No 'version' in workspace metadata"))
+    }
     fn install_tsffs<P, S>(simics_home_dir: P, cargo_manifest_dir: S) -> Result<()>
     where
         P: AsRef<Path>,
@@ -253,7 +263,10 @@ impl TestEnv {
                     .join("../../../")
                     .join("linux64")
                     .join("packages")
-                    .join("simics-pkg-31337-6.0.1-linux64.ispm")])
+                    .join(format!(
+                        "simics-pkg-31337-{}-linux64.ispm",
+                        Self::current_tsffs_version()?
+                    ))])
                 .global(
                     GlobalOptions::builder()
                         .install_dir(simics_home_dir.as_ref())
