@@ -18,6 +18,7 @@ if [ ! -d "${SCRIPT_DIR}/workspace" ]; then
     git clone https://github.com/tianocore/edk2-platforms.git "${SCRIPT_DIR}/workspace/edk2-platforms"
     git -C "${SCRIPT_DIR}/workspace/edk2-platforms" checkout "${EDK2_PLATFORMS_HASH}"
     git -C "${SCRIPT_DIR}/workspace/edk2-platforms" submodule update --init
+    cp "${SCRIPT_DIR}/../../../harness/tsffs-gcc-x86_64.h" "${SCRIPT_DIR}/workspace/edk2-platforms/Platform/Intel/SimicsOpenBoardPkg/Library/DxeLogoLib/tsffs-gcc-x86_64.h"
     git clone https://github.com/tianocore/edk2-non-osi.git "${SCRIPT_DIR}/workspace/edk2-non-osi"
     git -C "${SCRIPT_DIR}/workspace/edk2-non-osi" checkout "${EDK2_NON_OSI_HASH}"
     git -C "${SCRIPT_DIR}/workspace/edk2-non-osi" submodule update --init

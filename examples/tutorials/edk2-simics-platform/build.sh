@@ -9,7 +9,8 @@ CONTAINER_NAME="${IMAGE_NAME}-tmp-${CONTAINER_UID}"
 docker build -t "${IMAGE_NAME}" -f "${DOCKERFILE}" "${SCRIPT_DIR}"
 docker create --name "${CONTAINER_NAME}" "${IMAGE_NAME}" bash
 docker cp "${CONTAINER_NAME}:/workspace/Build/SimicsOpenBoardPkg/BoardX58Ich10/DEBUG_GCC/FV/" "${SCRIPT_DIR}/BoardX58Ich10"
-docker cp "${CONTAINER_NAME}://workspace/Build/AlderlakeOpenBoardPkg/AlderlakePRvp/DEBUG_GCC/FV/" "${SCRIPT_DIR}/AlderlakeOpenBoardPkg"
+# We can't demo Alder Lake, so we don't bother to copy it out after building.
+# docker cp "${CONTAINER_NAME}://workspace/Build/AlderlakeOpenBoardPkg/AlderlakePRvp/DEBUG_GCC/FV/" "${SCRIPT_DIR}/AlderlakeOpenBoardPkg"
 docker rm -f "${CONTAINER_NAME}"
 mkdir -p "${SCRIPT_DIR}/project/targets/qsp-x86/images/"
 cp "${SCRIPT_DIR}/BoardX58Ich10/BOARDX58ICH10.fd" "${SCRIPT_DIR}/project/targets/qsp-x86/images/BOARDX58ICH10.fd"
