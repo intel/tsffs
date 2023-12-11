@@ -35,7 +35,6 @@ members = [
 
     "modules/tsffs/src/util/command-ext",
     "modules/tsffs/src/util/ffi-macro",
-    "modules/tsffs/src/util/getters",
     "modules/tsffs/src/util/raw-cstr",
     "modules/tsffs/src/util/version-tools",
 ]
@@ -50,7 +49,6 @@ default-members = [
 
     "modules/tsffs/src/util/command-ext",
     "modules/tsffs/src/util/ffi-macro",
-    "modules/tsffs/src/util/getters",
     "modules/tsffs/src/util/raw-cstr",
     "modules/tsffs/src/util/version-tools",
 ]
@@ -65,7 +63,6 @@ ispm-wrapper = { path = "modules/tsffs/src/simics/ispm-wrapper" }
 
 command-ext = { path = "modules/tsffs/src/util/command-ext" }
 ffi-macro = { path = "modules/tsffs/src/util/ffi-macro" }
-getters = { path = "modules/tsffs/src/util/getters" }
 raw-cstr = { path = "modules/tsffs/src/util/raw-cstr" }
 version-tools = { path = "modules/tsffs/src/util/version-tools" }
 
@@ -77,7 +74,7 @@ libafl_targets = { git = "https://github.com/AFLplusplus/LibAFL", default-featur
 ] }
 serde = { version = "1.0.188", features = ["derive"] }
 serde_json = { version = "1.0.107" }
-versions = { version = "5.0.1", features = ["serde"] }
+versions = { version = "6.0.0", features = ["serde"] }
 
 
 [profile.dev]

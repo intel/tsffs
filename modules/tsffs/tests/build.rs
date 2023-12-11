@@ -11,11 +11,11 @@ const TESTS_FILE: &str = "tests.rs";
 fn main() -> Result<()> {
     let packages = ispm::packages::list(&GlobalOptions::default())?;
     let base = packages
-        .installed_packages()
+        .installed_packages_ref()
         .as_ref()
         .ok_or_else(|| anyhow!("No installed packages"))?
         .iter()
-        .find(|p| p.package_number() == &1000isize)
+        .find(|p| p.package_number_deref() == 1000isize)
         .ok_or_else(|| anyhow!("No base in installed packages"))?;
 
     let out_dir = PathBuf::from(
@@ -42,7 +42,7 @@ fn main() -> Result<()> {
             .current_dir(targets_dir)
             .env(
                 "SIMICS_BASE",
-                base.paths()
+                base.paths_ref()
                     .first()
                     .ok_or_else(|| anyhow!("No path to base package"))?
                     .to_string_lossy()

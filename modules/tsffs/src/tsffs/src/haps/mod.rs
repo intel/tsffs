@@ -21,7 +21,7 @@ use simics::{
 impl Tsffs {
     /// Called on core simulation stopped HAP
     pub fn on_simulation_stopped(&mut self) -> Result<()> {
-        if *self.stopped_for_repro() {
+        if self.stopped_for_repro_deref() {
             // If we are stopped for repro, we do nothing on this HAP!
             return Ok(());
         }
@@ -45,7 +45,7 @@ impl Tsffs {
                 StopReason::MagicStart(magic_start) => {
                     if !self.have_initial_snapshot() {
                         self.start_fuzzer_thread()?;
-                        self.add_processor(*magic_start.processor(), true)?;
+                        self.add_processor(magic_start.processor_deref(), true)?;
 
                         let (start_buffer, start_size) = {
                             let start_processor = self
@@ -86,27 +86,28 @@ impl Tsffs {
                 StopReason::ManualStart(start) => {
                     if !self.have_initial_snapshot() {
                         self.start_fuzzer_thread()?;
-                        self.add_processor(*start.processor(), true)?;
+                        self.add_processor(start.processor_deref(), true)?;
 
                         let (start_buffer, start_size) = {
                             let start_processor = self
                                 .start_processor()
                                 .ok_or_else(|| anyhow!("No start processor"))?;
                             (
-                                if let Some(buffer) = start.buffer() {
+                                if let Some(buffer) = start.buffer_ref() {
                                     Some(
                                         start_processor
-                                            .get_manual_start_buffer(*buffer, *start.virt())?,
+                                            .get_manual_start_buffer(*buffer, start.virt_deref())?,
                                     )
                                 } else {
                                     None
                                 },
-                                match start.size() {
+                                match start.size_ref() {
                                     ManualStartSize::MaximumSize(s) => {
                                         Some(StartSize::builder().initial_size(*s).build())
                                     }
                                     ManualStartSize::SizeAddress(a) => Some(
-                                        start_processor.get_manual_start_size(*a, *start.virt())?,
+                                        start_processor
+                                            .get_manual_start_size(*a, start.virt_deref())?,
                                     ),
                                     ManualStartSize::NoSize => None,
                                 },
@@ -123,9 +124,11 @@ impl Tsffs {
                         *self.start_time_mut() = SystemTime::now();
                         *self.coverage_enabled_mut() = true;
                         self.save_initial_snapshot()?;
-                        if self.start_buffer().is_some() && self.start_size().is_some() {
+
+                        if self.start_buffer_ref().is_some() && self.start_size_ref().is_some() {
                             self.get_and_write_testcase()?;
                         }
+
                         self.post_timeout_event()?;
                     }
 
@@ -154,7 +157,7 @@ impl Tsffs {
                         self.cmplog_hash()
                     );
 
-                    if *self.repro_bookmark_set() {
+                    if self.repro_bookmark_set_deref() {
                         *self.stopped_for_repro_mut() = true;
                         let current_log_level = log_level(self.as_conf_object_mut())?;
 
@@ -174,11 +177,11 @@ impl Tsffs {
                     *self.iterations_mut() += 1;
 
                     if self
-                        .configuration()
-                        .iterations()
-                        .is_some_and(|i| *self.iterations() >= i)
+                        .configuration_ref()
+                        .iterations_deref()
+                        .is_some_and(|i| self.iterations_deref() >= i)
                     {
-                        let duration = SystemTime::now().duration_since(*self.start_time())?;
+                        let duration = SystemTime::now().duration_since(self.start_time_deref())?;
 
                         let current_log_level = log_level(self.as_conf_object_mut())?;
                         // Set the log level so this message always prints
@@ -189,9 +192,9 @@ impl Tsffs {
                         info!(
                             self.as_conf_object(),
                             "Configured iteration count {} reached. Stopping after {} seconds ({} exec/s).",
-                            self.iterations(),
+                            self.iterations_ref(),
                             duration.as_secs_f32(),
-                            *self.iterations() as f32 / duration.as_secs_f32()
+                            *self.iterations_ref() as f32 / duration.as_secs_f32()
                         );
 
                         self.send_shutdown()?;
@@ -208,7 +211,7 @@ impl Tsffs {
 
                     self.restore_initial_snapshot()?;
 
-                    if self.start_buffer().is_some() && self.start_size().is_some() {
+                    if self.start_buffer_ref().is_some() && self.start_size_ref().is_some() {
                         self.get_and_write_testcase()?;
                     } else {
                         debug!(
@@ -232,7 +235,7 @@ impl Tsffs {
                         self.cmplog_hash()
                     );
 
-                    if *self.repro_bookmark_set() {
+                    if self.repro_bookmark_set_deref() {
                         *self.stopped_for_repro_mut() = true;
                         let current_log_level = log_level(self.as_conf_object_mut())?;
 
@@ -252,11 +255,11 @@ impl Tsffs {
                     *self.iterations_mut() += 1;
 
                     if self
-                        .configuration()
-                        .iterations()
-                        .is_some_and(|i| *self.iterations() >= i)
+                        .configuration_ref()
+                        .iterations_deref()
+                        .is_some_and(|i| self.iterations_deref() >= i)
                     {
-                        let duration = SystemTime::now().duration_since(*self.start_time())?;
+                        let duration = SystemTime::now().duration_since(self.start_time_deref())?;
 
                         // Set the log level so this message always prints
                         set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
@@ -264,9 +267,9 @@ impl Tsffs {
                         info!(
                             self.as_conf_object(),
                             "Configured iteration count {} reached. Stopping after {} seconds ({} exec/s).",
-                            self.iterations(),
+                            self.iterations_ref(),
                             duration.as_secs_f32(),
-                            *self.iterations() as f32 / duration.as_secs_f32()
+                            *self.iterations_ref() as f32 / duration.as_secs_f32()
                         );
 
                         self.send_shutdown()?;
@@ -279,7 +282,7 @@ impl Tsffs {
                         .as_ref()
                         .ok_or_else(|| anyhow!("No fuzzer tx channel"))?;
 
-                    match solution.kind() {
+                    match solution.kind_ref() {
                         SolutionKind::Timeout => fuzzer_tx.send(ExitKind::Timeout)?,
                         SolutionKind::Exception
                         | SolutionKind::Breakpoint
@@ -288,7 +291,7 @@ impl Tsffs {
 
                     self.restore_initial_snapshot()?;
 
-                    if self.start_buffer().is_some() && self.start_size().is_some() {
+                    if self.start_buffer_ref().is_some() && self.start_size_ref().is_some() {
                         self.get_and_write_testcase()?;
                     } else {
                         debug!(
@@ -322,7 +325,7 @@ impl Tsffs {
                 "Simulation stopped without reason, not resuming."
             );
 
-            let duration = SystemTime::now().duration_since(*self.start_time())?;
+            let duration = SystemTime::now().duration_since(self.start_time_deref())?;
 
             // Set the log level so this message always prints
             set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
@@ -330,9 +333,9 @@ impl Tsffs {
             info!(
                 self.as_conf_object(),
                 "Stopped after {} iterations in {} seconds ({} exec/s).",
-                self.iterations(),
+                self.iterations_ref(),
                 duration.as_secs_f32(),
-                *self.iterations() as f32 / duration.as_secs_f32()
+                *self.iterations_ref() as f32 / duration.as_secs_f32()
             );
         }
 
@@ -342,8 +345,13 @@ impl Tsffs {
     /// Called on core exception HAP. Check to see if this exception is configured as a solution
     /// or all exceptions are solutions and trigger a stop if so
     pub fn on_exception(&mut self, _obj: *mut ConfObject, exception: i64) -> Result<()> {
-        if *self.configuration().all_exceptions_are_solutions()
-            || self.configuration().exceptions().contains(&exception)
+        if self
+            .configuration_ref()
+            .all_exceptions_are_solutions_deref()
+            || self
+                .configuration_ref()
+                .exceptions_ref()
+                .contains(&exception)
         {
             self.stop_simulation(StopReason::Solution(
                 Solution::builder().kind(SolutionKind::Exception).build(),
@@ -360,10 +368,12 @@ impl Tsffs {
         breakpoint: i64,
         transaction: *mut GenericTransaction,
     ) -> Result<()> {
-        if *self.configuration().all_breakpoints_are_solutions()
+        if self
+            .configuration_ref()
+            .all_breakpoints_are_solutions_deref()
             || self
-                .configuration()
-                .breakpoints()
+                .configuration_ref()
+                .breakpoints_ref()
                 .contains(&(breakpoint as i32))
         {
             info!(
@@ -394,18 +404,18 @@ impl Tsffs {
         );
 
         if object_is_processor(trigger_obj)? {
-            if *self.configuration().start_on_harness()
-                && magic_number == *self.configuration().magic_start()
+            if self.configuration_ref().start_on_harness_deref()
+                && magic_number == self.configuration_ref().magic_start_deref()
             {
                 self.stop_simulation(StopReason::MagicStart(
                     MagicStart::builder().processor(trigger_obj).build(),
                 ))?;
-            } else if *self.configuration().stop_on_harness()
-                && magic_number == *self.configuration().magic_stop()
+            } else if self.configuration_ref().stop_on_harness_deref()
+                && magic_number == self.configuration_ref().magic_stop_deref()
             {
                 self.stop_simulation(StopReason::MagicStop(Stop::default()))?;
-            } else if *self.configuration().stop_on_harness()
-                && magic_number == *self.configuration().magic_assert()
+            } else if self.configuration_ref().stop_on_harness_deref()
+                && magic_number == self.configuration_ref().magic_assert_deref()
             {
                 self.stop_simulation(StopReason::Solution(
                     Solution::builder().kind(SolutionKind::Manual).build(),

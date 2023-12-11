@@ -35,12 +35,12 @@ use anyhow::{anyhow, Result};
 use arch::{Architecture, ArchitectureOperations};
 use configuration::Configuration;
 use fuzzer::{ShutdownMessage, Testcase};
-use getters::Getters;
+use getters2::Getters;
 use libafl::prelude::ExitKind;
 use libafl_bolts::{prelude::OwnedMutSlice, AsSlice};
 use libafl_targets::AFLppCmpLogMap;
 use serde::{Deserialize, Serialize};
-#[cfg(simics_experimentatl_api_snapshots)]
+#[cfg(simics_experimental_api_snapshots)]
 use simics::api::{restore_snapshot, save_snapshot};
 use simics::{
     api::{
@@ -86,9 +86,11 @@ pub const CLASS_NAME: &str = env!("CARGO_PKG_NAME");
 
 #[derive(TypedBuilder, Getters, Serialize, Deserialize, Clone, Debug)]
 pub struct StartBuffer {
+    #[getters(deref)]
     /// The physical address of the buffer. Must be physical, if the input address was
     /// virtual, it should be pre-translated
     pub physical_address: u64,
+    #[getters(deref)]
     /// Whether the address that translated to this physical address was virtual
     /// this should not be used or checked, it's simply informational
     pub virt: bool,
@@ -119,6 +121,7 @@ pub struct Tsffs {
     /// The pointer to this instance. This is a self pointer.
     instance: *mut ConfObject,
     #[builder(default)]
+    #[getters(clone)]
     /// The configuration for the fuzzer
     configuration: Configuration,
 
@@ -202,11 +205,13 @@ pub struct Tsffs {
         let layout = Layout::new::<AFLppCmpLogMap>();
         alloc_zeroed(layout) as *mut AFLppCmpLogMap
     })]
+    #[getters(deref)]
     /// Comparison logging map owned by the tracer
     aflpp_cmp_map_ptr: *mut AFLppCmpLogMap,
     #[builder(default = unsafe { &mut *aflpp_cmp_map_ptr})]
     aflpp_cmp_map: &'static mut AFLppCmpLogMap,
     #[builder(default = 0)]
+    #[getters(deref)]
     coverage_prev_loc: u64,
 
     // Registered events
@@ -223,6 +228,7 @@ pub struct Tsffs {
     /// The name of the fuzz snapshot, if saved
     snapshot_name: Option<String>,
     #[builder(default)]
+    #[getters(deref)]
     /// The index of the micro checkpoint saved for the fuzzer. Only present if not using
     /// snapshots.
     micro_checkpoint_index: Option<i32>,
@@ -237,20 +243,25 @@ pub struct Tsffs {
 
     // Statistics
     #[builder(default = 0)]
+    #[getters(deref)]
     /// The number of fuzzing iterations run. Incremented on stop
     iterations: usize,
     #[builder(default = SystemTime::now())]
+    #[getters(deref)]
     /// The time the fuzzer was started at
     start_time: SystemTime,
 
     // State and settings
     #[builder(default = false)]
+    #[getters(deref)]
     /// Whether cmplog is currently enabled
     coverage_enabled: bool,
     #[builder(default = false)]
+    #[getters(deref)]
     /// Whether cmplog is currently enabled
     cmplog_enabled: bool,
     #[builder(default)]
+    #[getters(deref)]
     /// The number of the processor which starts the fuzzing loop (via magic or manual methods)
     start_processor_number: Option<i32>,
     #[builder(default)]
@@ -261,8 +272,10 @@ pub struct Tsffs {
     /// A testcase to use for repro
     repro_testcase: Option<Vec<u8>>,
     #[builder(default)]
+    #[getters(deref)]
     repro_bookmark_set: bool,
     #[builder(default)]
+    #[getters(deref)]
     stopped_for_repro: bool,
 }
 
@@ -295,13 +308,16 @@ impl Tsffs {
     pub fn add_processor(&mut self, cpu: *mut ConfObject, is_start: bool) -> Result<()> {
         let cpu_number = get_processor_number(cpu)?;
 
-        if !self.processors().contains_key(&cpu_number) {
-            let architecture =
-                if let Some(hint) = self.configuration().architecture_hints().get(&cpu_number) {
-                    hint.architecture(cpu)?
-                } else {
-                    Architecture::new(cpu)?
-                };
+        if !self.processors_ref().contains_key(&cpu_number) {
+            let architecture = if let Some(hint) = self
+                .configuration_ref()
+                .architecture_hints_ref()
+                .get(&cpu_number)
+            {
+                hint.architecture(cpu)?
+            } else {
+                Architecture::new(cpu)?
+            };
             self.processors_mut().insert(cpu_number, architecture);
             let mut cpu_interface: CpuInstrumentationSubscribeInterface = get_interface(cpu)?;
             cpu_interface.register_instruction_after_cb(
@@ -324,15 +340,14 @@ impl Tsffs {
     }
 
     pub fn start_processor(&mut self) -> Option<&mut Architecture> {
-        self.start_processor_number()
-            .map(|n| self.processors_mut().get_mut(&n))
-            .flatten()
+        self.start_processor_number_deref()
+            .and_then(|n| self.processors_mut().get_mut(&n))
     }
 }
 
 impl Tsffs {
     pub fn save_initial_snapshot(&mut self) -> Result<()> {
-        if *self.configuration().use_snapshots() && self.snapshot_name().is_none() {
+        if self.configuration_ref().use_snapshots_deref() && self.snapshot_name_ref().is_none() {
             #[cfg(simics_experimental_api_snapshots)]
             {
                 save_snapshot(Self::SNAPSHOT_NAME)?;
@@ -340,9 +355,9 @@ impl Tsffs {
             }
             #[cfg(not(simics_experimental_api_snapshots))]
             panic!("Snapshots cannot be used without SIMICS support from recent SIMICS versions.");
-        } else if !self.configuration().use_snapshots()
-            && self.snapshot_name().is_none()
-            && self.micro_checkpoint_index().is_none()
+        } else if !self.configuration_ref().use_snapshots_deref()
+            && self.snapshot_name_ref().is_none()
+            && self.micro_checkpoint_index_ref().is_none()
         {
             save_micro_checkpoint(
                 Self::SNAPSHOT_NAME,
@@ -366,13 +381,13 @@ impl Tsffs {
     }
 
     pub fn restore_initial_snapshot(&mut self) -> Result<()> {
-        if *self.configuration().use_snapshots() {
+        if self.configuration_ref().use_snapshots_deref() {
             #[cfg(simics_experimental_api_snapshots)]
             restore_snapshot(Self::SNAPSHOT_NAME)?;
             #[cfg(not(simics_experimental_api_snapshots))]
             panic!("Snapshots cannot be used without SIMICS support from recent SIMICS versions.");
         } else {
-            restore_micro_checkpoint(self.micro_checkpoint_index().ok_or_else(|| {
+            restore_micro_checkpoint(self.micro_checkpoint_index_ref().ok_or_else(|| {
                 anyhow!("Not using snapshots and no micro checkpoint index present")
             })?)?;
 
@@ -383,14 +398,14 @@ impl Tsffs {
     }
 
     pub fn have_initial_snapshot(&self) -> bool {
-        (self.snapshot_name().is_some() && *self.configuration().use_snapshots())
-            || (self.snapshot_name().is_some()
-                && self.micro_checkpoint_index().is_some()
-                && !self.configuration().use_snapshots())
+        (self.snapshot_name_ref().is_some() && self.configuration_ref().use_snapshots_deref())
+            || (self.snapshot_name_ref().is_some()
+                && self.micro_checkpoint_index_ref().is_some()
+                && !self.configuration_ref().use_snapshots_deref())
     }
 
     pub fn save_repro_bookmark_if_needed(&mut self) -> Result<()> {
-        if self.repro_testcase().is_some() && !self.repro_bookmark_set() {
+        if self.repro_testcase_ref().is_some() && !self.repro_bookmark_set_deref() {
             free_attribute(run_command("set-bookmark start")?)?;
             *self.repro_bookmark_set_mut() = true;
         }
@@ -404,17 +419,17 @@ impl Tsffs {
     pub fn get_and_write_testcase(&mut self) -> Result<()> {
         let testcase = self.get_testcase()?;
 
-        *self.cmplog_enabled_mut() = *testcase.cmplog();
+        *self.cmplog_enabled_mut() = testcase.cmplog_deref();
 
         // TODO: Fix cloning - refcell?
         let start_buffer = self
-            .start_buffer()
+            .start_buffer_ref()
             .as_ref()
             .ok_or_else(|| anyhow!("No start buffer"))?
             .clone();
 
         let start_size = self
-            .start_size()
+            .start_size_ref()
             .as_ref()
             .ok_or_else(|| anyhow!("No start size"))?
             .clone();
@@ -423,7 +438,7 @@ impl Tsffs {
             .start_processor()
             .ok_or_else(|| anyhow!("No start processor"))?;
 
-        start_processor.write_start(testcase.testcase(), &start_buffer, &start_size)?;
+        start_processor.write_start(testcase.testcase_ref(), &start_buffer, &start_size)?;
 
         Ok(())
     }
@@ -436,18 +451,18 @@ impl Tsffs {
         let start_processor_time = start_processor.cycle().get_time()?;
         let start_processor_cpu = start_processor.cpu();
         let start_processor_clock = object_clock(start_processor_cpu)?;
-        let timeout_time = *self.configuration().timeout() + start_processor_time;
+        let timeout_time = self.configuration_ref().timeout_deref() + start_processor_time;
         trace!(
             self.as_conf_object(),
             "Posting event on processor at time {} for {}s (time {})",
             start_processor_time,
-            *self.configuration().timeout(),
+            self.configuration_ref().timeout_deref(),
             timeout_time
         );
-        self.timeout_event().post_time(
+        self.timeout_event_ref().post_time(
             start_processor_cpu,
             start_processor_clock,
-            *self.configuration().timeout(),
+            self.configuration_ref().timeout_deref(),
             move |obj| {
                 let tsffs: &'static mut Tsffs = tsffs_ptr.into();
                 info!(tsffs.as_conf_object_mut(), "timeout({:#x})", obj as usize);
@@ -468,7 +483,7 @@ impl Tsffs {
             let start_processor_cpu = start_processor.cpu();
             let start_processor_clock = object_clock(start_processor_cpu)?;
             match self
-                .timeout_event()
+                .timeout_event_ref()
                 .find_next_time(start_processor_clock, start_processor_cpu)
             {
                 Ok(next_time) => trace!(
@@ -484,20 +499,20 @@ impl Tsffs {
                     "Not cancelling event with next time due to error: {e}"
                 ),
             }
-            self.timeout_event()
+            self.timeout_event_ref()
                 .cancel_time(start_processor_cpu, start_processor_clock)?;
         }
         Ok(())
     }
 
     pub fn coverage_hash(&self) -> u32 {
-        crc32fast::hash(self.coverage_map().as_slice())
+        crc32fast::hash(self.coverage_map_ref().as_slice())
     }
 
     pub fn cmplog_hash(&self) -> u32 {
         crc32fast::hash(unsafe {
             from_raw_parts(
-                *self.aflpp_cmp_map_ptr() as *const u8,
+                self.aflpp_cmp_map_ptr_deref() as *const u8,
                 size_of::<AFLppCmpLogMap>(),
             )
         })

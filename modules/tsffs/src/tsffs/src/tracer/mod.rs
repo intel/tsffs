@@ -3,7 +3,7 @@
 
 use anyhow::{anyhow, bail, Error, Result};
 use ffi_macro::ffi;
-use getters::Getters;
+use getters2::Getters;
 use libafl::prelude::CmpValues;
 use libafl_bolts::{AsMutSlice, AsSlice};
 use libafl_targets::{AFLppCmpLogOperands, AFLPP_CMPLOG_MAP_H, AFL_CMP_TYPE_INS};
@@ -126,6 +126,7 @@ fn hash_index(value: u64, len: u64) -> u64 {
 #[derive(TypedBuilder, Debug, Clone, Getters, PartialEq, Eq)]
 pub struct TraceEntry {
     #[builder(default, setter(into, strip_option))]
+    #[getters(deref)]
     /// The target of an edge in the trace
     edge: Option<u64>,
     #[builder(default, setter(into, strip_option))]
@@ -205,11 +206,13 @@ impl From<CoverageMode> for AttrValueType {
 
 impl Tsffs {
     fn log_pc(&mut self, pc: u64) -> Result<()> {
-        let afl_idx = (pc ^ self.coverage_prev_loc) % self.coverage_map().as_slice().len() as u64;
-        let mut cur_byte: Wrapping<u8> = Wrapping(self.coverage_map().as_slice()[afl_idx as usize]);
+        let afl_idx =
+            (pc ^ self.coverage_prev_loc) % self.coverage_map_ref().as_slice().len() as u64;
+        let mut cur_byte: Wrapping<u8> =
+            Wrapping(self.coverage_map_ref().as_slice()[afl_idx as usize]);
         cur_byte += 1;
         self.coverage_map_mut().as_mut_slice()[afl_idx as usize] = cur_byte.0;
-        self.coverage_prev_loc = (pc >> 1) % self.coverage_map().as_slice().len() as u64;
+        self.coverage_prev_loc = (pc >> 1) % self.coverage_map_ref().as_slice().len() as u64;
 
         Ok(())
     }
@@ -220,7 +223,7 @@ impl Tsffs {
         let operands = cmp
             .to_u64_tuple()
             .ok_or_else(|| anyhow!("Conversion to tuple of non-integral operands not supported"))?;
-        let pc_index = hash_index(pc, self.aflpp_cmp_map().headers().len() as u64);
+        let pc_index = hash_index(pc, self.aflpp_cmp_map_ref().headers().len() as u64);
 
         let hits = self.aflpp_cmp_map_mut().headers_mut()[pc_index as usize].hits();
 
@@ -269,12 +272,12 @@ impl Tsffs {
     ) -> Result<()> {
         let processor_number = get_processor_number(cpu)?;
 
-        if *self.coverage_enabled() {
+        if self.coverage_enabled_deref() {
             if let Some(arch) = self.processors_mut().get_mut(&processor_number) {
                 match arch.trace_pc(handle) {
                     Ok(r) => {
-                        if let Some(pc) = r.edge() {
-                            self.log_pc(*pc)?;
+                        if let Some(pc) = r.edge_deref() {
+                            self.log_pc(pc)?;
                         }
                     }
                     Err(_) => {
@@ -305,11 +308,11 @@ impl Tsffs {
     ) -> Result<()> {
         let processor_number = get_processor_number(cpu)?;
 
-        if *self.configuration().cmplog() && *self.cmplog_enabled() {
+        if self.configuration_ref().cmplog_deref() && self.cmplog_enabled_deref() {
             if let Some(arch) = self.processors_mut().get_mut(&processor_number) {
                 match arch.trace_cmp(handle) {
                     Ok(r) => {
-                        if let Some((pc, types, cmp)) = r.cmp() {
+                        if let Some((pc, types, cmp)) = r.cmp_ref() {
                             self.log_cmp(*pc, types.clone(), cmp.clone())?;
                         }
                     }

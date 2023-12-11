@@ -428,7 +428,7 @@ impl ArchitectureOperations for X86ArchitectureOperations {
         let physical_memory = self.processor_info_v2().get_physical_memory()?;
 
         let initial_size =
-            size.initial_size()
+            size.initial_size_ref()
                 .ok_or_else(|| anyhow!("Expected initial size for start"))? as usize;
 
         trace!(
