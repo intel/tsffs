@@ -6,9 +6,8 @@ use crate::{
         sys::{SIM_add_directory, SIM_clear_directories, SIM_get_directories, SIM_lookup_file},
         AttrValue,
     },
-    Result,
+    Error, Result,
 };
-use anyhow::anyhow;
 use raw_cstr::raw_cstr;
 use simics_macro::simics_exception;
 use std::{
@@ -41,9 +40,15 @@ pub fn lookup_file<S>(file: S) -> Result<PathBuf>
 where
     S: AsRef<str>,
 {
-    Ok(PathBuf::from(
-        unsafe { CStr::from_ptr(SIM_lookup_file(raw_cstr(file)?)) }.to_str()?,
-    ))
+    let res = unsafe { SIM_lookup_file(raw_cstr(file.as_ref())?) };
+
+    if res.is_null() {
+        Err(Error::FileLookup {
+            file: file.as_ref().to_string(),
+        })
+    } else {
+        Ok(PathBuf::from(unsafe { CStr::from_ptr(res) }.to_str()?))
+    }
 }
 
 #[simics_exception]
@@ -54,12 +59,7 @@ where
 {
     unsafe {
         SIM_add_directory(
-            raw_cstr(
-                directory
-                    .as_ref()
-                    .to_str()
-                    .ok_or_else(|| anyhow!("Could not convert directory path to string"))?,
-            )?,
+            raw_cstr(directory.as_ref().to_str().ok_or(Error::ToString)?)?,
             prepend,
         );
     }

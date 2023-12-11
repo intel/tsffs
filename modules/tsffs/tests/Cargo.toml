@@ -16,6 +16,7 @@ version.workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
+cargo_metadata = "0.18.1"
 command-ext.workspace = true
 getters2 = "0.1.2"
 indoc = "2.0.4"

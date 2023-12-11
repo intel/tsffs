@@ -31,7 +31,7 @@ relative (from the project's SIMICS base package root) paths to packages that sh
 be included in the project.
 
 If all SIMICS packages are installed into an `install-dir` together, the TSFFS package
-can be added by adding a line like:
+can be added by adding a line like (if your installed package version is `6.0.1`):
 
 ```txt
 ../simics-tsffs-6.0.1/
@@ -43,4 +43,10 @@ If your SIMICS packages are not all installed together, the path can be absolute
 
 ```txt
 /absolute/path/to/installed/simics-tsffs-6.0.1/
+```
+
+You can obtain your latest installed version with:
+
+```sh
+ispm packages --list-installed --json | jq -r '[ .installedPackages[] | select(.pkgNumber == 31337) ] | ([ .[].version ] | max_by(split(".") | map(tonumber))) as $m | first(first(.[]|select(.version == $m)).paths[0])'
 ```
