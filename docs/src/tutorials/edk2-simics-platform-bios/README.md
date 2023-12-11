@@ -11,3 +11,4 @@ contains
 - [Harnessing the BIOS Boot Logo Parser](harnessing.md)
 - [Configuring the Fuzzer](configuring.md)
 - [Running the Fuzzer](running.md)
+- [Optimizing the Fuzzer](optimizing.md)
