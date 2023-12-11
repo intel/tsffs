@@ -41,6 +41,14 @@
     - [Kernel Module Harnessing](tutorials/kernel-module/kernel-module-harnessing.md)
     - [Updating the Build Configuration](tutorials/kernel-module/build-configuration-updates.md)
     - [Running the Fuzzer](tutorials/kernel-module/running-the-fuzzer.md)
+  - [Fuzzing a Platform BIOS](tutorials/edk2-simics-platform-bios/README.md)
+    - [Obtaining Sources](tutorials/edk2-simics-platform-bios/obtaining-sources.md)
+    - [Building the BIOS](tutorials/edk2-simics-platform-bios/building-bios.md)
+    - [Booting the BIOS](tutorials/edk2-simics-platform-bios/booting.md)
+    - [Harnessing the BIOS Boot Logo Parser](tutorials/edk2-simics-platform-bios/harnessing.md)
+    - [Configuring the Fuzzer](tutorials/edk2-simics-platform-bios/configuring.md)
+    - [Running the Fuzzer](tutorials/edk2-simics-platform-bios/running.md)
+    - [Optimizing the Fuzzer](tutorials/edk2-simics-platform-bios/optimizing.md)
 
 ## Reference Guide
 
