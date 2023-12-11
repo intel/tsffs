@@ -16,7 +16,6 @@ env:
   PUBLIC_SIMICS_PACKAGE_VERSION_1000: "6.0.169"
   MINGW_URL: "https://github.com/brechtsanders/winlibs_mingw/releases/download/13.2.0-16.0.6-11.0.0-ucrt-r1/winlibs-x86_64-posix-seh-gcc-13.2.0-llvm-16.0.6-mingw-w64ucrt-11.0.0-r1.7z"
   MINGW_VERSION: "13.2.0-16.0.6-11.0.0-ucrt-r1"
-  TSFFS_SIMICS_PKG_VERSION: "6.0.1"
 
 jobs:
   build_test_artifacts:
@@ -166,7 +165,7 @@ jobs:
           bin/project-setup --force
           ./build.rs
           ispm packages \
-            -i linux64/packages/simics-pkg-31337-${{ env.TSFFS_SIMICS_PKG_VERSION }}-linux64.ispm \
+            -i linux64/packages/simics-pkg-31337-*-linux64.ispm \
             --non-interactive --trust-insecure-packages
 
       - name: Build Project
@@ -271,13 +270,12 @@ jobs:
           ispm.exe projects $(pwd) --create --non-interactive --ignore-existing-files
           ./bin/project-setup.bat --mingw-dir C:\MinGW\ --ignore-existing-files --force
           cargo -Zscript build.rs
-          ispm.exe packages -i win64/packages/simics-pkg-31337-${{ env.TSFFS_SIMICS_PKG_VERSION }}-win64.ispm --non-interactive --trust-insecure-packages
 
       - name: Upload Distribution Package
         uses: actions/upload-artifact@v3
         with:
-          name: simics-pkg-31337-${{ env.TSFFS_SIMICS_PKG_VERSION }}-win64.ispm
-          path: win64/packages/simics-pkg-31337-${{ env.TSFFS_SIMICS_PKG_VERSION }}-win64.ispm
+          name: simics-pkg-31337-win64
+          path: win64/packages/simics-pkg-31337-*-win64.ispm
 
   build_dist:
     name: Build for Distribution
@@ -307,14 +305,14 @@ jobs:
         run: |
           docker build -t tsffs-dist -f .github/builder/Dockerfile .
           docker create --name tsffs-dist tsffs-dist bash
-          docker cp tsffs-dist:/tsffs/linux64/packages/simics-pkg-31337-${{ env.TSFFS_SIMICS_PKG_VERSION }}-linux64.ispm simics-pkg-31337-${{ env.TSFFS_SIMICS_PKG_VERSION }}-linux64.ispm
+          docker cp tsffs-dist:/tsffs/linux64/packages/ packages/
           docker rm -f tsffs-dist
 
       - name: Upload Distribution Package
         uses: actions/upload-artifact@v3
         with:
-          name: simics-pkg-31337-${{ env.TSFFS_SIMICS_PKG_VERSION }}-linux64.ispm
-          path: simics-pkg-31337-${{ env.TSFFS_SIMICS_PKG_VERSION }}-linux64.ispm
+          name: simics-pkg-31337-linux64
+          path: packages/simics-pkg-31337-*-linux64.ispm
 
   fuzz_tests:
     name: Run Fuzz Tests
