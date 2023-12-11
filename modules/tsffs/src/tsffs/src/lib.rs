@@ -341,8 +341,7 @@ impl Tsffs {
 
     pub fn start_processor(&mut self) -> Option<&mut Architecture> {
         self.start_processor_number_deref()
-            .map(|n| self.processors_mut().get_mut(&n))
-            .flatten()
+            .and_then(|n| self.processors_mut().get_mut(&n))
     }
 }
 
