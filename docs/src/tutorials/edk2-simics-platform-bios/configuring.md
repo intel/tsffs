@@ -1,4 +1,4 @@
-# Configuring 
+# Configuring
 
 Now that we have a harnessed BIOS, we'll configure the fuzzer.
 
