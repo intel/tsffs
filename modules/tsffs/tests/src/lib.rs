@@ -4,8 +4,8 @@
 //! SIMICS test utilities for test environment setup and configuration
 
 use anyhow::{anyhow, bail, ensure, Result};
-use getters2::Getters;
 use cargo_metadata::MetadataCommand;
+use getters2::Getters;
 use ispm_wrapper::{
     data::ProjectPackage,
     ispm::{

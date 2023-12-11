@@ -1,0 +1,11 @@
+load-target "qsp-x86/qsp-uefi-custom" namespace = qsp machine:hardware:firmware:bios = "%simics%/workspace/Build/SimicsOpenBoardPkg/BoardX58Ich10/DEBUG_GCC/FV/BOARDX58ICH10.fd"
+
+script-branch {
+    local $con = qsp.serconsole.con
+    bp.console_string.wait-for $con "Shell>"
+    bp.time.wait-for seconds = .5
+    qsp.serconsole.con.input "help\n"
+    bp.time.wait-for seconds = .5
+}
+
+run

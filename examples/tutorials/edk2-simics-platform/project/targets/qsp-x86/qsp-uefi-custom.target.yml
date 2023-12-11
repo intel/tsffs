@@ -1,0 +1,69 @@
+%YAML 1.2
+---
+description: QSP booting to EFI shell, defaults to empty disks
+params:
+  machine:
+    system_info:
+      type: str
+      description: A short string describing what this system is.
+      default: "QSP x86 - UEFI Shell"
+    hardware:
+      import: "%simics%/targets/qsp-x86/hardware.yml"
+      defaults:
+        name: qsp
+        rtc:
+          time: auto
+        usb_tablet:
+          create: true
+        firmware:
+          bios: ^machine:software:firmware:bios
+          lan_bios:  
+          spi_flash: ^machine:software:firmware:spi_flash
+    uefi_device:
+      advanced: 2
+      name:
+        type: str
+        default: simics_uefi
+        description: |
+          Name of a simics-uefi device added under the top component.
+      video_mode:
+        type: int
+        default: 5
+        description: |
+          Bochs GFX Mode to be set by UEFI BIOS during boot before OS handover.
+    software:
+      firmware:
+        description: Firmware images
+        advanced: 2
+        bios:
+          type: file
+          description: BIOS file.
+          default: "%simics%/workspace/Build/SimicsOpenBoardPkg/BoardX58Ich10/DEBUG_GCC/FV/BOARDX58ICH10.fd"
+        lan_bios:
+          type: file
+          required: false
+          description: ROM BIOS file for the ICH10 LAN Ethernet adaptor
+        spi_flash:
+          type: file
+          default: "%simics%/targets/qsp-x86/images/spi-flash.bin"
+          description: The ICH10 SPI flash file to use.
+        script_delay:
+          type: int
+          default: 1
+          description: Script delay multiplier during UEFI boot
+      
+  network: 
+    switch:
+      import: "%simics%/targets/common/ethernet-setup.yml"
+    service_node:
+      import: "%simics%/targets/common/sn-setup.yml"
+      defaults:
+        ethernet_switch: ^network:switch:ethernet_switch:name
+    
+  output:
+    system:
+      type: str
+      output: yes
+      default: ^machine:hardware:output:system
+script: "%script%/qsp-uefi-custom.target.yml.include"
+...

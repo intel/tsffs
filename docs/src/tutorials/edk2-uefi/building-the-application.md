@@ -66,4 +66,9 @@ docker rm -f "${CONTAINER_NAME}"
 The script will build the image, create a container using it, copy the relevant files
 to our host machine (in a `project` directory), then delete the container.
 
-We'll go ahead and run it with `./build.sh`.
+Mark the script executable and then we'll go ahead and run it with:
+
+```sh
+chmod +x build.sh
+./build.sh
+```

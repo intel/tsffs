@@ -242,7 +242,7 @@ fn test_x86_64_edk2_magic_call_all_apis() -> Result<()> {
         .to_env()?;
 
     let output = Command::new("./simics")
-        .current_dir(env.project_dir())
+        .current_dir(env.project_dir_ref())
         .arg("--batch-mode")
         .arg("-no-gui")
         .arg("--no-win")

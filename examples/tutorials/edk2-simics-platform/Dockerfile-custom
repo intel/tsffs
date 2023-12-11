@@ -1,0 +1,26 @@
+FROM ghcr.io/tianocore/containers/fedora-37-build:a0dd931
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+
+ENV EDK_TOOLS_PATH=/workspace/edk2/BaseTools/
+ENV PACKAGES_PATH="/workspace/edk2:/workspace/edk2-platforms:/workspace/edk2-non-osi"
+ENV WORKSPACE=/workspace/
+
+WORKDIR /workspace
+
+COPY workspace/edk2 /workspace/edk2/
+
+RUN source edk2/edksetup.sh && \
+    make -C edk2/BaseTools/
+
+COPY workspace/edk2-platforms /workspace/edk2-platforms
+COPY workspace/edk2-non-osi /workspace/edk2-non-osi
+COPY workspace/FSP /workspace/FSP
+
+WORKDIR /workspace/edk2-platforms/Platform/Intel
+
+# Build SimicsOpenBoardPkg
+RUN source /workspace/edk2/edksetup.sh && \
+    python build_bios.py -p BoardX58Ich10X64 -d -t GCC
+    
