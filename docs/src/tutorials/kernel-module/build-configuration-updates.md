@@ -89,6 +89,7 @@ With all the configuration and build processes done, it's time to build the targ
 software:
 
 ```sh
+chmod +x build.sh
 ./build.sh
 ```
 If all goes well, you'll be greeted with a `project` directory with all our necessary

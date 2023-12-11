@@ -1,24 +1,11 @@
-# Load the TSFFS module (to make sure we can load it)
-# load-module tsffs
-# @tsffs = SIM_create_object(SIM_get_class("tsffs"), "tsffs", [])
-# tsffs.log-level 2
-# @tsffs.iface.tsffs.set_start_on_harness(True)
-# @tsffs.iface.tsffs.set_stop_on_harness(True)
-# @tsffs.iface.tsffs.set_timeout(3.0)
-# @tsffs.iface.tsffs.add_exception_solution(13)
-# @tsffs.iface.tsffs.add_exception_solution(14)
-# @tsffs.iface.tsffs.set_corpus_directory("%simics%/corpus")
-# @tsffs.iface.tsffs.set_solutions_directory("%simics%/solutions")
-
-load-target "qsp-x86/qsp-uefi-custom" namespace = qsp machine:hardware:firmware:bios = "%simics%/targets/qsp-x86/images/BOARDX58ICH10.fd" machine:hardware:storage:disk0:image = "minimal_boot_disk.craff"
-
+load-target "qsp-x86/qsp-uefi-custom" namespace = qsp machine:hardware:firmware:bios = "%simics%/workspace/Build/SimicsOpenBoardPkg/BoardX58Ich10/DEBUG_GCC/FV/BOARDX58ICH10.fd"
 
 script-branch {
     local $con = qsp.serconsole.con
     bp.console_string.wait-for $con "Shell>"
-    qsp.serconsole.con.input "FS0:\n"
     bp.time.wait-for seconds = .5
-    qsp.serconsole.con.input "ls\n"
+    qsp.serconsole.con.input "help\n"
+    bp.time.wait-for seconds = .5
 }
 
 run

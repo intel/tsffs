@@ -22,12 +22,18 @@ FROM ghcr.io/tianocore/containers/fedora-37-build:a0dd931
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-WORKDIR /workspace/
+ARG PROJECT=
+
+WORKDIR "$PROJECT"
 ```
 
 We'll start from Tianocore's Fedora 37 build image, which provides all the dependencies
 needed to build EDK2 and EDK2-based platforms. We make sure we set the `pipefail` option
-in the BASH shell, and we'll be working in a directory called `workspace`.
+in the BASH shell. We're going to set our workdir to a build argument called `PROJECT`,
+which we'll pass in when we build the container. This will let us set the path inside
+and the path outside the container where we build our code to the *same path* which
+we will need later when we use the auxiliary information EDK2 provides (in the form of
+`.map` files) to enable source-code debugging and breakpoints in our firmware.
 
 Next, we'll obtain our sources. Note that commit hashes are provided for all the open
 source repositories. It's possible (or hopefully, likely!) these instructions will work

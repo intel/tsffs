@@ -1,18 +1,15 @@
 #!/bin/bash
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
-IMAGE_NAME="edk2-simics"
+IMAGE_NAME="edk2-simics-platform"
 DOCKERFILE="${SCRIPT_DIR}/Dockerfile"
 CONTAINER_UID=$(echo "${RANDOM}" | sha256sum | head -c 8)
 CONTAINER_NAME="${IMAGE_NAME}-tmp-${CONTAINER_UID}"
 
-docker build -t "${IMAGE_NAME}" -f "${DOCKERFILE}" "${SCRIPT_DIR}"
+cp "${SCRIPT_DIR}/../../../harness/tsffs-gcc-x86_64.h" "${SCRIPT_DIR}/tsffs-gcc-x86_64.h"
+mkdir -p "${SCRIPT_DIR}/project/"
+docker build -t "${IMAGE_NAME}" -f "${DOCKERFILE}" --build-arg "PROJECT=${SCRIPT_DIR}/project/workspace/" "${SCRIPT_DIR}"
 docker create --name "${CONTAINER_NAME}" "${IMAGE_NAME}" bash
-docker cp "${CONTAINER_NAME}:/workspace/Build/SimicsOpenBoardPkg/BoardX58Ich10/DEBUG_GCC/FV/" "${SCRIPT_DIR}/BoardX58Ich10"
-# We can't demo Alder Lake, so we don't bother to copy it out after building.
-# docker cp "${CONTAINER_NAME}://workspace/Build/AlderlakeOpenBoardPkg/AlderlakePRvp/DEBUG_GCC/FV/" "${SCRIPT_DIR}/AlderlakeOpenBoardPkg"
+rm -rf "${SCRIPT_DIR}/project/workspace/"
+docker cp "${CONTAINER_NAME}:${SCRIPT_DIR}/project/workspace/" "${SCRIPT_DIR}/project/workspace/"
 docker rm -f "${CONTAINER_NAME}"
-mkdir -p "${SCRIPT_DIR}/project/targets/qsp-x86/images/"
-cp "${SCRIPT_DIR}/BoardX58Ich10/BOARDX58ICH10.fd" "${SCRIPT_DIR}/project/targets/qsp-x86/images/BOARDX58ICH10.fd"
-cp "${SCRIPT_DIR}/AlderlakeOpenBoardPkg/ALDERLAKEPRVP.fd" "${SCRIPT_DIR}/project/targets/qsp-x86/images/ALDERLAKEPRVP.fd"
-cp "${SCRIPT_DIR}/../../rsrc/minimal_boot_disk.craff" "${SCRIPT_DIR}/project/minimal_boot_disk.craff"

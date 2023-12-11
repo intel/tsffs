@@ -38,7 +38,7 @@ params:
         bios:
           type: file
           description: BIOS file.
-          default: "%simics%/targets/qsp-x86/images/BOARDX58ICH10.fd"
+          default: "%simics%/workspace/Build/SimicsOpenBoardPkg/BoardX58Ich10/DEBUG_GCC/FV/BOARDX58ICH10.fd"
         lan_bios:
           type: file
           required: false

@@ -1,0 +1,28 @@
+load-module tsffs
+@tsffs = SIM_create_object(SIM_get_class("tsffs"), "tsffs", [])
+tsffs.log-level 4
+@tsffs.iface.tsffs.set_start_on_harness(True)
+@tsffs.iface.tsffs.set_stop_on_harness(True)
+@tsffs.iface.tsffs.set_timeout(3.0)
+@tsffs.iface.tsffs.add_exception_solution(13)
+@tsffs.iface.tsffs.add_exception_solution(14)
+
+load-module uefi-fw-tracker
+
+load-target "qsp-x86/qsp-uefi-custom" namespace = qsp machine:hardware:firmware:bios = "%simics%/workspace/Build/SimicsOpenBoardPkg/BoardX58Ich10/DEBUG_GCC/FV/BOARDX58ICH10.fd"
+
+new-os-awareness name = qsp.software
+qsp.software.insert-tracker tracker = uefi_fw_tracker_comp
+qsp.software.tracker.detect-parameters -overwrite param-file = "%simics%/uefi.params" map-file = "%simics%/workspace/Build/SimicsOpenBoardPkg/BoardX58Ich10/DEBUG_GCC/SimicsX58.map"
+qsp.software.tracker.load-parameters "%simics%/uefi.params"
+qsp.software.enable-tracker
+
+script-branch {
+    while 1 {
+        bp.source_location.wait-for DebugAssert -x -error-not-planted
+        echo "Got breakpoint"
+        @tsffs.iface.tsffs.solution(1, "DebugAssert")
+    }
+}
+
+run
