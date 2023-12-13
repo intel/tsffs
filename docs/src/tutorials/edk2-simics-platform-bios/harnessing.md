@@ -5,9 +5,10 @@ week concerning the boot logo parser in many vendors BIOS images called
 [LogoFAIL](https://binarly.io/posts/finding_logofail_the_dangers_of_image_parsing_during_system_boot/).
 In a [press release](https://min.news/en/tech/128c34878b2b582065c1e05379912294.html) the
 vulnerability finders noted that "Our fuzz testing and subsequent vulnerability triage
-results clearly indicate that these image parsers were never tested by IBV or OEM". This
-[may not be accurate](https://github.com/tianocore/edk2-staging/tree/HBFA/HBFA/UefiHostFuzzTestCasePkg/TestCase/MdeModulePkg/Library/BaseBmpSupportLib),
-but even so let's change that for our tutorial platform and get it fuzzed!
+results clearly indicate that these image parsers were never tested by IBV or OEM".
+Unlike the findings, [some](https://github.com/tianocore/edk2-staging/tree/HBFA/HBFA/UefiHostFuzzTestCasePkg/TestCase/MdeModulePkg/Library/BaseBmpSupportLib),
+have been fuzzed, but even so let's get our platform harnessed -- all we need to do is
+add the vulnerability ourselves!
 
 ## Writing a Harness
 
