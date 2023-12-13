@@ -16,7 +16,7 @@ version.workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
-command-ext = { workspace = true }
+command-ext = "0.1.1"
 getters2 = "0.1.2"
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
