@@ -17,7 +17,7 @@ version.workspace = true
 [dependencies]
 anyhow = { workspace = true }
 cargo_metadata = "0.18.1"
-command-ext.workspace = true
+command-ext = "0.1.1"
 getters2 = "0.1.2"
 indoc = "2.0.4"
 ispm-wrapper.workspace = true
@@ -28,6 +28,6 @@ walkdir = "2.4.0"
 
 [build-dependencies]
 anyhow.workspace = true
-command-ext.workspace = true
+command-ext = "0.1.1"
 simics-codegen.workspace = true
 ispm-wrapper.workspace = true

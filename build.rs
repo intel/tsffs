@@ -11,7 +11,7 @@
 //! ```cargo
 //! [dependencies]
 //! anyhow = "*"
-//! command-ext = { path = "modules/tsffs/src/util/command-ext" }
+//! command-ext = "*"
 //! typed-builder = "*"
 //! walkdir = "*"
 //! serde = { version = "*", features = ["derive"] }
