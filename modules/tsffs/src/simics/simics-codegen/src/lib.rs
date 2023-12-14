@@ -804,7 +804,7 @@ where
                     .err()
                     .ok_or_else(|| anyhow::anyhow!("Expected failure, got success"))?;
 
-                    if let command_ext::CommandExtError::Check { code: _, stdout, stderr: _ } = res {
+                    if let command_ext::CommandExtError::Check { status: _, stdout, stderr: _ } = res {
                        println!("stdout:\n{stdout}");
                     }
                 }
