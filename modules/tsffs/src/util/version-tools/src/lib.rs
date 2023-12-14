@@ -21,7 +21,7 @@
 #![deny(clippy::unwrap_used)]
 #![forbid(unsafe_code)]
 
-use anyhow::{anyhow, bail, Error, Result};
+use anyhow::{anyhow, bail, Result};
 use serde::{de::Error as _, Deserialize, Deserializer};
 use std::{fmt::Display, str::FromStr};
 pub use versions::*;
@@ -98,7 +98,7 @@ impl From<&str> for VersionConstraint {
 }
 
 impl FromStr for VersionConstraint {
-    type Err = Error;
+    type Err = anyhow::Error;
 
     /// Convert from a string like `==1.0.0` or `*` to a [`VersionConstraint`]
     ///
