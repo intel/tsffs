@@ -164,9 +164,9 @@ impl Tsffs {
                 OwnedMutSlice::from(coverage_map),
             ));
             let aflpp_cmp_observer =
-                AFLppCmpLogObserver::new(Self::AFLPP_CMP_OBSERVER_NAME, aflpp_cmp_map, true);
+                AFLppCmpLogObserver::new(Self::AFLPP_CMP_OBSERVER_NAME, libafl_bolts::ownedref::OwnedRefMut::Ref(aflpp_cmp_map), true);
             let cmplog_observer =
-                StdCmpValuesObserver::new(Self::CMPLOG_OBSERVER_NAME, aflpp_cmp_map_dup, true);
+                StdCmpValuesObserver::new(Self::CMPLOG_OBSERVER_NAME, libafl_bolts::ownedref::OwnedRefMut::Ref(aflpp_cmp_map_dup), true);
             let time_observer = TimeObserver::new(Self::TIME_OBSERVER_NAME);
 
             let map_feedback = MaxMapFeedback::tracking(&edges_observer, true, true);
