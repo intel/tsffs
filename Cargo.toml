@@ -64,9 +64,9 @@ raw-cstr = { path = "modules/tsffs/src/util/raw-cstr" }
 version-tools = { path = "modules/tsffs/src/util/version-tools" }
 
 anyhow = { version = "1.0.75" }
-libafl = { git = "https://github.com/AFLplusplus/LibAFL" }
-libafl_bolts = { git = "https://github.com/AFLplusplus/LibAFL" }
-libafl_targets = { git = "https://github.com/AFLplusplus/LibAFL", default-features = false, features = [
+libafl = { version = "0.11.2" }
+libafl_bolts = { version = "0.11.2" }
+libafl_targets = { version = "0.11.2", default-features = false, features = [
     "std",
 ] }
 serde = { version = "1.0.188", features = ["derive"] }
