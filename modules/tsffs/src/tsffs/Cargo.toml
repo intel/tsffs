@@ -32,7 +32,7 @@ yaxpeax-x86 = "1.2.0"
 typed-builder = "0.18.0"
 getters2 = "0.1.2"
 serde_json.workspace = true
-goblin = "0.7.1"
+goblin = "0.8.0"
 yaxpeax-riscv = { git = "https://github.com/novafacing/yaxpeax-riscv", version = "0.1.0", features = [
     "serde",
 ], rev = "696eb047208e4d3c903654aa557a42071c466e71" }
