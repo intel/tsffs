@@ -26,7 +26,7 @@ use libafl::{
 };
 use libafl_bolts::{
     current_nanos,
-    prelude::{OwnedMutSlice, OwnedRefMut},
+    prelude::OwnedMutSlice,
     rands::StdRand,
     tuples::{tuple_list, Merge},
     AsMutSlice, AsSlice,
@@ -163,16 +163,10 @@ impl Tsffs {
                 Self::EDGES_OBSERVER_NAME,
                 OwnedMutSlice::from(coverage_map),
             ));
-            let aflpp_cmp_observer = AFLppCmpLogObserver::new(
-                Self::AFLPP_CMP_OBSERVER_NAME,
-                OwnedRefMut::Ref(aflpp_cmp_map),
-                true,
-            );
-            let cmplog_observer = StdCmpValuesObserver::new(
-                Self::CMPLOG_OBSERVER_NAME,
-                OwnedRefMut::Ref(aflpp_cmp_map_dup),
-                true,
-            );
+            let aflpp_cmp_observer =
+                AFLppCmpLogObserver::new(Self::AFLPP_CMP_OBSERVER_NAME, aflpp_cmp_map, true);
+            let cmplog_observer =
+                StdCmpValuesObserver::new(Self::CMPLOG_OBSERVER_NAME, aflpp_cmp_map_dup, true);
             let time_observer = TimeObserver::new(Self::TIME_OBSERVER_NAME);
 
             let map_feedback = MaxMapFeedback::tracking(&edges_observer, true, true);
