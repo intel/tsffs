@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::{anyhow, bail, Error, Result};
-use ffi_macro::ffi;
+use ffi::ffi;
 use getters2::Getters;
 use libafl::prelude::CmpValues;
 use libafl_bolts::{AsMutSlice, AsSlice};
