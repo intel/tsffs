@@ -180,7 +180,7 @@ jobs:
 
       - name: Test Project
         run: |
-          TSFFS_TEST_CLEANUP_EACH=1 SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo test -p raw-cstr -p version-tools -p tests -- --nocapture || ( echo "❗ Tests failed" && exit 1 )
+          TSFFS_TEST_CLEANUP_EACH=1 SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo test -p version-tools -p tests -- --nocapture || ( echo "❗ Tests failed" && exit 1 )
           echo "✅ Tests passed"
 
       - name: Build Docs
@@ -195,7 +195,7 @@ jobs:
         run: |
           SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} \
           MIRIFLAGS="-Zmiri-backtrace=full -Zmiri-disable-isolation -Zmiri-panic-on-unsupported" \
-            cargo miri test -p raw-cstr -p version-tools \
+            cargo miri test -p version-tools \
             || ( echo "❗ [CT39 (2/2)] Failed MIRI static analysis checks" && exit 1 )
           echo "✅ [CT39 (2/2)] Passed MIRI static analysis checks"
 
@@ -360,24 +360,3 @@ jobs:
             fi
           fi
           cd ../../../../../
-
-          cd modules/tsffs/src/util/util/raw-cstr
-
-          cargo fuzz build
-
-          timeout --preserve-status 600 cargo fuzz run \
-            fuzz_raw_cstr || exit 0
-
-          echo "Done fuzzing!"
-
-          if [ -d ./fuzz/artifacts ]; then
-            if find ./fuzz/artifacts -mindepth 1 -maxdepth 1 2> /dev/null | read -r; then
-              echo "❗ [CT632] Fuzz test found an issue"
-              exit 1
-            fi
-          fi
-
-          cd ../../../../../
-
-          echo "✅ [CT632] Fuzz test completed"
-          exit 0
