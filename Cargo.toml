@@ -33,8 +33,6 @@ members = [
     "modules/tsffs/src/simics/simics-codegen",
     "modules/tsffs/src/simics/simics",
 
-    "modules/tsffs/src/util/ffi-macro",
-    "modules/tsffs/src/util/raw-cstr",
     "modules/tsffs/src/util/version-tools",
 ]
 default-members = [
@@ -46,8 +44,6 @@ default-members = [
     "modules/tsffs/src/simics/simics-codegen",
     "modules/tsffs/src/simics/simics",
 
-    "modules/tsffs/src/util/ffi-macro",
-    "modules/tsffs/src/util/raw-cstr",
     "modules/tsffs/src/util/version-tools",
 ]
 exclude = []
@@ -59,20 +55,18 @@ simics-codegen = { path = "modules/tsffs/src/simics/simics-codegen" }
 simics = { path = "modules/tsffs/src/simics/simics" }
 ispm-wrapper = { path = "modules/tsffs/src/simics/ispm-wrapper" }
 
-ffi-macro = { path = "modules/tsffs/src/util/ffi-macro" }
-raw-cstr = { path = "modules/tsffs/src/util/raw-cstr" }
 version-tools = { path = "modules/tsffs/src/util/version-tools" }
 
 anyhow = { version = "1.0.75" }
-libafl = { git = "https://github.com/AFLplusplus/LibAFL" }
-libafl_bolts = { git = "https://github.com/AFLplusplus/LibAFL" }
-libafl_targets = { git = "https://github.com/AFLplusplus/LibAFL", default-features = false, features = [
+libafl = { version = "0.11.2" }
+libafl_bolts = { version = "0.11.2" }
+libafl_targets = { version = "0.11.2", default-features = false, features = [
     "std",
 ] }
+raw-cstr = "0.1.1"
 serde = { version = "1.0.188", features = ["derive"] }
-serde_json = { version = "1.0.107" }
+serde_json = "1.0.107"
 versions = { version = "6.0.0", features = ["serde"] }
-
 
 [profile.dev]
 rpath = true
