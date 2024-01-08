@@ -19,7 +19,7 @@ use darling::{
 };
 use indoc::formatdoc;
 use proc_macro::TokenStream;
-use proc_macro2::TokenStream as TokenStream2;
+use proc_macro2::{Literal, TokenStream as TokenStream2};
 use proc_macro_error::{abort, proc_macro_error};
 use quote::{format_ident, quote, ToTokens};
 use syn::{
@@ -307,6 +307,14 @@ where
         .map(|k| quote!(#k))
         .unwrap_or(quote!(simics::api::ClassKind::Sim_Class_Kind_Vanilla));
 
+    let description = format!("c\"{}\"", description)
+        .parse::<Literal>()
+        .unwrap_or_else(|_| panic!("Failed to parse C string literal"));
+
+    let short_description = format!("c\"{}\"", short_description)
+        .parse::<Literal>()
+        .unwrap_or_else(|_| panic!("Failed to parse C string literal"));
+
     quote! {
         impl #impl_generics #name #ty_generics #where_clause {
             const CLASS: simics::api::ClassInfo = simics::api::ClassInfo {
@@ -316,11 +324,10 @@ where
                 objects_finalized: Some(#objects_finalized_fn_name),
                 deinit: Some(#deinit_fn_name),
                 dealloc: Some(#dealloc_fn_name),
-                description: raw_cstr::c_str!(#description).as_ptr(),
-                short_desc: raw_cstr::c_str!(#short_description).as_ptr(),
+                description: #description.as_ptr(),
+                short_desc: #short_description.as_ptr(),
                 kind: #kind,
             };
-
         }
 
         impl #impl_generics simics::api::CreateClass for #name #ty_generics #where_clause {

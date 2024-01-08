@@ -8,7 +8,7 @@ use crate::{
     Tsffs,
 };
 use anyhow::anyhow;
-use ffi_macro::ffi;
+use ffi::ffi;
 use simics::{
     api::{
         continue_simulation, get_processor_number, lookup_file, run_alone, sys::attr_value_t,
