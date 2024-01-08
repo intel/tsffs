@@ -1,23 +1,22 @@
 #!/usr/bin/env -S cargo +nightly -Z script
+```
+[dependencies]
+anyhow = "*"
+command-ext = "*"
+typed-builder = "*"
+walkdir = "*"
+serde = { version = "*", features = ["derive"] }
+serde_json = "*"
+cargo_metadata = "*"
+```
 
-//! This script builds and packages the TSFFS package. It simply:
-//! - Invokes make to build the module
-//! - Invokes make again to ensure the interface is up to date
-//! - Generates the packages.list file for the module and interface
-//! - Calls the `create-package-specs` script
-//! - Calls the `create-modcache` script
-//! - Calls the `create-packages` script
-//!
-//! ```cargo
-//! [dependencies]
-//! anyhow = "*"
-//! command-ext = "*"
-//! typed-builder = "*"
-//! walkdir = "*"
-//! serde = { version = "*", features = ["derive"] }
-//! serde_json = "*"
-//! cargo_metadata = "*"
-//! ```
+// This script builds and packages the TSFFS package. It simply:
+// - Invokes make to build the module
+// - Invokes make again to ensure the interface is up to date
+// - Generates the packages.list file for the module and interface
+// - Calls the `create-package-specs` script
+// - Calls the `create-modcache` script
+// - Calls the `create-packages` script
 
 use anyhow::{anyhow, bail, Error, Result};
 use cargo_metadata::MetadataCommand;
