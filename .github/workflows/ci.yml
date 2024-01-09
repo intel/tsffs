@@ -290,7 +290,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: .github/builder/rsrc
-          key: cache-builder-dependencies
+          key: "cache-builder-dependencies-${{ env.PUBLIC_SIMICS_ISPM_URL}}-${{env.PUBLIC_SIMICS_PKGS_URL }}"
 
       - name: Download Builder Dependencies
         if: ${{ steps.cache-builder-dependencies.outputs.cache-hit != 'true' }}
