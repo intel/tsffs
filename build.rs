@@ -1,14 +1,12 @@
 #!/usr/bin/env -S cargo +nightly -Z script
-```
-[dependencies]
-anyhow = "*"
-command-ext = "*"
-typed-builder = "*"
-walkdir = "*"
-serde = { version = "*", features = ["derive"] }
-serde_json = "*"
-cargo_metadata = "*"
-```
+## [dependencies]
+## anyhow = "*"
+## command-ext = "*"
+## typed-builder = "*"
+## walkdir = "*"
+## serde = { version = "*", features = ["derive"] }
+## serde_json = "*"
+## cargo_metadata = "*"
 
 // This script builds and packages the TSFFS package. It simply:
 // - Invokes make to build the module

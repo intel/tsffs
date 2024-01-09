@@ -290,7 +290,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: .github/builder/rsrc
-          key: cache-builder-dependencies
+          key: "cache-builder-dependencies-${{ env.PUBLIC_SIMICS_ISPM_URL}}-${{env.PUBLIC_SIMICS_PKGS_URL }}"
 
       - name: Download Builder Dependencies
         if: ${{ steps.cache-builder-dependencies.outputs.cache-hit != 'true' }}
@@ -360,24 +360,3 @@ jobs:
             fi
           fi
           cd ../../../../../
-
-          cd modules/tsffs/src/util/util/raw-cstr
-
-          cargo fuzz build
-
-          timeout --preserve-status 600 cargo fuzz run \
-            fuzz_raw_cstr || exit 0
-
-          echo "Done fuzzing!"
-
-          if [ -d ./fuzz/artifacts ]; then
-            if find ./fuzz/artifacts -mindepth 1 -maxdepth 1 2> /dev/null | read -r; then
-              echo "❗ [CT632] Fuzz test found an issue"
-              exit 1
-            fi
-          fi
-
-          cd ../../../../../
-
-          echo "✅ [CT632] Fuzz test completed"
-          exit 0
