@@ -170,8 +170,8 @@ ispm packages -i linux64/packages/*-linux64.ispm \
     --non-interactive --trust-insecure-packages
 ```
 
-You are now ready to use TSFFS! See the [User Guide](./UserGuide.md) to learn how to
-add TSFFS to your SIMICS projects, configure TSFFS, and run fuzzing campaigns.
+You are now ready to use TSFFS! Continue on to learn how to add TSFFS to your SIMICS
+projects, configure TSFFS, and run fuzzing campaigns.
 
 ## Set Up For Local Development
 

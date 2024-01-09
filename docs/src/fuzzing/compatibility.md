@@ -32,7 +32,7 @@ Supported Architectures:
 If your model's target architecture is one of these, it is supported by TSFFS. If not,
 file an issue or pull request. Adding new architectures is easy, and can be a good
 first contribution to the fuzzer. See the generic and specific architecture information
-[here](../modules/tsffs/src/tsffs/src/arch/).
+[here](../../../modules/tsffs/src/tsffs/src/arch).
 
 ## Micro Checkpoints
 
@@ -48,14 +48,14 @@ model with a simple test.
 ### Testing Micro Checkpoints
 
 As an example, let's consider the x86 QSP platform model that ships with SIMICS and the
-Hello World EFI [example](../examples/hello-world/). The process for fuzzing this
+Hello World EFI [example](../../../examples/tests/x86_64-uefi/). The process for fuzzing this
 target software follows the basic flow:
 
 1. Boot the x86 QSP BIOS with the QSP x86 hdd boot script, with a minimal boot disk
-2. Upload the HelloWorld.efi EFI app using the SIMICS agent (for most real targets, we
+2. Upload the test.efi EFI app using the SIMICS agent (for most real targets, we
    would just boot an image that has our target software EFI app already included).
-3. Run the HelloWorld.efi EFI app we uploaded
-4. While running, the HelloWorld.efi target software code reaches our start harness,
+3. Run the test.efi EFI app we uploaded
+4. While running, the test.efi target software code reaches our start harness,
    which triggers the beginning of the fuzzing loop by taking a micro checkpoint. The
    fuzzer continues execution of the target software.
 5. While running, either a fault is encountered or the software reaches the stop
@@ -116,17 +116,20 @@ script-branch "UEFI Shell Enter Branch" {
 
     # We are now in the UEFI shell, we'll download our EFI app
     local $manager = (start-agent-manager)
-    $con.input ("SimicsAgent.efi --download " + (lookup-file "%simics%/HelloWorld.efi") + "\n")
+    $con.input ("SimicsAgent.efi --download " + (lookup-file "%simics%/test.efi") + "\n")
     bp.time.wait-for seconds = .5
 }
 ```
 
-Finally, copy the `HelloWorld.efi` module and the `minimal_boot_disk.craff` image into
-the project root:
+Finally, build and copy the `test.efi` module and the `minimal_boot_disk.craff` image
+into the project root:
 
 ```sh
-cp /path/to/this/repo/examples/hello-world/rsrc/HelloWorld.efi ./
-cp /path/to/this/repo/examples/hello-world/rsrc/minimal_boot_disk.craff ./
+pushd /path/to/this/repo/examples/tests/x86_64-uefi/
+ninja
+popd
+cp /path/to/this/repo/examples/tests/x86_64-uefi/test.efi ./
+cp /path/to/this/repo/examples/rsrc/minimal_boot_disk.craff ./
 ```
 
 #### Test Micro Checkpoints
@@ -204,17 +207,17 @@ running>
 You'll see several automatic actions on the SIMICS GUI, and you will end up with the
 console screen below.
 
-![The EFI console, with the prompt FS0: \\>](./images/REQUIREMENTS_Test_Micro_Checkpoints_Pre.png)
+![The EFI console, with the prompt FS0: \\>](../../images/REQUIREMENTS_Test_Micro_Checkpoints_Pre.png)
 
 First, we'll run our EFI app to make sure all is well.
 
 ```simics
-running> $system.console.con.input "HelloWorld.efi\n"
+running> $system.console.con.input "test.efi\n"
 ```
 
 You should see "Working..." print out on the console.
 
-![The EFI console, after test run](./images/REQUIREMENTS_Test_Micro_Checkpoints_TestRun.png)
+![The EFI console, after test run](../../images/REQUIREMENTS_Test_Micro_Checkpoints_TestRun.png)
 
 Now, we'll go ahead stop the simulation and take our micro checkpoint.
 
@@ -228,7 +231,7 @@ Our simulation is now stopped, with a checkpoint just taken. We'll run the EFI a
 again and continue, then stop the simulation after the app finishes running.
 
 ```simics
-simics> $system.console.con.input "HelloWorld.efi\n"
+simics> $system.console.con.input "test.efi\n"
 simics> continue
 running> stop
 ```
@@ -236,7 +239,7 @@ running> stop
 We stopped our execution after the app executed, so you should see the output from the
 second time we ran it ("Working...") printed on the GUI console.
 
-![The EFI console, after running again](./images/REQUIREMENTS_Test_Micro_Checkpoints_Post.png)
+![The EFI console, after running again](../../images/REQUIREMENTS_Test_Micro_Checkpoints_Post.png)
 
 Now, we will restore our micro checkpoint and clear the recorder. The second step is
 important, because if we did not clear the recorder we would *replay* the execution of
@@ -253,7 +256,7 @@ simics> continue
 The console should be back to the state it was before you ran the second app execution,
 and will look like this:
 
-![The EFI console, after test run](./images/REQUIREMENTS_Test_Micro_Checkpoints_TestRun.png)
+![The EFI console, after test run](../../images/REQUIREMENTS_Test_Micro_Checkpoints_TestRun.png)
 
 #### Testing for Your App
 
