@@ -360,27 +360,3 @@ jobs:
             fi
           fi
           cd ../../../../../
-<<<<<<< Updated upstream
-
-          cd modules/tsffs/src/util/util/raw-cstr
-
-          cargo fuzz build
-
-          timeout --preserve-status 600 cargo fuzz run \
-            fuzz_raw_cstr || exit 0
-
-          echo "Done fuzzing!"
-
-          if [ -d ./fuzz/artifacts ]; then
-            if find ./fuzz/artifacts -mindepth 1 -maxdepth 1 2> /dev/null | read -r; then
-              echo "❗ [CT632] Fuzz test found an issue"
-              exit 1
-            fi
-          fi
-
-          cd ../../../../../
-
-          echo "✅ [CT632] Fuzz test completed"
-          exit 0
-=======
->>>>>>> Stashed changes
