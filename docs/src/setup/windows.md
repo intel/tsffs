@@ -197,8 +197,7 @@ and download:
 
 Run the downloaded `.exe` file with the command below in an elevated PowerShell prompt
 to install `ispm` using the default settings (for your user only, note that if you
-downloaded manually, you should type the name of the file
-you downloaded). 
+downloaded manually, you should type the name of the file you downloaded).
 
 ```powershell
 ~/Downloads/intel-simics-package-manager-win64.exe /S | Out-Null
