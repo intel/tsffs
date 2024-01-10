@@ -20,7 +20,7 @@ version = "0.2.1"
 
 [workspace.metadata]
 build-id = 3
-version = "6.0.2"
+version = "6.0.3"
 
 [workspace]
 resolver = "2"

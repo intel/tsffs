@@ -7,16 +7,16 @@ use super::ArchitectureOperations;
 use crate::{
     tracer::{CmpExpr, CmpType, CmpValue, TraceEntry},
     traits::TracerDisassembler,
-    StartBuffer, StartSize, CLASS_NAME,
+    CLASS_NAME,
 };
 use anyhow::{anyhow, bail, Error, Result};
 use libafl::prelude::CmpValues;
 use raw_cstr::AsRawCstr;
 use simics::{
     api::{
-        get_interface, get_object, read_phys_memory, sys::instruction_handle_t, write_byte, Access,
-        ConfObject, CpuInstructionQueryInterface, CpuInstrumentationSubscribeInterface,
-        CycleInterface, GenericAddress, IntRegisterInterface, ProcessorInfoV2Interface,
+        get_interface, get_object, read_phys_memory, sys::instruction_handle_t, Access, ConfObject,
+        CpuInstructionQueryInterface, CpuInstrumentationSubscribeInterface, CycleInterface,
+        IntRegisterInterface, ProcessorInfoV2Interface,
     },
     trace,
 };
