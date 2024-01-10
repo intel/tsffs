@@ -48,8 +48,8 @@ model with a simple test.
 ### Testing Micro Checkpoints
 
 As an example, let's consider the x86 QSP platform model that ships with SIMICS and the
-Hello World EFI [example](../../../examples/tests/x86_64-uefi/). The process for fuzzing this
-target software follows the basic flow:
+Hello World EFI [example](../../../examples/tests/x86_64-uefi/). The process for fuzzing
+this target software follows the basic flow:
 
 1. Boot the x86 QSP BIOS with the QSP x86 hdd boot script, with a minimal boot disk
 2. Upload the test.efi EFI app using the SIMICS agent (for most real targets, we
