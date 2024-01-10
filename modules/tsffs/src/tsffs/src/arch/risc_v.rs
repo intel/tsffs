@@ -44,6 +44,7 @@ pub struct RISCVArchitectureOperations {
 impl ArchitectureOperations for RISCVArchitectureOperations {
     const DEFAULT_TESTCASE_AREA_REGISTER_NAME: &'static str = DEFAULT_TESTCASE_AREA_REGISTER_NAME;
     const DEFAULT_TESTCASE_SIZE_REGISTER_NAME: &'static str = DEFAULT_TESTCASE_SIZE_REGISTER_NAME;
+    const POINTER_WIDTH_OVERRIDE: &'static Option<i32> = &None;
 
     fn new(cpu: *mut ConfObject) -> Result<Self> {
         let mut processor_info_v2: ProcessorInfoV2Interface = get_interface(cpu)?;

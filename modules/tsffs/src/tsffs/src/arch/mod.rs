@@ -98,6 +98,9 @@ impl Debug for Architecture {
 pub trait ArchitectureOperations {
     const DEFAULT_TESTCASE_AREA_REGISTER_NAME: &'static str;
     const DEFAULT_TESTCASE_SIZE_REGISTER_NAME: &'static str;
+    /// Optional override to the width of a pointer (and size_t) on this platform in BYTE width
+    /// (e.g. u32 = &Some(4))
+    const POINTER_WIDTH_OVERRIDE: &'static Option<i32>;
 
     fn new(cpu: *mut ConfObject) -> Result<Self>
     where
@@ -123,17 +126,11 @@ pub trait ArchitectureOperations {
             .int_register()
             .get_number(Self::DEFAULT_TESTCASE_AREA_REGISTER_NAME.as_raw_cstr()?)?;
 
-        trace!(
-            get_object(CLASS_NAME)?,
-            "Got number {} for register {}",
-            number,
-            Self::DEFAULT_TESTCASE_AREA_REGISTER_NAME
-        );
-
         let logical_address = self.int_register().read(number)?;
+
         trace!(
             get_object(CLASS_NAME)?,
-            "Got logical address {:#x} from register",
+            "Got logical address {:#x} for start buffer from register {number}",
             logical_address
         );
 
@@ -148,8 +145,9 @@ pub trait ArchitectureOperations {
         } else {
             trace!(
                 get_object(CLASS_NAME)?,
-                "Got physical address {:#x} from logical address",
-                physical_address_block.address
+                "Got physical address {:#x} for start buffer from logical address {:#x}",
+                physical_address_block.address,
+                logical_address
             );
             Ok(StartBuffer::builder()
                 .physical_address(physical_address_block.address)
@@ -163,7 +161,15 @@ pub trait ArchitectureOperations {
         let number = self
             .int_register()
             .get_number(Self::DEFAULT_TESTCASE_SIZE_REGISTER_NAME.as_raw_cstr()?)?;
+
         let logical_address = self.int_register().read(number)?;
+
+        trace!(
+            get_object(CLASS_NAME)?,
+            "Got logical address {:#x} for start size from register {number}",
+            logical_address
+        );
+
         let physical_address_block = self
             .processor_info_v2()
             // NOTE: Do we need to support segmented memory via logical_to_physical?
@@ -174,8 +180,20 @@ pub trait ArchitectureOperations {
             bail!("Invalid linear address found in magic start buffer register {number}: {logical_address:#x}");
         }
 
-        let size_size = self.processor_info_v2().get_logical_address_width()? / u8::BITS as i32;
+        let size_size = if let Some(width) = Self::POINTER_WIDTH_OVERRIDE {
+            *width
+        } else {
+            self.processor_info_v2().get_logical_address_width()? / u8::BITS as i32
+        };
+
         let size = read_phys_memory(self.cpu(), physical_address_block.address, size_size)?;
+
+        trace!(
+            get_object(CLASS_NAME)?,
+            "Got size {:#x} for start size from physical address {:#x}",
+            size,
+            physical_address_block.address
+        );
 
         Ok(StartSize::builder()
             .physical_address((
@@ -197,6 +215,13 @@ pub trait ArchitectureOperations {
                 // NOTE: Do we need to support segmented memory via logical_to_physical?
                 .logical_to_physical(buffer_address, Access::Sim_Access_Read)?;
 
+            trace!(
+                get_object(CLASS_NAME)?,
+                "Got physical address {:#x} for start buffer from logical address {:#x}",
+                physical_address_block.address,
+                buffer_address
+            );
+
             if physical_address_block.valid == 0 {
                 bail!(
                     "Invalid linear address for given buffer address {:#x}",
@@ -206,6 +231,12 @@ pub trait ArchitectureOperations {
 
             physical_address_block.address
         } else {
+            trace!(
+                get_object(CLASS_NAME)?,
+                "Using provided physical address {:#x} for start buffer",
+                buffer_address
+            );
+
             buffer_address
         };
 
@@ -228,16 +259,33 @@ pub trait ArchitectureOperations {
                 // NOTE: Do we need to support segmented memory via logical_to_physical?
                 .logical_to_physical(size_address, Access::Sim_Access_Read)?;
 
+            trace!(
+                get_object(CLASS_NAME)?,
+                "Got physical address {:#x} for start size from logical address {:#x}",
+                physical_address_block.address,
+                size_address
+            );
+
             if physical_address_block.valid == 0 {
                 bail!("Invalid linear address given for start buffer : {size_address:#x}");
             }
 
             physical_address_block.address
         } else {
+            trace!(
+                get_object(CLASS_NAME)?,
+                "Using provided physical address {:#x} for start size",
+                size_address
+            );
+
             size_address
         };
 
-        let size_size = self.processor_info_v2().get_logical_address_width()? / u8::BITS as i32;
+        let size_size = if let Some(width) = Self::POINTER_WIDTH_OVERRIDE {
+            *width
+        } else {
+            self.processor_info_v2().get_logical_address_width()? / u8::BITS as i32
+        };
         let size = read_phys_memory(self.cpu(), physical_address, size_size)?;
 
         Ok(StartSize::builder()
@@ -254,9 +302,11 @@ pub trait ArchitectureOperations {
         size: &StartSize,
     ) -> Result<()> {
         let mut testcase = testcase.to_vec();
-        // NOTE: We have to handle both riscv64 and riscv32 here
-        let addr_size =
-            self.processor_info_v2().get_logical_address_width()? as usize / u8::BITS as usize;
+        let size_size = if let Some(width) = Self::POINTER_WIDTH_OVERRIDE {
+            *width
+        } else {
+            self.processor_info_v2().get_logical_address_width()? / u8::BITS as i32
+        };
         let initial_size =
             size.initial_size_ref()
                 .ok_or_else(|| anyhow!("Expected initial size for start"))? as usize;
@@ -271,17 +321,27 @@ pub trait ArchitectureOperations {
 
         testcase.truncate(initial_size);
 
+        trace!(
+            get_object(CLASS_NAME)?,
+            "Writing testcase to physical address starting at {:#x}",
+            buffer.physical_address
+        );
+
         testcase.iter().enumerate().try_for_each(|(i, c)| {
             let physical_address = buffer.physical_address + (i as u64);
             write_byte(physical_memory, physical_address, *c)
         })?;
 
         if let Some((address, _)) = size.physical_address {
+            trace!(
+                get_object(CLASS_NAME)?,
+                "Writing testcase size of size {size_size:#x} to physical address starting at {address:#x}"
+            );
             testcase
                 .len()
                 .to_le_bytes()
                 .iter()
-                .take(addr_size)
+                .take(size_size.try_into()?)
                 .enumerate()
                 .try_for_each(|(i, c)| {
                     let physical_address = address + (i as u64);
@@ -304,6 +364,7 @@ pub trait ArchitectureOperations {
 impl ArchitectureOperations for Architecture {
     const DEFAULT_TESTCASE_AREA_REGISTER_NAME: &'static str = "";
     const DEFAULT_TESTCASE_SIZE_REGISTER_NAME: &'static str = "";
+    const POINTER_WIDTH_OVERRIDE: &'static Option<i32> = &None;
 
     fn new(cpu: *mut ConfObject) -> Result<Self>
     where

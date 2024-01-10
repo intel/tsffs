@@ -148,6 +148,40 @@ fn test_x86_64_magic() -> Result<()> {
 
 #[test]
 #[cfg_attr(miri, ignore)]
+fn test_x86_64_magic_repro() -> Result<()> {
+    let mut env = TestEnvSpec::builder()
+        .name("test_x86_64_magic_repro")
+        .cargo_manifest_dir(env!("CARGO_MANIFEST_DIR"))
+        .cargo_target_tmpdir(env!("CARGO_TARGET_TMPDIR"))
+        .directories([PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join("..")
+            .join("examples")
+            .join("tests")
+            .join("x86_64-uefi")])
+        .arch(Architecture::X86)
+        .build()
+        .to_env()?;
+
+    let output = Command::new("./simics")
+        .current_dir(env.project_dir_ref())
+        .arg("--batch-mode")
+        .arg("-no-gui")
+        .arg("--no-win")
+        .arg("test-magic-repro.simics")
+        .check()?;
+
+    let output_str = String::from_utf8_lossy(&output.stdout);
+
+    println!("{output_str}");
+    env.cleanup_if_env()?;
+
+    Ok(())
+}
+
+#[test]
+#[cfg_attr(miri, ignore)]
 fn test_x86_64_manual() -> Result<()> {
     let mut env = TestEnvSpec::builder()
         .name("test_x86_64_manual")
