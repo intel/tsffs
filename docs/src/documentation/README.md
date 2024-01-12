@@ -11,6 +11,4 @@ TSFFS are provided here.
   - [simics-codegen](https://intel.github.io/tsffs/crates/simics_codegen)
   - [simics-api-sys](https://intel.github.io/tsffs/crates/simics_api_sys)
   - [ispm-wrapper](https://intel.github.io/tsffs/crates/ispm_wrapper)
-  - [ffi-macro](https://intel.github.io/tsffs/crates/ffi_macro)
-  - [raw-cstr](https://intel.github.io/tsffs/crates/raw_cstr)
   - [version-tools](https://intel.github.io/tsffs/crates/version_tools)

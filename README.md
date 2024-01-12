@@ -38,7 +38,7 @@ Then, run the provided example target and fuzzing configuration:
 
 ## Documentation & Setup
 
-Documentation for setup & usage of this project lives in the [docs](./docs/SUMMARY.md)
+Documentation for setup & usage of this project lives in the [docs](./docs/src/SUMMARY.md)
 directory of this repository.
 
 ## Capabilities
