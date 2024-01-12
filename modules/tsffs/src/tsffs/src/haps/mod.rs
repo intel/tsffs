@@ -200,27 +200,27 @@ impl Tsffs {
                         self.send_shutdown()?;
 
                         quit(0)?;
-                    }
-
-                    let fuzzer_tx = self
-                        .fuzzer_tx_mut()
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("No fuzzer tx channel"))?;
-
-                    fuzzer_tx.send(ExitKind::Ok)?;
-
-                    self.restore_initial_snapshot()?;
-
-                    if self.start_buffer_ref().is_some() && self.start_size_ref().is_some() {
-                        self.get_and_write_testcase()?;
                     } else {
-                        debug!(
-                            self.as_conf_object(),
-                            "Missing start buffer or size, not writing testcase."
-                        );
-                    }
+                        let fuzzer_tx = self
+                            .fuzzer_tx_mut()
+                            .as_ref()
+                            .ok_or_else(|| anyhow!("No fuzzer tx channel"))?;
 
-                    self.post_timeout_event()?;
+                        fuzzer_tx.send(ExitKind::Ok)?;
+
+                        self.restore_initial_snapshot()?;
+
+                        if self.start_buffer_ref().is_some() && self.start_size_ref().is_some() {
+                            self.get_and_write_testcase()?;
+                        } else {
+                            debug!(
+                                self.as_conf_object(),
+                                "Missing start buffer or size, not writing testcase."
+                            );
+                        }
+
+                        self.post_timeout_event()?;
+                    }
                 }
                 StopReason::Solution(solution) => {
                     self.cancel_timeout_event()?;
@@ -275,32 +275,32 @@ impl Tsffs {
                         self.send_shutdown()?;
 
                         quit(0)?;
-                    }
-
-                    let fuzzer_tx = self
-                        .fuzzer_tx_mut()
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("No fuzzer tx channel"))?;
-
-                    match solution.kind_ref() {
-                        SolutionKind::Timeout => fuzzer_tx.send(ExitKind::Timeout)?,
-                        SolutionKind::Exception
-                        | SolutionKind::Breakpoint
-                        | SolutionKind::Manual => fuzzer_tx.send(ExitKind::Crash)?,
-                    }
-
-                    self.restore_initial_snapshot()?;
-
-                    if self.start_buffer_ref().is_some() && self.start_size_ref().is_some() {
-                        self.get_and_write_testcase()?;
                     } else {
-                        debug!(
-                            self.as_conf_object(),
-                            "Missing start buffer or size, not writing testcase."
-                        );
-                    }
+                        let fuzzer_tx = self
+                            .fuzzer_tx_mut()
+                            .as_ref()
+                            .ok_or_else(|| anyhow!("No fuzzer tx channel"))?;
 
-                    self.post_timeout_event()?;
+                        match solution.kind_ref() {
+                            SolutionKind::Timeout => fuzzer_tx.send(ExitKind::Timeout)?,
+                            SolutionKind::Exception
+                            | SolutionKind::Breakpoint
+                            | SolutionKind::Manual => fuzzer_tx.send(ExitKind::Crash)?,
+                        }
+
+                        self.restore_initial_snapshot()?;
+
+                        if self.start_buffer_ref().is_some() && self.start_size_ref().is_some() {
+                            self.get_and_write_testcase()?;
+                        } else {
+                            debug!(
+                                self.as_conf_object(),
+                                "Missing start buffer or size, not writing testcase."
+                            );
+                        }
+
+                        self.post_timeout_event()?;
+                    }
                 }
             }
 
