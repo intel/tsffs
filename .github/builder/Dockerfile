@@ -8,7 +8,8 @@ RUN yum -y update && \
         coreutils \
         gcc \
         gcc-c++ \
-        make && \
+        make \
+        patchelf && \
     yum clean all
 
 COPY .github/builder/rsrc/rustup-init /install/rustup-init
@@ -58,6 +59,6 @@ RUN mkdir -p /simics/ispm && \
     ispm packages --install-bundle .github/builder/rsrc/simics.ispm --non-interactive --trust-insecure-packages && \
     ls -lah /simics/ && \
     cargo install --path simics-rs/cargo-simics-build && \
-    cargo simics-build -r && \
+    cargo simics-build --with-patchelf -r && \
     mkdir -p /packages && \
     cp target/release/*.ispm /packages
