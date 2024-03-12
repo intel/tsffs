@@ -1,23 +1,67 @@
 #!/bin/bash
 
-PUBLIC_SIMICS_PKGS_URL="https://registrationcenter-download.intel.com/akdlm/IRC_NAS/881ee76a-c24d-41c0-af13-5d89b2a857ff/simics-6-packages-2023-31-linux64.ispm"
-PUBLIC_SIMICS_ISPM_URL="https://registrationcenter-download.intel.com/akdlm/IRC_NAS/881ee76a-c24d-41c0-af13-5d89b2a857ff/intel-simics-package-manager-1.7.5-linux64.tar.gz"
+# NOTE: Do not just copy-paste scripts/build.sh!
+
+CFE_URL="https://releases.llvm.org/5.0.2/cfe-5.0.2.src.tar.xz"
+LLVM_SRC_URL="https://releases.llvm.org/5.0.2/llvm-5.0.2.src.tar.xz"
+MAKE_SRC_URL="https://ftp.gnu.org/gnu/make/make-4.4.1.tar.gz"
+RUSTUP_INIT_URL="https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init"
+CMAKE_URL="https://github.com/Kitware/CMake/releases/download/v3.28.0-rc5/cmake-3.28.0-rc5-linux-x86_64.tar.gz"
+PUBLIC_SIMICS_PKGS_URL="https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/simics-6-packages-2024-05-linux64.ispm"
+PUBLIC_SIMICS_ISPM_URL="https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/intel-simics-package-manager-1.8.3-linux64.tar.gz"
+PUBLIC_SIMICS_PACKAGE_VERSION_1000="6.0.185"
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+ROOT_DIR="${SCRIPT_DIR}/../../"
+BUILDER_DIR="${ROOT_DIR}/.github/builder/"
 IMAGE_NAME="tsffs-builder"
 CONTAINER_UID=$(echo "${RANDOM}" | sha256sum | head -c 8)
 CONTAINER_NAME="${IMAGE_NAME}-tmp-${CONTAINER_UID}"
 
-mkdir -p "${SCRIPT_DIR}/rsrc"
-if [ ! -f "${SCRIPT_DIR}/rsrc/ispm.tar.gz" ]; then
-    curl --noproxy '*.intel.com' -o "${SCRIPT_DIR}/rsrc/ispm.tar.gz" \
+mkdir -p "${BUILDER_DIR}/rsrc"
+
+if [ ! -f "${BUILDER_DIR}/rsrc/ispm.tar.gz" ]; then
+
+    curl --noproxy '*.intel.com' -L -o "${BUILDER_DIR}/rsrc/ispm.tar.gz" \
         "${PUBLIC_SIMICS_ISPM_URL}"
 fi
-if [ ! -f "${SCRIPT_DIR}/rsrc/simics.ispm" ]; then
-    curl --noproxy '*.intel.com' -o "${SCRIPT_DIR}/rsrc/simics.ispm" \
+
+if [ ! -f "${BUILDER_DIR}/rsrc/simics.ispm" ]; then
+    curl --noproxy '*.intel.com' -L -o "${BUILDER_DIR}/rsrc/simics.ispm" \
         "${PUBLIC_SIMICS_PKGS_URL}"
 fi
 
-docker build -t "${IMAGE_NAME}" -f "${SCRIPT_DIR}/Dockerfile" "${SCRIPT_DIR}/../../"
+if [ ! -f "${BUILDER_DIR}/rsrc/cfe-5.0.2.src.tar.xz" ]; then
+    curl --noproxy '*.intel.com' -L -o "${BUILDER_DIR}/rsrc/cfe-5.0.2.src.tar.xz" \
+        "${CFE_URL}"
+fi
+
+if [ ! -f "${BUILDER_DIR}/rsrc/llvm-5.0.2.src.tar.xz" ]; then
+    curl --noproxy '*.intel.com' -L -o "${BUILDER_DIR}/rsrc/llvm-5.0.2.src.tar.xz" \
+        "${LLVM_SRC_URL}"
+fi
+
+if [ ! -f "${BUILDER_DIR}/rsrc/make-4.4.1.tar.gz" ]; then
+    curl --noproxy '*.intel.com' -L -o "${BUILDER_DIR}/rsrc/make-4.4.1.tar.gz" \
+        "${MAKE_SRC_URL}"
+fi
+
+if [ ! -f "${BUILDER_DIR}/rsrc/rustup-init" ]; then
+    curl --noproxy '*.intel.com' -L -o "${BUILDER_DIR}/rsrc/rustup-init" \
+        "${RUSTUP_INIT_URL}"
+    chmod +x "${BUILDER_DIR}/rsrc/rustup-init"
+fi
+
+if [ ! -f "${BUILDER_DIR}/rsrc/cmake-3.28.0-rc5-linux-x86_64.tar.gz" ]; then
+    curl --noproxy '*.intel.com' -L -o "${BUILDER_DIR}/rsrc/cmake-3.28.0-rc5-linux-x86_64.tar.gz" \
+        "${CMAKE_URL}"
+fi
+
+unset SIMICS_BASE
+docker build \
+    --build-arg \
+    "PUBLIC_SIMICS_PACKAGE_VERSION_1000=${PUBLIC_SIMICS_PACKAGE_VERSION_1000}" \
+    -t "${IMAGE_NAME}" -f "${BUILDER_DIR}/Dockerfile" "${ROOT_DIR}"
 docker create --name "${CONTAINER_NAME}" "${IMAGE_NAME}" bash
-docker cp "${CONTAINER_NAME}:/tsffs/linux64/packages/" "${SCRIPT_DIR}/../../"
+mkdir -p "${ROOT_DIR}/packages"
+docker cp "${CONTAINER_NAME}:/packages" "${ROOT_DIR}/"
 docker rm -f "${CONTAINER_NAME}"

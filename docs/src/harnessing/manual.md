@@ -11,5 +11,5 @@ a CPU object. When called, the initial snapshot is still captured in the same wa
 with other [closed-box](closed-box.md) harnessing methods.
 
 ```python
-testcase = tsffs.iface.tsffs.start_without_buffer(cpu)
+@testcase = tsffs.iface.fuzz.start_without_buffer(cpu)
 ```

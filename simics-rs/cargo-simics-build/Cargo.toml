@@ -1,0 +1,35 @@
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "cargo-simics-build"
+version = "0.1.0"
+authors = ["Rowan Hart <rowan.hart@intel.com>"]
+edition = "2021"
+description = "Build utility for Simics modules"
+documentation = ""
+readme = "../README.md"
+homepage = ""
+repository = ""
+license = "Apache-2.0"
+keywords = ["simics", "simulator", "intel", "x86", "risc", "modeling"]
+categories = [
+    "simulation",
+    "virtualization",
+    "hardware-support",
+    "api-bindings",
+    "emulators",
+]
+
+[dependencies]
+simics-sign = { version = "0.1.0", path = "../simics-sign" }
+
+anyhow = "1.0.80"
+artifact-dependency = "0.1.7"
+clap = { version = "4.5.1", features = ["derive"] }
+cargo-subcommand = { version = "0.12.0", features = ["clap"] }
+command-ext = "0.1.2"
+simics-package = { version = "0.1.0", path = "../simics-package" }
+itertools = "0.12.1"
+ispm-wrapper = { version = "0.1.0", path = "../ispm-wrapper" }
+thiserror = "1.0.57"

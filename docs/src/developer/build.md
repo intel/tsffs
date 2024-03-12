@@ -61,21 +61,8 @@ attribute macros for implementing:
 
 It also provides derive macros for converting Rust structs to and from `AttrValue`s.
 
-In particular, the `#[interface_impl]` attribute generates a `.dml`, `.h`, and
-`Makefile` to produce an interface. This is the reason the top level build invokes
-`make` twice, to ensure the interface definition is updated and rebuilt.
-
 ## Build Process
 
-The build process for the TSFFS SIMICS package is implemented in the top level
-`build.rs` script.
-
-* Call `make` twice
-  * The first time, the TSFFS module is built and the interface files are emitted
-  * The second time, the updated interface is built
-* Produce a package list file and package spec JSON file
-  * There is a script provided by an internal SIMICS package to produce the JSON file
-    from the package list, but the functionality is re-implemented in the top-level
-    build script because this script is not available to open source public users
-* Create a module cache
-* Create the final `.ispm` package
+The build process for the TSFFS SIMICS package is implemented in the
+`cargo-simics-build` crate. It builds the crate with correct link arguments, signs the
+output module, and packages the module along with any built interfaces.

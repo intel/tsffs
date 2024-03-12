@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "SIMICS bindings and utilities for Rust"
+authors:
+  - family-names: "Hart"
+    given-names: "Rowan"
+    orcid: "https://orcid.org/0000-0001-9932-3798"
+
+title: "simics-rs"
+version: 0.1.0
+doi: ""
+date-released: 2024-01-10
+url: ""

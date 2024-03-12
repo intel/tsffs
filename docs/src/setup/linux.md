@@ -34,8 +34,7 @@ Rust's official installation instructions can be found at
 project (including the nightly toolchain), run:
 
 ```sh
-curl https://sh.rustup.rs -sSf | bash -s -- -y
-rustup toolchain install nightly
+curl https://sh.rustup.rs -sSf | bash -s -- -y --default-toolchain nightly
 ```
 
 The installer may prompt you to add `source $HOME/.cargo/env` to your shell init file.
@@ -64,9 +63,9 @@ directly from the download page, replace `ispm.tar.gz` with the full name of the
 tarball you downloaded, and likewise with `simics-6-packages`.
 
 ```sh
-curl --noproxy -L -o $HOME/Downloads/ispm.tar.gz \
+curl --noproxy '*.intel.com' -L -o $HOME/Downloads/ispm.tar.gz \
     "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/881ee76a-c24d-41c0-af13-5d89b2a857ff/intel-simics-package-manager-1.7.5-linux64.tar.gz"
-curl --noproxy -L -o $HOME/Downloads/simics-6-packages.ispm \
+curl --noproxy '*.intel.com' -L -o $HOME/Downloads/simics-6-packages.ispm \
     "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/881ee76a-c24d-41c0-af13-5d89b2a857ff/simics-6-packages-2023-31-linux64.ispm"
 ```
 
@@ -75,7 +74,7 @@ Next, we will install SIMICS. Here, we install to `$HOME/simics/` .  We will ext
 
 ```sh
 mkdir -p $HOME/simics/ispm/
-tar -C $HOME/simics/ispm --strip-components=1 -xvf $HOME/Downloads/ispm.tar.gz
+tar -C $HOME/simics/ispm --strip-components=1 -xf $HOME/Downloads/ispm.tar.gz
 ```
 
 Next, we add `$HOME/simics/ispm` to our `PATH` by adding a line to our `.bashrc` or
@@ -132,41 +131,21 @@ git clone https://github.com/intel/tsffs $HOME/simics/tsffs/
 cd $HOME/simics/tsffs/
 ```
 
-The first step to building `tsffs` is to initialize the repository as a SIMICS project
-so it is associated with your installed SIMICS packages.
+With the repository cloned, you can install and run the build utility:
 
 ```sh
-ispm projects $(pwd) --create --ignore-existing-files --non-interactive
+cargo install --path simics-rs/cargo-simics-build
+cargo simics-build -r
 ```
 
-Next, we run the `project-setup` script SIMICS installs into the repository for us to
-update the project.
-
-```sh
-bin/project-setup --force
-```
-
-Then, we will build the TSFFS package using the build script. This automates several
-steps for us:
-
-* Runs `make` twice to invoke `cargo` with the correct environment to build and generate
-  a signed shared object (module) to be loaded into SIMICS
-* Creates a `packages-spec.json` file from the TSFFS crate's contents
-* Creates module info for the packaging scripts
-* Creates a `.ispm` package that can be installed into the local SIMICS installation
-
-```sh
-./build.rs
-```
-
-This will produce a file `linux64/packages/simics-pkg-31337-VERSION-linux64.ispm`. We can
+This will produce a file `target/release/simics-pkg-31337-VERSION-linux64.ispm`. We can
 then install this package into our local SIMICS installation. This in turn allows us to
 add the TSFFS package to our SIMICS projects for use. Note the
 `--trust-insecure-packages` flag is required because this package is not built and
 signed by the SIMICS team, but by ourselves.
 
 ```sh
-ispm packages -i linux64/packages/*-linux64.ispm \
+ispm packages -i target/release/*-linux64.ispm \
     --non-interactive --trust-insecure-packages
 ```
 
@@ -193,7 +172,7 @@ ispm packages --list-installed --json | jq -r '[ .installedPackages[] | select(.
 On the author's system, for example, this prints:
 
 ```txt
-/home/YOUR_USERNAME/simics/simics-6.0.169
+/home/YOUR_USERNAME/simics/simics-6.0.185
 ```
 
 Add this path in the `[env]` section of `.cargo/config.toml` as the variable
@@ -202,13 +181,11 @@ would look like:
 
 ```toml
 [env]
-SIMICS_BASE = "/home/YOUR_USERNAME/simics/simics-6.0.169"
+SIMICS_BASE = "/home/YOUR_USERNAME/simics/simics-6.0.185"
 ```
 
 This lets `cargo` find your SIMICS installation, and it uses several fallback methods to
-find the SIMICS libraries to link with. Paths to the libraries are provided via the
-SIMICS Makefile system, which is used by the `./build.rs` script above, hence this step
-is only needed for local development.
+find the SIMICS libraries to link with.
 
 Finally, check that your configuration is correct by running:
 

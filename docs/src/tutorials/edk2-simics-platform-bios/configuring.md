@@ -98,10 +98,10 @@ do is add the harness macros to it and turn on the fuzzer.
 We'll use the breakpoint API to wait for the `DebugAssert` function in a loop. We do
 this instead of using the `$bp_num = bp.source_location.break DebugAssert` command and
 adding it to the fuzzer configuration with
-`@tsffs.iface.tsffs.add_breakpoint_solution(simenv.bp_num)` because the HAP for
+`@tsffs.breakpoints = [simenv.bp_num]` because the HAP for
 breakpoints does not trigger on breakpoints set on source locations in this way, so the
 fuzzer cannot intercept it. This is in contrast to breakpoints set with the following,
-which will work with the `add_breakpoint_solution` API:
+which will work with the `tsffs` API:
 
 ```simics
 $ctx = (new-context)
@@ -114,13 +114,12 @@ tutorials.
 
 ```simics
 load-module tsffs
-@tsffs = SIM_create_object(SIM_get_class("tsffs"), "tsffs", [])
+init-tsffs
 tsffs.log-level 4
-@tsffs.iface.tsffs.set_start_on_harness(True)
-@tsffs.iface.tsffs.set_stop_on_harness(True)
-@tsffs.iface.tsffs.set_timeout(3.0)
-@tsffs.iface.tsffs.add_exception_solution(13)
-@tsffs.iface.tsffs.add_exception_solution(14)
+@tsffs.start_on_harness = True
+@tsffs.stop_on_harness = True
+@tsffs.timeout = 3.0
+@tsffs.exceptions = [13, 14]
 
 load-module uefi-fw-tracker
 
@@ -136,7 +135,7 @@ script-branch {
     while 1 {
         bp.source_location.wait-for DebugAssert -x -error-not-planted
         echo "Got breakpoint"
-        @tsffs.iface.tsffs.solution(1, "DebugAssert")
+        @tsffs.iface.fuzz.solution(1, "DebugAssert")
     }
 }
 

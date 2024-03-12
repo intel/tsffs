@@ -1,0 +1,37 @@
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "simics-macro"
+version = "0.1.0"
+authors = ["Rowan Hart <rowan.hart@intel.com>"]
+edition = "2021"
+description = "Proc macros for building Intel Simics Simulator modules"
+documentation = ""
+readme = "../README.md"
+homepage = ""
+repository = ""
+license = "Apache-2.0"
+keywords = ["simics", "simulator", "intel", "x86", "risc", "modeling"]
+categories = [
+    "simulation",
+    "virtualization",
+    "hardware-support",
+    "api-bindings",
+    "emulators",
+]
+
+[lib]
+proc-macro = true
+
+[dependencies]
+simics-api-sys = { version = "0.1.0", path = "../simics-api-sys" }
+simics-sign = { version = "0.1.0", path = "../simics-sign" }
+ispm-wrapper = { version = "0.1.0", path = "../ispm-wrapper" }
+quote = "1.0.35"
+syn = { version = "2.0.50", features = ["full"] }
+proc-macro2 = "1.0.78"
+darling = "0.20.8"
+indoc = "2.0.4"
+command-ext = "0.1.2"
+chrono = "0.4.34"

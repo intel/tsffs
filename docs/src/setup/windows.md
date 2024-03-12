@@ -243,15 +243,14 @@ Clone TSFFS to your system (anywhere you like) and build with:
 ```powershell
 git clone https://github.com/intel/tsffs
 cd tsffs
-ispm.exe projects $(pwd) --create --non-interactive --ignore-existing-files
-./bin/project-setup.bat --mingw-dir C:\MinGW\ --force
-cargo -Zscript build.rs
+cargo install --path simics-rs/cargo-simics-build
+cargo simics-build -r
 ```
 
 Once built, install TSFFS to your SIMICS installation with:
 
 ```powershell
-ispm.exe packages -i win64/packages/*-win64.ispm --non-interactive --trust-insecure-packages
+ispm.exe packages -i target/release/*-win64.ispm --non-interactive --trust-insecure-packages
 ```
 
 ## Test TSFFS
@@ -264,11 +263,11 @@ disk, and the same fuzz script used in the Linux docker example in the
 mkdir $env:TEMP\TSFFS-Windows
 ispm.exe projects $env:TEMP\TSFFS-Windows\ --create
 cp examples\docker-example\fuzz.simics $env:TEMP\TSFFS-Windows\
-cp modules\tsffs\tests\targets\minimal-x86_64\* $env:TEMP\TSFFS-Windows\
-cp modules\tsffs\tests\rsrc\minimal_boot_disk.craff $env:TEMP\TSFFS-Windows\
+cp tests\rsrc\x86_64-uefi\* $env:TEMP\TSFFS-Windows\
+cp tests\rsrc\minimal_boot_disk.craff $env:TEMP\TSFFS-Windows\
 cp harness\tsffs-gcc-x86_64.h $env:TEMP\TSFFS-Windows\
 cd $env:TEMP\TSFFS-Windows
-./simics ./fuzz.simics
+./simics --no-win ./fuzz.simics
 ```
 
 ## Set Up For Local Development
@@ -291,7 +290,7 @@ ispm packages --list-installed --json | jq -r '[ .installedPackages[] | select(.
 On the author's system, for example, this prints:
 
 ```txt
-C:\Users\YOUR_USERNAME\simics\simics-6.0.169
+C:\Users\YOUR_USERNAME\simics\simics-6.0.185
 ```
 
 Add this path in the `[env]` section of `.cargo/config.toml` as the variable
@@ -300,13 +299,11 @@ would look like:
 
 ```toml
 [env]
-SIMICS_BASE = "C:\Users\YOUR_USERNAME\simics\simics-6.0.169"
+SIMICS_BASE = "C:\Users\YOUR_USERNAME\simics\simics-6.0.185"
 ```
 
 This lets `cargo` find your SIMICS installation, and it uses several fallback methods to
-find the SIMICS libraries to link with. Paths to the libraries are provided via the
-SIMICS Makefile system, which is used by the `./build.rs` script above, hence this step
-is only needed for local development.
+find the SIMICS libraries to link with.
 
 Finally, check that your configuration is correct by running:
 

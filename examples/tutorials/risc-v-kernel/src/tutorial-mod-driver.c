@@ -1,3 +1,6 @@
+// Copyright (C) 2024 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 #include <fcntl.h>
 #include <linux/ioctl.h>
 #include <stdio.h>

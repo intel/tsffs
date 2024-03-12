@@ -1,3 +1,6 @@
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
 # Read the start and stop addresses from the files containing them (see Dockerfile for
 # how they are generated)
 @simenv.start_addr = int(open("START_ADDRESS").read().strip(), 16)
@@ -5,15 +8,14 @@
 
 # Configure the fuzzer
 load-module tsffs
-@tsffs = SIM_create_object(SIM_get_class("tsffs"), "tsffs", [])
+init-tsffs
 @tsffs.log_level = 4
-@tsffs.iface.tsffs.set_start_on_harness(False)
-@tsffs.iface.tsffs.set_stop_on_harness(False)
-@tsffs.iface.tsffs.set_timeout(3.0)
-@tsffs.iface.tsffs.add_exception_solution(14)
-@tsffs.iface.tsffs.set_generate_random_corpus(True)
-@tsffs.iface.tsffs.set_use_snapshots(False)
-@tsffs.iface.tsffs.tokenize_executable("%simics%/test.efi")
+@tsffs.start_on_harness = False
+@tsffs.stop_on_harness = False
+@tsffs.timeout = 3.0
+@tsffs.exceptions += [14]
+@tsffs.set_generate_random_corpus = True
+@tsffs.token_executables += [SIM_lookup_file("%simics%/test.efi")]
 
 # load the target
 load-target "qsp-x86/uefi-shell" namespace = qsp machine:hardware:storage:disk0:image = "minimal_boot_disk.craff"
@@ -29,7 +31,7 @@ script-branch {
         echo "Got start BP"
         local $rdi = (qsp.mb.cpu0.core[0][0].read-reg reg-name = "rdi")
         echo ("Starting with buffer " + $rdi)
-        @tsffs.iface.tsffs.start_with_maximum_size(conf.qsp.mb.cpu0.core[0][0], simenv.rdi, 8)
+        @tsffs.iface.fuzz.start_with_maximum_size(conf.qsp.mb.cpu0.core[0][0], simenv.rdi, 8)
     }
 }
 
@@ -38,7 +40,7 @@ script-branch {
     while 1 {
         bp.wait-for-breakpoint id = $stop_bp
         echo "Got stop BP"
-        @tsffs.iface.tsffs.stop()
+        @tsffs.iface.fuzz.stop()
     }
 }
 

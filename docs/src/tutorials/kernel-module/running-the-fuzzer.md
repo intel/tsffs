@@ -30,13 +30,13 @@ the kernel module, using the default start/stop on harness.
 
 ```simics
 load-module tsffs
+init-tsffs
 
-@tsffs = SIM_create_object(SIM_get_class("tsffs"), "tsffs", [])
 tsffs.log-level 4
-@tsffs.iface.tsffs.set_start_on_harness(True)
-@tsffs.iface.tsffs.set_stop_on_harness(True)
-@tsffs.iface.tsffs.set_timeout(3.0)
-@tsffs.iface.tsffs.add_exception_solution(14)
+@tsffs.start_on_harness = True
+@tsffs.stop_on_harness = True
+@tsffs.timeout = 3.0
+@tsffs.exceptions = [14]
 
 load-target "risc-v-simple/linux" namespace = riscv machine:hardware:storage:disk1:image = "test.fs.craff"
 
@@ -71,17 +71,17 @@ To change harnesses, instead harnessing via the user-space
 driver program, the same target software should be used. Only the two lines:
 
 ```simics
-@tsffs.iface.tsffs.set_start_on_harness(True)
-@tsffs.iface.tsffs.set_stop_on_harness(True)
+@tsffs.start_on_harness = True
+@tsffs.stop_on_harness = True
 ```
 
 Should be changed to:
 
 ```simics
-@tsffs.iface.tsffs.set_start_on_harness(False)
-@tsffs.iface.tsffs.set_stop_on_harness(False)
-@tsffs.iface.tsffs.set_start_magic_number(4)
-@tsffs.iface.tsffs.set_stop_magic_number(5)
+@tsffs.start_on_harness = False
+@tsffs.stop_on_harness = False
+@tsffs.magic_start = 4
+@tsffs.magic_stop = 5
 ```
 
 You can run the script again -- this time, the fuzzing loop will instantiate in the

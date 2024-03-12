@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (C) 2023 Intel Corporation
+# Copyright (C) 2024 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 
 #Run workflows locally using act
@@ -79,6 +79,6 @@ ARTIFACT_DIR=$(mktemp -d)
 populate_env_file "${ENV_FILE}"
 mkdir -p "${SCRIPT_DIR}/../.github/logs/"
 unbuffer act -W "${WORKFLOW_FILE}" --env-file="${ENV_FILE}" --secret-file="${SECRETS_FILE}" \
-    --artifact-server-path "${ARTIFACT_DIR}" \
+    --artifact-server-path "${ARTIFACT_DIR}" --artifact-server-addr "0.0.0.0" \
     "$@" | tee "${SCRIPT_DIR}/../.github/logs/$(date '+%F-%T').log"
 rm "${ENV_FILE}"

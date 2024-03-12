@@ -28,10 +28,10 @@ First, you'll need to install ISPM. External users can install it from the publi
 release:
 
 ```sh
-curl --noproxy -L -o $HOME/Downloads/ispm.tar.gz \
-    "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/881ee76a-c24d-41c0-af13-5d89b2a857ff/intel-simics-package-manager-1.7.5-linux64.tar.gz"
+curl --noproxy '*.intel.com' -L -o $HOME/Downloads/ispm.tar.gz \
+    "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/intel-simics-package-manager-1.8.3-linux64.tar.gz"
 mkdir -p $HOME/simics/ispm/
-tar -C $HOME/simics/ispm --strip-components=1 -xvf $HOME/Downloads/ispm.tar.gz
+tar -C $HOME/simics/ispm --strip-components=1 -xf $HOME/Downloads/ispm.tar.gz
 ```
 
 Next, we add `$HOME/simics/ispm` to our `PATH` by adding a line to our `.bashrc` or
@@ -57,8 +57,6 @@ ISPM is installed. You can check that it is installed and working with:
 ```sh
 ispm --version
 ```
-
-
 
 ### Build and Install TSFFS
 

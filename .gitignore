@@ -18,6 +18,7 @@ compiler.mk
 *.project-setup.new
 documentation
 !documentation/
+*.log
 
 
 .cargo/

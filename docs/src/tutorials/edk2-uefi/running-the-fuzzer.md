@@ -4,7 +4,7 @@ Now that we have configured the fuzzer and harnessed our target application, it'
 to run again:
 
 ```sh
-./simics -no-gui --no-win run.simics
+./simics --no-win run.simics
 ```
 
 Press Ctrl+C at any time to stop the fuzzing process and return to the SIMICS CLI.

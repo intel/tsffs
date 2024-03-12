@@ -1,0 +1,29 @@
+# Copyright (C) 2023 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "hello-world"
+version = "0.1.0"
+authors = ["Rowan Hart <rowan.hart@intel.com>"]
+edition = "2021"
+description = "A simple module demonstrating the Intel Simics Simulator API"
+documentation = ""
+readme = "../README.md"
+homepage = ""
+repository = ""
+license = "Apache-2.0"
+keywords = ["simics", "simulator", "intel", "x86", "risc", "modeling"]
+categories = [
+    "simulation",
+    "virtualization",
+    "hardware-support",
+    "api-bindings",
+    "emulators",
+]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+simics = { version = "0.1.0", path = "../../../simics" }
+ffi = "0.1.1"

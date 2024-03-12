@@ -9,17 +9,24 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  PUBLIC_SIMICS_PKGS_URL: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/881ee76a-c24d-41c0-af13-5d89b2a857ff/simics-6-packages-2023-31-linux64.ispm"
-  PUBLIC_SIMICS_ISPM_URL: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/881ee76a-c24d-41c0-af13-5d89b2a857ff/intel-simics-package-manager-1.7.5-linux64.tar.gz"
-  PUBLIC_SIMICS_PKGS_URL_WINDOWS: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/881ee76a-c24d-41c0-af13-5d89b2a857ff/simics-6-packages-2023-31-win64.ispm"
-  PUBLIC_SIMICS_ISPM_URL_WINDOWS: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/881ee76a-c24d-41c0-af13-5d89b2a857ff/intel-simics-package-manager-1.7.5-win64.exe"
-  PUBLIC_SIMICS_PACKAGE_VERSION_1000: "6.0.169"
+  CFE_URL: "https://releases.llvm.org/5.0.2/cfe-5.0.2.src.tar.xz"
+  LLVM_SRC_URL: "https://releases.llvm.org/5.0.2/llvm-5.0.2.src.tar.xz"
+  MAKE_SRC_URL: "https://ftp.gnu.org/gnu/make/make-4.4.1.tar.gz"
+  RUSTUP_INIT_URL: "https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init"
+  CMAKE_URL: "https://github.com/Kitware/CMake/releases/download/v3.28.0-rc5/cmake-3.28.0-rc5-linux-x86_64.tar.gz"
+  PUBLIC_SIMICS_PKGS_URL_WINDOWS: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/simics-6-packages-2024-05-win64.ispm"
+  # NOTE: We use the old ISPM because there is something wrong with 1.8.3 with unattended installation
+  # PUBLIC_SIMICS_ISPM_URL_WINDOWS: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/881ee76a-c24d-41c0-af13-5d89b2a857ff/intel-simics-package-manager-1.7.5-win64.exe"
+  PUBLIC_SIMICS_ISPM_URL_WINDOWS: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/intel-simics-package-manager-1.8.3-win64.exe"
+  PUBLIC_SIMICS_PKGS_URL: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/simics-6-packages-2024-05-linux64.ispm"
+  PUBLIC_SIMICS_ISPM_URL: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/intel-simics-package-manager-1.8.3-linux64.tar.gz"
+  PUBLIC_SIMICS_PACKAGE_VERSION_1000: "6.0.185"
+  PUBLIC_SIMICS_ISPM_VERSION: "1.8.3"
   MINGW_URL: "https://github.com/brechtsanders/winlibs_mingw/releases/download/13.2.0-16.0.6-11.0.0-ucrt-r1/winlibs-x86_64-posix-seh-gcc-13.2.0-llvm-16.0.6-mingw-w64ucrt-11.0.0-r1.7z"
   MINGW_VERSION: "13.2.0-16.0.6-11.0.0-ucrt-r1"
 
 jobs:
-  build_test_artifacts:
-    name: Build Test Artifacts
+  cache_craff:
     runs-on: ubuntu-latest
     steps:
       - name: Add ISPM to PATH
@@ -35,10 +42,10 @@ jobs:
 
       - name: Cache SIMICS Dependencies
         id: cache-simics-packages
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/simics
-          key: simics-linux-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
+          key: simics-linux-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}-${{ env.PUBLIC_SIMICS_ISPM_VERSION }}
 
       - name: Install SIMICS (External)
         if: ${{ steps.cache-simics-packages.outputs.cache-hit != 'true' }}
@@ -61,34 +68,294 @@ jobs:
           ispm packages --install-bundle "${HOME}/simics/simics.ispm" \
               --non-interactive --trust-insecure-packages
 
+      - name: Copy CRAFF Utilities
+        run: |
+          mkdir bin && \
+          cp "${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}/linux64/bin/craff" bin/craff && \
+          cp "${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}/linux64/bin/craff-fs" bin/craff-fs && \
+          rm -rf "${HOME}/simics/"
+
+      - name: Upload Test Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: craff-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
+          path: bin/
+
+  build_test_artifacts_riscv_64:
+    name: Build Test Artifacts (RISCV-64)
+    runs-on: ubuntu-latest
+    needs: cache_craff
+    steps:
+      - name: Install Dependencies
+        run: |
+          sudo apt-get -y update && \
+          sudo apt-get -y install \
+            clang libclang-dev cmake curl dosfstools g++ gcc git llvm make \
+            mtools ninja-build openssl libssl-dev python3 python3-pip lld
+
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Download Craff
+        uses: actions/download-artifact@v4
+        with:
+          name: craff-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
+          path: bin/
+
+      - name: Make Craff Executable
+        run: |
+          chmod 755 bin/*
+          chmod +x bin/*
+
+      - name: Cache Test Artifacts
+        id: cache-test-artifacts-riscv-64
+        uses: actions/cache@v4
+        with:
+          path: tests/rsrc/riscv-64/
+          key: cache-test-artifacts-${{ hashFiles('tests/rsrc/riscv-64/**/*') }}
+
+      - name: Build Test Artifacts
+        if: ${{ steps.cache-test-artifacts-riscv-64.outputs.cache-hit != 'true' }}
+        run: |
+          cd tests/rsrc/riscv-64
+          ./build.sh
+
+      - name: Upload Test Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-artifacts-riscv-64
+          path: tests/rsrc/riscv-64
+
+  build_test_artifacts_x86_64_breakpoint_uefi_edk2:
+    name: Build Test Artifacts (x86_64 Breakpoints UEFI EDK2)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Dependencies
+        run: |
+          sudo apt-get -y update && \
+          sudo apt-get -y install \
+            clang libclang-dev cmake curl dosfstools g++ gcc git llvm make \
+            mtools ninja-build openssl libssl-dev python3 python3-pip lld
+
       - uses: actions/checkout@v4
         with:
           lfs: true
 
       - name: Cache Test Artifacts
-        id: cache-test-artifacts
-        uses: actions/cache@v3
+        id: cache-test-artifacts-x86_64-breakpoint-uefi-edk2
+        uses: actions/cache@v4
         with:
-          path: examples/tests
-          key: cache-test-artifacts-${{ hashFiles('examples/tests/**/*') }}
+          path: tests/rsrc/x86_64-breakpoint-uefi-edk2
+          key: cache-test-artifacts-${{ hashFiles('tests/rsrc/x86_64-breakpoint-uefi-edk2/**/*') }}
 
       - name: Build Test Artifacts
-        if: ${{ steps.cache-test-artifacts.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-test-artifacts-x86_64-breakpoint-uefi-edk2.outputs.cache-hit != 'true' }}
         run: |
-          cd examples/tests/
+          cd tests/rsrc/x86_64-breakpoint-uefi-edk2
           ./build.sh
 
       - name: Upload Test Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: test-artifacts
-          path: examples/tests/
+          name: test-artifacts-x86_64-breakpoint-uefi-edk2
+          path: tests/rsrc/x86_64-breakpoint-uefi-edk2
+
+  build_test_artifacts_x86_64_crash-uefi:
+    name: Build Test Artifacts (x86_64 Crash UEFI)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Dependencies
+        run: |
+          sudo apt-get -y update && \
+          sudo apt-get -y install \
+            clang libclang-dev cmake curl dosfstools g++ gcc git llvm make \
+            mtools ninja-build openssl libssl-dev python3 python3-pip lld
+
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Cache Test Artifacts
+        id: cache-test-artifacts-x86_64-crash-uefi
+        uses: actions/cache@v4
+        with:
+          path: tests/rsrc/x86_64-crash-uefi
+          key: cache-test-artifacts-${{ hashFiles('tests/rsrc/x86_64-crash-uefi/**/*') }}
+
+      - name: Build Test Artifacts
+        if: ${{ steps.cache-test-artifacts-x86_64-crash-uefi.outputs.cache-hit != 'true' }}
+        run: |
+          cd tests/rsrc/x86_64-crash-uefi
+          ./build.sh
+
+      - name: Upload Test Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-artifacts-x86_64-crash-uefi
+          path: tests/rsrc/x86_64-crash-uefi
+
+  build_test_artifacts_x86_64_timeout_uefi_edk2:
+    name: Build Test Artifacts (x86_64 Timeout UEFI EDK2)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Dependencies
+        run: |
+          sudo apt-get -y update && \
+          sudo apt-get -y install \
+            clang libclang-dev cmake curl dosfstools g++ gcc git llvm make \
+            mtools ninja-build openssl libssl-dev python3 python3-pip lld
+
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Cache Test Artifacts
+        id: cache-test-artifacts-x86_64-timeout-uefi-edk2
+        uses: actions/cache@v4
+        with:
+          path: tests/rsrc/x86_64-timeout-uefi-edk2
+          key: cache-test-artifacts-${{ hashFiles('tests/rsrc/x86_64-timeout-uefi-edk2/**/*') }}
+
+      - name: Build Test Artifacts
+        if: ${{ steps.cache-test-artifacts-x86_64-timeout-uefi-edk2.outputs.cache-hit != 'true' }}
+        run: |
+          cd tests/rsrc/x86_64-timeout-uefi-edk2
+          ./build.sh
+
+      - name: Upload Test Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-artifacts-x86_64-timeout-uefi-edk2
+          path: tests/rsrc/x86_64-timeout-uefi-edk2
+
+  build_test_artifacts_x86_64_uefi:
+    name: Build Test Artifacts (x86_64 UEFI)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Dependencies
+        run: |
+          sudo apt-get -y update && \
+          sudo apt-get -y install \
+            clang libclang-dev cmake curl dosfstools g++ gcc git llvm make \
+            mtools ninja-build openssl libssl-dev python3 python3-pip lld
+
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Cache Test Artifacts
+        id: cache-test-artifacts-x86_64-uefi
+        uses: actions/cache@v4
+        with:
+          path: tests/rsrc/x86_64-uefi
+          key: cache-test-artifacts-${{ hashFiles('tests/rsrc/x86_64-uefi/**/*') }}
+
+      - name: Build Test Artifacts
+        if: ${{ steps.cache-test-artifacts-x86_64-uefi.outputs.cache-hit != 'true' }}
+        run: |
+          cd tests/rsrc/x86_64-uefi
+          ./build.sh
+
+      - name: Upload Test Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-artifacts-x86_64-uefi
+          path: tests/rsrc/x86_64-uefi
+
+  build_test_artifacts_x86_64_uefi_edk2:
+    name: Build Test Artifacts (x86_64 UEFI EDK2)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Dependencies
+        run: |
+          sudo apt-get -y update && \
+          sudo apt-get -y install \
+            clang libclang-dev cmake curl dosfstools g++ gcc git llvm make \
+            mtools ninja-build openssl libssl-dev python3 python3-pip lld
+
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Cache Test Artifacts
+        id: cache-test-artifacts-x86_64-uefi-edk2
+        uses: actions/cache@v4
+        with:
+          path: tests/rsrc/x86_64-uefi-edk2
+          key: cache-test-artifacts-${{ hashFiles('tests/rsrc/x86_64-uefi-edk2/**/*') }}
+
+      - name: Build Test Artifacts
+        if: ${{ steps.cache-test-artifacts-x86_64-uefi-edk2.outputs.cache-hit != 'true' }}
+        run: |
+          cd tests/rsrc/x86_64-uefi-edk2
+          ./build.sh
+
+      - name: Upload Test Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-artifacts-x86_64-uefi-edk2
+          path: tests/rsrc/x86_64-uefi-edk2
+
+  build_test_artifacts_x86_user:
+    name: Build Test Artifacts (x86)
+    runs-on: ubuntu-latest
+    needs: cache_craff
+    steps:
+      - name: Install Dependencies
+        run: |
+          sudo apt-get -y update && \
+          sudo apt-get -y install \
+            clang libclang-dev cmake curl dosfstools g++ gcc git llvm make \
+            mtools ninja-build openssl libssl-dev python3 python3-pip lld \
+            build-essential gcc-multilib
+
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Download Craff
+        uses: actions/download-artifact@v4
+        with:
+          name: craff-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
+          path: bin/
+
+      - name: Make Craff Executable
+        run: |
+          chmod 755 bin/*
+          chmod +x bin/*
+
+      - name: Cache Test Artifacts
+        id: cache-test-artifacts-x86-user
+        uses: actions/cache@v4
+        with:
+          path: tests/rsrc/x86-user/
+          key: cache-test-artifacts-${{ hashFiles('tests/rsrc/x86-user/**/*') }}
+
+      - name: Build Test Artifacts
+        if: ${{ steps.cache-test-artifacts-x86-user.outputs.cache-hit != 'true' }}
+        run: |
+          cd tests/rsrc/x86-user
+          ./build.sh
+
+      - name: Upload Test Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-artifacts-x86-user
+          path: tests/rsrc/x86-user
 
   build_and_test:
     name: Build and Test (Linux)
     container: fedora:38
     runs-on: ubuntu-latest
-    needs: build_test_artifacts
+    needs:
+      - build_test_artifacts_riscv_64
+      - build_test_artifacts_x86_64_breakpoint_uefi_edk2
+      - build_test_artifacts_x86_64_crash-uefi
+      - build_test_artifacts_x86_64_timeout_uefi_edk2
+      - build_test_artifacts_x86_64_uefi
+      - build_test_artifacts_x86_64_uefi_edk2
+      - build_test_artifacts_x86_user
     steps:
       - name: Add ISPM to PATH
         run: |
@@ -111,19 +378,55 @@ jobs:
 
       - name: Delete Un-Built Test Dependencies
         run: |
-          rm -rf examples/tests/
+          rm -rf tests/rsrc/
 
-      - name: Download Test Dependencies
-        uses: actions/download-artifact@v3
+      - name: Download Test Artifacts (RISCV-64)
+        uses: actions/download-artifact@v4
         with:
-          name: test-artifacts
-          path: examples/tests/
+          name: test-artifacts-riscv-64
+          path: tests/rsrc/riscv-64
+
+      - name: Download Test Artifacts (x86_64 Breakpoints UEFI EDK2)
+        uses: actions/download-artifact@v4
+        with:
+          name: test-artifacts-x86_64-breakpoint-uefi-edk2
+          path: tests/rsrc/x86_64-breakpoint-uefi-edk2
+
+      - name: Download Test Artifacts (x86_64 Timeout UEFI EDK2)
+        uses: actions/download-artifact@v4
+        with:
+          name: test-artifacts-x86_64-crash-uefi
+          path: tests/rsrc/x86_64-crash-uefi
+
+      - name: Download Test Artifacts (x86_64 Timeout UEFI EDK2)
+        uses: actions/download-artifact@v4
+        with:
+          name: test-artifacts-x86_64-timeout-uefi-edk2
+          path: tests/rsrc/x86_64-timeout-uefi-edk2
+
+      - name: Download Test Artifacts (x86_64 UEFI)
+        uses: actions/download-artifact@v4
+        with:
+          name: test-artifacts-x86_64-uefi
+          path: tests/rsrc/x86_64-uefi
+
+      - name: Download Test Artifacts (x86_64 UEFI EDK2)
+        uses: actions/download-artifact@v4
+        with:
+          name: test-artifacts-x86_64-uefi-edk2
+          path: tests/rsrc/x86_64-uefi-edk2
+
+      - name: Download Test Artifacts (x86)
+        uses: actions/download-artifact@v4
+        with:
+          name: test-artifacts-x86-user
+          path: tests/rsrc/x86-user
 
       - name: Take Ownership of Test Dependencies
         run: |
-          ls -lahR examples/tests/
-          chown -R "${USER}:${USER}" examples/tests/
-          chmod -R 0755 examples/tests/
+          ls -lahR tests/rsrc/
+          chown -R "${USER}:${USER}" tests/rsrc/
+          chmod -R 0755 tests/rsrc/
 
       - uses: dtolnay/rust-toolchain@nightly
         with:
@@ -132,18 +435,18 @@ jobs:
 
       - name: Cache SIMICS Dependencies
         id: cache-simics-packages
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/simics
-          key: simics-linux-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
+          key: simics-linux-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}-${{ env.PUBLIC_SIMICS_ISPM_VERSION }}
 
       - name: Install SIMICS (External)
         if: ${{ steps.cache-simics-packages.outputs.cache-hit != 'true' }}
         run: |
           mkdir -p "${HOME}/simics/ispm/" && \
-          curl --noproxy -L -o "${HOME}/simics/ispm.tar.gz" \
+          curl -L -o "${HOME}/simics/ispm.tar.gz" \
               "${{ env.PUBLIC_SIMICS_ISPM_URL }}" && \
-          curl --noproxy -L -o "${HOME}/simics/simics.ispm" \
+          curl -L -o "${HOME}/simics/simics.ispm" \
               "${{ env.PUBLIC_SIMICS_PKGS_URL }}" && \
           tar -C "${HOME}/simics/ispm" --strip-components=1 \
               -xvf "${HOME}/simics/ispm.tar.gz"
@@ -158,46 +461,28 @@ jobs:
           ispm packages --install-bundle "${HOME}/simics/simics.ispm" \
               --non-interactive --trust-insecure-packages
 
-      - name: Build and Install TSFFS SIMICS Package
+      - name: Install SIMICS Build
         run: |
-          ispm projects "$(pwd)" --create --ignore-existing-files \
-            --non-interactive
-          bin/project-setup --force
-          ./build.rs
-          ispm packages \
-            -i linux64/packages/simics-pkg-31337-*-linux64.ispm \
-            --non-interactive --trust-insecure-packages
+          cargo install --path simics-rs/cargo-simics-build
 
-      - name: Build Project
+      - name: Build TSFFS Package
         run: |
-          SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo build
+          cargo simics-build -r
 
       - name: CT39 - Clippy Check Project
         run: |
-          SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo clippy \
+          cargo clippy \
             || ( echo "❗ [CT39 (1/2)] Failed clippy static analysis checks" && exit 1 )
           echo "✅ [CT39 (1/2)] Passed clippy static analysis checks"
 
       - name: Test Project
         run: |
-          TSFFS_TEST_CLEANUP_EACH=1 SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo test -p raw-cstr -p version-tools -p tests -- --nocapture || ( echo "❗ Tests failed" && exit 1 )
+          SIMICS_TEST_CLEANUP_EACH=1 SIMICS_TEST_LOCAL_PACKAGES_ONLY=1 cargo test --no-fail-fast -r || ( echo "❗ Tests failed" && exit 1 )
           echo "✅ Tests passed"
 
       - name: Build Docs
         run: |
-          SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo doc --workspace --no-deps
-
-      - name: Test Docs
-        run: |
-          SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} cargo test --doc
-
-      - name: CT39 - MIRI Check Project
-        run: |
-          SIMICS_BASE=${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }} \
-          MIRIFLAGS="-Zmiri-backtrace=full -Zmiri-disable-isolation -Zmiri-panic-on-unsupported" \
-            cargo miri test -p raw-cstr -p version-tools \
-            || ( echo "❗ [CT39 (2/2)] Failed MIRI static analysis checks" && exit 1 )
-          echo "✅ [CT39 (2/2)] Passed MIRI static analysis checks"
+          cargo doc --workspace --no-deps
 
   build_windows:
     name: Build and Test (Windows)
@@ -213,7 +498,7 @@ jobs:
 
       - name: Cache MinGW
         id: cache-mingw
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: C:\MinGW\
           key: mingw-${{ env.MINGW_VERSION }}
@@ -221,35 +506,44 @@ jobs:
       - name: Download and Extract MinGW-w64
         if: ${{ steps.cache-mingw.outputs.cache-hit != 'true' }}
         run: |
+          $ProgressPreference = 'SilentlyContinue'
+          echo "Downloading MinGW"
           Invoke-WebRequest -URI ${{ env.MINGW_URL }} -OutFile mingw.7z
+          echo "Downloaded MinGW. Extracting MinGW."
           7z x mingw.7z -oC:\mingw-w64\
+          echo "Extracted MinGW."
           mv C:\mingw-w64\mingw64\ C:\MinGW\
 
       - name: Download and Install Rust
         run: |
-          Invoke-WebRequest -URI https://win.rustup.rs/x86_64 -o C:\rustup-init.exe
+          $ProgressPreference = 'SilentlyContinue'
+          echo "Downloading Rustup"
+          Invoke-WebRequest -URI https://win.rustup.rs/x86_64 -OutFile C:\rustup-init.exe
+          echo "Installing Rust"
           C:\rustup-init.exe --default-toolchain nightly --default-host x86_64-pc-windows-gnu -y
 
       - name: Cache SIMICS
         id: cache-simics-packages-windows
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             C:\ISPM\
             C:\SIMICS\
-          key: simics-windows-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
+          key: simics-windows-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}-${{ env.PUBLIC_SIMICS_ISPM_VERSION }}
 
       # ispm-installer.exe is a NSIS installer for the elctron build. We want the
-      # default options, so we pass /S to install silently:
+      # default options, so we pass /S to install silently and /D to change directory.
+      # NOTE that the argument to /D must never contain quotes!:
       # https://nsis.sourceforge.io/Docs/Chapter3.html#installerusage
       #
       # NOTE: We use | Out-Null on the installer command to make powershell wait for it
       # to actually finish instead of forking it to the background
       - name: Download and Install ISPM
+        shell: powershell
         if: ${{ steps.cache-simics-packages-windows.outputs.cache-hit != 'true' }}
         run: |
-          Invoke-WebRequest -URI ${{ env.PUBLIC_SIMICS_ISPM_URL_WINDOWS }} -o C:\ispm-installer.exe
-          C:\ispm-installer.exe /S /D='C:\ISPM\' | Out-Null
+          Invoke-WebRequest -URI ${{ env.PUBLIC_SIMICS_ISPM_URL_WINDOWS }} -OutFile C:\ispm-installer.exe
+          C:\ispm-installer.exe /S /D=C:\ISPM\ | Out-Null
 
       - name: Set SIMICS Install Directory
         run: |
@@ -258,8 +552,12 @@ jobs:
       - name: Download and Install SIMICS Packages
         if: ${{ steps.cache-simics-packages-windows.outputs.cache-hit != 'true' }}
         run: |
-          Invoke-WebRequest -URI ${{ env.PUBLIC_SIMICS_PKGS_URL_WINDOWS }} -o C:\simics-6-packages.ispm
+          $ProgressPreference = 'SilentlyContinue'
+          echo "Downloading Simics 6 Packages"
+          Invoke-WebRequest -URI ${{ env.PUBLIC_SIMICS_PKGS_URL_WINDOWS }} -OutFile C:\simics-6-packages.ispm
+          echo "Installing ISPM packages"
           ispm.exe packages --install-bundle C:\simics-6-packages.ispm --non-interactive --trust-insecure-packages
+          echo "Installed ISPM packages"
 
       - uses: actions/checkout@v4
         with:
@@ -267,15 +565,14 @@ jobs:
 
       - name: Setup, Build, and Install TSFFS
         run: |
-          ispm.exe projects $(pwd) --create --non-interactive --ignore-existing-files
-          ./bin/project-setup.bat --mingw-dir C:\MinGW\ --ignore-existing-files --force
-          cargo -Zscript build.rs
+          cargo install --path simics-rs/cargo-simics-build
+          cargo simics-build -r
 
       - name: Upload Distribution Package
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: simics-pkg-31337-win64
-          path: win64/packages/simics-pkg-31337-*-win64.ispm
+          path: target/release/simics-pkg-31337-*-win64.ispm
 
   build_dist:
     name: Build for Distribution
@@ -287,7 +584,7 @@ jobs:
 
       - name: Cache Builder Dependencies
         id: cache-builder-dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: .github/builder/rsrc
           key: "cache-builder-dependencies-${{ env.PUBLIC_SIMICS_ISPM_URL}}-${{env.PUBLIC_SIMICS_PKGS_URL }}"
@@ -300,63 +597,27 @@ jobs:
               "${{ env.PUBLIC_SIMICS_ISPM_URL }}" && \
           curl -L -o .github/builder/rsrc/simics.ispm \
               "${{ env.PUBLIC_SIMICS_PKGS_URL }}"
+          curl -L -o .github/builder/rsrc/cfe-5.0.2.src.tar.xz \
+              "${{ env.CFE_URL }}"
+          curl -L -o .github/builder/rsrc/llvm-5.0.2.src.tar.xz \
+              "${{ env.LLVM_SRC_URL }}"
+          curl -L -o .github/builder/rsrc/make-4.4.1.tar.gz \
+              "${{ env.MAKE_SRC_URL }}"
+          curl -L -o .github/builder/rsrc/rustup-init \
+              "${RUSTUP_INIT_URL}"
+          chmod +x .github/builder/rsrc/rustup-init
+          curl -L -o .github/builder/rsrc/cmake-3.28.0-rc5-linux-x86_64.tar.gz \
+              "${CMAKE_URL}"
 
       - name: Build Distribution Package
         run: |
           docker build -t tsffs-dist -f .github/builder/Dockerfile .
           docker create --name tsffs-dist tsffs-dist bash
-          docker cp tsffs-dist:/tsffs/linux64/packages/ packages/
+          docker cp tsffs-dist:/packages .
           docker rm -f tsffs-dist
 
       - name: Upload Distribution Package
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: simics-pkg-31337-linux64
           path: packages/simics-pkg-31337-*-linux64.ispm
-
-  fuzz_tests:
-    name: Run Fuzz Tests
-    container: fedora:38
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install Dependencies
-        run: |
-          dnf -y update && \
-          dnf -y install \
-            alsa-lib atk clang clang-libs clang-resource-filesystem \
-            clang-tools-extra cmake cups curl dosfstools g++ gcc git \
-            git-lfs glibc-devel glibc-devel.i686 glibc-static \
-            glibc-static.i686 gtk3 lld lld-devel lld-libs llvm llvm-libs \
-            llvm-static make mesa-libgbm mtools ninja-build openssl \
-            openssl-devel openssl-libs python3 python3-pip yamllint
-
-      - uses: actions/checkout@v4
-        with:
-          lfs: true
-
-      - uses: dtolnay/rust-toolchain@nightly
-        with:
-          toolchain: nightly
-          components: rustfmt,clippy,miri
-
-      - name: Install Cargo-Fuzz
-        run: |
-          cargo install cargo-fuzz
-      - name: CT632 (E/C) - Perform fuzz testing
-        run: |
-          cd modules/tsffs/src/util/version-tools
-
-          cargo fuzz build
-
-          timeout --preserve-status 600 cargo fuzz run \
-            fuzz_version_constraint_parse || exit 0
-
-          echo "Done fuzzing!"
-
-          if [ -d ./fuzz/artifacts ]; then
-            if find ./fuzz/artifacts -mindepth 1 -maxdepth 1 2> /dev/null | read -r; then
-              echo "❗ [CT632] Fuzz test found an issue"
-              exit 1
-            fi
-          fi
-          cd ../../../../../
