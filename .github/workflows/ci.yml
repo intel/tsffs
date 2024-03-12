@@ -14,6 +14,7 @@ env:
   MAKE_SRC_URL: "https://ftp.gnu.org/gnu/make/make-4.4.1.tar.gz"
   RUSTUP_INIT_URL: "https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init"
   CMAKE_URL: "https://github.com/Kitware/CMake/releases/download/v3.28.0-rc5/cmake-3.28.0-rc5-linux-x86_64.tar.gz"
+  PATCHELF_URL: "https://github.com/NixOS/patchelf/releases/download/0.18.0/patchelf-0.18.0-x86_64.tar.gz"
   PUBLIC_SIMICS_PKGS_URL_WINDOWS: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/simics-6-packages-2024-05-win64.ispm"
   # NOTE: We use the old ISPM because there is something wrong with 1.8.3 with unattended installation
   # PUBLIC_SIMICS_ISPM_URL_WINDOWS: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/881ee76a-c24d-41c0-af13-5d89b2a857ff/intel-simics-package-manager-1.7.5-win64.exe"
@@ -587,7 +588,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .github/builder/rsrc
-          key: "cache-builder-dependencies-${{ env.PUBLIC_SIMICS_ISPM_URL}}-${{env.PUBLIC_SIMICS_PKGS_URL }}"
+          key: "cache-builder-dependencies-${{ env.PUBLIC_SIMICS_ISPM_URL}}-${{env.PUBLIC_SIMICS_PKGS_URL }}-${{ env.CFE_URL }}-${{ env.LLVM_SRC_URL }}-${{ env.MAKE_SRC_URL }}-${{ env.RUSTUP_INIT_URL }}-${{ env.CMAKE_URL }}"
 
       - name: Download Builder Dependencies
         if: ${{ steps.cache-builder-dependencies.outputs.cache-hit != 'true' }}
@@ -604,10 +605,12 @@ jobs:
           curl -L -o .github/builder/rsrc/make-4.4.1.tar.gz \
               "${{ env.MAKE_SRC_URL }}"
           curl -L -o .github/builder/rsrc/rustup-init \
-              "${RUSTUP_INIT_URL}"
+              "${{ env.RUSTUP_INIT_URL }}"
           chmod +x .github/builder/rsrc/rustup-init
           curl -L -o .github/builder/rsrc/cmake-3.28.0-rc5-linux-x86_64.tar.gz \
-              "${CMAKE_URL}"
+              "${{ env.CMAKE_URL }}"
+          curl -L -o .github/builder/rsrc/patchelf-0.18.0-x86_64.tar.gz \
+              "${{ env.PATCHELF_URL}}"
 
       - name: Build Distribution Package
         run: |
