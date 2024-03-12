@@ -244,8 +244,6 @@ impl App {
                 Command::new("patchelf")
                     .arg("--print-needed")
                     .arg(&signed_module_cdylib)
-                    .print_args()
-                    .print_current_dir()
                     .check()?
                     .stdout,
             )?

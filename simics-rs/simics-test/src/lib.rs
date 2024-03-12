@@ -411,6 +411,7 @@ impl TestEnv {
                 simics_build: SimicsBuildCmd::SimicsBuild {
                     args: install_args,
                     simics_base: Some(Self::simics_base_dir(&simics_home_dir)?),
+                    with_patchelf: false,
                 },
             };
 
