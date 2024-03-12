@@ -35,33 +35,47 @@
 /// Magic value defined by SIMICS as the "leaf" value of a CPUID instruction
 /// that is treated as a magic instruction.
 #define MAGIC (0x4711U)
-/// Default magic instruction `n` value to signal the TSFFS fuzzer to start the
-/// fuzzing loop
-#define MAGIC_START (0x0001U)
-/// Default magic instruction `n` value to signal the TSFFS fuzzer to stop and
-/// reset the fuzzing loop
-#define MAGIC_STOP (0x0002U)
-/// Default magic instruction `n` value to signal the TSFFS fuzzer that an error
-/// has occurred and the testcase input should be saved as a solution
-#define MAGIC_ASSERT (0x0003U)
 
-/// Alternative magic numbers that can be used for start and stop events in
-/// conjunction with setting the magic number for each event via the SIMICS or
-/// SIMICS Python script interface
-#define MAGIC_ALT_0 (0x0004U)
-#define MAGIC_ALT_1 (0x0005U)
-#define MAGIC_ALT_2 (0x0006U)
-#define MAGIC_ALT_3 (0x0007U)
-#define MAGIC_ALT_4 (0x0008U)
-#define MAGIC_ALT_5 (0x0009U)
-#define MAGIC_ALT_6 (0x000aU)
-#define MAGIC_ALT_7 (0x000bU)
+/// Pseudo-hypercall number to signal the fuzzer to use the first argument to
+/// the magic instruction as the pointer to the testcase buffer and the second
+/// argument as a pointer to the size of the testcase buffer.
+#define START_BUFFER_PTR_SIZE_PTR (0x0001U)
 
-/// Invoke the magic instruction defined by SIMICS for the x86-64 architecture
-/// (`cpuid`) with a specific value of `n`, after setting register `rdi` to the
-/// value of the pointer to the testcase and register `rsi` to the value of the
-/// pointer to the testcase size. These registers are accessed by the fuzzer and
-/// are defined per-architecture.
+/// Pseudo-hypercall number to signal the fuzzer to use the first argument to
+/// the magic instruction as the pointer to the testcase buffer and the second
+/// argument as the maximum size of the testcase buffer.
+#define START_BUFFER_PTR_SIZE_VAL (0x0002U)
+
+/// Pseudo-hypercall number to signal the fuzzer to use the first argument to
+/// the magic instruction as the pointer to the testcase buffer, the second
+/// argument as a pointer to the size of the testcase buffer, and the third
+/// argument as the maximum size of the testcase buffer.
+#define START_BUFFER_PTR_SIZE_PTR_VAL (0x0003U)
+
+/// Pseudo-hypercall number to signal the fuzzer to stop the current fuzzing
+/// iteration and reset to the beginning of the fuzzing loop with a "normal"
+/// stop status, indicating no solution has occurred.
+#define STOP_NORMAL (0x0004U)
+
+/// Pseudo-hypercall number to signal the fuzzer that a custom assertion has
+/// occurred, and the fuzzer should stop the current fuzzing iteration and reset
+/// to the beginning of the fuzzing loop with a "solution" stop status.
+#define STOP_ASSERT (0x0005U)
+
+/// __cpuid
+///
+/// Invoke the CPUID instruction with a specific value in register `rax`.
+#define __cpuid(value)                         \
+  unsigned int _a __attribute__((unused)) = 0; \
+  __asm__ __volatile__("cpuid\n\t"             \
+                       : "=a"(_a)              \
+                       : "a"(value)            \
+                       : "rbx", "rcx", "rdx")
+
+/// __cpuid_extended2
+///
+/// Invoke the CPUID instruction with a specific value in registers `rax` and
+/// pseudo-arguments in registers `rdi` and `rsi`.
 #define __cpuid_extended2(value, inout_ptr_0, inout_ptr_1)              \
   unsigned int _a __attribute__((unused)) = 0;                          \
   __asm__ __volatile__("cpuid"                                          \
@@ -69,14 +83,17 @@
                        : "a"(value), "D"(inout_ptr_0), "S"(inout_ptr_1) \
                        : "rbx", "rcx", "rdx");
 
-/// Invoke the magic instruction defined by SIMICS for the x86-64 architecture
-/// (`cpuid`) with a specific value of `n`
-#define __cpuid(value)                         \
-  unsigned int _a __attribute__((unused)) = 0; \
-  __asm__ __volatile__("cpuid\n\t"             \
-                       : "=a"(_a)              \
-                       : "a"(value)            \
-                       : "rbx", "rcx", "rdx")
+/// __cpuid_extended3
+///
+/// Invoke the CPUID instruction with a specific value in registers `rax` and
+/// pseudo-arguments in registers `rdi`, `rsi`, and `rdx`.
+#define __cpuid_extended3(value, inout_ptr_0, inout_ptr_1, inout_ptr_2)  \
+  unsigned int _a __attribute__((unused)) = 0;                           \
+  __asm__ __volatile__("cpuid"                                           \
+                       : "=a"(_a)                                        \
+                       : "a"(value), "D"(inout_ptr_0), "S"(inout_ptr_1), \
+                         "d"(inout_ptr_2)                                \
+                       : "rbx", "rcx", "rdx");
 
 /// Signal the fuzzer using a specific magic value `start` to start the fuzzing
 /// loop at the point this macro is called. A snapshot will be taken when the

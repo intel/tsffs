@@ -8,8 +8,7 @@ RUN yum -y update && \
         coreutils \
         gcc \
         gcc-c++ \
-        make \
-        patchelf && \
+        make && \
     yum clean all
 
 COPY .github/builder/rsrc/rustup-init /install/rustup-init
@@ -17,6 +16,7 @@ COPY .github/builder/rsrc/make-4.4.1.tar.gz /install/make-4.4.1.tar.gz
 COPY .github/builder/rsrc/cmake-3.28.0-rc5-linux-x86_64.tar.gz /install/cmake-3.28.0-rc5-linux-x86_64.tar.gz
 COPY .github/builder/rsrc/llvm-5.0.2.src.tar.xz /install/llvm-5.0.2.src.tar.xz
 COPY .github/builder/rsrc/cfe-5.0.2.src.tar.xz /install/cfe-5.0.2.src.tar.xz
+COPY .github/builder/rsrc/patchelf-0.18.0-x86_64.tar.gz /install/patchelf-0.18.0-x86_64.tar.gz
 
 RUN chmod +x /install/rustup-init && \
     /install/rustup-init -y --default-toolchain nightly && \
@@ -40,10 +40,10 @@ RUN chmod +x /install/rustup-init && \
     make clean && \
     rm -rf /llvm/build/ && \
     popd && \
-    rm -rf /make /llvm
+    rm -rf /make /llvm && \
+    tar -C /usr/local/ --strip-components=1 -xf /install/patchelf-0.18.0-x86_64.tar.gz
 
 WORKDIR /
-
 
 ARG PUBLIC_SIMICS_PACKAGE_VERSION_1000
 ENV PATH="${PATH}:/simics/ispm/"
