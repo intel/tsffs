@@ -7,6 +7,7 @@ LLVM_SRC_URL="https://releases.llvm.org/5.0.2/llvm-5.0.2.src.tar.xz"
 MAKE_SRC_URL="https://ftp.gnu.org/gnu/make/make-4.4.1.tar.gz"
 RUSTUP_INIT_URL="https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init"
 CMAKE_URL="https://github.com/Kitware/CMake/releases/download/v3.28.0-rc5/cmake-3.28.0-rc5-linux-x86_64.tar.gz"
+PATCHELF_URL="https://github.com/NixOS/patchelf/releases/download/0.18.0/patchelf-0.18.0-x86_64.tar.gz"
 PUBLIC_SIMICS_PKGS_URL="https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/simics-6-packages-2024-05-linux64.ispm"
 PUBLIC_SIMICS_ISPM_URL="https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/intel-simics-package-manager-1.8.3-linux64.tar.gz"
 PUBLIC_SIMICS_PACKAGE_VERSION_1000="6.0.185"
@@ -53,6 +54,11 @@ fi
 
 if [ ! -f "${BUILDER_DIR}/rsrc/cmake-3.28.0-rc5-linux-x86_64.tar.gz" ]; then
     curl --noproxy '*.intel.com' -L -o "${BUILDER_DIR}/rsrc/cmake-3.28.0-rc5-linux-x86_64.tar.gz" \
+        "${CMAKE_URL}"
+fi
+
+if [ ! -f "${BUILDER_DIR}/rsrc/patchelf-0.18.0-x86_64.tar.gz" ]; then
+    curl --noproxy '*.intel.com' -L -o "${BUILDER_DIR}/rsrc/patchelf-0.18.0-x86_64.tar.gz" \
         "${CMAKE_URL}"
 fi
 
