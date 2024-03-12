@@ -490,6 +490,16 @@ impl Sign {
                 path: output.as_ref().to_path_buf(),
                 source: e,
             })?;
+
+        file.flush()?;
+
+        if !output.as_ref().exists() {
+            return Err(Error::WriteOutputFile {
+                path: output.as_ref().to_path_buf(),
+                source: std::io::Error::from(std::io::ErrorKind::NotFound),
+            });
+        }
+
         Ok(self)
     }
 

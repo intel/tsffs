@@ -6,7 +6,7 @@
 use artifact_dependency::ARTIFACT_NAMEPARTS;
 use cargo_subcommand::{Args, Subcommand};
 use clap::Parser;
-use command_ext::CommandExtCheck;
+use command_ext::{CommandExtCheck, CommandExtPrint};
 use ispm_wrapper::ispm::{self, GlobalOptions};
 use itertools::Itertools;
 use simics_package::Package;
@@ -203,7 +203,7 @@ impl App {
 
         let mut signed = Sign::new(&module_cdylib)?;
 
-        let signed_module_cdylib = module_cdylib
+        let mut signed_module_cdylib = module_cdylib
             .parent()
             .ok_or_else(|| Error::NoParentDirectory {
                 path: module_cdylib.to_path_buf(),
@@ -235,6 +235,8 @@ impl App {
 
         signed.write(&signed_module_cdylib)?;
 
+        signed_module_cdylib = signed_module_cdylib.canonicalize()?;
+
         if with_patchelf {
             // We need to use patchelf to replace absolute paths to shared objects with
             // just names
@@ -242,6 +244,8 @@ impl App {
                 Command::new("patchelf")
                     .arg("--print-needed")
                     .arg(&signed_module_cdylib)
+                    .print_args()
+                    .print_current_dir()
                     .check()?
                     .stdout,
             )?
