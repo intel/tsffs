@@ -6,7 +6,7 @@
 use artifact_dependency::ARTIFACT_NAMEPARTS;
 use cargo_subcommand::{Args, Subcommand};
 use clap::Parser;
-use command_ext::{CommandExtCheck, CommandExtPrint};
+use command_ext::CommandExtCheck;
 use ispm_wrapper::ispm::{self, GlobalOptions};
 use itertools::Itertools;
 use simics_package::Package;
