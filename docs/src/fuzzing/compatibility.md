@@ -36,6 +36,9 @@ first contribution to the fuzzer. See the generic and specific architecture info
 
 ## Micro Checkpoints
 
+Micro checkpoints are only supported prior to Simics 7.0.0. If you are using a newer
+version of Simics, [snapshots](#snapshots) first.
+
 SIMICS has a feature called *micro checkpoints* that allows in-memory snapshots of the
 target software state, as well as reasonably fast restoration of these snapshots to
 enable fuzzing.
@@ -138,7 +141,7 @@ To test micro checkpoints, run SIMICS in the project with the script you just cr
 
 ```sh
 $ ./simics test.simics
-Intel Simics 6 (build 6218 linux64) © 2023 Intel Corporation
+Intel Simics 6 (build 6218 linux64) © 2024 Intel Corporation
 
 Use of this software is subject to appropriate license.
 Type 'copyright' for details on copyright and 'help' for on-line documentation.
@@ -281,7 +284,7 @@ similar to micro checkpoints but do not rely on underlying rev-exec support. If 
 model supports a new version of SIMICS, follow the same instructions as for micro
 checkpoints, but replace:
 
-* `VT_save_micro_checkpoint("origin", 0)` with `VT_save_snapshot("origin")`
+* `VT_save_micro_checkpoint("origin", 0)` with `VT_take_snapshot("origin")`
 * `VT_restore_micro_checkpoint(0)` with `VT_restore_snapshot("origin")`
 
 And do not call `CORE_discard_future`.

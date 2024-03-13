@@ -32,8 +32,8 @@ can disable magic harnesses (this is not strictly necessary unless any magic har
 actually exist in the target software, but it is good practice).
 
 ```python
-tsffs.iface.tsffs.set_start_on_harness(False)
-tsffs.iface.tsffs.set_stop_on_harness(False)
+@tsffs.start_on_harness = False
+@tsffs.stop_on_harness = False
 ```
 
 Once compiled-in harnesses are disabled, the fuzzing loop can be started manually. There
@@ -59,7 +59,7 @@ testcase pointer, and the size of the testcase will be written to the provided s
 pointer. This API is called like:
 
 ```python
-tsffs.iface.tsffs.start(cpu, testcase_address, size_address, True)
+@tsffs.iface.fuzz.start(cpu, testcase_address, size_address, True)
 ```
 
 The second API takes one memory address and a maximum size. Testcases will be written
@@ -67,7 +67,7 @@ to the provided testcase address, and will be truncated to the provided maximum 
 This API is called like:
 
 ```python
-tsffs.iface.tsffs.start_with_maximum_size(cpu, testcase_address, maximum_size, True)
+@tsffs.iface.fuzz.start_with_maximum_size(cpu, testcase_address, maximum_size, True)
 ```
 
 ## Triggering Manual Stops/Solutions
@@ -82,7 +82,7 @@ a normal exit (i.e. *not* a solution), and reset to the initial snapshot with a 
 testcase with:
 
 ```python
-tsffs.iface.tsffs.stop()
+@tsffs.iface.fuzz.stop()
 ```
 
 Likewise, the fuzzer can be signaled to stop the current testcase execution with a
@@ -93,5 +93,5 @@ solution for later use. Any id and message can be provided, it is entirely up to
 user:
 
 ```python
-tsffs.iface.tsffs.solution(1, "A descriptive message about why this is a solution condition")
+@tsffs.iface.fuzz.solution(1, "A descriptive message about why this is a solution condition")
 ```

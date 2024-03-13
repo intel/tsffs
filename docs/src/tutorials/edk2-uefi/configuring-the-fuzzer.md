@@ -97,7 +97,7 @@ First, we need to create an actual `tsffs` object to instantiate the fuzzer.
 
 ```simics
 load-module tsffs # You should already have this
-@tsffs = SIM_create_object(SIM_get_class("tsffs"), "tsffs", [])
+init-tsffs
 ```
 
 Next, we'll set the log level to maximum for demonstration purposes:
@@ -112,8 +112,8 @@ usage unless you want to change the defaults, they are just provided here for
 completeness.
 
 ```simics
-@tsffs.iface.tsffs.set_start_on_harness(True)
-@tsffs.iface.tsffs.set_stop_on_harness(True)
+@tsffs.start_on_harness = True
+@tsffs.stop_on_harness = True
 ```
 
 We'll set up our "solutions" which are all the exceptional conditions that we want to
@@ -122,9 +122,8 @@ hangs, and CPU exceptions. we'll enable exceptions 13 for general protection fau
 14 for page faults to detect out of bounds reads and writes.
 
 ```simics
-@tsffs.iface.tsffs.set_timeout(3.0)
-@tsffs.iface.tsffs.add_exception_solution(13)
-@tsffs.iface.tsffs.add_exception_solution(14)
+@tsffs.timeout = 3.0
+@tsffs.exceptions = [13, 14]
 ```
 
 We'll tell the fuzzer where to take its corpus and save its solutions. The fuzzer will
@@ -133,8 +132,8 @@ directory in the project by default, so this call can be skipped in real usage u
 you want to change the defaults.
 
 ```simics
-@tsffs.iface.tsffs.set_corpus_directory("%simics%/corpus")
-@tsffs.iface.tsffs.set_solutions_directory("%simics%/solutions")
+@tsffs.corpus_directory = SIM_lookup_file("%simics%/corpus")
+@tsffs.solutions_directory = SIM_lookup_file("%simics%/solutions")
 ```
 
 We'll also *delete* the following code from the `run.simics` script:

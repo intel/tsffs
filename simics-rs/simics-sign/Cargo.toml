@@ -1,0 +1,27 @@
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "simics-sign"
+version = "0.1.0"
+authors = ["Rowan Hart <rowan.hart@intel.com>"]
+edition = "2021"
+description = "Intel Simics Simulator module signing tools"
+documentation = ""
+readme = "../README.md"
+homepage = ""
+repository = ""
+license = "Apache-2.0"
+keywords = ["simics", "simulator", "intel", "x86", "risc", "modeling"]
+categories = [
+    "simulation",
+    "virtualization",
+    "hardware-support",
+    "api-bindings",
+    "emulators",
+]
+
+[dependencies]
+object = "0.34.0"
+chrono = "0.4.34"
+thiserror = "1.0.57"

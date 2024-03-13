@@ -1,0 +1,7 @@
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+rule runbuild
+    command = bash build.sh
+
+build HelloWorld.efi: runbuild

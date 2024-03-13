@@ -1,0 +1,6 @@
+target/
+.cargo
+.vscode
+Cargo.lock
+.env
+.secrets

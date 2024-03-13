@@ -1,7 +1,8 @@
-#  Copyright (C) 2023 Intel Corporation
+#  Copyright (C) 2024 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 
-[workspace.package]
+[package]
+name = "tsffs"
 authors = [
     "Rowan Hart <rowan.hart@intel.com>",
     "Brandon Marken <brandon.marken@intel.com>",
@@ -18,67 +19,77 @@ readme = "README.md"
 repository = "https://github.com/intel/tsffs"
 version = "0.2.1"
 
-[workspace.metadata]
-build-id = 3
-version = "6.0.2"
+[package.metadata.simics]
+package-number = 31337
+# version = "6.0.pre4"
+version = "6.0.4"
 
-[workspace]
-resolver = "2"
-members = [
-    "modules/tsffs/tests",
-    "modules/tsffs/src/tsffs",
-    "modules/tsffs/src/simics/ispm-wrapper",
-    "modules/tsffs/src/simics/simics-api-sys",
-    "modules/tsffs/src/simics/simics-macro",
-    "modules/tsffs/src/simics/simics-codegen",
-    "modules/tsffs/src/simics/simics",
+[lib]
+crate-type = ["cdylib", "rlib"]
+test = false
 
-    "modules/tsffs/src/util/ffi-macro",
-    "modules/tsffs/src/util/raw-cstr",
-    "modules/tsffs/src/util/version-tools",
-]
-default-members = [
-    "modules/tsffs/tests",
-    "modules/tsffs/src/tsffs",
-    "modules/tsffs/src/simics/ispm-wrapper",
-    "modules/tsffs/src/simics/simics-api-sys",
-    "modules/tsffs/src/simics/simics-macro",
-    "modules/tsffs/src/simics/simics-codegen",
-    "modules/tsffs/src/simics/simics",
-
-    "modules/tsffs/src/util/ffi-macro",
-    "modules/tsffs/src/util/raw-cstr",
-    "modules/tsffs/src/util/version-tools",
-]
-exclude = []
-
-[workspace.dependencies]
-simics-api-sys = { path = "modules/tsffs/src/simics/simics-api-sys" }
-simics-macro = { path = "modules/tsffs/src/simics/simics-macro" }
-simics-codegen = { path = "modules/tsffs/src/simics/simics-codegen" }
-simics = { path = "modules/tsffs/src/simics/simics" }
-ispm-wrapper = { path = "modules/tsffs/src/simics/ispm-wrapper" }
-
-ffi-macro = { path = "modules/tsffs/src/util/ffi-macro" }
-raw-cstr = { path = "modules/tsffs/src/util/raw-cstr" }
-version-tools = { path = "modules/tsffs/src/util/version-tools" }
-
-anyhow = { version = "1.0.75" }
-libafl = { version = "0.11.2" }
-libafl_bolts = { version = "0.11.2" }
-libafl_targets = { version = "0.11.2", default-features = false, features = [
+[dependencies]
+anyhow = { version = "1.0.80" }
+# libafl = { version = "0.11.2" }
+# libafl_bolts = { version = "0.11.2" }
+# libafl_targets = { version = "0.11.2", default-features = false, features = [
+#     "std",
+# ] }
+libafl = { git = "https://github.com/AFLplusplus/LibAFL", default-features = false, features = [
+    "std",
+    "derive",
+    "llmp_compression",
+    "llmp_small_maps",
+    "llmp_broker_timeouts",
+    "rand_trait",
+    "fork",
+    "prelude",
+    "gzip",
+    "regex",
+    "serdeany_autoreg",
+] }
+libafl_bolts = { git = "https://github.com/AFLplusplus/LibAFL", features = [
+    "xxh3",
+] }
+libafl_targets = { git = "https://github.com/AFLplusplus/LibAFL", default-features = false, features = [
     "std",
 ] }
-serde = { version = "1.0.188", features = ["derive"] }
-serde_json = { version = "1.0.107" }
-versions = { version = "6.0.0", features = ["serde"] }
+yaxpeax-arch = { version = "0.2.7", default-features = false, features = [
+    "std",
+    "use-serde",
+] }
+yaxpeax-x86 = { version = "1.2.2", default-features = false, features = [
+    "std",
+    "use-serde",
+    "fmt",
+] }
+typed-builder = "0.18.1"
+raw-cstr = "0.1.4"
+goblin = "0.8.0"
+yaxpeax-riscv = { git = "https://github.com/DrChat/yaxpeax-riscv", version = "0.1.0", features = [
+    "serde",
+], rev = "0e2151b" }
+crc32fast = "1.4.0"
+simics = { path = "simics-rs/simics" }
+indoc = "2.0.4"
+serde = { version = "1.0.197", features = ["derive"] }
+serde_json = "1.0.114"
+versions = { version = "6.1.0", features = ["serde"] }
+ffi = "0.1.1"
 
+[dev-dependencies]
+simics-test = { path = "simics-rs/simics-test" }
+anyhow = "1.0.80"
+command-ext = "0.1.2"
+indoc = "2.0.4"
+ispm-wrapper = { path = "simics-rs/ispm-wrapper" }
+versions = { version = "6.1.0", features = ["serde"] }
 
-[profile.dev]
-rpath = true
+[build-dependencies]
+simics = { path = "simics-rs/simics" }
+simics-build-utils = { path = "simics-rs/simics-build-utils" }
 
 [profile.release]
-rpath = true
 lto = true
 codegen-units = 1
 opt-level = 3

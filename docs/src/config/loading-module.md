@@ -27,14 +27,19 @@ SIM_load_module("tsffs")
 "The Fuzzer" is an instance of the `tsffs` class, declared in the `tsffs` module. The
 `tsffs` class can only be instantiated once in a given simulation.
 
-You can get the `tsffs` class by running (in a Python script -- this can be done in a
-SIMICS script by prefixing this line with the `@` prefix):
+This can be done by running (in a SIMICS script):
+
+```simics
+init-tsffs
+```
+
+Alternatively, in a Python script, you can write:
 
 ```python
 tsffs_cls = SIM_get_class("tsffs")
 ```
 
-Once we have the `tsffs_cls` an instance can be created with:
+And in the Python script, once we have the `tsffs_cls` an instance can be created with:
 
 ```python
 tsffs = SIM_create_object(tsffs_cls, "tsffs", [])
@@ -44,18 +49,16 @@ The fuzzer instance is now created and ready to configure and use.
 
 ## Configuring the Fuzzer
 
-The fuzzer is configured through its singular interface, simply called
-`tsffs`. This interface is used for both configuration and control of the
-fuzzer.
-
-This interface can be accessed in Python scripts like:
+The fuzzer is configured via various attributes, many of which have default values. You
+can view the list of configuration settings at runtime by running:
 
 ```python
-tsffs.iface.tsffs.interface_method_name(interface_args, ...)
+@print(*tsffs.attributes, sep="\n")
 ```
 
-And from SIMICS scripts like using the `@` prefix like:
+Most settings can be set from Python scripting, for example the timeout can be set to 3
+seconds with:
 
-```simics
-@tsffs.iface.tsffs.interface_method_name(interface_args, ...)
+```python
+@tsffs.timeout = 3.0
 ```

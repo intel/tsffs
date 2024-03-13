@@ -93,7 +93,7 @@ run
 Run the script:
 
 ```sh
-./simics -no-gui --no-win --batch-mode run.simics
+./simics --no-win --batch-mode run.simics
 ```
 
 The machine will boot, the UEFI application will run and dump out the contents of the

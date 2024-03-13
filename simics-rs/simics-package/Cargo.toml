@@ -1,0 +1,39 @@
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "simics-package"
+version = "0.1.0"
+authors = ["Rowan Hart <rowan.hart@intel.com>"]
+edition = "2021"
+description = "Intel Simics Simulator module packaging tools"
+documentation = ""
+readme = "../README.md"
+homepage = ""
+repository = ""
+license = "Apache-2.0"
+keywords = ["simics", "simulator", "intel", "x86", "risc", "modeling"]
+categories = [
+    "simulation",
+    "virtualization",
+    "hardware-support",
+    "api-bindings",
+    "emulators",
+]
+
+[dependencies]
+artifact-dependency = "0.1.7"
+cargo-subcommand = "0.12.0"
+cargo_metadata = "0.18.1"
+command-ext = "0.1.2"
+flate2 = "1.0.28"
+serde = { version = "1.0.197", features = ["derive"] }
+serde_json = "1.0.114"
+serde_yaml = "0.9.32"
+tar = "0.4.40"
+thiserror = "1.0.57"
+typed-builder = "0.18.1"
+walkdir = "2.4.0"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2.153"

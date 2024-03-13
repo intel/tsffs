@@ -1,0 +1,42 @@
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "simics-api-sys"
+version = "0.1.0"
+authors = ["Rowan Hart <rowan.hart@intel.com>"]
+edition = "2021"
+description = "Automatically generated Intel Simics Simulator FFI bindings"
+documentation = ""
+readme = "../README.md"
+homepage = ""
+repository = ""
+license = "Apache-2.0"
+keywords = ["simics", "simulator", "intel", "x86", "risc", "modeling"]
+categories = [
+    "simulation",
+    "virtualization",
+    "hardware-support",
+    "api-bindings",
+    "emulators",
+]
+
+
+# NOTE: This crate should never have any dependencies!
+
+[build-dependencies]
+ispm-wrapper = { version = "0.1.0", path = "../ispm-wrapper" }
+anyhow = "1.0.80"
+bindgen = "0.69.4"
+scraper = "0.19.0"
+walkdir = "2.4.0"
+
+[features]
+default = ["link"]
+# Emit linking info for use with cargo. Can be disabled to avoid lock-in to incorrect link
+# information
+link = []
+
+[dev-dependencies]
+anyhow = "1.0.80"
+raw-cstr = "0.1.4"

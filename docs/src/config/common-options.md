@@ -29,7 +29,7 @@ To set the number of seconds in virtual time until an iteration is considered *t
 use the following (for example, to set the timeout to 3 seconds):
 
 ```python
-tsffs.iface.tsffs.set_timeout(3.0)
+@tsffs.timeout = 3.0
 ```
 
 Note that this timeout is in virtual time, not real time. This means that whether the
@@ -49,26 +49,27 @@ tracked condition that will cause the fuzzer to consider an exception (in this e
 GPF #13) as a solution with:
 
 ```python
-tsffs.iface.tsffs.add_exception_solution(13)
+@tsffs.exceptions = [13]
 ```
 
 An already-added exception can be removed from the tracked set that are considered
 solutions with:
 
 ```python
-tsffs.iface.tsffs.remove_exception_solution(13)
+@tsffs.exceptions.remove(13)
 ```
 
 In addition, if *all* exceptions should be considered as solutions, use:
 
 ```python
-tsffs.iface.tsffs.set_all_exceptions_are_solutions(True)
+@tsffs.all_exceptions_are_solutions = True
 ```
 
-Note that this is typically not useful, all exceptions including innocuous exceptions
-like timer interrupts will cause solutions. It is mainly useful for embedded models
-running short code paths like when fuzzing interrupt handlers themselves, where any
-exception occurring is truly an error.
+Note that this is typically not useful in practice. With all exceptions set as
+solutions, all exceptions including innocuous exceptions like timer interrupts will
+cause solutions. It is mainly useful for embedded models running short code paths like
+when fuzzing interrupt handlers themselves, where any exception occurring is truly an
+error.
 
 ### Setting Breakpoint Solutions
 
@@ -87,14 +88,27 @@ Breakpoints have numbers, which you can add and remove from the set of breakpoin
 the fuzzer treats as solutions with:
 
 ```python
-tsffs.iface.tsffs.add_breakpoint_solution(bp_number)
-tsffs.iface.tsffs.remove_breakpoint_solution(bp_number)
+@tsffs.breakpoints = [2]
+@tsffs.breakpoints.remove()
+```
+
+Note that when setting a breakpoint via a Simics command, like:
+
+```simics
+local $bp_number = ($ctx.break -w $BREAK_BUFFER_ADDRESS $BREAK_BUFFER_SIZE)
+```
+
+The variable `bp_number` can be added to the set of solution breakpoints by accessing
+the `simenv` variable, like:
+
+```python
+@tsffs.breakpoints += [simenv.bp_number]
 ```
 
 If not specifying a breakpoint number, breakpoints can be set as solutions with:
 
 ```python
-tsffs.iface.tsffs.set_all_breakpoints_are_solutions(True)
+@tsffs.all_breakpoints_are_solutions = True
 ```
 
 This is useful when testing code that is not allowed to write, read, or execute specific
@@ -113,7 +127,7 @@ feature is not enabled by default.
 To use reverse-execution micro-checkpoints instead, use:
 
 ```python
-tsffs.iface.tsffs.set_use_snapshots(False)
+@tsffs.use_snapshots = False
 ```
 
 Micro-checkpoints cannot be used by when compiling the module against versions of SIMICS
@@ -129,7 +143,7 @@ values that are compared against during execution and uses them to mutate the in
 Comparison logging is enabled by default. It can be disabled with:
 
 ```python
-tsffs.iface.tsffs.set_cmplog_enabled(False)
+@tsffs.cmplog = False
 ```
 
 ### Set Corpus and Solutions Directory
@@ -141,14 +155,15 @@ Initial test cases should be placed in this directory.
 The directory test cases are taken from and written to can be changed with:
 
 ```python
-tsffs.iface.tsffs.set_corpus_directory("%simics%/other_corpus_directory")
+@tsffs.corpus_directory = SIM_lookup_file("%simics%/other_corpus_directory")
 ```
 
-Likewise, the directory solutions are saved to can be changed with:
+Note the directory must exist. Likewise, the directory solutions are saved to can be
+changed with:
 
 
 ```python
-tsffs.iface.tsffs.set_solutions_directory("%simics%/other_solutions_directory")
+tsffs.solutions_directory = SIM_lookup_file("%simics%/other_solutions_directory")
 ```
 
 ### Enable Random Corpus Generation
@@ -164,7 +179,7 @@ API](#set-corpus-and-solutions-directory)).
 This can be enabled with:
 
 ```python
-tsffs.iface.tsffs.set_generate_random_corpus(True)
+@tsffs.generate_random_corpus = True
 ```
 
 ### Set an Iteration Limit
@@ -173,7 +188,7 @@ The fuzzer can be set to execute only a specific number of iterations before exi
 This is useful for CI fuzzing or for testing. The limit can be set with:
 
 ```python
-tsffs.iface.tsffs.set_iterations(1000)
+@tsffs.iteration_limit = 1000
 ```
 
 ### Adding Tokens From Target Software
@@ -190,16 +205,18 @@ applications) or ELF (i.e. unpacked kernel images or Linux applications).
 To add tokens from an executable file:
 
 ```python
-tsffs.iface.tsffs.tokenize_executable("%simics%/test.efi")
+@tsffs.token_executables += [SIM_lookup_file("%simics%/test.efi")]
 ```
 
 Tokens from source files are extracted in a best-effort language-independent way.
 Multiple source files can be added.
 
 ```python
-tsffs.iface.tsffs.tokenize_executable("/home/user/source/test.c")
-tsffs.iface.tsffs.tokenize_executable("/home/user/source/test_lib.c")
-tsffs.iface.tsffs.tokenize_executable("/home/user/source/test.h")
+@tsffs.token_src_files += [
+  "/home/user/source/test.c",
+  "/home/user/source/test_lib.c",
+  "/home/user/source/test.h"
+]
 ```
 
 Dictionary files are given in the same format as AFL and LibFuzzer:
@@ -218,7 +235,7 @@ more accurately than the built-in executable tokenizer using some existing tools
 Once created, the tokens from these dictionaries can be added to the fuzzer with:
 
 ```python
-tsffs.iface.tsffs.add_token_file("%simics%/token-file.txt")
+@tsffs.token_files += [SIM_lookup_file("%simics%/token-file.txt")]
 ```
 
 ### Setting an Architecture Hint
@@ -232,7 +249,7 @@ running `i386` code in backward-compatibility mode.
 An architecture hint can be set with:
 
 ```python
-tsffs.iface.tsffs.add_architecture_hint(qsp.mb.cpu0.core[0][0], "i386")
+@tsffs.iface.tsffs.add_architecture_hint(qsp.mb.cpu0.core[0][0], "i386")
 ```
 
 ### Adding a Trace Processor
@@ -242,5 +259,5 @@ to the [manual start API](../harnessing/closed-box.md) is traced during executio
 code running on multiple cores, the additional cores can be added with:
 
 ```python
-tsffs.iface.tsffs.add_trace_processor(qsp.mb.cpu0.core[0][1])
+@tsffs.iface.tsffs.add_trace_processor(qsp.mb.cpu0.core[0][1])
 ```

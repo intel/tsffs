@@ -1,3 +1,7 @@
 *.ispm filter=lfs diff=lfs merge=lfs -text
 *.tar.gz filter=lfs diff=lfs merge=lfs -text
 *.ext2 filter=lfs diff=lfs merge=lfs -text
+*.fs filter=lfs diff=lfs merge=lfs -text
+*.craff filter=lfs diff=lfs merge=lfs -text
+Image filter=lfs diff=lfs merge=lfs -text
+*.elf filter=lfs diff=lfs merge=lfs -text

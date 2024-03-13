@@ -1,0 +1,55 @@
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "simics"
+version = "0.1.0"
+authors = ["Rowan Hart <rowan.hart@intel.com>"]
+edition = "2021"
+description = "Intel Simics Simulator bindings in high level, idiomatic Rust"
+documentation = ""
+readme = "../README.md"
+homepage = ""
+repository = ""
+license = "Apache-2.0"
+keywords = ["simics", "simulator", "intel", "x86", "risc", "modeling"]
+categories = [
+    "simulation",
+    "virtualization",
+    "hardware-support",
+    "api-bindings",
+    "emulators",
+]
+
+[dependencies]
+simics-api-sys = { version = "0.1.0", path = "../simics-api-sys" }
+simics-macro = { version = "0.1.0", path = "../simics-macro" }
+anyhow = "1.0.80"
+raw-cstr = "0.1.4"
+paste = "1.0.14"
+regex = "1.10.3"
+walkdir = "2.4.0"
+thiserror = "1.0.57"
+typed-builder = "0.18.1"
+ordered-float = "4.2.0"
+versions = { version = "6.1.0", features = ["serde"] }
+
+[features]
+default = ["link", "global-allocator"]
+# Emit linking information in simics-api-sys to enable testing and running with cargo test
+# and cargo run
+link = ["simics-api-sys/link"]
+# Set SimicsAlloc as the global allocator. This should not be unset.
+global-allocator = []
+
+[build-dependencies]
+simics-api-sys = { version = "0.1.0", path = "../simics-api-sys" }
+simics-macro = { version = "0.1.0", path = "../simics-macro" }
+simics-build-utils = { version = "0.1.0", path = "../simics-build-utils" }
+anyhow = "1.0.80"
+prettyplease = "0.2.16"
+syn = "2.0.50"
+versions = "6.1.0"
+darling = "0.20.8"
+proc-macro2 = "1.0.78"
+quote = "1.0.35"

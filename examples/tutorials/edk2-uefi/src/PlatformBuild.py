@@ -1,4 +1,4 @@
-# Copyright (C) 2023 Intel Corporation
+# Copyright (C) 2024 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 
 """
@@ -15,7 +15,6 @@ from edk2toolext.environment.uefi_build import UefiBuilder
 from edk2toolext.invocables.edk2_platform_build import BuildSettingsManager
 from edk2toolext.invocables.edk2_setup import RequiredSubmodule, SetupSettingsManager
 from edk2toolext.invocables.edk2_update import UpdateSettingsManager
-from edk2toollib.utility_functions import GetHostInfo
 
 
 class TutorialSettingsManager(

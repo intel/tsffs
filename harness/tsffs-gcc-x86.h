@@ -1,3 +1,6 @@
+// Copyright (C) 2024 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 /// Definitions and macros for compiled-in harnessing of C and C++ target
 /// software for the RISC-V (64-bit) architecture
 ///

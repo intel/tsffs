@@ -61,10 +61,11 @@ By default, TSFFS is enabled to use these harnesses, so no explicit configuratio
 necessary. However, the defaults are equivalent to the configuration:
 
 ```python
-tsffs.iface.tsffs.set_start_on_harness(True)
-tsffs.iface.tsffs.set_stop_on_harness(True)
-tsffs.iface.tsffs.set_start_magic_number(1)
-tsffs.iface.tsffs.set_start_magic_number(2)
+@tsffs.start_on_harness = True
+@tsffs.stop_on_harness = True
+@tsffs.magic_start = 1
+@tsffs.magic_stop = 2
+@tsffs.magic_assert = 3
 ```
 
 This sets TSFFS to start the fuzzing loop on a *magic* harness with magic number `1`
@@ -126,9 +127,9 @@ And configuration settings like:
 
 
 ```python
-tsffs.iface.tsffs.set_start_on_harness(True)
-tsffs.iface.tsffs.set_stop_on_harness(True)
-tsffs.iface.tsffs.set_start_magic_number(4)
+@tsffs.start_on_harness = True
+@tsffs.stop_on_harness = True
+@tsffs.start_magic_number = 4
 ```
 
 With this runtime configuration, the first harness will be ignored, and only the second

@@ -1,3 +1,6 @@
+// Copyright (C) 2024 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 #include <asm/errno.h>
 #include <linux/atomic.h>
 #include <linux/cdev.h>

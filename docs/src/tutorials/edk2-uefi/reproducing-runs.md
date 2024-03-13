@@ -27,7 +27,7 @@ simics> !hexdump -C corpus/4385dc33f608888d | head -n 2
 We can tell the fuzzer that we want to run with this specific input by using:
 
 ```txt
-simics> @tsffs.iface.tsffs.repro("%simics%/corpus/4385dc33f608888d")
+simics> @tsffs.iface.fuzz.repro("%simics%/corpus/4385dc33f608888d")
 ```
 
 The simulation will run once with this input, then output a message that you can replay

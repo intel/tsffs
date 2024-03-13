@@ -3,7 +3,7 @@
 Once a fuzzing campaign is set up, you can generally run the fuzzer like:
 
 ```sh
-./simics -no-gui --no-win --batch-mode fuzz.simics
+./simics --no-win --batch-mode fuzz.simics
 ```
 
 At a log level of 2 or greater (i.e. set `tsffs.log-level 2` in your script) , you'll

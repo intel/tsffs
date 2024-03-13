@@ -18,7 +18,7 @@ script-branch {
     while 1 {
         bp.source_location.wait-for DebugAssert -x -error-not-planted
         echo "Got breakpoint"
-        @tsffs.iface.tsffs.solution(1, "DebugAssert")
+        @tsffs.iface.fuzz.solution(1, "DebugAssert")
     }
 }
 ```
@@ -36,13 +36,12 @@ to the fuzzer.
 
 ```simics
 load-module tsffs
-@tsffs = SIM_create_object(SIM_get_class("tsffs"), "tsffs", [])
+init-tsffs
 tsffs.log-level 4
-@tsffs.iface.tsffs.set_start_on_harness(True)
-@tsffs.iface.tsffs.set_stop_on_harness(True)
-@tsffs.iface.tsffs.set_timeout(3.0)
-@tsffs.iface.tsffs.add_exception_solution(13)
-@tsffs.iface.tsffs.add_exception_solution(14)
+@tsffs.start_on_harness = True
+@tsffs.stop_on_harness =True
+@tsffs.timeout = 3.0
+@tsffs.exceptions = [13, 14]
 
 load-module uefi-fw-tracker
 
@@ -61,7 +60,7 @@ qsp.software.enable-tracker
 $ctx = (new-context)
 qsp.mb.cpu0.core[0][0].set-context $ctx
 $debug_assert_bp = ($ctx.break -x $debug_assert_address)
-@tsffs.iface.tsffs.add_breakpoint_solution(simenv.debug_assert_bp)
+@tsffs.breakpoints = [simenv.debug_assert_bp]
 
 run
 ```

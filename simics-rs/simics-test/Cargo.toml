@@ -1,0 +1,35 @@
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "simics-test"
+version = "0.1.0"
+authors = ["Rowan Hart <rowan.hart@intel.com>"]
+edition = "2021"
+description = "Intel Simics Simulator module testing tools"
+documentation = ""
+readme = "../README.md"
+homepage = ""
+repository = ""
+license = "Apache-2.0"
+keywords = ["simics", "simulator", "intel", "x86", "risc", "modeling"]
+categories = [
+    "simulation",
+    "virtualization",
+    "hardware-support",
+    "api-bindings",
+    "emulators",
+]
+
+[dependencies]
+ispm-wrapper = { version = "0.1.0", path = "../ispm-wrapper" }
+cargo-simics-build = { version = "0.1.0", path = "../cargo-simics-build" }
+anyhow = "1.0.80"
+cargo-subcommand = "0.12.0"
+cargo_metadata = "0.18.1"
+command-ext = "0.1.2"
+getters2 = "0.1.4"
+indoc = "2.0.4"
+typed-builder = "0.18.1"
+versions = { version = "6.1.0", features = ["serde"] }
+walkdir = "2.4.0"

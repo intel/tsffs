@@ -1,4 +1,4 @@
-# Copyright (C) 2023 Intel Corporation
+# Copyright (C) 2024 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 
 rule cc
@@ -6,7 +6,7 @@ rule cc
         -mno-red-zone $cflags -c $in -o $out
 
 rule link
-    command = lld-link $ldflags -filealign:16 -subsystem:efi_application -nodefaultlib -dll $
+    command = lld -flavor link $ldflags -filealign:16 -subsystem:efi_application -nodefaultlib -dll $
         -entry:UefiMain $in -out:$out
 
 rule copy

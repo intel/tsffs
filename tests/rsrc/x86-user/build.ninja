@@ -1,0 +1,8 @@
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+rule cc
+    command = clang $cflags -o $out $in
+
+build test: cc test.c
+    cflags = -m32 -static -O0
