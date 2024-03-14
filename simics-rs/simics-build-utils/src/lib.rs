@@ -121,7 +121,7 @@ pub fn emit_cfg_directives() -> anyhow::Result<()> {
 
 pub fn emit_link_info() -> anyhow::Result<()> {
     #[cfg(unix)]
-    const HOST_DIRNAME: &'static str = "linux64";
+    const HOST_DIRNAME: &str = "linux64";
 
     #[cfg(not(unix))]
     const HOST_DIRNAME: &'static str = "win64";
@@ -237,7 +237,7 @@ pub fn emit_link_info() -> anyhow::Result<()> {
                 .to_str()
                 .ok_or_else(|| anyhow::anyhow!("Could not convert path to string"))?
         );
-        let ld_library_path = vec![
+        let ld_library_path = [
             bin_dir
                 .to_str()
                 .ok_or_else(|| anyhow::anyhow!("Could not convert path to string"))?,

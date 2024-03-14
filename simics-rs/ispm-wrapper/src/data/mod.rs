@@ -247,7 +247,7 @@ impl Packages {
     /// Sort the installed and available packages by their version number (highest first)
     pub fn sort(&mut self) {
         if let Some(installed_packages) = self.installed_packages.as_mut() {
-            installed_packages.sort_by(|a, b| b.version().cmp(&a.version()))
+            installed_packages.sort_by_key(|b| std::cmp::Reverse(b.version()))
         }
     }
 }

@@ -15,7 +15,7 @@ use simics::{
 #[class(name = "HelloWorld")]
 #[derive(FromConfObject, Default)]
 struct HelloWorld {
-    #[class(attribute)]
+    #[class(attribute(optional))]
     pub message: String,
 }
 
@@ -36,7 +36,7 @@ impl HelloWorld {
 #[class(name = "HelloWorld2")]
 #[derive(FromConfObject, Default)]
 struct HelloWorld2 {
-    #[class(attribute)]
+    #[class(attribute(optional))]
     pub message: String,
 }
 
