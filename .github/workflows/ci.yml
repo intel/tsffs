@@ -478,7 +478,7 @@ jobs:
 
       - name: Test Project
         run: |
-          SIMICS_TEST_CLEANUP_EACH=1 SIMICS_TEST_LOCAL_PACKAGES_ONLY=1 cargo test --no-fail-fast -r || ( echo "❗ Tests failed" && exit 1 )
+          SIMICS_TEST_CLEANUP_EACH=1 SIMICS_TEST_LOCAL_PACKAGES_ONLY=1 cargo test --no-fail-fast -r > log.txt 2>&1 || ( echo "❗ Tests failed" && cat log.txt && && exit 1 )
           echo "✅ Tests passed"
 
       - name: Build Docs
