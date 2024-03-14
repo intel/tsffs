@@ -45,7 +45,6 @@ fn test_x86_64_magic_crash() -> Result<()> {
             @tsffs.exceptions = [14]
             @tsffs.generate_random_corpus = True
             @tsffs.iteration_limit = 100
-            @tsffs.use_snapshots = True
 
             load-target "qsp-x86/uefi-shell" namespace = qsp machine:hardware:storage:disk0:image = "minimal_boot_disk.craff"
 

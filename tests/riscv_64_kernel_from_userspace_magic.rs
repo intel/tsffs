@@ -47,7 +47,6 @@ fn test_riscv_64_kernel_from_userspace_magic() -> Result<()> {
             @tsffs.exceptions = [14]
             @tsffs.generate_random_corpus = True
             @tsffs.iteration_limit = 1000
-            @tsffs.use_snapshots = True
 
             load-target "risc-v-simple/linux" namespace = riscv machine:hardware:storage:disk1:image = "test.fs.craff"
 

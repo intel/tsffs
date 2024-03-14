@@ -52,7 +52,6 @@ fn test_x86_64_magic_apitest() -> Result<()> {
             @tsffs.timeout = 3.0
             @tsffs.start_on_harness = True
             @tsffs.stop_on_harness = True
-            @tsffs.use_snapshots = True
             @tsffs.magic_start = 1
             @tsffs.magic_stop = 2
             @tsffs.magic_assert = 3

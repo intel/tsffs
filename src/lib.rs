@@ -28,7 +28,7 @@
 #![deny(clippy::unwrap_used)]
 #![warn(missing_docs)]
 
-use crate::interfaces::{config::config, fuzz::fuzz};
+use crate::interfaces::{config::config, fuzz::fuzz, tsffs::tsffs};
 use crate::state::{Solution, SolutionKind};
 #[cfg(not(simics_deprecated_api_rev_exec))]
 use crate::util::Utils;
@@ -45,8 +45,8 @@ use libafl_targets::AFLppCmpLogMap;
 use serde::{Deserialize, Serialize};
 use simics::{
     break_simulation, class, error, free_attribute, get_class, get_interface, get_processor_number,
-    info, lookup_file, object_clock, run_command, run_python, simics_init, sys::SIMICS_VERSION,
-    trace, version, AsConfObject, BreakpointId, ClassCreate, ClassObjectsFinalize, ConfObject,
+    info, lookup_file, object_clock, run_command, run_python, simics_init, trace, version_base,
+    AsConfObject, BreakpointId, ClassCreate, ClassObjectsFinalize, ConfObject,
     CoreBreakpointMemopHap, CoreExceptionHap, CoreMagicInstructionHap, CoreSimulationStoppedHap,
     CpuInstrumentationSubscribeInterface, Event, EventClassFlag, FromConfObject, HapHandle,
     Interface, IntoAttrValueDict,
@@ -80,6 +80,7 @@ use std::{
     fs::{write, File},
     path::PathBuf,
     ptr::null_mut,
+    str::FromStr,
     sync::mpsc::{Receiver, Sender},
     thread::JoinHandle,
     time::SystemTime,
@@ -485,12 +486,21 @@ impl ClassObjectsFinalize for Tsffs {
 
         // Check whether snapshots should be used. This is a runtime check because the module
         // may be loaded in either Simics 6 or Simics 7.
-        tsffs.use_snapshots = Requirement::new(">=7.0.0")
-            .ok_or_else(|| anyhow!("Error interpreting SIMICS version"))?
-            .matches(
-                &Versioning::new(&version()?)
-                    .ok_or_else(|| anyhow!("Error interpreting SIMICS version"))?,
-            );
+        let version = version_base()
+            .map_err(|e| anyhow!("Error getting version string: {}", e))
+            .and_then(|v| {
+                v.split(' ')
+                    .last()
+                    .ok_or_else(|| anyhow!("Error parsing version string '{}'", v))
+                    .map(|s| s.to_string())
+            })
+            .and_then(|v| {
+                Versioning::from_str(&v).map_err(|e| anyhow!("Error parsing version string: {e}"))
+            })?;
+
+        tsffs.use_snapshots = Requirement::from_str(">=7.0.0")
+            .map_err(|e| anyhow!("Error parsing requirement: {}", e))?
+            .matches(&version);
 
         Ok(())
     }
@@ -807,7 +817,8 @@ impl Tsffs {
 fn init() {
     let tsffs = Tsffs::create().expect("Failed to create class tsffs");
     config::register(tsffs).expect("Failed to register config interface for tsffs");
-    fuzz::register(tsffs).expect("Failed to register config interface for tsffs");
+    fuzz::register(tsffs).expect("Failed to register fuzz interface for tsffs");
+    tsffs::register(tsffs).expect("Failed to register tsffs interface for tsffs");
     run_python(indoc! {r#"
         def init_tsffs_cmd():
             try:
