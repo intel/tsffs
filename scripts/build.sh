@@ -59,9 +59,8 @@ fi
 
 if [ ! -f "${BUILDER_DIR}/rsrc/patchelf-0.18.0-x86_64.tar.gz" ]; then
     curl --noproxy '*.intel.com' -L -o "${BUILDER_DIR}/rsrc/patchelf-0.18.0-x86_64.tar.gz" \
-        "${CMAKE_URL}"
+        "${PATCHELF_URL}"
 fi
-
 
 unset SIMICS_BASE
 docker build \
