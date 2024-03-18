@@ -183,7 +183,6 @@ impl Tsffs {
             .set(spawn(move || -> Result<()> {
                 let mut harness = |input: &BytesInput| {
                     let testcase = BytesInput::new(input.target_bytes().as_slice().to_vec());
-                    // println!("Sending testcase {:?}", testcase);
                     client
                         .borrow_mut()
                         .0
@@ -197,14 +196,12 @@ impl Tsffs {
                         Err(e) => panic!("Error receiving status: {e}"),
                         Ok(m) => m,
                     };
-                    // println!("Got status: {:?}", status);
 
                     status
                 };
 
                 let mut aflpp_cmp_harness = |input: &BytesInput| {
                     let testcase = BytesInput::new(input.target_bytes().as_slice().to_vec());
-                    // println!("Sending testcase {:?}", testcase);
                     client
                         .borrow_mut()
                         .0
@@ -219,7 +216,6 @@ impl Tsffs {
                         Err(e) => panic!("Error receiving status: {e}"),
                         Ok(m) => m,
                     };
-                    // println!("Got status: {:?}", status);
 
                     status
                 };
