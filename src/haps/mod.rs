@@ -17,7 +17,7 @@ use simics::{
         continue_simulation, log_level, object_is_processor, quit, run_alone, set_log_level,
         AsConfObject, ConfObject, GenericTransaction, LogLevel,
     },
-    debug, info, trace,
+    debug, info, trace, warn,
 };
 
 impl Tsffs {
@@ -132,39 +132,45 @@ impl Tsffs {
                     self.save_repro_bookmark_if_needed()?;
                 }
                 StopReason::MagicStop(_) | StopReason::ManualStop(_) => {
-                    self.cancel_timeout_event()?;
+                    if !self.have_initial_snapshot() {
+                        warn!(
+                            self.as_conf_object(),
+                            "Stopped with {reason:?} before start was reached (no snapshot). Resuming without restoring non-existent snapshot."
+                        );
+                    } else {
+                        self.cancel_timeout_event()?;
 
-                    if self.repro_bookmark_set {
-                        self.stopped_for_repro = true;
-                        let current_log_level = log_level(self.as_conf_object_mut())?;
+                        if self.repro_bookmark_set {
+                            self.stopped_for_repro = true;
+                            let current_log_level = log_level(self.as_conf_object_mut())?;
 
-                        if current_log_level < LogLevel::Info as u32 {
-                            set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
-                        }
+                            if current_log_level < LogLevel::Info as u32 {
+                                set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
+                            }
 
-                        info!(
+                            info!(
                             self.as_conf_object(),
                             "Stopped for repro. Restore to start bookmark with 'reverse-to start'"
                         );
 
-                        // Skip the shutdown and continue, we are finished here
-                        return Ok(());
-                    }
+                            // Skip the shutdown and continue, we are finished here
+                            return Ok(());
+                        }
 
-                    self.iterations += 1;
+                        self.iterations += 1;
 
-                    if self.iteration_limit != 0 && self.iterations >= self.iteration_limit {
-                        let duration = SystemTime::now().duration_since(
-                            *self
-                                .start_time
-                                .get()
-                                .ok_or_else(|| anyhow!("Start time was not set"))?,
-                        )?;
+                        if self.iteration_limit != 0 && self.iterations >= self.iteration_limit {
+                            let duration = SystemTime::now().duration_since(
+                                *self
+                                    .start_time
+                                    .get()
+                                    .ok_or_else(|| anyhow!("Start time was not set"))?,
+                            )?;
 
-                        // Set the log level so this message always prints
-                        set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
+                            // Set the log level so this message always prints
+                            set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
 
-                        info!(
+                            info!(
                             self.as_conf_object(),
                             "Configured iteration count {} reached. Stopping after {} seconds ({} exec/s).",
                             self.iterations,
@@ -172,66 +178,73 @@ impl Tsffs {
                             self.iterations as f32 / duration.as_secs_f32()
                         );
 
-                        self.send_shutdown()?;
+                            self.send_shutdown()?;
 
-                        quit(0)?;
+                            quit(0)?;
+                        }
+
+                        let fuzzer_tx = self
+                            .fuzzer_tx
+                            .get()
+                            .ok_or_else(|| anyhow!("No fuzzer tx channel"))?;
+
+                        fuzzer_tx.send(ExitKind::Ok)?;
+
+                        self.restore_initial_snapshot()?;
+                        self.coverage_prev_loc = 0;
+
+                        if self.start_buffer.get().is_some() && self.start_size.get().is_some() {
+                            self.get_and_write_testcase()?;
+                        } else {
+                            debug!(
+                                self.as_conf_object(),
+                                "Missing start buffer or size, not writing testcase."
+                            );
+                        }
+
+                        self.post_timeout_event()?;
                     }
-
-                    let fuzzer_tx = self
-                        .fuzzer_tx
-                        .get()
-                        .ok_or_else(|| anyhow!("No fuzzer tx channel"))?;
-
-                    fuzzer_tx.send(ExitKind::Ok)?;
-
-                    self.restore_initial_snapshot()?;
-                    self.coverage_prev_loc = 0;
-
-                    if self.start_buffer.get().is_some() && self.start_size.get().is_some() {
-                        self.get_and_write_testcase()?;
-                    } else {
-                        debug!(
-                            self.as_conf_object(),
-                            "Missing start buffer or size, not writing testcase."
-                        );
-                    }
-
-                    self.post_timeout_event()?;
                 }
                 StopReason::Solution(solution) => {
-                    self.cancel_timeout_event()?;
+                    if !self.have_initial_snapshot() {
+                        warn!(
+                            self.as_conf_object(),
+                            "Solution {solution:?} before start was reached (no snapshot). Resuming without restoring non-existent snapshot."
+                        );
+                    } else {
+                        self.cancel_timeout_event()?;
 
-                    if self.repro_bookmark_set {
-                        self.stopped_for_repro = true;
-                        let current_log_level = log_level(self.as_conf_object_mut())?;
+                        if self.repro_bookmark_set {
+                            self.stopped_for_repro = true;
+                            let current_log_level = log_level(self.as_conf_object_mut())?;
 
-                        if current_log_level < LogLevel::Info as u32 {
-                            set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
-                        }
+                            if current_log_level < LogLevel::Info as u32 {
+                                set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
+                            }
 
-                        info!(
+                            info!(
                             self.as_conf_object(),
                             "Stopped for repro. Restore to start bookmark with 'reverse-to start'"
                         );
 
-                        // Skip the shutdown and continue, we are finished here
-                        return Ok(());
-                    }
+                            // Skip the shutdown and continue, we are finished here
+                            return Ok(());
+                        }
 
-                    self.iterations += 1;
+                        self.iterations += 1;
 
-                    if self.iteration_limit != 0 && self.iterations >= self.iteration_limit {
-                        let duration = SystemTime::now().duration_since(
-                            *self
-                                .start_time
-                                .get()
-                                .ok_or_else(|| anyhow!("Start time was not set"))?,
-                        )?;
+                        if self.iteration_limit != 0 && self.iterations >= self.iteration_limit {
+                            let duration = SystemTime::now().duration_since(
+                                *self
+                                    .start_time
+                                    .get()
+                                    .ok_or_else(|| anyhow!("Start time was not set"))?,
+                            )?;
 
-                        // Set the log level so this message always prints
-                        set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
+                            // Set the log level so this message always prints
+                            set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
 
-                        info!(
+                            info!(
                             self.as_conf_object(),
                             "Configured iteration count {} reached. Stopping after {} seconds ({} exec/s).",
                             self.iterations,
@@ -239,36 +252,37 @@ impl Tsffs {
                             self.iterations as f32 / duration.as_secs_f32()
                         );
 
-                        self.send_shutdown()?;
+                            self.send_shutdown()?;
 
-                        quit(0)?;
+                            quit(0)?;
+                        }
+
+                        let fuzzer_tx = self
+                            .fuzzer_tx
+                            .get()
+                            .ok_or_else(|| anyhow!("No fuzzer tx channel"))?;
+
+                        match solution.kind {
+                            SolutionKind::Timeout => fuzzer_tx.send(ExitKind::Timeout)?,
+                            SolutionKind::Exception
+                            | SolutionKind::Breakpoint
+                            | SolutionKind::Manual => fuzzer_tx.send(ExitKind::Crash)?,
+                        }
+
+                        self.restore_initial_snapshot()?;
+                        self.coverage_prev_loc = 0;
+
+                        if self.start_buffer.get().is_some() && self.start_size.get().is_some() {
+                            self.get_and_write_testcase()?;
+                        } else {
+                            debug!(
+                                self.as_conf_object(),
+                                "Missing start buffer or size, not writing testcase."
+                            );
+                        }
+
+                        self.post_timeout_event()?;
                     }
-
-                    let fuzzer_tx = self
-                        .fuzzer_tx
-                        .get()
-                        .ok_or_else(|| anyhow!("No fuzzer tx channel"))?;
-
-                    match solution.kind {
-                        SolutionKind::Timeout => fuzzer_tx.send(ExitKind::Timeout)?,
-                        SolutionKind::Exception
-                        | SolutionKind::Breakpoint
-                        | SolutionKind::Manual => fuzzer_tx.send(ExitKind::Crash)?,
-                    }
-
-                    self.restore_initial_snapshot()?;
-                    self.coverage_prev_loc = 0;
-
-                    if self.start_buffer.get().is_some() && self.start_size.get().is_some() {
-                        self.get_and_write_testcase()?;
-                    } else {
-                        debug!(
-                            self.as_conf_object(),
-                            "Missing start buffer or size, not writing testcase."
-                        );
-                    }
-
-                    self.post_timeout_event()?;
                 }
             }
 

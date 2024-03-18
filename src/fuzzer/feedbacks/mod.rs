@@ -113,16 +113,19 @@ where
         self.base.init_state(state)
     }
 
-    fn append_metadata<OT>(
+    fn append_metadata<EM, OT>(
         &mut self,
         state: &mut S,
+        manager: &mut EM,
         observers: &OT,
         testcase: &mut libafl::prelude::Testcase<<S>::Input>,
     ) -> Result<(), libafl::Error>
     where
         OT: ObserversTuple<S>,
+        EM: EventFirer<State = S>,
     {
-        self.base.append_metadata(state, observers, testcase)
+        self.base
+            .append_metadata(state, manager, observers, testcase)
     }
 
     fn discard_metadata(&mut self, state: &mut S, input: &<S>::Input) -> Result<(), libafl::Error> {
