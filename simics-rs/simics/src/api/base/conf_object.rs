@@ -25,6 +25,7 @@ use crate::{
 use raw_cstr::{raw_cstr, AsRawCstr};
 use std::{
     ffi::{c_void, CStr},
+    fmt::Display,
     ops::Range,
     ptr::null_mut,
 };
@@ -69,16 +70,16 @@ pub enum TypeStringListType {
     OneOrMore(Box<TypeStringType>),
 }
 
-impl ToString for TypeStringListType {
-    fn to_string(&self) -> String {
+impl Display for TypeStringListType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TypeStringListType::Type(t) => t.to_string(),
+            TypeStringListType::Type(t) => write!(f, "{}", t),
             TypeStringListType::Range(r, t) => {
-                format!("{}{{{}:{}}}", t.to_string(), r.start, r.end)
+                write!(f, "{}{{{}:{}}}", t, r.start, r.end)
             }
-            TypeStringListType::Exact(c, t) => format!("{}{{{}}}", t.to_string(), c),
-            TypeStringListType::ZeroOrMore(t) => format!("{}*", t.to_string()),
-            TypeStringListType::OneOrMore(t) => format!("{}+", t.to_string()),
+            TypeStringListType::Exact(c, t) => write!(f, "{}{{{}}}", t, c),
+            TypeStringListType::ZeroOrMore(t) => write!(f, "{}*", t),
+            TypeStringListType::OneOrMore(t) => write!(f, "{}+", t),
         }
     }
 }
@@ -149,23 +150,24 @@ pub enum TypeStringType {
     Or(Box<TypeStringType>, Box<TypeStringType>),
 }
 
-impl ToString for TypeStringType {
-    fn to_string(&self) -> String {
+impl Display for TypeStringType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TypeStringType::Integer => "i".to_string(),
-            TypeStringType::Float => "f".to_string(),
-            TypeStringType::String => "s".to_string(),
-            TypeStringType::Boolean => "b".to_string(),
-            TypeStringType::Object => "o".to_string(),
-            TypeStringType::Data => "d".to_string(),
-            TypeStringType::Nil => "n".to_string(),
-            TypeStringType::Dictionary => "D".to_string(),
-            TypeStringType::Any => "a".to_string(),
-            TypeStringType::List(l) => format!(
+            TypeStringType::Integer => write!(f, "i"),
+            TypeStringType::Float => write!(f, "f"),
+            TypeStringType::String => write!(f, "s"),
+            TypeStringType::Boolean => write!(f, "b"),
+            TypeStringType::Object => write!(f, "o"),
+            TypeStringType::Data => write!(f, "d"),
+            TypeStringType::Nil => write!(f, "n"),
+            TypeStringType::Dictionary => write!(f, "D"),
+            TypeStringType::Any => write!(f, "a"),
+            TypeStringType::List(l) => write!(
+                f,
                 "[{}]",
                 l.iter().map(|li| li.to_string()).collect::<String>()
             ),
-            TypeStringType::Or(l, r) => format!("{}|{}", l.to_string(), r.to_string()),
+            TypeStringType::Or(l, r) => write!(f, "{}|{}", l, r),
         }
     }
 }

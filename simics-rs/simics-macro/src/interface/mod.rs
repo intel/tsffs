@@ -183,6 +183,7 @@ impl ToTokens for Interface {
             );
         };
 
+        #[allow(unused)]
         let internal_interface_default_args = input
             .items
             .iter()
@@ -194,7 +195,6 @@ impl ToTokens for Interface {
                 }
             })
             .map(|s| {
-                #[allow(unused)]
                 // NOTE: False positive
                 let ffi_fn_name = format_ident!("{}_{}", name, s.ident.to_string());
                 let name = &s.ident;
@@ -366,8 +366,7 @@ impl CInterface {
         let name = format_ident!(
             "{}",
             interface_attr_opts
-                .map(|o| o.name)
-                .flatten()
+                .and_then(|o| o.name)
                 .unwrap_or(item.sig.ident.to_string())
         );
 
