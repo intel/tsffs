@@ -10,7 +10,7 @@ use crate::{
 use anyhow::{anyhow, Result};
 use libafl::{
     feedback_or, feedback_or_fast,
-    inputs::HasBytesVec,
+    inputs::{HasBytesVec, Input},
     prelude::{
         havoc_mutations, ondisk::OnDiskMetadataFormat, tokens_mutations, AFLppRedQueen, BytesInput,
         CachedOnDiskCorpus, Corpus, CrashFeedback, ExitKind, HasCurrentCorpusIdx, HasTargetBytes,
@@ -37,10 +37,10 @@ use libafl_bolts::{
     AsMutSlice, AsSlice,
 };
 use libafl_targets::{AFLppCmpLogObserver, AFLppCmplogTracingStage};
-use simics::{api::AsConfObject, debug, warn};
+use simics::{api::AsConfObject, debug, trace, warn};
 use std::{
-    cell::RefCell, fmt::Debug, slice::from_raw_parts_mut, sync::mpsc::channel, thread::spawn,
-    time::Duration,
+    cell::RefCell, fmt::Debug, fs::write, slice::from_raw_parts_mut, sync::mpsc::channel,
+    thread::spawn, time::Duration,
 };
 use tokenize::{tokenize_executable_file, tokenize_src_file};
 
@@ -468,6 +468,24 @@ impl Tsffs {
                 .recv()
                 .map_err(|e| anyhow!("Error receiving from fuzzer: {e}"))?
         };
+
+        if self.keep_all_corpus {
+            let testcase_name = testcase.testcase.generate_name(0);
+            trace!(
+                self.as_conf_object(),
+                "Writing testcase {}.testcase to corpus directory: {}",
+                &testcase_name,
+                self.corpus_directory.display()
+            );
+
+            write(
+                self.corpus_directory
+                    .join(format!("{}.testcase", &testcase_name)),
+                testcase.testcase.bytes(),
+            )?;
+        }
+
+        self.cmplog_enabled = testcase.cmplog;
 
         debug!(self.as_conf_object(), "Testcase: {testcase:?}");
 

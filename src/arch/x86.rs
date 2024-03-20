@@ -9,29 +9,20 @@ use super::ArchitectureOperations;
 use crate::{
     tracer::{CmpExpr, CmpType, CmpValue, TraceEntry},
     traits::TracerDisassembler,
-    StartBuffer, StartSize, CLASS_NAME,
+    CLASS_NAME,
 };
 use anyhow::{anyhow, bail, Error, Result};
 use libafl::prelude::CmpValues;
 use raw_cstr::AsRawCstr;
 use simics::{
     api::{
-        get_interface, get_object, read_phys_memory, sys::instruction_handle_t, write_byte, Access,
-        ConfObject, CpuInstructionQueryInterface, CpuInstrumentationSubscribeInterface,
-        CycleInterface, GenericAddress, IntRegisterInterface, ProcessorInfoV2Interface,
+        get_interface, get_object, read_phys_memory, sys::instruction_handle_t, Access, ConfObject,
+        CpuInstructionQueryInterface, CpuInstrumentationSubscribeInterface, CycleInterface,
+        IntRegisterInterface, ProcessorInfoV2Interface,
     },
     trace,
 };
 use yaxpeax_x86::protected_mode::{ConditionCode, InstDecoder, Instruction, Opcode, Operand};
-
-/// The default register the fuzzer expects to contain a pointer to an area to write
-/// each testcase into when using an in-target harness
-pub const DEFAULT_TESTCASE_AREA_REGISTER_NAME: &str = "edi";
-/// The default register the fuzzer expects to contain a pointer to a variable,
-/// initially containing the maximum size of the area pointed to by
-/// `DEFAULT_TESTCASE_AREA_REGISTER_NAME`, which will be written each fuzzer execution
-/// to contain the actual size of the current testcase.
-pub const DEFAULT_TESTCASE_SIZE_REGISTER_NAME: &str = "esi";
 
 pub(crate) struct X86ArchitectureOperations {
     cpu: *mut ConfObject,
@@ -44,8 +35,11 @@ pub(crate) struct X86ArchitectureOperations {
 }
 
 impl ArchitectureOperations for X86ArchitectureOperations {
-    const DEFAULT_TESTCASE_AREA_REGISTER_NAME: &'static str = DEFAULT_TESTCASE_AREA_REGISTER_NAME;
-    const DEFAULT_TESTCASE_SIZE_REGISTER_NAME: &'static str = DEFAULT_TESTCASE_SIZE_REGISTER_NAME;
+    const INDEX_SELECTOR_REGISTER: &'static str = "edi";
+    const ARGUMENT_REGISTER_0: &'static str = "esi";
+    const ARGUMENT_REGISTER_1: &'static str = "edx";
+    const ARGUMENT_REGISTER_2: &'static str = "ecx";
+    const POINTER_WIDTH_OVERRIDE: Option<i32> = Some(4);
 
     fn new(cpu: *mut ConfObject) -> Result<Self> {
         let mut processor_info_v2: ProcessorInfoV2Interface = get_interface(cpu)?;
@@ -170,223 +164,6 @@ impl ArchitectureOperations for X86ArchitectureOperations {
 
     fn cycle(&mut self) -> &mut CycleInterface {
         &mut self.cycle
-    }
-
-    /// Returns the address and whether the address is virtual for the testcase buffer used by
-    /// the magic start functionality
-    fn get_magic_start_buffer(&mut self) -> Result<StartBuffer> {
-        let number = self
-            .int_register()
-            .get_number(Self::DEFAULT_TESTCASE_AREA_REGISTER_NAME.as_raw_cstr()?)?;
-        trace!(
-            get_object(CLASS_NAME)?,
-            "Got number {} for register {}",
-            number,
-            Self::DEFAULT_TESTCASE_AREA_REGISTER_NAME
-        );
-
-        let logical_address = self.int_register().read(number)?;
-        trace!(
-            get_object(CLASS_NAME)?,
-            "Got logical address {:#x} from register",
-            logical_address
-        );
-
-        let physical_address_block = self
-            .processor_info_v2()
-            // NOTE: Do we need to support segmented memory via logical_to_physical?
-            .logical_to_physical(logical_address, Access::Sim_Access_Read)?;
-
-        // NOTE: -1 signals no valid mapping, but this is equivalent to u64::MAX
-        if physical_address_block.valid == 0 {
-            bail!("Invalid linear address found in magic start buffer register {number}: {logical_address:#x}");
-        } else {
-            trace!(
-                get_object(CLASS_NAME)?,
-                "Got physical address {:#x} from logical address",
-                physical_address_block.address
-            );
-            Ok(StartBuffer::builder()
-                .physical_address(physical_address_block.address)
-                .virt(physical_address_block.address != logical_address)
-                .build())
-        }
-    }
-
-    // NOTE: Manual implementation because we must ensure we set the width to 4 bytes
-    // instead of 6 for misreporting/hinted architectures
-    fn get_magic_start_size(&mut self) -> Result<StartSize> {
-        let number = self
-            .int_register()
-            .get_number(Self::DEFAULT_TESTCASE_SIZE_REGISTER_NAME.as_raw_cstr()?)?;
-        trace!(
-            get_object(CLASS_NAME)?,
-            "Got number {} for register {}",
-            number,
-            Self::DEFAULT_TESTCASE_SIZE_REGISTER_NAME
-        );
-        let logical_address = self.int_register().read(number)?;
-        trace!(
-            get_object(CLASS_NAME)?,
-            "Got logical address {:#x} from register",
-            logical_address
-        );
-        let physical_address_block = self
-            .processor_info_v2()
-            // NOTE: Do we need to support segmented memory via logical_to_physical?
-            .logical_to_physical(logical_address, Access::Sim_Access_Read)?;
-        trace!(
-            get_object(CLASS_NAME)?,
-            "Got physical address {:#x} from logical address",
-            physical_address_block.address
-        );
-
-        // NOTE: -1 signals no valid mapping, but this is equivalent to u64::MAX
-        if physical_address_block.valid == 0 {
-            bail!("Invalid linear address found in magic start buffer register {number}: {logical_address:#x}");
-        }
-
-        let size = read_phys_memory(self.cpu(), physical_address_block.address, 4)?;
-
-        trace!(
-            get_object(CLASS_NAME)?,
-            "Read start size {size} from start size address"
-        );
-
-        Ok(StartSize::builder()
-            .physical_address((
-                physical_address_block.address,
-                physical_address_block.address != logical_address,
-            ))
-            .initial_size(size)
-            .build())
-    }
-
-    fn get_manual_start_buffer(
-        &mut self,
-        buffer_address: GenericAddress,
-        virt: bool,
-    ) -> Result<StartBuffer> {
-        let physical_address = if virt {
-            let physical_address_block = self
-                .processor_info_v2()
-                // NOTE: Do we need to support segmented memory via logical_to_physical?
-                .logical_to_physical(buffer_address, Access::Sim_Access_Read)?;
-
-            if physical_address_block.valid == 0 {
-                bail!(
-                    "Invalid linear address for given buffer address {:#x}",
-                    buffer_address
-                );
-            }
-            physical_address_block.address
-        } else {
-            buffer_address
-        };
-
-        trace!(
-            get_object(CLASS_NAME)?,
-            "Got physical address {:#x} from logical address for manual start buffer",
-            physical_address
-        );
-        Ok(StartBuffer::builder()
-            .physical_address(physical_address)
-            .virt(physical_address != buffer_address)
-            .build())
-    }
-
-    /// Returns the initial start size for non-magic instructions by reading it from a given
-    /// (possibly virtual) address
-    fn get_manual_start_size(
-        &mut self,
-        size_address: GenericAddress,
-        virt: bool,
-    ) -> Result<StartSize> {
-        let physical_address = if virt {
-            let physical_address_block = self
-                .processor_info_v2()
-                // NOTE: Do we need to support segmented memory via logical_to_physical?
-                .logical_to_physical(size_address, Access::Sim_Access_Read)?;
-
-            if physical_address_block.valid == 0 {
-                bail!("Invalid linear address given for start buffer : {size_address:#x}");
-            }
-            physical_address_block.address
-        } else {
-            size_address
-        };
-
-        trace!(
-            get_object(CLASS_NAME)?,
-            "Got physical address {:#x} from logical address for manual start buffer size",
-            physical_address
-        );
-
-        let size = read_phys_memory(self.cpu(), physical_address, 4)?;
-
-        trace!(
-            get_object(CLASS_NAME)?,
-            "Read start size {size} from start size address"
-        );
-
-        Ok(StartSize::builder()
-            .physical_address((physical_address, physical_address != size_address))
-            .initial_size(size)
-            .build())
-    }
-
-    /// Writes the buffer with a testcase of a certain size
-    fn write_start(
-        &mut self,
-        testcase: &[u8],
-        buffer: &StartBuffer,
-        size: &StartSize,
-    ) -> Result<()> {
-        let mut testcase = testcase.to_vec();
-        let physical_memory = self.processor_info_v2().get_physical_memory()?;
-
-        let initial_size =
-            size.initial_size
-                .ok_or_else(|| anyhow!("Expected initial size for start"))? as usize;
-
-        trace!(
-            get_object(CLASS_NAME)?,
-            "Truncating testcase to {initial_size} bytes (from {} bytes)",
-            testcase.len()
-        );
-
-        testcase.truncate(initial_size);
-
-        testcase.iter().enumerate().try_for_each(|(i, c)| {
-            let physical_address = buffer.physical_address + (i as u64);
-            trace!(
-                get_object(CLASS_NAME)?,
-                "Writing testcase byte {:?} to physical memory {:#x}",
-                c,
-                physical_address
-            );
-            write_byte(physical_memory, physical_address, *c)
-        })?;
-
-        if let Some((address, _)) = size.physical_address {
-            testcase
-                .len()
-                .to_le_bytes()
-                .iter()
-                .take(4)
-                .enumerate()
-                .try_for_each(|(i, c)| {
-                    let physical_address = address + (i as u64);
-                    write_byte(physical_memory, physical_address, *c)
-                })?;
-        } else {
-            trace!(
-                get_object(CLASS_NAME)?,
-                "Not writing testcase size, no physical address saved for size"
-            );
-        }
-
-        Ok(())
     }
 
     fn trace_pc(&mut self, instruction_query: *mut instruction_handle_t) -> Result<TraceEntry> {

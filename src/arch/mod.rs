@@ -7,16 +7,16 @@ use self::{
     risc_v::RISCVArchitectureOperations, x86::X86ArchitectureOperations,
     x86_64::X86_64ArchitectureOperations,
 };
-use crate::{tracer::TraceEntry, traits::TracerDisassembler, StartBuffer, StartSize, CLASS_NAME};
-use anyhow::{anyhow, bail, Error, Result};
+use crate::{
+    tracer::TraceEntry, traits::TracerDisassembler, ManualStartAddress, ManualStartInfo, StartInfo,
+    StartPhysicalAddress, StartSize,
+};
+use anyhow::{bail, ensure, Error, Result};
 use raw_cstr::AsRawCstr;
-use simics::{
-    api::{
-        get_object, read_phys_memory, sys::instruction_handle_t, write_byte, Access, AttrValueType,
-        ConfObject, CpuInstructionQueryInterface, CpuInstrumentationSubscribeInterface,
-        CycleInterface, GenericAddress, IntRegisterInterface, ProcessorInfoV2Interface,
-    },
-    trace,
+use simics::api::{
+    read_phys_memory, sys::instruction_handle_t, write_byte, Access, AttrValueType, ConfObject,
+    CpuInstructionQueryInterface, CpuInstrumentationSubscribeInterface, CycleInterface,
+    IntRegisterInterface, ProcessorInfoV2Interface,
 };
 use std::{fmt::Debug, str::FromStr};
 
@@ -100,12 +100,11 @@ impl Debug for Architecture {
 }
 /// Each architecture must provide a struct that performs architecture-specific operations
 pub trait ArchitectureOperations {
-    /// The register for this architecture which contains the address of the testcase buffer
-    /// when using the magic start functionality
-    const DEFAULT_TESTCASE_AREA_REGISTER_NAME: &'static str;
-    /// The register for this architecture which contains the pointer to the size of the
-    /// testcase buffer when using the magic start functionality
-    const DEFAULT_TESTCASE_SIZE_REGISTER_NAME: &'static str;
+    const INDEX_SELECTOR_REGISTER: &'static str;
+    const ARGUMENT_REGISTER_0: &'static str;
+    const ARGUMENT_REGISTER_1: &'static str;
+    const ARGUMENT_REGISTER_2: &'static str;
+    const POINTER_WIDTH_OVERRIDE: Option<i32> = None;
 
     /// Create a new instance of the architecture operations
     fn new(cpu: *mut ConfObject) -> Result<Self>
@@ -141,169 +140,269 @@ pub trait ArchitectureOperations {
     /// Return a mutable reference to the interface for querying CPU cycles and timing
     fn cycle(&mut self) -> &mut CycleInterface;
 
-    /// Returns the address and whether the address is virtual for the testcase buffer used by
-    /// the magic start functionality
-    fn get_magic_start_buffer(&mut self) -> Result<StartBuffer> {
-        let number = self
+    /// Return the value of the magic index selector register, which is used to determine
+    /// whether a magic instruction should be used or skipped.
+    fn get_magic_index_selector(&mut self) -> Result<u64> {
+        Ok(self
             .int_register()
-            .get_number(Self::DEFAULT_TESTCASE_AREA_REGISTER_NAME.as_raw_cstr()?)?;
-
-        trace!(
-            get_object(CLASS_NAME)?,
-            "Got number {} for register {}",
-            number,
-            Self::DEFAULT_TESTCASE_AREA_REGISTER_NAME
-        );
-
-        let logical_address = self.int_register().read(number)?;
-        trace!(
-            get_object(CLASS_NAME)?,
-            "Got logical address {:#x} from register",
-            logical_address
-        );
-
-        let physical_address_block = self
-            .processor_info_v2()
-            // NOTE: Do we need to support segmented memory via logical_to_physical?
-            .logical_to_physical(logical_address, Access::Sim_Access_Read)?;
-
-        // NOTE: -1 signals no valid mapping, but this is equivalent to u64::MAX
-        if physical_address_block.valid == 0 {
-            bail!("Invalid linear address found in magic start buffer register {number}: {logical_address:#x}");
-        } else {
-            trace!(
-                get_object(CLASS_NAME)?,
-                "Got physical address {:#x} from logical address",
-                physical_address_block.address
-            );
-            Ok(StartBuffer::builder()
-                .physical_address(physical_address_block.address)
-                .virt(physical_address_block.address != logical_address)
-                .build())
-        }
+            .get_number(Self::INDEX_SELECTOR_REGISTER.as_raw_cstr()?)
+            .and_then(|n| self.int_register().read(n))?)
     }
-    /// Returns the memory pointed to by the magic start functionality containing the maximum
-    /// size of an input testcase
-    fn get_magic_start_size(&mut self) -> Result<StartSize> {
-        let number = self
+
+    /// Get the magic start information from the harness which takes the arguments:
+    ///
+    /// - buffer: The address of the buffer containing the testcase
+    /// - size_ptr: A pointer to a pointer-sized variable containing the size of the testcase
+    fn get_magic_start_buffer_ptr_size_ptr(&mut self) -> Result<StartInfo> {
+        let buffer_register_number = self
             .int_register()
-            .get_number(Self::DEFAULT_TESTCASE_SIZE_REGISTER_NAME.as_raw_cstr()?)?;
-        let logical_address = self.int_register().read(number)?;
-        let physical_address_block = self
+            .get_number(Self::ARGUMENT_REGISTER_0.as_raw_cstr()?)?;
+        let size_ptr_register_number = self
+            .int_register()
+            .get_number(Self::ARGUMENT_REGISTER_1.as_raw_cstr()?)?;
+        let buffer_logical_address = self.int_register().read(buffer_register_number)?;
+        let size_ptr_logical_address = self.int_register().read(size_ptr_register_number)?;
+        let buffer_physical_address_block = self
             .processor_info_v2()
-            // NOTE: Do we need to support segmented memory via logical_to_physical?
-            .logical_to_physical(logical_address, Access::Sim_Access_Read)?;
+            .logical_to_physical(buffer_logical_address, Access::Sim_Access_Read)?;
+        let size_ptr_physical_address_block = self
+            .processor_info_v2()
+            .logical_to_physical(size_ptr_logical_address, Access::Sim_Access_Read)?;
 
-        // NOTE: -1 signals no valid mapping, but this is equivalent to u64::MAX
-        if physical_address_block.valid == 0 {
-            bail!("Invalid linear address found in magic start buffer register {number}: {logical_address:#x}");
-        }
+        ensure!(
+            buffer_physical_address_block.valid != 0,
+            "Invalid linear address found in magic start buffer register {buffer_register_number}: {buffer_logical_address:#x}"
+        );
+        ensure!(
+            size_ptr_physical_address_block.valid != 0,
+            "Invalid linear address found in magic start size register {size_ptr_register_number}: {size_ptr_logical_address:#x}"
+        );
 
-        let size_size = self.processor_info_v2().get_logical_address_width()? / u8::BITS as i32;
-        let size = read_phys_memory(self.cpu(), physical_address_block.address, size_size)?;
+        let size_size = if let Some(width) = Self::POINTER_WIDTH_OVERRIDE {
+            width
+        } else {
+            self.processor_info_v2().get_logical_address_width()? / u8::BITS as i32
+        };
 
-        Ok(StartSize::builder()
-            .physical_address((
-                physical_address_block.address,
-                physical_address_block.address != logical_address,
-            ))
-            .initial_size(size)
+        let size = read_phys_memory(
+            self.cpu(),
+            size_ptr_physical_address_block.address,
+            size_size,
+        )?;
+
+        Ok(StartInfo::builder()
+            .address(
+                if buffer_physical_address_block.address != buffer_logical_address {
+                    StartPhysicalAddress::WasVirtual(buffer_physical_address_block.address)
+                } else {
+                    StartPhysicalAddress::WasPhysical(buffer_physical_address_block.address)
+                },
+            )
+            .size(StartSize::SizePtr {
+                address: if size_ptr_physical_address_block.address != size_ptr_logical_address {
+                    StartPhysicalAddress::WasVirtual(size_ptr_physical_address_block.address)
+                } else {
+                    StartPhysicalAddress::WasPhysical(size_ptr_physical_address_block.address)
+                },
+                maximum_size: size as usize,
+            })
+            .build())
+    }
+
+    /// Get the magic start information from the harness which takes the arguments:
+    ///
+    /// - buffer: The address of the buffer containing the testcase
+    /// - size_val: The maximum size of the testcase
+    fn get_magic_start_buffer_ptr_size_val(&mut self) -> Result<StartInfo> {
+        let buffer_register_number = self
+            .int_register()
+            .get_number(Self::ARGUMENT_REGISTER_0.as_raw_cstr()?)?;
+        let size_val_register_number = self
+            .int_register()
+            .get_number(Self::ARGUMENT_REGISTER_1.as_raw_cstr()?)?;
+        let buffer_logical_address = self.int_register().read(buffer_register_number)?;
+        let size_val = self.int_register().read(size_val_register_number)?;
+        let buffer_physical_address_block = self
+            .processor_info_v2()
+            .logical_to_physical(buffer_logical_address, Access::Sim_Access_Read)?;
+
+        ensure!(
+            buffer_physical_address_block.valid != 0,
+            "Invalid linear address found in magic start buffer register {buffer_register_number}: {buffer_logical_address:#x}"
+        );
+
+        Ok(StartInfo::builder()
+            .address(
+                if buffer_physical_address_block.address != buffer_logical_address {
+                    StartPhysicalAddress::WasVirtual(buffer_physical_address_block.address)
+                } else {
+                    StartPhysicalAddress::WasPhysical(buffer_physical_address_block.address)
+                },
+            )
+            .size(StartSize::MaxSize(size_val as usize))
+            .build())
+    }
+
+    /// Get the magic start information from the harness which takes the arguments:
+    ///
+    /// - buffer: The address of the buffer containing the testcase
+    /// - size_ptr: A pointer to a pointer-sized variable to which the size is written
+    /// - size_val: The maximum size of the testcase
+    fn get_magic_start_buffer_ptr_size_ptr_val(&mut self) -> Result<StartInfo> {
+        let buffer_register_number = self
+            .int_register()
+            .get_number(Self::ARGUMENT_REGISTER_0.as_raw_cstr()?)?;
+        let size_ptr_register_number = self
+            .int_register()
+            .get_number(Self::ARGUMENT_REGISTER_1.as_raw_cstr()?)?;
+        let size_val_register_number = self
+            .int_register()
+            .get_number(Self::ARGUMENT_REGISTER_2.as_raw_cstr()?)?;
+
+        let buffer_logical_address = self.int_register().read(buffer_register_number)?;
+        let size_ptr_logical_address = self.int_register().read(size_ptr_register_number)?;
+        let size_val = self.int_register().read(size_val_register_number)?;
+
+        let buffer_physical_address_block = self
+            .processor_info_v2()
+            .logical_to_physical(buffer_logical_address, Access::Sim_Access_Read)?;
+
+        let size_ptr_physical_address_block = self
+            .processor_info_v2()
+            .logical_to_physical(size_ptr_logical_address, Access::Sim_Access_Read)?;
+
+        ensure!(
+            buffer_physical_address_block.valid != 0,
+            "Invalid linear address found in magic start buffer register {buffer_register_number}: {buffer_logical_address:#x}"
+        );
+        ensure!(
+            size_ptr_physical_address_block.valid != 0,
+            "Invalid linear address found in magic start size register {size_ptr_register_number}: {size_ptr_logical_address:#x}"
+        );
+
+        Ok(StartInfo::builder()
+            .address(
+                if buffer_physical_address_block.address != buffer_logical_address {
+                    StartPhysicalAddress::WasVirtual(buffer_physical_address_block.address)
+                } else {
+                    StartPhysicalAddress::WasPhysical(buffer_physical_address_block.address)
+                },
+            )
+            .size(StartSize::SizePtrAndMaxSize {
+                address: if size_ptr_physical_address_block.address != size_ptr_logical_address {
+                    StartPhysicalAddress::WasVirtual(size_ptr_physical_address_block.address)
+                } else {
+                    StartPhysicalAddress::WasPhysical(size_ptr_physical_address_block.address)
+                },
+                maximum_size: size_val as usize,
+            })
             .build())
     }
 
     /// Returns the address and whether the address is virtual for the testcase buffer used by
     /// the manual start functionality
-    fn get_manual_start_buffer(
-        &mut self,
-        buffer_address: GenericAddress,
-        virt: bool,
-    ) -> Result<StartBuffer> {
-        let physical_address = if virt {
+    fn get_manual_start_info(&mut self, info: &ManualStartInfo) -> Result<StartInfo> {
+        let buffer_physical_address = if matches!(info.address, ManualStartAddress::Virtual(_)) {
             let physical_address_block = self
                 .processor_info_v2()
                 // NOTE: Do we need to support segmented memory via logical_to_physical?
-                .logical_to_physical(buffer_address, Access::Sim_Access_Read)?;
+                .logical_to_physical(
+                    match info.address {
+                        ManualStartAddress::Virtual(address) => address,
+                        ManualStartAddress::Physical(address) => address,
+                    },
+                    Access::Sim_Access_Read,
+                )?;
 
             if physical_address_block.valid == 0 {
                 bail!(
-                    "Invalid linear address for given buffer address {:#x}",
-                    buffer_address
+                    "Invalid linear address for given buffer address {:?}",
+                    info.address
                 );
             }
 
             physical_address_block.address
         } else {
-            buffer_address
+            info.address.address()
         };
 
-        Ok(StartBuffer::builder()
-            .physical_address(physical_address)
-            .virt(physical_address != buffer_address)
-            .build())
-    }
+        let address = StartPhysicalAddress::WasPhysical(buffer_physical_address);
 
-    /// Returns the initial start size for non-magic instructions by reading it from a given
-    /// (possibly virtual) address
-    fn get_manual_start_size(
-        &mut self,
-        size_address: GenericAddress,
-        virt: bool,
-    ) -> Result<StartSize> {
-        let physical_address = if virt {
-            let physical_address_block = self
-                .processor_info_v2()
-                // NOTE: Do we need to support segmented memory via logical_to_physical?
-                .logical_to_physical(size_address, Access::Sim_Access_Read)?;
+        let size = match &info.size {
+            crate::ManualStartSize::SizePtr { address } => {
+                let address = match address {
+                    ManualStartAddress::Virtual(v) => {
+                        let physical_address = self
+                            .processor_info_v2()
+                            .logical_to_physical(*v, Access::Sim_Access_Read)?;
 
-            if physical_address_block.valid == 0 {
-                bail!("Invalid linear address given for start buffer : {size_address:#x}");
+                        if physical_address.valid == 0 {
+                            bail!("Invalid linear address given for start buffer : {v:#x}");
+                        }
+
+                        StartPhysicalAddress::WasVirtual(physical_address.address)
+                    }
+                    ManualStartAddress::Physical(p) => StartPhysicalAddress::WasPhysical(*p),
+                };
+
+                let size_size = if let Some(width) = Self::POINTER_WIDTH_OVERRIDE {
+                    width
+                } else {
+                    self.processor_info_v2().get_logical_address_width()? / u8::BITS as i32
+                };
+                let maximum_size =
+                    read_phys_memory(self.cpu(), address.physical_address(), size_size)?;
+                StartSize::SizePtr {
+                    address,
+                    maximum_size: maximum_size as usize,
+                }
             }
+            crate::ManualStartSize::MaxSize(maximum_size) => StartSize::MaxSize(*maximum_size),
+            crate::ManualStartSize::SizePtrAndMaxSize {
+                address,
+                maximum_size,
+            } => {
+                let address = match address {
+                    ManualStartAddress::Virtual(v) => {
+                        let physical_address = self
+                            .processor_info_v2()
+                            .logical_to_physical(*v, Access::Sim_Access_Read)?;
 
-            physical_address_block.address
-        } else {
-            size_address
+                        if physical_address.valid == 0 {
+                            bail!("Invalid linear address given for start buffer : {v:#x}");
+                        }
+
+                        StartPhysicalAddress::WasVirtual(physical_address.address)
+                    }
+                    ManualStartAddress::Physical(p) => StartPhysicalAddress::WasPhysical(*p),
+                };
+
+                StartSize::SizePtrAndMaxSize {
+                    address,
+                    maximum_size: *maximum_size,
+                }
+            }
         };
 
-        let size_size = self.processor_info_v2().get_logical_address_width()? / u8::BITS as i32;
-        let size = read_phys_memory(self.cpu(), physical_address, size_size)?;
-
-        Ok(StartSize::builder()
-            .physical_address((physical_address, physical_address != size_address))
-            .initial_size(size)
-            .build())
+        Ok(StartInfo::builder().address(address).size(size).build())
     }
 
-    /// Writes the buffer with a testcase of a certain size
-    fn write_start(
-        &mut self,
-        testcase: &[u8],
-        buffer: &StartBuffer,
-        size: &StartSize,
-    ) -> Result<()> {
+    fn write_start(&mut self, testcase: &[u8], info: &StartInfo) -> Result<()> {
         let mut testcase = testcase.to_vec();
         // NOTE: We have to handle both riscv64 and riscv32 here
         let addr_size =
             self.processor_info_v2().get_logical_address_width()? as usize / u8::BITS as usize;
-        let initial_size =
-            size.initial_size
-                .ok_or_else(|| anyhow!("Expected initial size for start"))? as usize;
 
         let physical_memory = self.processor_info_v2().get_physical_memory()?;
 
-        trace!(
-            get_object(CLASS_NAME)?,
-            "Truncating testcase to {initial_size} bytes (from {} bytes)",
-            testcase.len()
-        );
-
-        testcase.truncate(initial_size);
+        testcase.truncate(info.size.maximum_size());
 
         testcase.iter().enumerate().try_for_each(|(i, c)| {
-            let physical_address = buffer.physical_address + (i as u64);
+            let physical_address = info.address.physical_address() + (i as u64);
             write_byte(physical_memory, physical_address, *c)
         })?;
 
-        if let Some((address, _)) = size.physical_address {
+        if let Some(size_address) = info.size.physical_address().map(|s| s.physical_address()) {
             testcase
                 .len()
                 .to_le_bytes()
@@ -311,14 +410,9 @@ pub trait ArchitectureOperations {
                 .take(addr_size)
                 .enumerate()
                 .try_for_each(|(i, c)| {
-                    let physical_address = address + (i as u64);
+                    let physical_address = size_address + (i as u64);
                     write_byte(physical_memory, physical_address, *c)
                 })?;
-        } else {
-            trace!(
-                get_object(CLASS_NAME)?,
-                "Not writing testcase size, no physical address saved for size"
-            );
         }
 
         Ok(())
@@ -329,8 +423,10 @@ pub trait ArchitectureOperations {
 }
 
 impl ArchitectureOperations for Architecture {
-    const DEFAULT_TESTCASE_AREA_REGISTER_NAME: &'static str = "";
-    const DEFAULT_TESTCASE_SIZE_REGISTER_NAME: &'static str = "";
+    const INDEX_SELECTOR_REGISTER: &'static str = "";
+    const ARGUMENT_REGISTER_0: &'static str = "";
+    const ARGUMENT_REGISTER_1: &'static str = "";
+    const ARGUMENT_REGISTER_2: &'static str = "";
 
     fn new(cpu: *mut ConfObject) -> Result<Self>
     where
@@ -403,56 +499,51 @@ impl ArchitectureOperations for Architecture {
         }
     }
 
-    fn get_magic_start_buffer(&mut self) -> Result<StartBuffer> {
+    fn get_magic_index_selector(&mut self) -> Result<u64> {
         match self {
-            Architecture::X86_64(x86_64) => x86_64.get_magic_start_buffer(),
-            Architecture::I386(i386) => i386.get_magic_start_buffer(),
-            Architecture::Riscv(riscv) => riscv.get_magic_start_buffer(),
+            Architecture::X86_64(x86_64) => x86_64.get_magic_index_selector(),
+            Architecture::I386(i386) => i386.get_magic_index_selector(),
+            Architecture::Riscv(riscv) => riscv.get_magic_index_selector(),
         }
     }
 
-    fn get_magic_start_size(&mut self) -> Result<StartSize> {
+    fn get_magic_start_buffer_ptr_size_ptr(&mut self) -> Result<StartInfo> {
         match self {
-            Architecture::X86_64(x86_64) => x86_64.get_magic_start_size(),
-            Architecture::I386(i386) => i386.get_magic_start_size(),
-            Architecture::Riscv(riscv) => riscv.get_magic_start_size(),
+            Architecture::X86_64(x86_64) => x86_64.get_magic_start_buffer_ptr_size_ptr(),
+            Architecture::I386(i386) => i386.get_magic_start_buffer_ptr_size_ptr(),
+            Architecture::Riscv(riscv) => riscv.get_magic_start_buffer_ptr_size_ptr(),
         }
     }
 
-    fn get_manual_start_buffer(
-        &mut self,
-        buffer_address: GenericAddress,
-        virt: bool,
-    ) -> Result<StartBuffer> {
+    fn get_magic_start_buffer_ptr_size_val(&mut self) -> Result<StartInfo> {
         match self {
-            Architecture::X86_64(x86_64) => x86_64.get_manual_start_buffer(buffer_address, virt),
-            Architecture::I386(i386) => i386.get_manual_start_buffer(buffer_address, virt),
-            Architecture::Riscv(riscv) => riscv.get_manual_start_buffer(buffer_address, virt),
+            Architecture::X86_64(x86_64) => x86_64.get_magic_start_buffer_ptr_size_val(),
+            Architecture::I386(i386) => i386.get_magic_start_buffer_ptr_size_val(),
+            Architecture::Riscv(riscv) => riscv.get_magic_start_buffer_ptr_size_val(),
         }
     }
 
-    fn get_manual_start_size(
-        &mut self,
-        size_address: GenericAddress,
-        virt: bool,
-    ) -> Result<StartSize> {
+    fn get_magic_start_buffer_ptr_size_ptr_val(&mut self) -> Result<StartInfo> {
         match self {
-            Architecture::X86_64(x86_64) => x86_64.get_manual_start_size(size_address, virt),
-            Architecture::I386(i386) => i386.get_manual_start_size(size_address, virt),
-            Architecture::Riscv(riscv) => riscv.get_manual_start_size(size_address, virt),
+            Architecture::X86_64(x86_64) => x86_64.get_magic_start_buffer_ptr_size_ptr(),
+            Architecture::I386(i386) => i386.get_magic_start_buffer_ptr_size_ptr(),
+            Architecture::Riscv(riscv) => riscv.get_magic_start_buffer_ptr_size_ptr(),
         }
     }
 
-    fn write_start(
-        &mut self,
-        testcase: &[u8],
-        buffer: &StartBuffer,
-        size: &StartSize,
-    ) -> Result<()> {
+    fn get_manual_start_info(&mut self, info: &ManualStartInfo) -> Result<StartInfo> {
         match self {
-            Architecture::X86_64(x86_64) => x86_64.write_start(testcase, buffer, size),
-            Architecture::I386(i386) => i386.write_start(testcase, buffer, size),
-            Architecture::Riscv(riscv) => riscv.write_start(testcase, buffer, size),
+            Architecture::X86_64(x86_64) => x86_64.get_manual_start_info(info),
+            Architecture::I386(i386) => i386.get_manual_start_info(info),
+            Architecture::Riscv(riscv) => riscv.get_manual_start_info(info),
+        }
+    }
+
+    fn write_start(&mut self, testcase: &[u8], info: &StartInfo) -> Result<()> {
+        match self {
+            Architecture::X86_64(x86_64) => x86_64.write_start(testcase, info),
+            Architecture::I386(i386) => i386.write_start(testcase, info),
+            Architecture::Riscv(riscv) => riscv.write_start(testcase, info),
         }
     }
 

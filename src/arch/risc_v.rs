@@ -22,17 +22,6 @@ use crate::{
 
 use super::ArchitectureOperations;
 
-/// The default register the fuzzer expects to contain a pointer to an area to write
-/// each testcase into when using an in-target harness. This is AKA a0 but we use x10 as the
-/// canonical name
-pub const DEFAULT_TESTCASE_AREA_REGISTER_NAME: &str = "x10";
-/// The default register the fuzzer expects to contain a pointer to a variable,
-/// initially containing the maximum size of the area pointed to by
-/// `DEFAULT_TESTCASE_AREA_REGISTER_NAME`, which will be written each fuzzer execution
-/// to contain the actual size of the current testcase. This is AKA a1 but we use x11 as the
-/// canonical name
-pub const DEFAULT_TESTCASE_SIZE_REGISTER_NAME: &str = "x11";
-
 pub(crate) struct RISCVArchitectureOperations {
     cpu: *mut ConfObject,
     disassembler: Disassembler,
@@ -44,8 +33,13 @@ pub(crate) struct RISCVArchitectureOperations {
 }
 
 impl ArchitectureOperations for RISCVArchitectureOperations {
-    const DEFAULT_TESTCASE_AREA_REGISTER_NAME: &'static str = DEFAULT_TESTCASE_AREA_REGISTER_NAME;
-    const DEFAULT_TESTCASE_SIZE_REGISTER_NAME: &'static str = DEFAULT_TESTCASE_SIZE_REGISTER_NAME;
+    const INDEX_SELECTOR_REGISTER: &'static str = "x10";
+
+    const ARGUMENT_REGISTER_0: &'static str = "x11";
+
+    const ARGUMENT_REGISTER_1: &'static str = "x12";
+
+    const ARGUMENT_REGISTER_2: &'static str = "x13";
 
     fn new(cpu: *mut ConfObject) -> Result<Self> {
         let mut processor_info_v2: ProcessorInfoV2Interface = get_interface(cpu)?;

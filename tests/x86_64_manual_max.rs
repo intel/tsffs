@@ -101,7 +101,7 @@ fn test_x86_64_manual_max() -> Result<()> {
                     virt,
                 )
 
-                tsffs.iface.fuzz.start_with_maximum_size(
+                tsffs.iface.fuzz.start_with_buffer_ptr_size_value(
                     conf.qsp.mb.cpu0.core[0][0],
                     testcase_address,
                     maximum_size,

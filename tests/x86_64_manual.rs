@@ -104,7 +104,7 @@ fn test_x86_64_manual() -> Result<()> {
                     virt,
                 )
 
-                tsffs.iface.fuzz.start(
+                tsffs.iface.fuzz.start_with_buffer_ptr_size_ptr(
                     conf.qsp.mb.cpu0.core[0][0],
                     testcase_address,
                     size_address,
