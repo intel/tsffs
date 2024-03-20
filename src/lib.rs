@@ -394,6 +394,9 @@ pub(crate) struct Tsffs {
     #[class(attribute(optional, default = false))]
     /// Whether to use the initial contents of the testcase buffer as an entry in the corpus
     pub use_initial_as_corpus: bool,
+    #[class(attribute(optional, default = false))]
+    /// Whether to enable extra debug logging for LibAFL
+    pub debug_log_libafl: bool,
 
     #[attr_value(skip)]
     /// Handle for the core simulation stopped hap
@@ -616,6 +619,12 @@ impl Tsffs {
     /// "start processor" which is the processor running when the fuzzing loop begins
     pub fn add_processor(&mut self, cpu: *mut ConfObject, is_start: bool) -> Result<()> {
         let cpu_number = get_processor_number(cpu)?;
+        debug!(
+            self.as_conf_object(),
+            "Adding {}processor {} to fuzzer",
+            if is_start { "start " } else { "" },
+            cpu_number
+        );
 
         if let Entry::Vacant(e) = self.processors.entry(cpu_number) {
             let architecture = if let Some(hint) = self.architecture_hints.get(&cpu_number) {

@@ -148,6 +148,13 @@ impl Tsffs {
             self.post_timeout_event()?;
         }
 
+        debug!(self.as_conf_object(), "Resuming simulation");
+
+        run_alone(|| {
+            continue_simulation(0)?;
+            Ok(())
+        })?;
+
         Ok(())
     }
 
@@ -308,6 +315,13 @@ impl Tsffs {
             self.post_timeout_event()?;
         }
 
+        debug!(self.as_conf_object(), "Resuming simulation");
+
+        run_alone(|| {
+            continue_simulation(0)?;
+            Ok(())
+        })?;
+
         Ok(())
     }
 
@@ -389,6 +403,13 @@ impl Tsffs {
 
             self.post_timeout_event()?;
         }
+
+        debug!(self.as_conf_object(), "Resuming simulation");
+
+        run_alone(|| {
+            continue_simulation(0)?;
+            Ok(())
+        })?;
 
         Ok(())
     }
@@ -536,30 +557,32 @@ impl Tsffs {
                 MagicNumber::StartBufferPtrSizePtr
                 | MagicNumber::StartBufferPtrSizeVal
                 | MagicNumber::StartBufferPtrSizePtrVal => {
-                    if self.magic_start_index == index_selector {
-                        // Set this processor as the start processor now that we know it is
-                        // enabled
-                        self.start_processor_number
-                            .set(processor_number)
-                            .map_err(|_| anyhow!("Failed to set start processor number"))?;
-                        debug!("Setting processor {} as start processor", processor_number);
-                        true
-                    } else {
-                        debug!(
-                            "Not setting processor {} as start processor",
-                            processor_number
-                        );
-                        false
-                    }
+                    self.start_on_harness
+                        && (if self.magic_start_index == index_selector {
+                            // Set this processor as the start processor now that we know it is
+                            // enabled, but only set if it is not already set
+                            let _ = self.start_processor_number.get_or_init(|| processor_number);
+                            true
+                        } else {
+                            debug!(
+                                "Not setting processor {} as start processor",
+                                processor_number
+                            );
+                            false
+                        })
                 }
-                MagicNumber::StopNormal => self.magic_stop_indices.contains(&index_selector),
-                MagicNumber::StopAssert => self.magic_assert_indices.contains(&index_selector),
+                MagicNumber::StopNormal => {
+                    self.stop_on_harness && self.magic_stop_indices.contains(&index_selector)
+                }
+                MagicNumber::StopAssert => {
+                    self.stop_on_harness && self.magic_assert_indices.contains(&index_selector)
+                }
             } {
                 self.stop_simulation(StopReason::Magic { magic_number })?;
             } else {
                 debug!(
                     self.as_conf_object(),
-                    "Magic instruction {magic_number} was triggered by processor {trigger_obj:?} with index {index_selector} but the index is not configured for this magic number. Configured indices are: start: {}, stop: {:?}, assert: {:?}",
+                    "Magic instruction {magic_number} was triggered by processor {trigger_obj:?} with index {index_selector} but the index is not configured for this magic number or start/stop on harness was disabled. Configured indices are: start: {}, stop: {:?}, assert: {:?}",
                     self.magic_start_index,
                     self.magic_stop_indices,
                     self.magic_assert_indices

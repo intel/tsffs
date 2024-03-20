@@ -45,7 +45,7 @@ fn test_x86_64_manual() -> Result<()> {
             simics.SIM_load_module("tsffs")
 
             tsffs = simics.SIM_create_object(simics.SIM_get_class("tsffs"), "tsffs", [])
-            simics.SIM_set_log_level(tsffs, 2)
+            simics.SIM_set_log_level(tsffs, 4)
             tsffs.start_on_harness = False
             tsffs.stop_on_harness = False
             tsffs.timeout = 3.0

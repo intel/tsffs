@@ -21,7 +21,7 @@ version = "0.2.1"
 
 [package.metadata.simics]
 package-number = 31337
-# version = "6.0.pre4"
+
 version = "6.0.6"
 
 [lib]
@@ -29,6 +29,7 @@ crate-type = ["cdylib", "rlib"]
 test = false
 
 [dependencies]
+num-derive = "0.4.2"
 anyhow = { version = "1.0.80" }
 libafl = { git = "https://github.com/AFLplusplus/LibAFL", rev = "0f26f6ea32aa74ee526636558842ec06bbfb49bb", default-features = false, features = [
     "std",
@@ -71,8 +72,9 @@ serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.114"
 versions = { version = "6.1.0", features = ["serde"] }
 ffi = "0.1.1"
-num-derive = "0.4.2"
 num-traits = "0.2.18"
+tracing-subscriber = "0.3.18"
+tracing = { version = "0.1.40", features = ["log"] }
 
 [dev-dependencies]
 simics-test = { path = "simics-rs/simics-test" }

@@ -38,7 +38,7 @@ fn test_riscv_64_kernel_magic() -> Result<()> {
             load-module tsffs
             init-tsffs
 
-            @tsffs.log_level = 4
+            @tsffs.log_level = 2
             @tsffs.start_on_harness = True
             @tsffs.stop_on_harness = True
             @tsffs.timeout = 3.0
@@ -46,6 +46,7 @@ fn test_riscv_64_kernel_magic() -> Result<()> {
             @tsffs.generate_random_corpus = True
             @tsffs.iteration_limit = 1000
             @tsffs.use_snapshots = True
+            @tsffs.debug_log_libafl = True
 
             load-target "risc-v-simple/linux" namespace = riscv machine:hardware:storage:disk1:image = "test.fs.craff"
 

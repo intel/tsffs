@@ -39,10 +39,14 @@ use libafl_bolts::{
 use libafl_targets::{AFLppCmpLogObserver, AFLppCmplogTracingStage};
 use simics::{api::AsConfObject, debug, trace, warn};
 use std::{
-    cell::RefCell, fmt::Debug, fs::write, slice::from_raw_parts_mut, sync::mpsc::channel,
-    thread::spawn, time::Duration,
+    cell::RefCell, fmt::Debug, fs::write, io::stderr, slice::from_raw_parts_mut,
+    sync::mpsc::channel, thread::spawn, time::Duration,
 };
 use tokenize::{tokenize_executable_file, tokenize_src_file};
+use tracing::{level_filters::LevelFilter, Level};
+use tracing_subscriber::{
+    filter::filter_fn, fmt, layer::SubscriberExt, registry, util::SubscriberInitExt, Layer,
+};
 
 pub mod feedbacks;
 pub mod messages;
@@ -176,11 +180,35 @@ impl Tsffs {
         let generate_random_corpus = self.generate_random_corpus;
         let initial_random_corpus_size = self.initial_random_corpus_size;
         let executor_timeout = self.executor_timeout;
+        let debug_log_libafl = self.debug_log_libafl;
 
         // NOTE: We do *not* use `run_in_thread` because it causes the fuzzer to block when HAPs arrive
         // which prevents forward progress.
         self.fuzz_thread
             .set(spawn(move || -> Result<()> {
+                if debug_log_libafl {
+                    let reg = registry().with({
+                        fmt::layer()
+                            .compact()
+                            .with_thread_ids(true)
+                            .with_thread_names(true)
+                            .with_writer(stderr)
+                            .with_filter(LevelFilter::TRACE)
+                            .with_filter(filter_fn(|metadata| {
+                                // LLMP absolutely spams the log when tracing
+                                !(metadata.target() == "libafl_bolts::llmp"
+                                    && matches!(metadata.level(), &Level::TRACE))
+                            }))
+                    });
+
+                    reg.try_init()
+                        .map_err(|e| {
+                            eprintln!("Could not install tracing subscriber: {}", e);
+                            e
+                        })
+                        .ok();
+                }
+
                 let mut harness = |input: &BytesInput| {
                     let testcase = BytesInput::new(input.target_bytes().as_slice().to_vec());
                     client
@@ -191,7 +219,7 @@ impl Tsffs {
                             cmplog: false,
                         })
                         .expect("Failed to send testcase message");
-                    // println!("Sent testcase, waiting for status");
+
                     let status = match client.borrow_mut().1.recv() {
                         Err(e) => panic!("Error receiving status: {e}"),
                         Ok(m) => m,
@@ -210,7 +238,6 @@ impl Tsffs {
                             cmplog: true,
                         })
                         .expect("Failed to send testcase message");
-                    // println!("Sent testcase, waiting for status");
 
                     let status = match client.borrow_mut().1.recv() {
                         Err(e) => panic!("Error receiving status: {e}"),
@@ -252,13 +279,21 @@ impl Tsffs {
                 let solutions = OnDiskCorpus::with_meta_format(
                     solutions_directory.clone(),
                     OnDiskMetadataFormat::JsonPretty,
-                )?;
+                )
+                .map_err(|e| {
+                    eprintln!("Failed to initialize solutions corpus: {e}");
+                    anyhow!("Failed to initialize solutions corpus: {e}")
+                })?;
 
                 let corpus = CachedOnDiskCorpus::with_meta_format(
                     corpus_directory.clone(),
                     Self::CORPUS_CACHE_SIZE,
                     Some(OnDiskMetadataFormat::Json),
-                )?;
+                )
+                .map_err(|e| {
+                    eprintln!("Failed to initialize corpus: {e}");
+                    anyhow!("Failed to initialize corpus: {e}")
+                })?;
 
                 // NOTE: Initialize these here before we move the feedbacks
                 let calibration_stage = CalibrationStage::new(&map_feedback);
@@ -275,7 +310,10 @@ impl Tsffs {
                     &mut feedback,
                     &mut objective,
                 )
-                .map_err(|e| anyhow!("Couldn't initialize state: {e}"))?;
+                .map_err(|e| {
+                    eprintln!("Couldn't initialize fuzzer state: {e}");
+                    anyhow!("Couldn't initialize state: {e}")
+                })?;
 
                 let mut tokens = Tokens::default().add_from_files(token_files)?;
 
@@ -311,7 +349,11 @@ impl Tsffs {
                     &mut state,
                     &mut manager,
                     Duration::from_secs(executor_timeout),
-                )?;
+                )
+                .map_err(|e| {
+                    eprintln!("Couldn't initialize fuzzer executor: {e}");
+                    anyhow!("Couldn't initialize fuzzer executor: {e}")
+                })?;
 
                 let aflpp_cmp_executor = InProcessExecutor::with_timeout(
                     &mut aflpp_cmp_harness,
@@ -320,7 +362,11 @@ impl Tsffs {
                     &mut state,
                     &mut manager,
                     Duration::from_secs(executor_timeout),
-                )?;
+                )
+                .map_err(|e| {
+                    eprintln!("Couldn't initialize fuzzer AFL++ cmplog executor: {e}");
+                    anyhow!("Couldn't initialize fuzzer AFL++ cmplog executor: {e}")
+                })?;
 
                 let tracing_executor = InProcessExecutor::with_timeout(
                     &mut tracing_harness,
@@ -329,7 +375,11 @@ impl Tsffs {
                     &mut state,
                     &mut manager,
                     Duration::from_secs(executor_timeout),
-                )?;
+                )
+                .map_err(|e| {
+                    eprintln!("Couldn't initialize fuzzer AFL++ cmplog executor: {e}");
+                    anyhow!("Couldn't initialize fuzzer AFL++ cmplog executor: {e}")
+                })?;
 
                 let input_to_state_stage = StdMutationalStage::new(StdScheduledMutator::new(
                     tuple_list!(I2SRandReplace::new()),
@@ -337,12 +387,18 @@ impl Tsffs {
                 let havoc_mutational_stage = StdPowerMutationalStage::new(
                     StdScheduledMutator::new(havoc_mutations().merge(tokens_mutations())),
                 );
-                let mopt_mutational_stage = StdPowerMutationalStage::new(StdMOptMutator::new(
-                    &mut state,
-                    havoc_mutations().merge(tokens_mutations()),
-                    7,
-                    5,
-                )?);
+                let mopt_mutational_stage = StdPowerMutationalStage::new(
+                    StdMOptMutator::new(
+                        &mut state,
+                        havoc_mutations().merge(tokens_mutations()),
+                        7,
+                        5,
+                    )
+                    .map_err(|e| {
+                        eprintln!("Couldn't initialize fuzzer MOpt mutator: {e}");
+                        anyhow!("Couldn't initialize fuzzer MOpt mutator: {e}")
+                    })?,
+                );
                 let redqueen_mutational_stage =
                     MultiMutationalStage::new(AFLppRedQueen::with_cmplog_options(true, true));
                 let aflpp_tracing_stage = AFLppCmplogTracingStage::with_cmplog_observer_name(
@@ -356,25 +412,41 @@ impl Tsffs {
                     |input: &BytesInput, _state: &_| input.target_bytes().as_slice().to_vec(),
                     corpus_directory.clone(),
                     solutions_directory.clone(),
-                )?;
+                )
+                .map_err(|e| {
+                    eprintln!("Couldn't initialize fuzzer dump to disk stage: {e}");
+                    anyhow!("Couldn't initialize fuzzer dump to disk stage: {e}")
+                })?;
 
                 if state.must_load_initial_inputs() {
-                    state.load_initial_inputs(
-                        &mut fuzzer,
-                        &mut executor,
-                        &mut manager,
-                        &[corpus_directory.clone()],
-                    )?;
+                    state
+                        .load_initial_inputs(
+                            &mut fuzzer,
+                            &mut executor,
+                            &mut manager,
+                            &[corpus_directory.clone()],
+                        )
+                        .map_err(|e| {
+                            eprintln!(
+                                "Error loading initial inputs from {corpus_directory:?}: {e}"
+                            );
+                            anyhow!("Error loading initial inputs from {corpus_directory:?}: {e}")
+                        })?;
 
                     if state.corpus().count() < 1 && generate_random_corpus {
                         let mut generator = RandBytesGenerator::new(64);
-                        state.generate_initial_inputs(
-                            &mut fuzzer,
-                            &mut executor,
-                            &mut generator,
-                            &mut manager,
-                            initial_random_corpus_size,
-                        )?;
+                        state
+                            .generate_initial_inputs(
+                                &mut fuzzer,
+                                &mut executor,
+                                &mut generator,
+                                &mut manager,
+                                initial_random_corpus_size,
+                            )
+                            .map_err(|e| {
+                                eprintln!("Error generating random inputs: {e}");
+                                anyhow!("Error generating random inputs: {e}")
+                            })?;
                     }
                 }
 
@@ -399,9 +471,28 @@ impl Tsffs {
                             Ok(cmplog_enabled
                                 && state
                                     .corpus()
-                                    .get(state.current_corpus_idx()?.ok_or_else(|| {
-                                        libafl::Error::unknown("No current corpus index")
-                                    })?)?
+                                    .get(
+                                        state
+                                            .current_corpus_idx()
+                                            .map_err(|e| {
+                                                eprintln!(
+                                                    "Error getting current corpus index: {e}"
+                                                );
+                                                // libafl::Error::unkown(format!(
+                                                //     "Error getting current corpus index: {e}"
+                                                // ))
+                                                e
+                                            })?
+                                            .ok_or_else(|| {
+                                                eprintln!("No current corpus index");
+
+                                                libafl::Error::unknown("No current corpus index")
+                                            })?,
+                                    )
+                                    .map_err(|e| {
+                                        eprintln!("Error getting current corpus entry: {e}");
+                                        e
+                                    })?
                                     .borrow()
                                     .scheduled_count()
                                     == 1)
@@ -434,7 +525,12 @@ impl Tsffs {
                         break;
                     }
 
-                    fuzzer.fuzz_one(&mut stages, &mut executor, &mut state, &mut manager)?;
+                    fuzzer
+                        .fuzz_one(&mut stages, &mut executor, &mut state, &mut manager)
+                        .map_err(|e| {
+                            eprintln!("Error running iteration of fuzzing loop: {e}");
+                            anyhow!("Error running iteration of fuzzing loop: {e}")
+                        })?;
                 }
 
                 println!("Fuzzing loop exited.");
