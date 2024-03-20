@@ -7,6 +7,8 @@
 # this only needs to be run if you want to modify the source code for the HelloWorld.efi module,
 # otherwise, the EFI is included in the source tree for ease of use
 
+set -e
+
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 IMAGE_NAME="buildroot-build-tsffs-gcc-riscv64-test"
