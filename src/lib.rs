@@ -141,6 +141,8 @@ pub(crate) struct StartInfo {
     /// The physical address of the buffer. Must be physical, if the input address was
     /// virtual, it should be pre-translated
     pub address: StartPhysicalAddress,
+    /// The initial contents of the buffer
+    pub contents: Vec<u8>,
     /// The initial size of the buffer. This will either be only an address, in which
     /// case the initial size will be `*size_ptr` and the actual size of each testcase
     /// will be written back to `*size_ptr`, a `max_size` in which case the size will

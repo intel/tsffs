@@ -29,7 +29,6 @@ crate-type = ["cdylib", "rlib"]
 test = false
 
 [dependencies]
-num-derive = "0.4.2"
 anyhow = { version = "1.0.80" }
 libafl = { git = "https://github.com/AFLplusplus/LibAFL", rev = "0f26f6ea32aa74ee526636558842ec06bbfb49bb", default-features = false, features = [
     "std",
@@ -73,6 +72,7 @@ serde_json = "1.0.114"
 versions = { version = "6.1.0", features = ["serde"] }
 ffi = "0.1.1"
 num-traits = "0.2.18"
+num-derive = "0.4.2"
 tracing-subscriber = "0.3.18"
 tracing = { version = "0.1.40", features = ["log"] }
 

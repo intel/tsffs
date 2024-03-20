@@ -11,12 +11,16 @@ use crate::{
     tracer::TraceEntry, traits::TracerDisassembler, ManualStartAddress, ManualStartInfo, StartInfo,
     StartPhysicalAddress, StartSize,
 };
+use anyhow::anyhow;
 use anyhow::{bail, ensure, Error, Result};
 use raw_cstr::AsRawCstr;
-use simics::api::{
-    read_phys_memory, sys::instruction_handle_t, write_byte, Access, AttrValueType, ConfObject,
-    CpuInstructionQueryInterface, CpuInstrumentationSubscribeInterface, CycleInterface,
-    IntRegisterInterface, ProcessorInfoV2Interface,
+use simics::{
+    api::{
+        read_phys_memory, sys::instruction_handle_t, write_byte, Access, AttrValueType, ConfObject,
+        CpuInstructionQueryInterface, CpuInstrumentationSubscribeInterface, CycleInterface,
+        IntRegisterInterface, ProcessorInfoV2Interface,
+    },
+    read_byte,
 };
 use std::{fmt::Debug, str::FromStr};
 
@@ -190,6 +194,22 @@ pub trait ArchitectureOperations {
             size_size,
         )?;
 
+        let contents = (0..size)
+            .map(|i| {
+                read_byte(
+                    self.processor_info_v2().get_physical_memory()?,
+                    buffer_physical_address_block.address + i,
+                )
+                .map_err(|e| {
+                    anyhow!(
+                        "Failed to read byte at {:#x}: {}",
+                        buffer_physical_address_block.address + i,
+                        e
+                    )
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
+
         Ok(StartInfo::builder()
             .address(
                 if buffer_physical_address_block.address != buffer_logical_address {
@@ -198,6 +218,7 @@ pub trait ArchitectureOperations {
                     StartPhysicalAddress::WasPhysical(buffer_physical_address_block.address)
                 },
             )
+            .contents(contents)
             .size(StartSize::SizePtr {
                 address: if size_ptr_physical_address_block.address != size_ptr_logical_address {
                     StartPhysicalAddress::WasVirtual(size_ptr_physical_address_block.address)
@@ -231,6 +252,22 @@ pub trait ArchitectureOperations {
             "Invalid linear address found in magic start buffer register {buffer_register_number}: {buffer_logical_address:#x}"
         );
 
+        let contents = (0..size_val)
+            .map(|i| {
+                read_byte(
+                    self.processor_info_v2().get_physical_memory()?,
+                    buffer_physical_address_block.address + i,
+                )
+                .map_err(|e| {
+                    anyhow!(
+                        "Failed to read byte at {:#x}: {}",
+                        buffer_physical_address_block.address + i,
+                        e
+                    )
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
+
         Ok(StartInfo::builder()
             .address(
                 if buffer_physical_address_block.address != buffer_logical_address {
@@ -239,6 +276,7 @@ pub trait ArchitectureOperations {
                     StartPhysicalAddress::WasPhysical(buffer_physical_address_block.address)
                 },
             )
+            .contents(contents)
             .size(StartSize::MaxSize(size_val as usize))
             .build())
     }
@@ -280,6 +318,22 @@ pub trait ArchitectureOperations {
             "Invalid linear address found in magic start size register {size_ptr_register_number}: {size_ptr_logical_address:#x}"
         );
 
+        let contents = (0..size_val)
+            .map(|i| {
+                read_byte(
+                    self.processor_info_v2().get_physical_memory()?,
+                    buffer_physical_address_block.address + i,
+                )
+                .map_err(|e| {
+                    anyhow!(
+                        "Failed to read byte at {:#x}: {}",
+                        buffer_physical_address_block.address + i,
+                        e
+                    )
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
+
         Ok(StartInfo::builder()
             .address(
                 if buffer_physical_address_block.address != buffer_logical_address {
@@ -288,6 +342,7 @@ pub trait ArchitectureOperations {
                     StartPhysicalAddress::WasPhysical(buffer_physical_address_block.address)
                 },
             )
+            .contents(contents)
             .size(StartSize::SizePtrAndMaxSize {
                 address: if size_ptr_physical_address_block.address != size_ptr_logical_address {
                     StartPhysicalAddress::WasVirtual(size_ptr_physical_address_block.address)
@@ -384,7 +439,27 @@ pub trait ArchitectureOperations {
             }
         };
 
-        Ok(StartInfo::builder().address(address).size(size).build())
+        let contents = (0..size.maximum_size())
+            .map(|i| {
+                read_byte(
+                    self.processor_info_v2().get_physical_memory()?,
+                    buffer_physical_address + i as u64,
+                )
+                .map_err(|e| {
+                    anyhow!(
+                        "Failed to read byte at {:#x}: {}",
+                        buffer_physical_address + i as u64,
+                        e
+                    )
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        Ok(StartInfo::builder()
+            .address(address)
+            .contents(contents)
+            .size(size)
+            .build())
     }
 
     fn write_start(&mut self, testcase: &[u8], info: &StartInfo) -> Result<()> {

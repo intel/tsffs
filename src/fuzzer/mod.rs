@@ -181,6 +181,14 @@ impl Tsffs {
         let initial_random_corpus_size = self.initial_random_corpus_size;
         let executor_timeout = self.executor_timeout;
         let debug_log_libafl = self.debug_log_libafl;
+        let initial_contents = self
+            .use_initial_as_corpus
+            .then(|| {
+                self.start_info
+                    .get()
+                    .map(|si| BytesInput::new(si.contents.clone()))
+            })
+            .flatten();
 
         // NOTE: We do *not* use `run_in_thread` because it causes the fuzzer to block when HAPs arrive
         // which prevents forward progress.
@@ -417,6 +425,13 @@ impl Tsffs {
                     eprintln!("Couldn't initialize fuzzer dump to disk stage: {e}");
                     anyhow!("Couldn't initialize fuzzer dump to disk stage: {e}")
                 })?;
+
+                if let Some(contents) = initial_contents {
+                    write(
+                        corpus_directory.join(contents.generate_name(0)),
+                        contents.bytes(),
+                    )?;
+                }
 
                 if state.must_load_initial_inputs() {
                     state

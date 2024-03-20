@@ -824,10 +824,6 @@ impl TryFrom<(&Operand, Option<u8>)> for CmpExpr {
 }
 
 impl TracerDisassembler for Disassembler {
-    fn last(&self) -> Option<String> {
-        self.last.as_ref().map(|i| i.to_string())
-    }
-
     /// Check if an instruction is a control flow instruction
     fn last_was_control_flow(&self) -> bool {
         if let Some(last) = self.last {
