@@ -304,6 +304,8 @@ pub(crate) struct Tsffs {
     pub log_to_file: bool,
     #[class(attribute(optional, default = false))]
     pub keep_all_corpus: bool,
+    #[class(attribute(optional, default = false))]
+    pub debug_log_libafl: bool,
 
     #[attr_value(skip)]
     /// Handle for the core simulation stopped hap
