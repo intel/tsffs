@@ -77,9 +77,9 @@ impl Tsffs {
     fn on_simulation_stopped_magic_stop(&mut self) -> Result<()> {
         if !self.have_initial_snapshot() {
             warn!(
-                            self.as_conf_object(),
-                            "Stopped normally before start was reached (no snapshot). Resuming without restoring non-existent snapshot."
-                        );
+                self.as_conf_object(),
+                "Stopped normally before start was reached (no snapshot). Resuming without restoring non-existent snapshot."
+            );
         } else {
             self.cancel_timeout_event()?;
 
@@ -394,6 +394,11 @@ impl Tsffs {
     }
 
     fn on_simulation_stopped_with_reason(&mut self, reason: StopReason) -> Result<()> {
+        debug!(
+            self.as_conf_object(),
+            "Simulation stopped with reason {reason:?}"
+        );
+
         match reason {
             StopReason::Magic { magic_number } => {
                 self.on_simulation_stopped_with_magic(magic_number)
@@ -537,8 +542,13 @@ impl Tsffs {
                         self.start_processor_number
                             .set(processor_number)
                             .map_err(|_| anyhow!("Failed to set start processor number"))?;
+                        debug!("Setting processor {} as start processor", processor_number);
                         true
                     } else {
+                        debug!(
+                            "Not setting processor {} as start processor",
+                            processor_number
+                        );
                         false
                     }
                 }
@@ -547,9 +557,12 @@ impl Tsffs {
             } {
                 self.stop_simulation(StopReason::Magic { magic_number })?;
             } else {
-                warn!(
+                debug!(
                     self.as_conf_object(),
-                    "Magic instruction {magic_number} was triggered by processor {trigger_obj:?} with index {index_selector} but the index is not configured for this magic number"
+                    "Magic instruction {magic_number} was triggered by processor {trigger_obj:?} with index {index_selector} but the index is not configured for this magic number. Configured indices are: start: {}, stop: {:?}, assert: {:?}",
+                    self.magic_start_index,
+                    self.magic_stop_indices,
+                    self.magic_assert_indices
                 );
             }
         } else {

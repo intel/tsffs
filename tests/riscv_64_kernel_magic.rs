@@ -38,7 +38,7 @@ fn test_riscv_64_kernel_magic() -> Result<()> {
             load-module tsffs
             init-tsffs
 
-            @tsffs.log_level = 2
+            @tsffs.log_level = 4
             @tsffs.start_on_harness = True
             @tsffs.stop_on_harness = True
             @tsffs.timeout = 3.0

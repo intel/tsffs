@@ -3,7 +3,6 @@
 
 use crate::tracer::{CmpExpr, CmpType};
 use anyhow::Result;
-use yaxpeax_arch::{Instruction, LengthedInstruction};
 
 /// Trait for disassemblers of various architectures to implement to permit branch
 /// and compare tracing
