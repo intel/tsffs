@@ -1,6 +1,8 @@
 # hadolint global ignore=DL3008
 FROM ubuntu:22.04 AS buildroot
 
+ARG BUILDROOT_REV="2023.11.x"
+
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -20,7 +22,8 @@ RUN apt-get -y update && \
     wget
 
 RUN git clone \
-    https://github.com/buildroot/buildroot.git
+    https://github.com/buildroot/buildroot.git && \
+    git -C buildroot checkout "${BUILDROOT_REV}"
 
 WORKDIR /buildroot
 

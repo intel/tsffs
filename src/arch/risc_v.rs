@@ -459,6 +459,10 @@ impl TracerDisassembler for Disassembler {
         Ok(())
     }
 
+    fn last(&self) -> Option<String> {
+        self.last.as_ref().map(|l| l.to_string())
+    }
+
     fn last_was_control_flow(&self) -> bool {
         if let Some(last) = self.last.as_ref() {
             if matches!(last.opcode(), |Opcode::BEQ| Opcode::BNE

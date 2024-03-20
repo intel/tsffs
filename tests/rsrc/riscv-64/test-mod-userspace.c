@@ -76,11 +76,11 @@ int main(void) {
   size_t msg_size = 80;
   size_t *msg_size_ptr = &msg_size;
 
-  __arch_harness_start(MAGIC_ALT_0, msg, msg_size_ptr);
+  HARNESS_START_INDEX(1, msg, msg_size_ptr);
 
   ret_val = ioctl_set_msg(file_desc, msg);
 
-  __arch_harness_stop(MAGIC_ALT_1);
+  HARNESS_STOP_INDEX(1);
 
   if (ret_val) goto error;
 

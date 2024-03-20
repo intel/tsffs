@@ -41,12 +41,13 @@ use libafl_bolts::prelude::OwnedMutSlice;
 use libafl_targets::AFLppCmpLogMap;
 use magic::MagicNumber;
 use num_traits::FromPrimitive as _;
+use raw_cstr::AsRawCstr;
 use serde::{Deserialize, Serialize};
 use simics::{
     break_simulation, class, error, free_attribute, get_class, get_interface, get_processor_number,
-    info, lookup_file, object_clock, run_command, run_python, simics_init, trace, AsConfObject,
-    BreakpointId, ClassCreate, ClassObjectsFinalize, ConfObject, CoreBreakpointMemopHap,
-    CoreExceptionHap, CoreMagicInstructionHap, CoreSimulationStoppedHap,
+    info, lookup_file, object_clock, read_phys_memory, run_command, run_python, simics_init, trace,
+    Access, AsConfObject, BreakpointId, ClassCreate, ClassObjectsFinalize, ConfObject,
+    CoreBreakpointMemopHap, CoreExceptionHap, CoreMagicInstructionHap, CoreSimulationStoppedHap,
     CpuInstrumentationSubscribeInterface, Event, EventClassFlag, FromConfObject, HapHandle,
     Interface, IntoAttrValueDict,
 };
@@ -541,6 +542,49 @@ impl ClassObjectsFinalize for Tsffs {
         tsffs.magic_hap_handle =
             CoreMagicInstructionHap::add_callback(move |trigger_obj, magic_number| {
                 let tsffs: &'static mut Tsffs = instance.into();
+
+                let mut arch = Architecture::new(trigger_obj).expect("Error getting architecture");
+
+                let rax_regno = arch
+                    .int_register()
+                    .get_number("rax".as_raw_cstr().expect("Error getting cstr"))
+                    .expect("Error getting register number");
+
+                let rax = arch
+                    .int_register()
+                    .read(rax_regno)
+                    .expect("Error reading register");
+
+                println!("RAX: 0x{:x}", rax);
+
+                let pc = arch
+                    .processor_info_v2()
+                    .get_program_counter()
+                    .expect("Failed to get pc");
+                info!(
+                    tsffs.as_conf_object(),
+                    "Magic instruction {} at PC 0x{:x}", magic_number, pc
+                );
+
+                let insn_bytes = read_phys_memory(
+                    trigger_obj,
+                    arch.processor_info_v2()
+                        .logical_to_physical(pc, Access::Sim_Access_Read)
+                        .expect("Failed to translate magic insn address")
+                        .address,
+                    8,
+                )
+                .expect("Failed to read insn bytes");
+
+                println!("Instruction bytes: {:?}", insn_bytes.to_le_bytes());
+
+                arch.disassembler()
+                    .disassemble(&insn_bytes.to_le_bytes())
+                    .expect("Failed to disassemble");
+
+                println!("Instruction: {:?}", arch.disassembler().last());
+
+                println!("Magic number: {}", magic_number);
 
                 MagicNumber::from_i64(magic_number)
                     .ok_or_else(|| anyhow!("Invalid magic number: {}", magic_number))
