@@ -1,7 +1,7 @@
 // Copyright (C) 2024 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
-#ifdef __GNUC__
+#if defined(__GNUC__) || defined(__clang__)
 #ifdef __i386__
 // Copyright (C) 2024 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
