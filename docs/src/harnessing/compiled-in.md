@@ -70,23 +70,27 @@ necessary. However, the defaults are equivalent to the configuration:
 @tsffs.magic_assert_indices = [0]
 ```
 
-This sets TSFFS to start the fuzzing loop on a *magic* harness with magic number `1`
-(used by `HARNESS_START`) and index `0` (the default) and stop execution and restore to the initial snapshot on
-*magic* harnesses with magic number `2` (used by `HARNESS_STOP`) and index `0` (the default).
+This sets TSFFS to start the fuzzing loop on a *magic*
+harness with magic number `1` (used by `HARNESS_START`)
+and index `0` (the default) and stop execution and
+restore to the initial snapshot on *magic* harnesses
+with magic number `2` (used by `HARNESS_STOP`) and
+index `0` (the default).
 
 ## Multiple Harnesses in One Binary
 
-If multiple fuzzing campaigns will be run on the same target software, it is sometimes
-advantageous to compile multiple harnesses into the same target software ahead of time,
-and choose which to enable at runtime.Each provided header also provides two lower-level
-macros for this purpose.
+If multiple fuzzing campaigns will be run on the same target software, it is
+sometimes advantageous to compile multiple harnesses into the same target
+software ahead of time, and choose which to enable at runtime.Each provided
+header also provides two lower-level macros for this purpose.
 
 * `HARNESS_START_INDEX(index, testcase_ptr, size_ptr)`
 * `HARNESS_STOP(index)`
 
-These macros are used in the same way as `HARNESS_START` and `HARNESS_STOP`, with the
-additional first argument. The default value of `index` is 0, but TSFFS can be configured to treat a different index as the trigger to
-start or stop the fuzzing loop.
+These macros are used in the same way as `HARNESS_START` and `HARNESS_STOP`,
+with the additional first argument. The default value of `index` is 0, but
+TSFFS can be configured to treat a different index as the trigger to start or
+stop the fuzzing loop.
 
 ```c
 #include "tsffs.h"
@@ -134,14 +138,15 @@ set of harness calls will be used.
 Several additional variants of the start harness are provided to allow
 different target software to be used with as little modification as possible.
 
-* `HARNESS_START_WITH_MAXIMUM_SIZE(void *buffer, size_t max_size)` takes a 
-  pointer to a buffer like `HARNESS_START` but takes a size instead of a pointer to a
-  size as the second argument. Use this harness when the target software does not need
-  to read the actual buffer size.
+* `HARNESS_START_WITH_MAXIMUM_SIZE(void *buffer, size_t max_size)` takes a
+  pointer to a buffer like `HARNESS_START` but takes a size instead of a
+  pointer to a size as the second argument. Use this harness when the target
+  software does not need to read the actual buffer size.
 * `HARNESS_START_WITH_MAXIMUM_SIZE_AND_PTR(void *buffer, void *size_ptr, size_t max_size)`
-  takes a pointer to both a buffer and size like `HARNESS_START`, and takes a size as
-  the third argument. Use this harness when the target software does not initially have
-  `*size_ptr` set to the maximum size, but still needs to read the actual buffer size.
+  takes a pointer to both a buffer and size like `HARNESS_START`, and takes a
+  size as the third argument. Use this harness when the target software does
+  not initially have `*size_ptr` set to the maximum size, but still needs to
+  read the actual buffer size.
 
 ## Troubleshooting
 

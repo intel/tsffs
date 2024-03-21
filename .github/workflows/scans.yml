@@ -47,6 +47,14 @@ jobs:
   scan_riscv_64_container:
     runs-on: ubuntu-latest
     steps:
+      - uses: easimon/maximize-build-space@master
+        with:
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-docker-images: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -54,15 +62,24 @@ jobs:
 
       - name: Build Image
         run: |
-          cd tests/rsrc/riscv-64/
+          pushd tests/rsrc/riscv-64/ || exit 1
           cp "../../../harness/tsffs.h" "tsffs.h"
           cp "../../../harness/tsffs.h" "test-kernel-modules/package/kernel-modules/test-mod/tsffs.h"
-          docker buildx build -t container -f Dockerfile . > build.log 2>&1 || { tail -n 1000 build.log; exit 1; }
+          docker buildx build --output type=tar,dest="${{ github.workspace }}/container.tar" -t container -f Dockerfile . > build.log 2>&1 || { tail -n 1000 build.log; exit 1; }
+          popd || exit 1
+
+      - name: Create Trivy Cache and Temp
+        run: |
+            mkdir "${{ github.workspace }}/tmp/"
+            mkdir "${{ github.workspace }}/cache/"
 
       - name: Run Trivy vulnerability scanner
+        env:
+            TMPDIR: "${{ github.workspace }}/tmp/"
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: container
+          input: "${{ github.workspace }}/container.tar"
+          cache-dir: "${{ github.workspace}}/cache/"
 
   scan_x86_64_breakpoint_uefi_edk2_container:
     runs-on: ubuntu-latest
