@@ -288,7 +288,7 @@ running `i386` code in backward-compatibility mode.
 An architecture hint can be set with:
 
 ```python
-@tsffs.iface.tsffs.add_architecture_hint(qsp.mb.cpu0.core[0][0], "i386")
+@tsffs.iface.config.add_architecture_hint(qsp.mb.cpu0.core[0][0], "i386")
 ```
 
 ### Adding a Trace Processor
@@ -298,7 +298,7 @@ to the [manual start API](../harnessing/closed-box.md) is traced during executio
 code running on multiple cores, the additional cores can be added with:
 
 ```python
-@tsffs.iface.tsffs.add_trace_processor(qsp.mb.cpu0.core[0][1])
+@tsffs.iface.config.add_trace_processor(qsp.mb.cpu0.core[0][1])
 ```
 
 ### Disabling Coverage Reporting

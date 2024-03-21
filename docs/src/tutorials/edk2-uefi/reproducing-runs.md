@@ -42,5 +42,5 @@ and more! Check out the SIMICS documentation and explore all the deep debugging
 capabilities that SIMICS offers. When you're done exploring, run `c` to continue.
 
 You can change the testcase you are examining by choosing a different one with
-`tsffs.iface.tsffs.repro`, but you cannot resume fuzzing after entering repro mode due
+`tsffs.iface.fuzz.repro`, but you cannot resume fuzzing after entering repro mode due
 to inconsistencies with the simulated system clock.
