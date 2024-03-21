@@ -34,7 +34,7 @@ COPY simics_simple_riscv_defconfig configs/simics_simple_riscv_defconfig
 COPY test.c /test/usr/test.c
 COPY test-mod.c /test/usr/test-mod.c
 COPY test-mod-userspace.c /test/usr/test-mod-userspace.c
-COPY tsffs-gcc-riscv64.h /test/usr/tsffs-gcc-riscv64.h
+COPY tsffs.h /test/usr/tsffs.h
 
 # Build Linux, Linux Kernel Modules & RootFS
 # Build size: 7.9G

@@ -19,6 +19,12 @@ $(cat "${SCRIPT_DIR}/tsffs-gcc-riscv64.h")
 $(cat "${SCRIPT_DIR}/tsffs-gcc-aarch64.h")
 #elif __arm__
 $(cat "${SCRIPT_DIR}/tsffs-gcc-arm32.h")
+#else
+#error "Unsupported platform!"
 #endif
+#elif _MSC_VER
+$(cat "${SCRIPT_DIR}/tsffs-msvc-x86_64.h")
+#else
+#error "Unsupported compiler!"
 #endif
 EOF

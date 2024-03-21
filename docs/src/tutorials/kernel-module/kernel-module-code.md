@@ -19,8 +19,8 @@ clean:
 This in turn invokes the standard KBuild process, specifying our current directory
 as an out of tree modules directory.
 
-Then, copy `tsffs-gcc-riscv64.h` from the `harness` directory of the repository into
-`src/tutorial-kernel-modules/package/kernel-modules/tutorial-mod/tsffs-gcc-riscv64.h`.
+Then, copy `tsffs.h` from the `harness` directory of the repository into
+`src/tutorial-kernel-modules/package/kernel-modules/tutorial-mod/tsffs.h`.
 
 Finally, we can write our Kernel module. Doing so is well beyond the scope of this
 tutorial, so copy the code below into
@@ -41,7 +41,7 @@ tutorial, so copy the code below into
 #include <linux/uaccess.h>
 #include <linux/version.h>
 
-#include "tsffs-gcc-riscv64.h"
+#include "tsffs.h"
 
 #define MAJOR_NUM 100
 #define IOCTL_SET_MSG _IOW(MAJOR_NUM, 0, char *)

@@ -265,7 +265,7 @@ ispm.exe projects $env:TEMP\TSFFS-Windows\ --create
 cp examples\docker-example\fuzz.simics $env:TEMP\TSFFS-Windows\
 cp tests\rsrc\x86_64-uefi\* $env:TEMP\TSFFS-Windows\
 cp tests\rsrc\minimal_boot_disk.craff $env:TEMP\TSFFS-Windows\
-cp harness\tsffs-gcc-x86_64.h $env:TEMP\TSFFS-Windows\
+cp harness\tsffs.h $env:TEMP\TSFFS-Windows\
 cd $env:TEMP\TSFFS-Windows
 ./simics --no-win ./fuzz.simics
 ```

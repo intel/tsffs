@@ -372,13 +372,6 @@ pub(crate) struct Tsffs {
     /// Sets of tokens to use to drive token mutations of testcases. Each token set is a
     /// bytes which will be randomically inserted into testcases.
     pub tokens: Vec<Vec<u8>>,
-    #[attr_value(skip)]
-    /// A mapping of architecture hints from CPU index to architecture hint. This architecture
-    /// hint overrides the detected architecture of the CPU core. This is useful when the
-    /// architecture of the CPU core is not detected correctly, or when the architecture of the
-    /// CPU core is not known at the time the fuzzer is started. Specifically, x86 cores which
-    /// report their architecture as x86_64 can be overridden to x86.
-    pub architecture_hints: HashMap<i32, ArchitectureHint>,
     #[class(attribute(optional, default = lookup_file("%simics%")?.join("checkpoint.ckpt")))]
     #[attr_value(fallible)]
     /// The path to the checkpoint saved prior to fuzzing when using snapshots
@@ -415,6 +408,13 @@ pub(crate) struct Tsffs {
     /// or `stop_on_harness` are set.
     magic_hap_handle: HapHandle,
 
+    #[attr_value(skip)]
+    /// A mapping of architecture hints from CPU index to architecture hint. This architecture
+    /// hint overrides the detected architecture of the CPU core. This is useful when the
+    /// architecture of the CPU core is not detected correctly, or when the architecture of the
+    /// CPU core is not known at the time the fuzzer is started. Specifically, x86 cores which
+    /// report their architecture as x86_64 can be overridden to x86.
+    pub architecture_hints: HashMap<i32, ArchitectureHint>,
     // Threads and message channels
     #[attr_value(skip)]
     /// Fuzzer thread

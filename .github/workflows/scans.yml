@@ -55,8 +55,8 @@ jobs:
       - name: Build Image
         run: |
           cd tests/rsrc/riscv-64/
-          cp "../../../harness/tsffs-gcc-riscv64.h" "tsffs-gcc-riscv64.h"
-          cp "../../../harness/tsffs-gcc-riscv64.h" "test-kernel-modules/package/kernel-modules/test-mod/tsffs-gcc-riscv64.h"
+          cp "../../../harness/tsffs.h" "tsffs.h"
+          cp "../../../harness/tsffs.h" "test-kernel-modules/package/kernel-modules/test-mod/tsffs.h"
           docker buildx build -t container -f Dockerfile . > build.log 2>&1 || { tail -n 1000 build.log; exit 1; }
 
       - name: Run Trivy vulnerability scanner
@@ -75,7 +75,7 @@ jobs:
       - name: Build Image
         run: |
           cd tests/rsrc/x86_64-breakpoint-uefi-edk2/
-          cp "../../../harness/tsffs-gcc-x86_64.h" "src/tsffs-gcc-x86_64.h"
+          cp "../../../harness/tsffs.h" "src/tsffs.h"
           docker buildx build -t container -f Dockerfile . > build.log 2>&1 || { tail -n 1000 build.log; exit 1; }
 
       - name: Run Trivy vulnerability scanner
@@ -94,7 +94,7 @@ jobs:
       - name: Build Image
         run: |
           cd tests/rsrc/x86_64-timeout-uefi-edk2/
-          cp "../../../harness/tsffs-gcc-x86_64.h" "src/tsffs-gcc-x86_64.h"
+          cp "../../../harness/tsffs.h" "src/tsffs.h"
           docker buildx build -t container -f Dockerfile . > build.log 2>&1 || { tail -n 1000 build.log; exit 1; }
 
       - name: Run Trivy vulnerability scanner
@@ -113,7 +113,7 @@ jobs:
       - name: Build Image
         run: |
           cd tests/rsrc/x86_64-uefi-edk2/
-          cp "../../../harness/tsffs-gcc-x86_64.h" "src/tsffs-gcc-x86_64.h"
+          cp "../../../harness/tsffs.h" "src/tsffs.h"
           docker buildx build -t container -f Dockerfile . > build.log 2>&1 || { tail -n 1000 build.log; exit 1; }
 
       - name: Run Trivy vulnerability scanner

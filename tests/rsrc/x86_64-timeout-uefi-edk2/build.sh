@@ -16,7 +16,7 @@ CONTAINER_NAME="${IMAGE_NAME}-tmp-${CONTAINER_UID}"
 
 pushd "${SCRIPT_DIR}" || exit 1
 
-cp "${SCRIPT_DIR}/../../../harness/tsffs-gcc-x86_64.h" "${SCRIPT_DIR}/src/tsffs-gcc-x86_64.h"
+cp "${SCRIPT_DIR}/../../../harness/tsffs.h" "${SCRIPT_DIR}/src/tsffs.h"
 cp "${SCRIPT_DIR}/../../rsrc/minimal_boot_disk.craff" "${SCRIPT_DIR}/minimal_boot_disk.craff"
 
 docker buildx build -t "${IMAGE_NAME}" -f "Dockerfile" .

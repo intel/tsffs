@@ -3,6 +3,7 @@
 - [Compiled-In Harnessing](#compiled-in-harnessing)
   - [Using Provided Headers](#using-provided-headers)
   - [Multiple Harnesses in One Binary](#multiple-harnesses-in-one-binary)
+  - [Alternative Start Harnesses](#alternative-start-harnesses)
   - [Troubleshooting](#troubleshooting)
     - [Compile Errors About Temporaries](#compile-errors-about-temporaries)
 
@@ -10,10 +11,11 @@
 
 The TSFFS project provides harnessing headers for each supported combination of
 architecture and build toolchain. These headers can be found in the `harness` directory
-in the repository.
+in the repository. There is also a monolithic header `tsffs.h` which conditionally
+compiles to whichever architecture is in use and can be used on any supported
+architecture and platform.
 
 Each header provides the macros `HARNESS_START` and `HARNESS_STOP`.
-
 
 `HARNESS_START(testcase_ptr, size_ptr)` takes two arguments, a buffer for the fuzzer to
 write testcases into each fuzzing iteration and a pointer to a pointer-sized variable,
@@ -26,7 +28,7 @@ testcase, typically the size of the buffer passed as the first argument.
 For example, the following code will invoke the start and stop harnesses correctly:
 
 ```c
-#include "tsffs-gcc-x86_64.h"
+#include "tsffs.h"
 
 int main() {
     char buffer[20];
@@ -63,14 +65,14 @@ necessary. However, the defaults are equivalent to the configuration:
 ```python
 @tsffs.start_on_harness = True
 @tsffs.stop_on_harness = True
-@tsffs.magic_start = 1
-@tsffs.magic_stop = 2
-@tsffs.magic_assert = 3
+@tsffs.magic_start_index = 0
+@tsffs.magic_stop_indices = [0]
+@tsffs.magic_assert_indices = [0]
 ```
 
 This sets TSFFS to start the fuzzing loop on a *magic* harness with magic number `1`
-(used by `HARNESS_START`) and stop execution and restore to the initial snapshot on
-*magic* harnesses with magic number `2` (used by `HARNESS_STOP`).
+(used by `HARNESS_START`) and index `0` (the default) and stop execution and restore to the initial snapshot on
+*magic* harnesses with magic number `2` (used by `HARNESS_STOP`) and index `0` (the default).
 
 ## Multiple Harnesses in One Binary
 
@@ -79,29 +81,21 @@ advantageous to compile multiple harnesses into the same target software ahead o
 and choose which to enable at runtime.Each provided header also provides two lower-level
 macros for this purpose.
 
-* `__arch_harness_start(start, testcase_ptr, size_ptr)`
-* `__arch_harness_stop(stop)`
+* `HARNESS_START_INDEX(index, testcase_ptr, size_ptr)`
+* `HARNESS_STOP(index)`
 
 These macros are used in the same way as `HARNESS_START` and `HARNESS_STOP`, with the
-additional first argument. The default value of `start` is 1, and the default value of
-`stop` is 2, but TSFFS can be configured to treat a different value as the trigger to
-start or stop the fuzzing loop. Note that `start` and `stop` must be at least 1 and at
-most 11, so it is possible to create a target software with up to 10 different harnesses
-(by using magic values `1`, `3-11` as start values and `2` as the stop value). This is a
-limitation of the instructions SIMICS understands as *magic*, some of which only support
-an immediate `0<=n<=12` (with magic numbers 0 and 12 *being reserved by SIMICS).
-
-For convenience, definitions are provided for all the alternative magic numbers
-available, through the definitions `MAGIC_ALT_0` through `MAGIC_ALT_7`.
+additional first argument. The default value of `index` is 0, but TSFFS can be configured to treat a different index as the trigger to
+start or stop the fuzzing loop.
 
 ```c
-#include "tsffs-gcc-x86_64.h"
+#include "tsffs.h"
 
 int main() {
     char buf[20];
     size_t size = sizeof(buf);
 
-    __arch_harness_start(MAGIC_START, buf, &size);
+    HARNESS_START(buf, &size);
 
     if (size < 3) {
         // Stop early if there is not enough data
@@ -113,7 +107,7 @@ int main() {
     // Stop normally on success
     HARNESS_STOP();
 
-    __arch_harness_start(MAGIC_ALT_0, result, &size);
+    HARNESS_START_INDEX(1, result, &size);
 
     second_function_under_test(result);
 
@@ -129,12 +123,25 @@ And configuration settings like:
 ```python
 @tsffs.start_on_harness = True
 @tsffs.stop_on_harness = True
-@tsffs.start_magic_number = 4
+@tsffs.magic_start_index = 1
 ```
 
 With this runtime configuration, the first harness will be ignored, and only the second
 set of harness calls will be used.
 
+## Alternative Start Harnesses
+
+Several additional variants of the start harness are provided to allow
+different target software to be used with as little modification as possible.
+
+* `HARNESS_START_WITH_MAXIMUM_SIZE(void *buffer, size_t max_size)` takes a 
+  pointer to a buffer like `HARNESS_START` but takes a size instead of a pointer to a
+  size as the second argument. Use this harness when the target software does not need
+  to read the actual buffer size.
+* `HARNESS_START_WITH_MAXIMUM_SIZE_AND_PTR(void *buffer, void *size_ptr, size_t max_size)`
+  takes a pointer to both a buffer and size like `HARNESS_START`, and takes a size as
+  the third argument. Use this harness when the target software does not initially have
+  `*size_ptr` set to the maximum size, but still needs to read the actual buffer size.
 
 ## Troubleshooting
 
