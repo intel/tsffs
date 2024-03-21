@@ -82,14 +82,14 @@ fn test_x86_64_manual() -> Result<()> {
 
                 # In reality, you probably have a known buffer in mind to fuzz
                 testcase_address_regno = conf.qsp.mb.cpu0.core[0][0].iface.int_register.get_number(
-                    "rdi"
+                    "rsi"
                 )
                 print("testcase address regno: ", testcase_address_regno)
                 testcase_address = conf.qsp.mb.cpu0.core[0][0].iface.int_register.read(
                     testcase_address_regno
                 )
                 print("testcase address: ", testcase_address)
-                size_regno = conf.qsp.mb.cpu0.core[0][0].iface.int_register.get_number("rsi")
+                size_regno = conf.qsp.mb.cpu0.core[0][0].iface.int_register.get_number("rdx")
                 print("size regno: ", size_regno)
                 size_address = conf.qsp.mb.cpu0.core[0][0].iface.int_register.read(size_regno)
                 print("size address: ", size_address)

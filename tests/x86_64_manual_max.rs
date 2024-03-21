@@ -82,7 +82,7 @@ fn test_x86_64_manual_max() -> Result<()> {
 
                 # In reality, you probably have a known buffer in mind to fuzz
                 testcase_address_regno = conf.qsp.mb.cpu0.core[0][0].iface.int_register.get_number(
-                    "rdi"
+                    "rsi"
                 )
                 print("testcase address regno: ", testcase_address_regno)
                 testcase_address = conf.qsp.mb.cpu0.core[0][0].iface.int_register.read(
