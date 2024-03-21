@@ -41,9 +41,13 @@ Note that this timeout is in virtual time, not real time. This means that whethe
 simulation runs faster or slower than real time, the timeout will be accurate to the
 target software's execution speed.
 
-The fuzzing executor also has a timeout, which runs in real time. This timeout is intended to detect situations where the fuzzer reaches a broken state where it is no longer able to iterate (e.g. the virtual time timeout is not working) and stop. By default, this timeout is set to 60 seconds and
-resets each iteration. Only iterations which take more than 60 seconds will
-trigger the timeout, but some very large fuzzing cases could exceed this time. To increase it, for example to set the timeout to 10 minutes:
+The fuzzing executor also has a timeout, which runs in real time. This timeout
+is intended to detect situations where the fuzzer reaches a broken state where
+it is no longer able to iterate (e.g. the virtual time timeout is not working)
+and stop. By default, this timeout is set to 60 seconds and resets each
+iteration. Only iterations which take more than 60 seconds will trigger the
+timeout, but some very large fuzzing cases could exceed this time. To increase
+it, for example to set the timeout to 10 minutes:
 
 ```python
 @tsffs.executor_timeout = 600
@@ -303,8 +307,10 @@ code running on multiple cores, the additional cores can be added with:
 
 ### Disabling Coverage Reporting
 
-By default, the fuzzer will report new interesting control flow edges. This is normally useful to check the fuzzer's progress and ensure it is finding new
-paths. However in some cases, output may not be needed, so coverage reporting can be disabled with:
+By default, the fuzzer will report new interesting control flow edges. This is
+normally useful to check the fuzzer's progress and ensure it is finding new
+paths. However in some cases, output may not be needed, so coverage reporting
+can be disabled with:
 
 ```python
 @tsffs.coverage_reporting = False
@@ -312,7 +318,8 @@ paths. However in some cases, output may not be needed, so coverage reporting ca
 
 ### Enable Logging and Set Log path
 
-By default, the fuzzer will log useful informational messages in JSON format to a log in the project directory (`log.json`).
+By default, the fuzzer will log useful informational messages in JSON format to
+a log in the project directory (`log.json`).
 
 The path for this log can be set by setting:
 
@@ -328,7 +335,9 @@ You can also disable the logging completely with:
 
 ### Keep All Corpus Entries
 
-For debugging purposes, TSFFS can be set to keep *all* corpus entries, not just corpus entries which cause interesting results. This generates a large number of corpus files.
+For debugging purposes, TSFFS can be set to keep *all* corpus entries, not just
+corpus entries which cause interesting results. This generates a large number
+of corpus files.
 
 ```python
 @tsffs.keep_all_corpus = True
@@ -336,7 +345,8 @@ For debugging purposes, TSFFS can be set to keep *all* corpus entries, not just 
 
 ### Use Initial Buffer Contents As Corpus
 
-When using compiled-in or manual harnessing, the initial contents of the testcase
+When using compiled-in or manual harnessing, the initial contents of the
+testcase
 buffer can be used as a seed corpus entry. This can be enabled with:
 
 ```python
