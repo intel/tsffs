@@ -45,7 +45,7 @@ fn test_x86_64_manual() -> Result<()> {
             simics.SIM_load_module("tsffs")
 
             tsffs = simics.SIM_create_object(simics.SIM_get_class("tsffs"), "tsffs", [])
-            simics.SIM_set_log_level(tsffs, 2)
+            simics.SIM_set_log_level(tsffs, 4)
             tsffs.start_on_harness = False
             tsffs.stop_on_harness = False
             tsffs.timeout = 3.0
@@ -81,14 +81,14 @@ fn test_x86_64_manual() -> Result<()> {
 
                 # In reality, you probably have a known buffer in mind to fuzz
                 testcase_address_regno = conf.qsp.mb.cpu0.core[0][0].iface.int_register.get_number(
-                    "rdi"
+                    "rsi"
                 )
                 print("testcase address regno: ", testcase_address_regno)
                 testcase_address = conf.qsp.mb.cpu0.core[0][0].iface.int_register.read(
                     testcase_address_regno
                 )
                 print("testcase address: ", testcase_address)
-                size_regno = conf.qsp.mb.cpu0.core[0][0].iface.int_register.get_number("rsi")
+                size_regno = conf.qsp.mb.cpu0.core[0][0].iface.int_register.get_number("rdx")
                 print("size regno: ", size_regno)
                 size_address = conf.qsp.mb.cpu0.core[0][0].iface.int_register.read(size_regno)
                 print("size address: ", size_address)
@@ -103,7 +103,7 @@ fn test_x86_64_manual() -> Result<()> {
                     virt,
                 )
 
-                tsffs.iface.fuzz.start(
+                tsffs.iface.fuzz.start_with_buffer_ptr_size_ptr(
                     conf.qsp.mb.cpu0.core[0][0],
                     testcase_address,
                     size_address,

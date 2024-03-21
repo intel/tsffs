@@ -41,8 +41,8 @@ fn test_riscv_64_kernel_from_userspace_magic() -> Result<()> {
             @tsffs.log_level = 2
             @tsffs.start_on_harness = True
             @tsffs.stop_on_harness = True
-            @tsffs.magic_start = 4
-            @tsffs.magic_stop = 5
+            @tsffs.magic_start_index = 1
+            @tsffs.magic_stop_indices = [1]
             @tsffs.timeout = 3.0
             @tsffs.exceptions = [14]
             @tsffs.generate_random_corpus = True

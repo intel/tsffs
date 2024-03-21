@@ -21,15 +21,6 @@ use yaxpeax_x86::amd64::{ConditionCode, InstDecoder, Instruction, Opcode, Operan
 
 use super::ArchitectureOperations;
 
-/// The default register the fuzzer expects to contain a pointer to an area to write
-/// each testcase into when using an in-target harness
-pub const DEFAULT_TESTCASE_AREA_REGISTER_NAME: &str = "rdi";
-/// The default register the fuzzer expects to contain a pointer to a variable,
-/// initially containing the maximum size of the area pointed to by
-/// `DEFAULT_TESTCASE_AREA_REGISTER_NAME`, which will be written each fuzzer execution
-/// to contain the actual size of the current testcase.
-pub const DEFAULT_TESTCASE_SIZE_REGISTER_NAME: &str = "rsi";
-
 pub(crate) struct X86_64ArchitectureOperations {
     cpu: *mut ConfObject,
     disassembler: Disassembler,
@@ -41,8 +32,10 @@ pub(crate) struct X86_64ArchitectureOperations {
 }
 
 impl ArchitectureOperations for X86_64ArchitectureOperations {
-    const DEFAULT_TESTCASE_AREA_REGISTER_NAME: &'static str = DEFAULT_TESTCASE_AREA_REGISTER_NAME;
-    const DEFAULT_TESTCASE_SIZE_REGISTER_NAME: &'static str = DEFAULT_TESTCASE_SIZE_REGISTER_NAME;
+    const INDEX_SELECTOR_REGISTER: &'static str = "rdi";
+    const ARGUMENT_REGISTER_0: &'static str = "rsi";
+    const ARGUMENT_REGISTER_1: &'static str = "rdx";
+    const ARGUMENT_REGISTER_2: &'static str = "rcx";
 
     fn new(cpu: *mut ConfObject) -> Result<Self> {
         let mut processor_info_v2: ProcessorInfoV2Interface = get_interface(cpu)?;

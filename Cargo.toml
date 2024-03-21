@@ -21,8 +21,8 @@ version = "0.2.1"
 
 [package.metadata.simics]
 package-number = 31337
-# version = "6.0.pre4"
-version = "6.0.4"
+
+version = "6.0.6"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -30,12 +30,7 @@ test = false
 
 [dependencies]
 anyhow = { version = "1.0.80" }
-# libafl = { version = "0.11.2" }
-# libafl_bolts = { version = "0.11.2" }
-# libafl_targets = { version = "0.11.2", default-features = false, features = [
-#     "std",
-# ] }
-libafl = { git = "https://github.com/AFLplusplus/LibAFL", default-features = false, features = [
+libafl = { git = "https://github.com/AFLplusplus/LibAFL", rev = "0f26f6ea32aa74ee526636558842ec06bbfb49bb", default-features = false, features = [
     "std",
     "derive",
     "llmp_compression",
@@ -48,10 +43,10 @@ libafl = { git = "https://github.com/AFLplusplus/LibAFL", default-features = fal
     "regex",
     "serdeany_autoreg",
 ] }
-libafl_bolts = { git = "https://github.com/AFLplusplus/LibAFL", features = [
+libafl_bolts = { git = "https://github.com/AFLplusplus/LibAFL", rev = "0f26f6ea32aa74ee526636558842ec06bbfb49bb", features = [
     "xxh3",
 ] }
-libafl_targets = { git = "https://github.com/AFLplusplus/LibAFL", default-features = false, features = [
+libafl_targets = { git = "https://github.com/AFLplusplus/LibAFL", rev = "0f26f6ea32aa74ee526636558842ec06bbfb49bb", default-features = false, features = [
     "std",
 ] }
 yaxpeax-arch = { version = "0.2.7", default-features = false, features = [
@@ -76,6 +71,10 @@ serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.114"
 versions = { version = "6.1.0", features = ["serde"] }
 ffi = "0.1.1"
+num-traits = "0.2.18"
+num-derive = "0.4.2"
+tracing-subscriber = "0.3.18"
+tracing = { version = "0.1.40", features = ["log"] }
 
 [dev-dependencies]
 simics-test = { path = "simics-rs/simics-test" }

@@ -45,8 +45,8 @@ take over and start the fuzzing loop.
 
 ## Userspace Driver Code
 
-First, copy `tsffs-gcc-riscv64.h` from the `harness` directory in the repository into
-`src/tsffs-gcc-riscv64.h`.
+First, copy `tsffs.h` from the `harness` directory in the repository into
+`src/tsffs.h`.
 
 We'll also create `src/tutorial-mod-driver.c`, a user-space application which we will
 use to drive the kernel module code via IOCTL.
@@ -59,7 +59,7 @@ use to drive the kernel module code via IOCTL.
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-#include "tsffs-gcc-riscv64.h"
+#include "tsffs.h"
 
 #define MAJOR_NUM 100
 #define IOCTL_SET_MSG _IOW(MAJOR_NUM, 0, char *)

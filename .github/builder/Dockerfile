@@ -8,7 +8,7 @@ RUN yum -y update && \
         coreutils \
         gcc \
         gcc-c++ \
-        make \
+        make && \
     yum clean all
 
 COPY .github/builder/rsrc/rustup-init /install/rustup-init

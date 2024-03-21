@@ -12,7 +12,7 @@ First, we will create a `src` directory with the following files:
 * `Tutorial.dsc` - The EDK2 description file for building our target software
 * `Tutorial.inf` - The EDK2 info file for building our target software
 * `Tutorial.c` - Our C source file
-* `tsffs-gcc-x86_64.h` - The header file from the `harness` directory in the repository
+* `tsffs.h` - The header file from the `harness` directory in the repository
   for our target architecture
 
 We'll cover the auxiliary and build files first, then we'll cover the source code.
@@ -149,7 +149,7 @@ whole platform including our application and requisite additional libraries.
   Tutorial/Tutorial.inf
 ```
 
-## tsffs-gcc-x86_64.h
+## tsffs.h
 
 Copy this file from the TSFFS repository's `harness` directory. It provides macros for
 compiling in the harness so the target software can communicate with and receive
@@ -168,7 +168,7 @@ which tries to verify a certificate was issued by a given certificate authority.
 #include <Library/UefiLib.h>
 #include <Uefi.h>
 
-#include "tsffs-gcc-x86_64.h"
+#include "tsffs.h"
 
 void hexdump(UINT8 *buf, UINTN size) {
   for (UINTN i = 0; i < size; i++) {

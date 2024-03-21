@@ -12,37 +12,8 @@ use std::{
     ptr::null_mut,
     str::FromStr,
 };
-use typed_builder::TypedBuilder;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) enum ManualStartSize {
-    MaximumSize(u64),
-    SizeAddress(u64),
-    NoSize,
-}
-
-#[derive(TypedBuilder, Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct ManualStart {
-    #[builder(default = null_mut())]
-    #[serde(skip, default = "null_mut")]
-    pub processor: *mut ConfObject,
-    #[builder(default, setter(into, strip_option))]
-    pub buffer: Option<u64>,
-    #[builder(default = ManualStartSize::NoSize)]
-    pub size: ManualStartSize,
-    #[builder(default)]
-    pub virt: bool,
-}
-
-#[derive(TypedBuilder, Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct MagicStart {
-    #[builder(default = null_mut())]
-    #[serde(skip, default = "null_mut")]
-    pub processor: *mut ConfObject,
-}
-
-#[derive(TypedBuilder, Serialize, Deserialize, Debug, Clone, Default)]
-pub(crate) struct Stop {}
+use crate::{magic::MagicNumber, ManualStartInfo};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) enum SolutionKind {
@@ -52,21 +23,27 @@ pub(crate) enum SolutionKind {
     Manual,
 }
 
-#[derive(TypedBuilder, Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct Solution {
-    pub kind: SolutionKind,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 /// Definition of all the reasons the simulator could be stopped by the fuzzer. In general,
 /// callbacks in the fuzzer, for example [`Driver::on_magic_instruction`] may be called
 /// asynchronously and stop the simulation.
 pub(crate) enum StopReason {
-    MagicStart(MagicStart),
-    MagicStop(Stop),
-    ManualStart(ManualStart),
-    ManualStop(Stop),
-    Solution(Solution),
+    Magic {
+        magic_number: MagicNumber,
+    },
+    ManualStart {
+        #[serde(skip, default = "null_mut")]
+        processor: *mut ConfObject,
+        info: ManualStartInfo,
+    },
+    ManualStartWithoutBuffer {
+        #[serde(skip, default = "null_mut")]
+        processor: *mut ConfObject,
+    },
+    ManualStop,
+    Solution {
+        kind: SolutionKind,
+    },
 }
 
 impl Display for StopReason {
