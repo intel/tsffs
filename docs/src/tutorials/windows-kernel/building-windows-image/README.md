@@ -19,9 +19,11 @@ There are several advantages to creating the image this way:
 7. [Change Default Shell to PowerShell](change-default-shell-to-powershell.md)
 8. [Installing the EWDK](installing-the-ewdk.md)
 9. [Installing Development Tools](installing-development-tools.md)
-10. [Clone and Build HEVD](clone-and-build-hevd.md)
-11. [Install the Code Signing Certificate](install-the-code-signing-certificate.md)
-12. [Create and Start the Driver Service](create-and-start-the-driver-service.md)
+10. [Install Simics Agent](install-simics-agent.md)
+11. [Clone and Build HEVD](clone-and-build-hevd.md)
+12. [Install the Code Signing Certificate](install-the-code-signing-certificate.md)
+<!--12. [Create and Start the Driver Service](create-and-start-the-driver-service.md)-->
 13. [Create a Fuzz Harness](create-a-fuzz-harness.md)
 14. [Compile the Fuzz Harness](compile-the-fuzz-harness.md)
-15. [Run the Fuzz Harness](run-the-fuzz-harness.md)
+<!--15. [Run the Fuzz Harness](run-the-fuzz-harness.md)-->
+15. [Convert the Image to CRAFF](convert-image.md)
