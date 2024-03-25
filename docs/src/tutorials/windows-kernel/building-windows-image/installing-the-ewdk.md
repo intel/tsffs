@@ -5,8 +5,6 @@ Kit](https://learn.microsoft.com/en-us/windows-hardware/drivers/develop/using-th
 (EWDK) throughout this tutorial to compile both user-space applications and Windows
 Kernel modules.
 
-![](images/2024-03-16-13-16-20.png)
-
 We will use the EWDK because unfortunately all versions of Visual Studio (including
 Visual Studio Community) are not possible to easily install on the command line, which
 means more images which complicate a tutorial unnecessarily and make it harder to

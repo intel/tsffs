@@ -1,7 +1,7 @@
 # Convert Image to CRAFF
 
-Now that we have set up our Windows image, we need to convert the image to the CRAFF
-format that Simics uses.
+Now that we have set up our Windows image, we need to convert the image to the
+CRAFF format that Simics uses.
 
 First, shut down the guest machine with:
 
@@ -11,15 +11,15 @@ shutdown /s /f /t 0
 
 ## Find The Virtual Disk Image
 
-After the guest machine has shut down, click the "Storage" category header in the
-machine page shown below.
+After the guest machine has shut down, click the "Storage" category header in
+the machine page shown below.
 
-![](images/2024-03-21-12-24-34.png)
+![Storage category header](images/2024-03-21-12-24-34.png)
 
-The settings window for Storage will appear. Note the "Location" field. This is the path
-to the virtual disk image.
+The settings window for Storage will appear. Note the "Location" field. This is
+the path to the virtual disk image.
 
-![](images/2024-03-21-12-25-39.png)
+![Location field showing virtual disk image path](images/2024-03-21-12-25-39.png)
 
 ## Convert the Virtual Disk Image
 
@@ -35,8 +35,8 @@ Or we can use the qemu-img tool (included with QEMU installations):
 qemu-img convert -f vdi -O vdi "/path/to/VirtualBox VMs/Windows 11/Windows 11.vdi" "examples/tutorials/windows-kernel/windows-11.img"
 ```
 
-Then, we will use the `craff` utility included with Simics. Find your Simics base directory
-(e.g. `simics-6.0.185`), and run:
+Then, we will use the `craff` utility included with Simics. Find your Simics
+base directory (e.g. `simics-6.0.185`), and run:
 
 ```sh
 ~/simics/simics-6.0.185/bin/craff -o examples/tutorials/windows-kernel/windows-11.craff examples/tutorials/windows-kernel/windows-11.img

@@ -267,10 +267,6 @@ pub(crate) struct Tsffs {
     /// Whether the fuzzer should stop on compiled-in harnesses. If set to `True`, the fuzzer
     /// will start fuzzing when a harness macro is executed.
     pub stop_on_harness: bool,
-<<<<<<< HEAD
-    #[class(attribute(optional, default = 1))]
-    /// The magic number `n` which is passed to the platform-specific magic instruction HAP
-=======
     #[class(attribute(optional, default = true))]
     /// Whether snapshots should be used. Snapshots are introduced as of Simics 6.0.173 and
     /// replace rev-exec micro checkpoints as the only method of taking full simulation
@@ -283,7 +279,6 @@ pub(crate) struct Tsffs {
     pub use_snapshots: bool,
     #[class(attribute(optional, default = 0))]
     /// The index number which is passed to the platform-specific magic instruction HAP
->>>>>>> 5fe8087e1fa1011242b036d557b62c1b1e5be419
     /// by a compiled-in harness to signal that the fuzzer should start the fuzzing loop.
     ///
     /// This option is useful when fuzzing a target which has multiple start harnesses compiled

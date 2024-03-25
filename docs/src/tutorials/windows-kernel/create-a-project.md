@@ -1,6 +1,7 @@
 # Create a Project
 
-Now that we have a disk image, we'll create a project for fuzzing our Windows machine.
+Now that we have a disk image, we'll create a project
+for fuzzing our Windows machine.
 
 From the root of this repository:
 
@@ -10,7 +11,10 @@ ispm projects . --create 1000-latest 2096-latest 8112-latest 1030-latest 31337-l
 ```
 
 
-Make sure `windows-11.craff` is in the project directory. Then, create a script `run.simics`. Before we start fuzzing, we'll need to let Windows set itself up on the new simulated hardware.
+Make sure `windows-11.craff` is in the project
+directory. Then, create a script `run.simics`. Before
+we start fuzzing, we'll need to let Windows set itself
+up on the new simulated hardware.
 
 `run.simics` should look like this to initialize TSFFS and start the simulation.
 
