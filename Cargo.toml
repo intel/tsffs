@@ -21,8 +21,8 @@ version = "0.2.1"
 
 [package.metadata.simics]
 package-number = 31337
-# version = "6.0.pre4"
-version = "6.0.5"
+
+version = "6.0.6"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -71,6 +71,8 @@ serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.114"
 versions = { version = "6.1.0", features = ["serde"] }
 ffi = "0.1.1"
+num-traits = "0.2.18"
+num-derive = "0.4.2"
 tracing-subscriber = "0.3.18"
 tracing = { version = "0.1.40", features = ["log"] }
 

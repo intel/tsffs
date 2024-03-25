@@ -8,7 +8,7 @@
 #include <Library/UefiLib.h>
 #include <Uefi.h>
 
-#include "tsffs-gcc-x86_64.h"
+#include "tsffs.h"
 
 void hexdump(UINT8 *buf, UINTN size) {
   for (UINTN i = 0; i < size; i++) {

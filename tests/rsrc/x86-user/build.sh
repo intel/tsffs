@@ -14,7 +14,7 @@ if [ -n "${SIMICS_BASE}" ]; then
 fi
 
 
-cp "${SCRIPT_DIR}/../../../harness/tsffs-gcc-x86.h" "${SCRIPT_DIR}/tsffs-gcc-x86.h"
+cp "${SCRIPT_DIR}/../../../harness/tsffs.h" "${SCRIPT_DIR}/tsffs.h"
 cp "${SCRIPT_DIR}/../../rsrc/minimal_boot_disk.craff" "${SCRIPT_DIR}/minimal_boot_disk.craff"
 
 ninja

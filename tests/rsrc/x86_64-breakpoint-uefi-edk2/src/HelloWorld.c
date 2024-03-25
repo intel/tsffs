@@ -16,7 +16,7 @@
 #include <Library/UefiLib.h>
 #include <Uefi.h>
 
-#include "tsffs-gcc-x86_64.h"
+#include "tsffs.h"
 
 /**
   The user Entry Point for Application. The user code starts with this function

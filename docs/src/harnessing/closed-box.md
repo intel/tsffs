@@ -14,7 +14,7 @@ The same code as before, with no harness:
 
 
 ```c
-#include "tsffs-gcc-x86_64.h"
+#include "tsffs.h"
 
 int main() {
     char buf[20];

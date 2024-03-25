@@ -10,7 +10,7 @@ use crate::{
 use anyhow::{anyhow, Result};
 use libafl::{
     feedback_or, feedback_or_fast,
-    inputs::HasBytesVec,
+    inputs::{HasBytesVec, Input},
     prelude::{
         havoc_mutations, ondisk::OnDiskMetadataFormat, tokens_mutations, AFLppRedQueen, BytesInput,
         CachedOnDiskCorpus, Corpus, CrashFeedback, ExitKind, HasCurrentCorpusIdx, HasTargetBytes,
@@ -37,10 +37,10 @@ use libafl_bolts::{
     AsMutSlice, AsSlice,
 };
 use libafl_targets::{AFLppCmpLogObserver, AFLppCmplogTracingStage};
-use simics::{api::AsConfObject, debug, warn};
+use simics::{api::AsConfObject, debug, trace, warn};
 use std::{
-    cell::RefCell, fmt::Debug, io::stderr, slice::from_raw_parts_mut, sync::mpsc::channel,
-    thread::spawn, time::Duration,
+    cell::RefCell, fmt::Debug, fs::write, io::stderr, slice::from_raw_parts_mut,
+    sync::mpsc::channel, thread::spawn, time::Duration,
 };
 use tokenize::{tokenize_executable_file, tokenize_src_file};
 use tracing::{level_filters::LevelFilter, Level};
@@ -181,6 +181,14 @@ impl Tsffs {
         let initial_random_corpus_size = self.initial_random_corpus_size;
         let executor_timeout = self.executor_timeout;
         let debug_log_libafl = self.debug_log_libafl;
+        let initial_contents = self
+            .use_initial_as_corpus
+            .then(|| {
+                self.start_info
+                    .get()
+                    .map(|si| BytesInput::new(si.contents.clone()))
+            })
+            .flatten();
 
         // NOTE: We do *not* use `run_in_thread` because it causes the fuzzer to block when HAPs arrive
         // which prevents forward progress.
@@ -418,6 +426,13 @@ impl Tsffs {
                     anyhow!("Couldn't initialize fuzzer dump to disk stage: {e}")
                 })?;
 
+                if let Some(contents) = initial_contents {
+                    write(
+                        corpus_directory.join(contents.generate_name(0)),
+                        contents.bytes(),
+                    )?;
+                }
+
                 if state.must_load_initial_inputs() {
                     state
                         .load_initial_inputs(
@@ -564,6 +579,24 @@ impl Tsffs {
                 .recv()
                 .map_err(|e| anyhow!("Error receiving from fuzzer: {e}"))?
         };
+
+        if self.keep_all_corpus {
+            let testcase_name = testcase.testcase.generate_name(0);
+            trace!(
+                self.as_conf_object(),
+                "Writing testcase {}.testcase to corpus directory: {}",
+                &testcase_name,
+                self.corpus_directory.display()
+            );
+
+            write(
+                self.corpus_directory
+                    .join(format!("{}.testcase", &testcase_name)),
+                testcase.testcase.bytes(),
+            )?;
+        }
+
+        self.cmplog_enabled = testcase.cmplog;
 
         debug!(self.as_conf_object(), "Testcase: {testcase:?}");
 

@@ -14,7 +14,7 @@ index 9cea5f4665..00815adba2 100644
  #include <IndustryStandard/Bmp.h>
  #include <Protocol/BootLogo.h>
  
-+#include "tsffs-gcc-x86_64.h"
++#include "tsffs.h"
  /**
    Convert a *.BMP graphics image to a GOP blt buffer. If a NULL Blt buffer
    is passed in a GopBlt buffer will be allocated by this routine. If a GopBlt

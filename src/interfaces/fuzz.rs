@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
-    state::{ManualStart, ManualStartSize, Solution, SolutionKind, Stop, StopReason},
-    Tsffs,
+    state::{SolutionKind, StopReason},
+    ManualStartAddress, ManualStartInfo, ManualStartSize, Tsffs,
 };
 use anyhow::{anyhow, Result};
 use libafl::inputs::HasBytesVec;
@@ -70,26 +70,35 @@ impl Tsffs {
     ///
     /// If your target cannot take advantage of the written-back size pointer, use
     /// `start_with_max_size` instead.
-    pub fn start(
+    pub fn start_with_buffer_ptr_size_ptr(
         &mut self,
         cpu: *mut ConfObject,
-        testcase_address: GenericAddress,
+        buffer_address: GenericAddress,
         size_address: GenericAddress,
         virt: bool,
     ) -> Result<()> {
         debug!(
             self.as_conf_object(),
-            "start({testcase_address:#x}, {size_address:#x})"
+            "start({buffer_address:#x}, {size_address:#x})"
         );
 
-        self.stop_simulation(StopReason::ManualStart(
-            ManualStart::builder()
-                .processor(cpu)
-                .buffer(testcase_address)
-                .size(ManualStartSize::SizeAddress(size_address))
-                .virt(virt)
-                .build(),
-        ))?;
+        self.stop_simulation(StopReason::ManualStart {
+            processor: cpu,
+            info: ManualStartInfo {
+                address: if virt {
+                    ManualStartAddress::Virtual(buffer_address)
+                } else {
+                    ManualStartAddress::Physical(buffer_address)
+                },
+                size: ManualStartSize::SizePtr {
+                    address: if virt {
+                        ManualStartAddress::Virtual(size_address)
+                    } else {
+                        ManualStartAddress::Physical(size_address)
+                    },
+                },
+            },
+        })?;
 
         Ok(())
     }
@@ -108,7 +117,7 @@ impl Tsffs {
     /// If your target does not have a buffer readily available to receive testcase data or
     /// you simply want to use it directly in some other way (e.g. by sending it to a network
     /// port), use `start_without_buffer`
-    pub fn start_with_maximum_size(
+    pub fn start_with_buffer_ptr_size_value(
         &mut self,
         cpu: *mut ConfObject,
         testcase_address: GenericAddress,
@@ -120,14 +129,66 @@ impl Tsffs {
             "start_with_maximum_size({testcase_address:#x}, {maximum_size:#x})"
         );
 
-        self.stop_simulation(StopReason::ManualStart(
-            ManualStart::builder()
-                .processor(cpu)
-                .buffer(testcase_address)
-                .size(ManualStartSize::MaximumSize(maximum_size as u64))
-                .virt(virt)
-                .build(),
-        ))?;
+        self.stop_simulation(StopReason::ManualStart {
+            processor: cpu,
+            info: ManualStartInfo {
+                address: if virt {
+                    ManualStartAddress::Virtual(testcase_address)
+                } else {
+                    ManualStartAddress::Physical(testcase_address)
+                },
+                size: ManualStartSize::MaxSize(maximum_size.try_into()?),
+            },
+        })?;
+
+        Ok(())
+    }
+
+    /// Interface method to manually start the fuzzing loop by taking a snapshot, saving
+    /// the testcase, size address, and maximum testcase size and resuming execution of the
+    /// simulation. This method does not need to be called if `set_start_on_harness` is enabled.
+    ///
+    /// # Arguments
+    ///
+    /// * `cpu` - The CPU whose memory space should be written
+    /// * `testcase_address` - The address to write test cases to
+    /// * `size_address` - The address to write the size of each test case to
+    /// * `maximum_size` - The maximum size of the test case. The actual size of each test case will
+    ///   be written back to the target software at the provided size address.
+    ///
+    /// If your target cannot take advantage of the written-back size pointer, use
+    /// `start_with_max_size` instead.
+    pub fn start_with_buffer_ptr_size_ptr_value(
+        &mut self,
+        cpu: *mut ConfObject,
+        buffer_address: GenericAddress,
+        size_address: GenericAddress,
+        maximum_size: u32,
+        virt: bool,
+    ) -> Result<()> {
+        debug!(
+            self.as_conf_object(),
+            "start({buffer_address:#x}, {size_address:#x}, {maximum_size:#x})"
+        );
+
+        self.stop_simulation(StopReason::ManualStart {
+            processor: cpu,
+            info: ManualStartInfo {
+                address: if virt {
+                    ManualStartAddress::Virtual(buffer_address)
+                } else {
+                    ManualStartAddress::Physical(buffer_address)
+                },
+                size: ManualStartSize::SizePtrAndMaxSize {
+                    address: if virt {
+                        ManualStartAddress::Virtual(size_address)
+                    } else {
+                        ManualStartAddress::Physical(size_address)
+                    },
+                    maximum_size: maximum_size.try_into()?,
+                },
+            },
+        })?;
 
         Ok(())
     }
@@ -149,12 +210,10 @@ impl Tsffs {
             // Start the fuzzer thread early so we can get a testcase
             self.start_fuzzer_thread()?;
         }
-        let testcase = self.get_testcase()?;
-        self.cmplog_enabled = testcase.cmplog;
 
-        self.stop_simulation(StopReason::ManualStart(
-            ManualStart::builder().processor(cpu).build(),
-        ))?;
+        let testcase = self.get_testcase()?;
+
+        self.stop_simulation(StopReason::ManualStartWithoutBuffer { processor: cpu })?;
 
         Ok(testcase.testcase.bytes().to_vec().try_into()?)
     }
@@ -168,7 +227,7 @@ impl Tsffs {
     pub fn stop(&mut self) -> Result<()> {
         debug!(self.as_conf_object(), "stop");
 
-        self.stop_simulation(StopReason::ManualStop(Stop::default()))?;
+        self.stop_simulation(StopReason::ManualStop)?;
 
         Ok(())
     }
@@ -182,9 +241,9 @@ impl Tsffs {
 
         debug!(self.as_conf_object(), "solution({id:#x}, {message})");
 
-        self.stop_simulation(StopReason::Solution(
-            Solution::builder().kind(SolutionKind::Manual).build(),
-        ))?;
+        self.stop_simulation(StopReason::Solution {
+            kind: SolutionKind::Manual,
+        })?;
 
         Ok(())
     }
