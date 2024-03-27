@@ -267,16 +267,6 @@ pub(crate) struct Tsffs {
     /// Whether the fuzzer should stop on compiled-in harnesses. If set to `True`, the fuzzer
     /// will start fuzzing when a harness macro is executed.
     pub stop_on_harness: bool,
-    #[class(attribute(optional, default = true))]
-    /// Whether snapshots should be used. Snapshots are introduced as of Simics 6.0.173 and
-    /// replace rev-exec micro checkpoints as the only method of taking full simulation
-    /// snapshots as of Simics 7.0.0. If set to `True`, the fuzzer will use snapshots to
-    /// restore the state of the simulation to a known state before each iteration. If set to
-    /// `False` the fuzzer will use rev-exec micro checkpoints to restore the state of the
-    /// simulation to a known state before each iteration. If snapshots are not supported by
-    /// the version of SIMICS being used, the fuzzer will quit with an error message when this
-    /// option is set.
-    pub use_snapshots: bool,
     #[class(attribute(optional, default = 0))]
     /// The index number which is passed to the platform-specific magic instruction HAP
     /// by a compiled-in harness to signal that the fuzzer should start the fuzzing loop.
@@ -911,7 +901,6 @@ fn init() {
     let tsffs = Tsffs::create().expect("Failed to create class tsffs");
     config::register(tsffs).expect("Failed to register config interface for tsffs");
     fuzz::register(tsffs).expect("Failed to register fuzz interface for tsffs");
-    tsffs::register(tsffs).expect("Failed to register tsffs interface for tsffs");
     run_python(indoc! {r#"
         def init_tsffs_cmd():
             try:
