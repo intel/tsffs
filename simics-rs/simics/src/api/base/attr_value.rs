@@ -2081,7 +2081,7 @@ impl TryFrom<AttrValueType> for u64 {
 
     fn try_from(value: AttrValueType) -> Result<Self> {
         if let Some(unsigned) = value.as_unsigned() {
-            unsigned.try_into().map_err(Error::from)
+            Ok(unsigned)
         } else if let Some(signed) = value.as_signed() {
             // For signed values, we can try to convert them into unsigned
             // values if they are non-negative.
@@ -2211,7 +2211,7 @@ impl TryFrom<AttrValueType> for i64 {
 
     fn try_from(value: AttrValueType) -> Result<Self> {
         if let Some(signed) = value.as_signed() {
-            signed.try_into().map_err(Error::from)
+            Ok(signed)
         } else if let Some(unsigned) = value.as_unsigned() {
             // For unsigned values, we can try to convert them into signed
             // values if they are within the range of the signed type.
@@ -2278,7 +2278,7 @@ impl TryFrom<AttrValueType> for f64 {
 
     fn try_from(value: AttrValueType) -> Result<Self> {
         if let Some(f) = value.as_float() {
-            f.try_into().map_err(Error::from)
+            Ok(f)
         } else {
             Err(Error::FromAttrValueTypeConversionError {
                 ty: type_name::<f64>().to_string(),
@@ -3740,11 +3740,11 @@ pub fn free_attribute(attr: AttrValue) {
     unsafe { SIM_free_attribute(attr.0) }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 pub mod test {
     use crate as simics;
     use crate::{attr_list_set_item, AttrValue};
-    use simics_api_sys::attr_value;
     use simics_macro::{
         FromAttrValueDict, FromAttrValueList, IntoAttrValueDict, IntoAttrValueList,
     };
@@ -4078,14 +4078,12 @@ pub mod test {
 
     #[test]
     fn test_bool() {
-        assert_eq!(
-            bool::try_from(AttrValue::boolean(false)).unwrap(),
-            false,
+        assert!(
+            !bool::try_from(AttrValue::boolean(false)).unwrap(),
             "Boolean conversion failed"
         );
-        assert_eq!(
+        assert!(
             bool::try_from(AttrValue::boolean(true)).unwrap(),
-            true,
             "Boolean conversion failed"
         );
     }
@@ -4137,7 +4135,7 @@ pub mod test {
         let hash_set: HashSet<i32> = [1, 2, 3, 4, 5].iter().cloned().collect();
         let hash_map: HashMap<i32, i32> = [(1, 2), (3, 4), (5, 6)].iter().cloned().collect();
         assert_eq!(
-            Option::<i32>::try_from(AttrValue::try_from(option.clone()).unwrap()).unwrap(),
+            Option::<i32>::try_from(AttrValue::try_from(option).unwrap()).unwrap(),
             option
         );
         assert_eq!(
@@ -4227,7 +4225,7 @@ pub mod test {
             // _hash_map: [(0, 1), (2, 3)].iter().cloned().collect(),
         };
 
-        let attr = AttrValue::try_from(instance.clone()).unwrap();
+        let attr = AttrValue::from(instance.clone());
         let instance_re = TestList::try_from(attr).unwrap();
         assert_eq!(instance, instance_re);
     }
@@ -4296,7 +4294,7 @@ pub mod test {
             // _hash_map: [(0, 1), (2, 3)].iter().cloned().collect(),
         };
 
-        let attr = AttrValue::try_from(instance.clone()).unwrap();
+        let attr = AttrValue::from(instance.clone());
         let instance_re = TestDict::try_from(attr).unwrap();
         assert_eq!(instance, instance_re);
     }

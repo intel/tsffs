@@ -45,7 +45,6 @@ fn test_x86_64_magic_reporting() -> Result<()> {
             @tsffs.exceptions = [14]
             @tsffs.generate_random_corpus = True
             @tsffs.iteration_limit = 100
-            @tsffs.use_snapshots = True
             @tsffs.coverage_reporting = True
             @tsffs.corpus_directory = "%simics%/corpus2"
 

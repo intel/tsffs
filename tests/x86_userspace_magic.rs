@@ -55,7 +55,6 @@ fn test_x86_userspace() -> Result<()> {
             tsffs.timeout = 3.0
             tsffs.generate_random_corpus = True
             tsffs.iteration_limit = 100
-            tsffs.use_snapshots = True
 
             simics.SIM_load_target(
                 "qsp-x86/clear-linux",  # target

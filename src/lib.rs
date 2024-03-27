@@ -44,9 +44,9 @@ use num_traits::FromPrimitive as _;
 use serde::{Deserialize, Serialize};
 use simics::{
     break_simulation, class, error, free_attribute, get_class, get_interface, get_processor_number,
-    info, lookup_file, object_clock, run_command, run_python, simics_init, trace, AsConfObject,
-    BreakpointId, ClassCreate, ClassObjectsFinalize, ConfObject, CoreBreakpointMemopHap,
-    CoreExceptionHap, CoreMagicInstructionHap, CoreSimulationStoppedHap,
+    info, lookup_file, object_clock, run_command, run_python, simics_init, trace, version_base,
+    AsConfObject, BreakpointId, ClassCreate, ClassObjectsFinalize, ConfObject,
+    CoreBreakpointMemopHap, CoreExceptionHap, CoreMagicInstructionHap, CoreSimulationStoppedHap,
     CpuInstrumentationSubscribeInterface, Event, EventClassFlag, FromConfObject, HapHandle,
     Interface, IntoAttrValueDict,
 };
@@ -79,12 +79,14 @@ use std::{
     fs::File,
     path::PathBuf,
     ptr::null_mut,
+    str::FromStr,
     sync::mpsc::{Receiver, Sender},
     thread::JoinHandle,
     time::SystemTime,
 };
 use tracer::tsffs::{on_instruction_after, on_instruction_before};
 use typed_builder::TypedBuilder;
+use versions::{Requirement, Versioning};
 
 pub(crate) mod arch;
 pub(crate) mod fuzzer;
@@ -265,16 +267,6 @@ pub(crate) struct Tsffs {
     /// Whether the fuzzer should stop on compiled-in harnesses. If set to `True`, the fuzzer
     /// will start fuzzing when a harness macro is executed.
     pub stop_on_harness: bool,
-    #[class(attribute(optional, default = true))]
-    /// Whether snapshots should be used. Snapshots are introduced as of Simics 6.0.173 and
-    /// replace rev-exec micro checkpoints as the only method of taking full simulation
-    /// snapshots as of Simics 7.0.0. If set to `True`, the fuzzer will use snapshots to
-    /// restore the state of the simulation to a known state before each iteration. If set to
-    /// `False` the fuzzer will use rev-exec micro checkpoints to restore the state of the
-    /// simulation to a known state before each iteration. If snapshots are not supported by
-    /// the version of SIMICS being used, the fuzzer will quit with an error message when this
-    /// option is set.
-    pub use_snapshots: bool,
     #[class(attribute(optional, default = 0))]
     /// The index number which is passed to the platform-specific magic instruction HAP
     /// by a compiled-in harness to signal that the fuzzer should start the fuzzing loop.
@@ -508,6 +500,9 @@ pub(crate) struct Tsffs {
     #[attr_value(skip)]
     /// The number of iterations which have been executed so far
     iterations: usize,
+    #[attr_value(skip)]
+    /// Whether snapshots are used. Snapshots are used on Simics 7.0.0 and later.
+    use_snapshots: bool,
 }
 
 impl ClassObjectsFinalize for Tsffs {
@@ -587,6 +582,24 @@ impl ClassObjectsFinalize for Tsffs {
                     .build(),
             )
             .map_err(|_e| anyhow!("Value already set"))?;
+
+        // Check whether snapshots should be used. This is a runtime check because the module
+        // may be loaded in either Simics 6 or Simics 7.
+        let version = version_base()
+            .map_err(|e| anyhow!("Error getting version string: {}", e))
+            .and_then(|v| {
+                v.split(' ')
+                    .last()
+                    .ok_or_else(|| anyhow!("Error parsing version string '{}'", v))
+                    .map(|s| s.to_string())
+            })
+            .and_then(|v| {
+                Versioning::from_str(&v).map_err(|e| anyhow!("Error parsing version string: {e}"))
+            })?;
+
+        tsffs.use_snapshots = Requirement::from_str(">=7.0.0")
+            .map_err(|e| anyhow!("Error parsing requirement: {}", e))?
+            .matches(&version);
 
         Ok(())
     }
@@ -887,7 +900,7 @@ impl Tsffs {
 fn init() {
     let tsffs = Tsffs::create().expect("Failed to create class tsffs");
     config::register(tsffs).expect("Failed to register config interface for tsffs");
-    fuzz::register(tsffs).expect("Failed to register config interface for tsffs");
+    fuzz::register(tsffs).expect("Failed to register fuzz interface for tsffs");
     run_python(indoc! {r#"
         def init_tsffs_cmd():
             try:

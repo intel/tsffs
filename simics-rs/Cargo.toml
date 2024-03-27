@@ -34,7 +34,6 @@ members = [
     "simics-test",
     "simics-build-utils",
     "tests/packages/hello-world",
-    "tests/test-packages",
 ]
 default-members = [
     "cargo-simics-build",
@@ -46,6 +45,7 @@ default-members = [
     "simics-sign",
     "simics-test",
     "simics-build-utils",
+    "tests/packages/hello-world",
 ]
 exclude = []
 
