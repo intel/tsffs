@@ -29,19 +29,18 @@
 #![warn(missing_docs)]
 
 use crate::interfaces::{config::config, fuzz::fuzz};
-use crate::state::{Solution, SolutionKind};
+use crate::state::SolutionKind;
 #[cfg(not(simics_deprecated_api_rev_exec))]
 use crate::util::Utils;
 use anyhow::{anyhow, Result};
 use arch::{Architecture, ArchitectureHint, ArchitectureOperations};
 use fuzzer::{messages::FuzzerMessage, ShutdownMessage, Testcase};
 use indoc::indoc;
-use libafl::{
-    inputs::{HasBytesVec, Input},
-    prelude::ExitKind,
-};
+use libafl::{inputs::HasBytesVec, prelude::ExitKind};
 use libafl_bolts::prelude::OwnedMutSlice;
 use libafl_targets::AFLppCmpLogMap;
+use magic::MagicNumber;
+use num_traits::FromPrimitive as _;
 use serde::{Deserialize, Serialize};
 use simics::{
     break_simulation, class, error, free_attribute, get_class, get_interface, get_processor_number,
@@ -77,7 +76,7 @@ use std::{
     alloc::{alloc_zeroed, Layout},
     cell::OnceCell,
     collections::{hash_map::Entry, BTreeSet, HashMap, HashSet},
-    fs::{write, File},
+    fs::File,
     path::PathBuf,
     ptr::null_mut,
     sync::mpsc::{Receiver, Sender},
@@ -92,6 +91,7 @@ pub(crate) mod fuzzer;
 pub(crate) mod haps;
 pub(crate) mod interfaces;
 pub(crate) mod log;
+pub(crate) mod magic;
 pub(crate) mod state;
 pub(crate) mod tracer;
 pub(crate) mod traits;
@@ -101,26 +101,106 @@ pub(crate) mod util;
 
 pub const CLASS_NAME: &str = env!("CARGO_PKG_NAME");
 
-#[derive(TypedBuilder, Serialize, Deserialize, Clone, Debug)]
-pub(crate) struct StartBuffer {
-    /// The physical address of the buffer. Must be physical, if the input address was
-    /// virtual, it should be pre-translated
-    pub physical_address: u64,
-    /// Whether the address that translated to this physical address was virtual
-    /// this should not be used or checked, it's simply informational
-    pub virt: bool,
+#[derive(Serialize, Deserialize, Clone, Debug)]
+/// An address that was formerly virtual or formerly physical. The actual
+/// address *must* be physical.
+pub(crate) enum StartPhysicalAddress {
+    /// The address was formerly virtual
+    WasVirtual(u64),
+    /// The address was formerly physical
+    WasPhysical(u64),
+}
+
+impl StartPhysicalAddress {
+    /// Get the physical address
+    pub fn physical_address(&self) -> u64 {
+        match self {
+            StartPhysicalAddress::WasVirtual(addr) => *addr,
+            StartPhysicalAddress::WasPhysical(addr) => *addr,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub(crate) enum ManualStartAddress {
+    Virtual(u64),
+    Physical(u64),
+}
+
+impl ManualStartAddress {
+    pub fn address(&self) -> u64 {
+        match self {
+            ManualStartAddress::Virtual(addr) => *addr,
+            ManualStartAddress::Physical(addr) => *addr,
+        }
+    }
 }
 
 #[derive(TypedBuilder, Serialize, Deserialize, Clone, Debug)]
-pub(crate) struct StartSize {
-    #[builder(default, setter(into, strip_option))]
-    /// The address of the magic start size value, and whether the address that translated
-    /// to this physical address was virtual. The address must be physical.
-    pub physical_address: Option<(u64, bool)>,
-    #[builder(default, setter(into, strip_option))]
-    // NOTE: There is no need to save the size fo the size, it must be pointer-sized.
-    /// The initial size of the magic start size
-    pub initial_size: Option<u64>,
+pub(crate) struct StartInfo {
+    /// The physical address of the buffer. Must be physical, if the input address was
+    /// virtual, it should be pre-translated
+    pub address: StartPhysicalAddress,
+    /// The initial contents of the buffer
+    pub contents: Vec<u8>,
+    /// The initial size of the buffer. This will either be only an address, in which
+    /// case the initial size will be `*size_ptr` and the actual size of each testcase
+    /// will be written back to `*size_ptr`, a `max_size` in which case the size will
+    /// not be written, or a `size_ptr` and `max_size` in which case the size will be
+    /// written back to `*size_ptr` and the maximum size will be `max_size`.
+    pub size: StartSize,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+/// Exactly the same as `StartInfo` except with the semantic difference that the address
+/// may not always be stored as physical, the user may provide a virtual address for both
+/// the address and the size pointer (if there is one).
+pub(crate) struct ManualStartInfo {
+    pub address: ManualStartAddress,
+    pub size: ManualStartSize,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub(crate) enum StartSize {
+    SizePtr {
+        address: StartPhysicalAddress,
+        maximum_size: usize,
+    },
+    MaxSize(usize),
+    SizePtrAndMaxSize {
+        address: StartPhysicalAddress,
+        maximum_size: usize,
+    },
+}
+
+impl StartSize {
+    pub fn maximum_size(&self) -> usize {
+        match self {
+            StartSize::SizePtr { maximum_size, .. } => *maximum_size,
+            StartSize::MaxSize(maximum_size) => *maximum_size,
+            StartSize::SizePtrAndMaxSize { maximum_size, .. } => *maximum_size,
+        }
+    }
+
+    pub fn physical_address(&self) -> Option<StartPhysicalAddress> {
+        match self {
+            StartSize::SizePtr { address, .. } => Some(address.clone()),
+            StartSize::MaxSize(_) => None,
+            StartSize::SizePtrAndMaxSize { address, .. } => Some(address.clone()),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub(crate) enum ManualStartSize {
+    SizePtr {
+        address: ManualStartAddress,
+    },
+    MaxSize(usize),
+    SizePtrAndMaxSize {
+        address: ManualStartAddress,
+        maximum_size: usize,
+    },
 }
 
 #[class(name = "tsffs", skip_objects_finalize, attr_value)]
@@ -195,26 +275,35 @@ pub(crate) struct Tsffs {
     /// the version of SIMICS being used, the fuzzer will quit with an error message when this
     /// option is set.
     pub use_snapshots: bool,
-    #[class(attribute(optional, default = 1))]
-    /// The magic number `n` which is passed to the platform-specific magic instruction HAP
+    #[class(attribute(optional, default = 0))]
+    /// The index number which is passed to the platform-specific magic instruction HAP
     /// by a compiled-in harness to signal that the fuzzer should start the fuzzing loop.
     ///
     /// This option is useful when fuzzing a target which has multiple start harnesses compiled
     /// into it, and the fuzzer should start on a specific harness.
-    pub magic_start: i64,
-    #[class(attribute(optional, default = 2))]
-    /// The magic number `n` which is passed to the platform-specific magic instruction HAP
+    ///
+    /// There can only be one magic start value, because only one fuzzing loop can be running
+    /// (and they cannot be nested). This only has an effect if `start_on_harness` is set.
+    pub magic_start_index: u64,
+    #[class(attribute(optional, default = vec![0]))]
+    #[attr_value(fallible)]
+    /// The magic numbers which is passed to the platform-specific magic instruction HAP
     /// by a compiled-in harness to signal that the fuzzer should stop execution of the current
     /// iteration.
     ///
     /// This option is useful when fuzzing a target which has multiple stop harnesses compiled
-    /// into it, and the fuzzer should stop on a specific harness.
-    pub magic_stop: i64,
-    #[class(attribute(optional, default = 3))]
-    /// The magic number `n` which is passed to the platform-specific magic instruction HAP
-    /// by a compiled-in harness to signal that the fuzzer should stop execution of the current
-    /// iteration and save the testcase as a solution.
-    pub magic_assert: i64,
+    /// into it, and the fuzzer should stop on a specific subset of stop harness macro calls.
+    ///
+    /// This only has an effect if `stop_on_harness` is set.
+    pub magic_stop_indices: Vec<u64>,
+    #[class(attribute(optional, default = vec![0]))]
+    #[attr_value(fallible)]
+    /// The numbers which are passed to the platform-specific magic instruction HAP by a
+    /// compiled-in harness to signal that the fuzzer should stop execution of the
+    /// current iteration and save the testcase as a solution.
+    ///
+    /// This only has an effect if `stop_on_harness` is set.
+    pub magic_assert_indices: Vec<u64>,
     #[class(attribute(optional))]
     /// The limit on the number of fuzzing iterations to execute. If set to 0, the fuzzer will
     /// run indefinitely. If set to a positive integer, the fuzzer will run until the limit is
@@ -283,13 +372,6 @@ pub(crate) struct Tsffs {
     /// Sets of tokens to use to drive token mutations of testcases. Each token set is a
     /// bytes which will be randomically inserted into testcases.
     pub tokens: Vec<Vec<u8>>,
-    #[attr_value(skip)]
-    /// A mapping of architecture hints from CPU index to architecture hint. This architecture
-    /// hint overrides the detected architecture of the CPU core. This is useful when the
-    /// architecture of the CPU core is not detected correctly, or when the architecture of the
-    /// CPU core is not known at the time the fuzzer is started. Specifically, x86 cores which
-    /// report their architecture as x86_64 can be overridden to x86.
-    pub architecture_hints: HashMap<i32, ArchitectureHint>,
     #[class(attribute(optional, default = lookup_file("%simics%")?.join("checkpoint.ckpt")))]
     #[attr_value(fallible)]
     /// The path to the checkpoint saved prior to fuzzing when using snapshots
@@ -304,6 +386,12 @@ pub(crate) struct Tsffs {
     pub log_to_file: bool,
     #[class(attribute(optional, default = false))]
     pub keep_all_corpus: bool,
+    #[class(attribute(optional, default = false))]
+    /// Whether to use the initial contents of the testcase buffer as an entry in the corpus
+    pub use_initial_as_corpus: bool,
+    #[class(attribute(optional, default = false))]
+    /// Whether to enable extra debug logging for LibAFL
+    pub debug_log_libafl: bool,
 
     #[attr_value(skip)]
     /// Handle for the core simulation stopped hap
@@ -320,6 +408,13 @@ pub(crate) struct Tsffs {
     /// or `stop_on_harness` are set.
     magic_hap_handle: HapHandle,
 
+    #[attr_value(skip)]
+    /// A mapping of architecture hints from CPU index to architecture hint. This architecture
+    /// hint overrides the detected architecture of the CPU core. This is useful when the
+    /// architecture of the CPU core is not detected correctly, or when the architecture of the
+    /// CPU core is not known at the time the fuzzer is started. Specifically, x86 cores which
+    /// report their architecture as x86_64 can be overridden to x86.
+    pub architecture_hints: HashMap<i32, ArchitectureHint>,
     // Threads and message channels
     #[attr_value(skip)]
     /// Fuzzer thread
@@ -378,9 +473,7 @@ pub(crate) struct Tsffs {
     stop_reason: Option<StopReason>,
     #[attr_value(skip)]
     /// The buffer and size information, if saved
-    start_buffer: OnceCell<StartBuffer>,
-    #[attr_value(skip)]
-    start_size: OnceCell<StartSize>,
+    start_info: OnceCell<StartInfo>,
 
     #[attr_value(skip)]
     // #[builder(default = SystemTime::now())]
@@ -454,9 +547,15 @@ impl ClassObjectsFinalize for Tsffs {
             CoreMagicInstructionHap::add_callback(move |trigger_obj, magic_number| {
                 let tsffs: &'static mut Tsffs = instance.into();
 
-                tsffs
-                    .on_magic_instruction(trigger_obj, magic_number)
-                    .expect("Error calling magic instruction callback");
+                // NOTE: Some things (notably, the x86_64 UEFI app loader) do a
+                // legitimate CPUID (in the UEFI loader, with number 0xc aka
+                // eax=0xc4711) that registers as a magic number. We therefore permit
+                // non-valid magic numbers to be executed, but we do nothing for them.
+                if let Some(magic_number) = MagicNumber::from_i64(magic_number) {
+                    tsffs
+                        .on_magic_instruction(trigger_obj, magic_number)
+                        .expect("Failed to execute on_magic_instruction callback")
+                }
             })?;
         tsffs
             .coverage_map
@@ -507,7 +606,9 @@ impl Tsffs {
     /// Stop the simulation with a reason
     pub fn stop_simulation(&mut self, reason: StopReason) -> Result<()> {
         let break_string = reason.to_string();
+
         self.stop_reason = Some(reason);
+
         break_simulation(break_string)?;
 
         Ok(())
@@ -520,6 +621,12 @@ impl Tsffs {
     /// "start processor" which is the processor running when the fuzzing loop begins
     pub fn add_processor(&mut self, cpu: *mut ConfObject, is_start: bool) -> Result<()> {
         let cpu_number = get_processor_number(cpu)?;
+        debug!(
+            self.as_conf_object(),
+            "Adding {}processor {} to fuzzer",
+            if is_start { "start " } else { "" },
+            cpu_number
+        );
 
         if let Entry::Vacant(e) = self.processors.entry(cpu_number) {
             let architecture = if let Some(hint) = self.architecture_hints.get(&cpu_number) {
@@ -685,42 +792,18 @@ impl Tsffs {
     pub fn get_and_write_testcase(&mut self) -> Result<()> {
         let testcase = self.get_testcase()?;
 
-        if self.keep_all_corpus {
-            let testcase_name = testcase.testcase.generate_name(0);
-            trace!(
-                self.as_conf_object(),
-                "Writing testcase {}.testcase to corpus directory: {}",
-                &testcase_name,
-                self.corpus_directory.display()
-            );
-
-            write(
-                self.corpus_directory
-                    .join(format!("{}.testcase", &testcase_name)),
-                testcase.testcase.bytes(),
-            )?;
-        }
-
-        self.cmplog_enabled = testcase.cmplog;
-
         // TODO: Fix cloning - refcell?
-        let start_buffer = self
-            .start_buffer
+        let start_info = self
+            .start_info
             .get()
-            .ok_or_else(|| anyhow!("No start buffer"))?
-            .clone();
-
-        let start_size = self
-            .start_size
-            .get()
-            .ok_or_else(|| anyhow!("No start size"))?
+            .ok_or_else(|| anyhow!("No start info"))?
             .clone();
 
         let start_processor = self
             .start_processor()
             .ok_or_else(|| anyhow!("No start processor"))?;
 
-        start_processor.write_start(testcase.testcase.bytes(), &start_buffer, &start_size)?;
+        start_processor.write_start(testcase.testcase.bytes(), &start_info)?;
 
         Ok(())
     }
@@ -754,9 +837,9 @@ impl Tsffs {
                     let tsffs: &'static mut Tsffs = tsffs_ptr.into();
                     info!(tsffs.as_conf_object_mut(), "timeout({:#x})", obj as usize);
                     tsffs
-                        .stop_simulation(StopReason::Solution(
-                            Solution::builder().kind(SolutionKind::Timeout).build(),
-                        ))
+                        .stop_simulation(StopReason::Solution {
+                            kind: SolutionKind::Timeout,
+                        })
                         .expect("Error calling timeout callback");
                 },
             )?;

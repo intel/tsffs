@@ -1,6 +1,8 @@
 # hadolint global ignore=DL3008
 FROM ubuntu:22.04 AS buildroot
 
+ARG BUILDROOT_REV="2023.11.x"
+
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -20,7 +22,8 @@ RUN apt-get -y update && \
     wget
 
 RUN git clone \
-    https://github.com/buildroot/buildroot.git
+    https://github.com/buildroot/buildroot.git && \
+    git -C buildroot checkout "${BUILDROOT_REV}"
 
 WORKDIR /buildroot
 
@@ -31,7 +34,7 @@ COPY simics_simple_riscv_defconfig configs/simics_simple_riscv_defconfig
 COPY test.c /test/usr/test.c
 COPY test-mod.c /test/usr/test-mod.c
 COPY test-mod-userspace.c /test/usr/test-mod-userspace.c
-COPY tsffs-gcc-riscv64.h /test/usr/tsffs-gcc-riscv64.h
+COPY tsffs.h /test/usr/tsffs.h
 
 # Build Linux, Linux Kernel Modules & RootFS
 # Build size: 7.9G

@@ -6,9 +6,6 @@ The easiest way to do this is by loading and using it in a script that does what
 want. For example, early in development there was a bug when calling the interface
 API.
 
-```txt
-@tsffs.iface.tsffs.set_corpus_directory("%simics%/corpus")
-```
 
 So this script was used to help debug:
 
@@ -19,7 +16,7 @@ tsffs.log-level 4
 @import time
 @print("Sleeping")
 @time.sleep(30)
-@tsffs.iface.tsffs.set_corpus_directory("%simics%/corpus")
+# Call your API here
 ```
 
 ALl this script does is sleep for 30 seconds, then call the API we care about. The 30

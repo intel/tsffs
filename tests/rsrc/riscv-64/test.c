@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "tsffs-gcc-riscv64.h"
+#include "tsffs.h"
 
 const char *password = "fuzzing!";
 

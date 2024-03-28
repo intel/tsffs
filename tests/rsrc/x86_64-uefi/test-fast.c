@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "tsffs-gcc-x86_64.h"
+#include "tsffs.h"
 
 typedef struct EfiTableHeader {
   uint64_t signature;

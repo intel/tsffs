@@ -7,292 +7,438 @@ use std::time::SystemTime;
 
 use crate::{
     arch::ArchitectureOperations,
-    state::{MagicStart, ManualStartSize, Solution, SolutionKind, Stop, StopReason},
-    StartSize, Tsffs,
+    magic::MagicNumber,
+    state::{SolutionKind, StopReason},
+    ManualStartInfo, Tsffs,
 };
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, Result};
 use libafl::prelude::ExitKind;
 use simics::{
     api::{
         continue_simulation, log_level, object_is_processor, quit, run_alone, set_log_level,
         AsConfObject, ConfObject, GenericTransaction, LogLevel,
     },
-    debug, info, trace, warn,
+    debug, get_processor_number, info, trace, warn,
 };
 
 impl Tsffs {
-    /// Called on core simulation stopped HAP
-    pub fn on_simulation_stopped(&mut self) -> Result<()> {
-        if self.stopped_for_repro {
-            // If we are stopped for repro, we do nothing on this HAP!
-            return Ok(());
+    fn on_simulation_stopped_magic_start(&mut self, magic_number: MagicNumber) -> Result<()> {
+        if !self.have_initial_snapshot() {
+            self.start_fuzzer_thread()?;
+
+            let start_processor = self
+                .start_processor()
+                .ok_or_else(|| anyhow!("No start processor"))?;
+
+            let start_info = match magic_number {
+                MagicNumber::StartBufferPtrSizePtr => {
+                    start_processor.get_magic_start_buffer_ptr_size_ptr()?
+                }
+                MagicNumber::StartBufferPtrSizeVal => {
+                    start_processor.get_magic_start_buffer_ptr_size_val()?
+                }
+                MagicNumber::StartBufferPtrSizePtrVal => {
+                    start_processor.get_magic_start_buffer_ptr_size_ptr_val()?
+                }
+                MagicNumber::StopNormal => unreachable!("StopNormal is not handled here"),
+                MagicNumber::StopAssert => unreachable!("StopAssert is not handled here"),
+            };
+
+            debug!(self.as_conf_object(), "Start info: {start_info:?}");
+
+            self.start_info
+                .set(start_info)
+                .map_err(|_| anyhow!("Failed to set start size"))?;
+            self.start_time
+                .set(SystemTime::now())
+                .map_err(|_| anyhow!("Failed to set start time"))?;
+            self.coverage_enabled = true;
+            self.save_initial_snapshot()?;
+            self.get_and_write_testcase()?;
+            self.post_timeout_event()?;
         }
 
-        self.log_messages()?;
+        self.save_repro_bookmark_if_needed()?;
 
-        if let Some(reason) = self.stop_reason.take() {
-            debug!(self.as_conf_object(), "on_simulation_stopped({reason:?})");
+        debug!(self.as_conf_object(), "Resuming simulation");
 
-            match reason {
-                StopReason::MagicStart(magic_start) => {
-                    if !self.have_initial_snapshot() {
-                        self.start_fuzzer_thread()?;
-                        self.add_processor(magic_start.processor, true)?;
+        run_alone(|| {
+            continue_simulation(0)?;
+            Ok(())
+        })?;
 
-                        let (start_buffer, start_size) = {
-                            let start_processor = self
-                                .start_processor()
-                                .ok_or_else(|| anyhow!("No start processor"))?;
-                            (
-                                start_processor.get_magic_start_buffer()?,
-                                start_processor.get_magic_start_size()?,
-                            )
-                        };
+        Ok(())
+    }
 
-                        debug!(
-                            self.as_conf_object(),
-                            "Start buffer: {start_buffer:?} Start size: {start_size:?}"
-                        );
+    fn on_simulation_stopped_magic_assert(&mut self) -> Result<()> {
+        self.on_simulation_stopped_solution(SolutionKind::Manual)
+    }
 
-                        self.start_buffer
-                            .set(start_buffer)
-                            .map_err(|_| anyhow!("Failed to set start buffer"))?;
-                        self.start_size
-                            .set(start_size)
-                            .map_err(|_| anyhow!("Failed to set start size"))?;
-                        self.start_time
-                            .set(SystemTime::now())
-                            .map_err(|_| anyhow!("Failed to set start time"))?;
-                        self.coverage_enabled = true;
-                        self.save_initial_snapshot()?;
-                        self.get_and_write_testcase()?;
-                        self.post_timeout_event()?;
-                    }
+    fn on_simulation_stopped_magic_stop(&mut self) -> Result<()> {
+        if !self.have_initial_snapshot() {
+            warn!(
+                self.as_conf_object(),
+                "Stopped normally before start was reached (no snapshot). Resuming without restoring non-existent snapshot."
+            );
+        } else {
+            self.cancel_timeout_event()?;
 
-                    self.save_repro_bookmark_if_needed()?;
+            if self.repro_bookmark_set {
+                self.stopped_for_repro = true;
+                let current_log_level = log_level(self.as_conf_object_mut())?;
+
+                if current_log_level < LogLevel::Info as u32 {
+                    set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
                 }
-                StopReason::ManualStart(start) => {
-                    if !self.have_initial_snapshot() {
-                        self.start_fuzzer_thread()?;
-                        self.add_processor(start.processor, true)?;
 
-                        let (mut start_buffer, mut start_size) = {
-                            let start_processor = self
-                                .start_processor()
-                                .ok_or_else(|| anyhow!("No start processor"))?;
-                            (
-                                if let Some(buffer) = start.buffer.as_ref() {
-                                    Some(
-                                        start_processor
-                                            .get_manual_start_buffer(*buffer, start.virt)?,
-                                    )
-                                } else {
-                                    None
-                                },
-                                match start.size {
-                                    ManualStartSize::MaximumSize(s) => {
-                                        Some(StartSize::builder().initial_size(s).build())
-                                    }
-                                    ManualStartSize::SizeAddress(a) => {
-                                        Some(start_processor.get_manual_start_size(a, start.virt)?)
-                                    }
-                                    ManualStartSize::NoSize => None,
-                                },
-                            )
-                        };
+                info!(
+                    self.as_conf_object(),
+                    "Stopped for repro. Restore to start bookmark with 'reverse-to start'"
+                );
 
-                        debug!(
-                            self.as_conf_object(),
-                            "Start buffer: {start_buffer:?} Start size: {start_size:?}"
-                        );
+                // Skip the shutdown and continue, we are finished here
+                return Ok(());
+            }
 
-                        if let Some(start_buffer) = start_buffer.take() {
-                            self.start_buffer
-                                .set(start_buffer)
-                                .map_err(|_| anyhow!("Failed to set start buffer"))?;
-                        }
-                        if let Some(start_size) = start_size.take() {
-                            self.start_size
-                                .set(start_size)
-                                .map_err(|_| anyhow!("Failed to set start size"))?;
-                        }
-                        self.start_time
-                            .set(SystemTime::now())
-                            .map_err(|_| anyhow!("Failed to set start time"))?;
-                        self.coverage_enabled = true;
-                        self.save_initial_snapshot()?;
+            self.iterations += 1;
 
-                        if self.start_buffer.get().is_some() && self.start_size.get().is_some() {
-                            self.get_and_write_testcase()?;
-                        }
+            if self.iteration_limit != 0 && self.iterations >= self.iteration_limit {
+                let duration = SystemTime::now().duration_since(
+                    *self
+                        .start_time
+                        .get()
+                        .ok_or_else(|| anyhow!("Start time was not set"))?,
+                )?;
 
-                        self.post_timeout_event()?;
-                    }
+                // Set the log level so this message always prints
+                set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
 
-                    self.save_repro_bookmark_if_needed()?;
+                info!(
+                    self.as_conf_object(),
+                    "Configured iteration count {} reached. Stopping after {} seconds ({} exec/s).",
+                    self.iterations,
+                    duration.as_secs_f32(),
+                    self.iterations as f32 / duration.as_secs_f32()
+                );
+
+                self.send_shutdown()?;
+
+                quit(0)?;
+            }
+
+            let fuzzer_tx = self
+                .fuzzer_tx
+                .get()
+                .ok_or_else(|| anyhow!("No fuzzer tx channel"))?;
+
+            fuzzer_tx.send(ExitKind::Ok)?;
+
+            self.restore_initial_snapshot()?;
+            self.coverage_prev_loc = 0;
+
+            if self.start_info.get().is_some() {
+                self.get_and_write_testcase()?;
+            } else {
+                debug!(
+                    self.as_conf_object(),
+                    "Missing start buffer or size, not writing testcase."
+                );
+            }
+
+            self.post_timeout_event()?;
+        }
+
+        debug!(self.as_conf_object(), "Resuming simulation");
+
+        run_alone(|| {
+            continue_simulation(0)?;
+            Ok(())
+        })?;
+
+        Ok(())
+    }
+
+    fn on_simulation_stopped_with_magic(&mut self, magic_number: MagicNumber) -> Result<()> {
+        match magic_number {
+            MagicNumber::StartBufferPtrSizePtr
+            | MagicNumber::StartBufferPtrSizeVal
+            | MagicNumber::StartBufferPtrSizePtrVal => {
+                self.on_simulation_stopped_magic_start(magic_number)?
+            }
+            MagicNumber::StopNormal => self.on_simulation_stopped_magic_stop()?,
+            MagicNumber::StopAssert => self.on_simulation_stopped_magic_assert()?,
+        }
+
+        Ok(())
+    }
+
+    fn on_simulation_stopped_with_manual_start(
+        &mut self,
+        processor: *mut ConfObject,
+        info: ManualStartInfo,
+    ) -> Result<()> {
+        if !self.have_initial_snapshot() {
+            self.start_fuzzer_thread()?;
+            self.add_processor(processor, true)?;
+
+            let start_info = self
+                .start_processor()
+                .ok_or_else(|| anyhow!("No start processor"))?
+                .get_manual_start_info(&info)?;
+
+            self.start_info
+                .set(start_info)
+                .map_err(|_| anyhow!("Failed to set start info"))?;
+            self.start_time
+                .set(SystemTime::now())
+                .map_err(|_| anyhow!("Failed to set start time"))?;
+            self.coverage_enabled = true;
+            self.save_initial_snapshot()?;
+
+            self.get_and_write_testcase()?;
+
+            self.post_timeout_event()?;
+        }
+
+        self.save_repro_bookmark_if_needed()?;
+
+        debug!(self.as_conf_object(), "Resuming simulation");
+
+        run_alone(|| {
+            continue_simulation(0)?;
+            Ok(())
+        })?;
+
+        Ok(())
+    }
+
+    fn on_simulation_stopped_manual_start_without_buffer(
+        &mut self,
+        processor: *mut ConfObject,
+    ) -> Result<()> {
+        if !self.have_initial_snapshot() {
+            self.start_fuzzer_thread()?;
+            self.add_processor(processor, true)?;
+
+            self.start_time
+                .set(SystemTime::now())
+                .map_err(|_| anyhow!("Failed to set start time"))?;
+            self.coverage_enabled = true;
+            self.save_initial_snapshot()?;
+
+            self.post_timeout_event()?;
+        }
+
+        self.save_repro_bookmark_if_needed()?;
+
+        debug!(self.as_conf_object(), "Resuming simulation");
+
+        run_alone(|| {
+            continue_simulation(0)?;
+            Ok(())
+        })?;
+
+        Ok(())
+    }
+
+    fn on_simulation_stopped_manual_stop(&mut self) -> Result<()> {
+        if !self.have_initial_snapshot() {
+            warn!(
+                self.as_conf_object(),
+                "Stopped for manual stop before start was reached (no snapshot). Resuming without restoring non-existent snapshot."
+            );
+        } else {
+            self.cancel_timeout_event()?;
+
+            if self.repro_bookmark_set {
+                self.stopped_for_repro = true;
+                let current_log_level = log_level(self.as_conf_object_mut())?;
+
+                if current_log_level < LogLevel::Info as u32 {
+                    set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
                 }
-                StopReason::MagicStop(_) | StopReason::ManualStop(_) => {
-                    if !self.have_initial_snapshot() {
-                        warn!(
-                            self.as_conf_object(),
-                            "Stopped with {reason:?} before start was reached (no snapshot). Resuming without restoring non-existent snapshot."
-                        );
-                    } else {
-                        self.cancel_timeout_event()?;
 
-                        if self.repro_bookmark_set {
-                            self.stopped_for_repro = true;
-                            let current_log_level = log_level(self.as_conf_object_mut())?;
+                info!(
+                    self.as_conf_object(),
+                    "Stopped for repro. Restore to start bookmark with 'reverse-to start'"
+                );
 
-                            if current_log_level < LogLevel::Info as u32 {
-                                set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
-                            }
+                // Skip the shutdown and continue, we are finished here
+                return Ok(());
+            }
 
-                            info!(
-                            self.as_conf_object(),
-                            "Stopped for repro. Restore to start bookmark with 'reverse-to start'"
-                        );
+            self.iterations += 1;
 
-                            // Skip the shutdown and continue, we are finished here
-                            return Ok(());
-                        }
+            if self.iteration_limit != 0 && self.iterations >= self.iteration_limit {
+                let duration = SystemTime::now().duration_since(
+                    *self
+                        .start_time
+                        .get()
+                        .ok_or_else(|| anyhow!("Start time was not set"))?,
+                )?;
 
-                        self.iterations += 1;
+                // Set the log level so this message always prints
+                set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
 
-                        if self.iteration_limit != 0 && self.iterations >= self.iteration_limit {
-                            let duration = SystemTime::now().duration_since(
-                                *self
-                                    .start_time
-                                    .get()
-                                    .ok_or_else(|| anyhow!("Start time was not set"))?,
-                            )?;
+                info!(
+                    self.as_conf_object(),
+                    "Configured iteration count {} reached. Stopping after {} seconds ({} exec/s).",
+                    self.iterations,
+                    duration.as_secs_f32(),
+                    self.iterations as f32 / duration.as_secs_f32()
+                );
 
-                            // Set the log level so this message always prints
-                            set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
+                self.send_shutdown()?;
 
-                            info!(
-                            self.as_conf_object(),
-                            "Configured iteration count {} reached. Stopping after {} seconds ({} exec/s).",
-                            self.iterations,
-                            duration.as_secs_f32(),
-                            self.iterations as f32 / duration.as_secs_f32()
-                        );
+                quit(0)?;
+            }
 
-                            self.send_shutdown()?;
+            let fuzzer_tx = self
+                .fuzzer_tx
+                .get()
+                .ok_or_else(|| anyhow!("No fuzzer tx channel"))?;
 
-                            quit(0)?;
-                        }
+            fuzzer_tx.send(ExitKind::Ok)?;
 
-                        let fuzzer_tx = self
-                            .fuzzer_tx
-                            .get()
-                            .ok_or_else(|| anyhow!("No fuzzer tx channel"))?;
+            self.restore_initial_snapshot()?;
+            self.coverage_prev_loc = 0;
 
-                        fuzzer_tx.send(ExitKind::Ok)?;
+            if self.start_info.get().is_some() {
+                self.get_and_write_testcase()?;
+            } else {
+                debug!(
+                    self.as_conf_object(),
+                    "Missing start buffer or size, not writing testcase. This may be due to using manual no-buffer harnessing."
+                );
+            }
 
-                        self.restore_initial_snapshot()?;
-                        self.coverage_prev_loc = 0;
+            self.post_timeout_event()?;
+        }
 
-                        if self.start_buffer.get().is_some() && self.start_size.get().is_some() {
-                            self.get_and_write_testcase()?;
-                        } else {
-                            debug!(
-                                self.as_conf_object(),
-                                "Missing start buffer or size, not writing testcase."
-                            );
-                        }
+        debug!(self.as_conf_object(), "Resuming simulation");
 
-                        self.post_timeout_event()?;
-                    }
+        run_alone(|| {
+            continue_simulation(0)?;
+            Ok(())
+        })?;
+
+        Ok(())
+    }
+
+    fn on_simulation_stopped_solution(&mut self, kind: SolutionKind) -> Result<()> {
+        if !self.have_initial_snapshot() {
+            warn!(
+                self.as_conf_object(),
+                "Solution {kind:?} before start was reached (no snapshot). Resuming without restoring non-existent snapshot."
+            );
+        } else {
+            self.cancel_timeout_event()?;
+
+            if self.repro_bookmark_set {
+                self.stopped_for_repro = true;
+                let current_log_level = log_level(self.as_conf_object_mut())?;
+
+                if current_log_level < LogLevel::Info as u32 {
+                    set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
                 }
-                StopReason::Solution(solution) => {
-                    if !self.have_initial_snapshot() {
-                        warn!(
-                            self.as_conf_object(),
-                            "Solution {solution:?} before start was reached (no snapshot). Resuming without restoring non-existent snapshot."
-                        );
-                    } else {
-                        self.cancel_timeout_event()?;
 
-                        if self.repro_bookmark_set {
-                            self.stopped_for_repro = true;
-                            let current_log_level = log_level(self.as_conf_object_mut())?;
+                info!(
+                    self.as_conf_object(),
+                    "Stopped for repro. Restore to start bookmark with 'reverse-to start'"
+                );
 
-                            if current_log_level < LogLevel::Info as u32 {
-                                set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
-                            }
+                // Skip the shutdown and continue, we are finished here
+                return Ok(());
+            }
 
-                            info!(
-                            self.as_conf_object(),
-                            "Stopped for repro. Restore to start bookmark with 'reverse-to start'"
-                        );
+            self.iterations += 1;
 
-                            // Skip the shutdown and continue, we are finished here
-                            return Ok(());
-                        }
+            if self.iteration_limit != 0 && self.iterations >= self.iteration_limit {
+                let duration = SystemTime::now().duration_since(
+                    *self
+                        .start_time
+                        .get()
+                        .ok_or_else(|| anyhow!("Start time was not set"))?,
+                )?;
 
-                        self.iterations += 1;
+                // Set the log level so this message always prints
+                set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
 
-                        if self.iteration_limit != 0 && self.iterations >= self.iteration_limit {
-                            let duration = SystemTime::now().duration_since(
-                                *self
-                                    .start_time
-                                    .get()
-                                    .ok_or_else(|| anyhow!("Start time was not set"))?,
-                            )?;
+                info!(
+                    self.as_conf_object(),
+                    "Configured iteration count {} reached. Stopping after {} seconds ({} exec/s).",
+                    self.iterations,
+                    duration.as_secs_f32(),
+                    self.iterations as f32 / duration.as_secs_f32()
+                );
 
-                            // Set the log level so this message always prints
-                            set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
+                self.send_shutdown()?;
 
-                            info!(
-                            self.as_conf_object(),
-                            "Configured iteration count {} reached. Stopping after {} seconds ({} exec/s).",
-                            self.iterations,
-                            duration.as_secs_f32(),
-                            self.iterations as f32 / duration.as_secs_f32()
-                        );
+                quit(0)?;
+            }
 
-                            self.send_shutdown()?;
+            let fuzzer_tx = self
+                .fuzzer_tx
+                .get()
+                .ok_or_else(|| anyhow!("No fuzzer tx channel"))?;
 
-                            quit(0)?;
-                        }
-
-                        let fuzzer_tx = self
-                            .fuzzer_tx
-                            .get()
-                            .ok_or_else(|| anyhow!("No fuzzer tx channel"))?;
-
-                        match solution.kind {
-                            SolutionKind::Timeout => fuzzer_tx.send(ExitKind::Timeout)?,
-                            SolutionKind::Exception
-                            | SolutionKind::Breakpoint
-                            | SolutionKind::Manual => fuzzer_tx.send(ExitKind::Crash)?,
-                        }
-
-                        self.restore_initial_snapshot()?;
-                        self.coverage_prev_loc = 0;
-
-                        if self.start_buffer.get().is_some() && self.start_size.get().is_some() {
-                            self.get_and_write_testcase()?;
-                        } else {
-                            debug!(
-                                self.as_conf_object(),
-                                "Missing start buffer or size, not writing testcase."
-                            );
-                        }
-
-                        self.post_timeout_event()?;
-                    }
+            match kind {
+                SolutionKind::Timeout => fuzzer_tx.send(ExitKind::Timeout)?,
+                SolutionKind::Exception | SolutionKind::Breakpoint | SolutionKind::Manual => {
+                    fuzzer_tx.send(ExitKind::Crash)?
                 }
             }
 
-            debug!(self.as_conf_object(), "Resuming simulation");
+            self.restore_initial_snapshot()?;
+            self.coverage_prev_loc = 0;
 
-            run_alone(|| {
-                continue_simulation(0)?;
-                Ok(())
-            })?;
-        } else if self.have_initial_snapshot() {
+            if self.start_info.get().is_some() {
+                self.get_and_write_testcase()?;
+            } else {
+                debug!(
+                    self.as_conf_object(),
+                    "Missing start buffer or size, not writing testcase."
+                );
+            }
+
+            self.post_timeout_event()?;
+        }
+
+        debug!(self.as_conf_object(), "Resuming simulation");
+
+        run_alone(|| {
+            continue_simulation(0)?;
+            Ok(())
+        })?;
+
+        Ok(())
+    }
+
+    fn on_simulation_stopped_with_reason(&mut self, reason: StopReason) -> Result<()> {
+        debug!(
+            self.as_conf_object(),
+            "Simulation stopped with reason {reason:?}"
+        );
+
+        match reason {
+            StopReason::Magic { magic_number } => {
+                self.on_simulation_stopped_with_magic(magic_number)
+            }
+            StopReason::ManualStart { processor, info } => {
+                self.on_simulation_stopped_with_manual_start(processor, info)
+            }
+            StopReason::ManualStartWithoutBuffer { processor } => {
+                self.on_simulation_stopped_manual_start_without_buffer(processor)
+            }
+            StopReason::ManualStop => self.on_simulation_stopped_manual_stop(),
+            StopReason::Solution { kind } => self.on_simulation_stopped_solution(kind),
+        }
+    }
+
+    fn on_simulation_stopped_without_reason(&mut self) -> Result<()> {
+        if self.have_initial_snapshot() {
+            // We only do anything here if we have run, otherwise the simulation was just
+            // stopped for a reason unrelated to fuzzing (like the user using the CLI)
             self.cancel_timeout_event()?;
 
             let fuzzer_tx = self
@@ -329,13 +475,30 @@ impl Tsffs {
         Ok(())
     }
 
+    /// Called on core simulation stopped HAP
+    pub fn on_simulation_stopped(&mut self) -> Result<()> {
+        if self.stopped_for_repro {
+            // If we are stopped for repro, we do nothing on this HAP!
+            return Ok(());
+        }
+
+        //  Log information from the fuzzer
+        self.log_messages()?;
+
+        if let Some(reason) = self.stop_reason.take() {
+            self.on_simulation_stopped_with_reason(reason)
+        } else {
+            self.on_simulation_stopped_without_reason()
+        }
+    }
+
     /// Called on core exception HAP. Check to see if this exception is configured as a solution
     /// or all exceptions are solutions and trigger a stop if so
     pub fn on_exception(&mut self, _obj: *mut ConfObject, exception: i64) -> Result<()> {
         if self.all_exceptions_are_solutions || self.exceptions.contains(&exception) {
-            self.stop_simulation(StopReason::Solution(
-                Solution::builder().kind(SolutionKind::Exception).build(),
-            ))?;
+            self.stop_simulation(StopReason::Solution {
+                kind: SolutionKind::Exception,
+            })?;
         }
         Ok(())
     }
@@ -357,9 +520,9 @@ impl Tsffs {
                 transaction as usize
             );
 
-            self.stop_simulation(StopReason::Solution(
-                Solution::builder().kind(SolutionKind::Breakpoint).build(),
-            ))?;
+            self.stop_simulation(StopReason::Solution {
+                kind: SolutionKind::Breakpoint,
+            })?;
         }
         Ok(())
     }
@@ -369,7 +532,7 @@ impl Tsffs {
     pub fn on_magic_instruction(
         &mut self,
         trigger_obj: *mut ConfObject,
-        magic_number: i64,
+        magic_number: MagicNumber,
     ) -> Result<()> {
         trace!(
             self.as_conf_object(),
@@ -377,18 +540,58 @@ impl Tsffs {
         );
 
         if object_is_processor(trigger_obj)? {
-            if self.start_on_harness && magic_number == self.magic_start {
-                self.stop_simulation(StopReason::MagicStart(
-                    MagicStart::builder().processor(trigger_obj).build(),
-                ))?;
-            } else if self.stop_on_harness && magic_number == self.magic_stop {
-                self.stop_simulation(StopReason::MagicStop(Stop::default()))?;
-            } else if self.stop_on_harness && magic_number == self.magic_assert {
-                self.stop_simulation(StopReason::Solution(
-                    Solution::builder().kind(SolutionKind::Manual).build(),
-                ))?;
+            let processor_number = get_processor_number(trigger_obj)?;
+
+            if !self.processors.contains_key(&processor_number) {
+                self.add_processor(trigger_obj, false)?;
             }
+
+            let processor = self
+                .processors
+                .get_mut(&processor_number)
+                .ok_or_else(|| anyhow!("Processor not found"))?;
+
+            let index_selector = processor.get_magic_index_selector()?;
+
+            if match magic_number {
+                MagicNumber::StartBufferPtrSizePtr
+                | MagicNumber::StartBufferPtrSizeVal
+                | MagicNumber::StartBufferPtrSizePtrVal => {
+                    self.start_on_harness
+                        && (if self.magic_start_index == index_selector {
+                            // Set this processor as the start processor now that we know it is
+                            // enabled, but only set if it is not already set
+                            let _ = self.start_processor_number.get_or_init(|| processor_number);
+                            true
+                        } else {
+                            debug!(
+                                "Not setting processor {} as start processor",
+                                processor_number
+                            );
+                            false
+                        })
+                }
+                MagicNumber::StopNormal => {
+                    self.stop_on_harness && self.magic_stop_indices.contains(&index_selector)
+                }
+                MagicNumber::StopAssert => {
+                    self.stop_on_harness && self.magic_assert_indices.contains(&index_selector)
+                }
+            } {
+                self.stop_simulation(StopReason::Magic { magic_number })?;
+            } else {
+                debug!(
+                    self.as_conf_object(),
+                    "Magic instruction {magic_number} was triggered by processor {trigger_obj:?} with index {index_selector} but the index is not configured for this magic number or start/stop on harness was disabled. Configured indices are: start: {}, stop: {:?}, assert: {:?}",
+                    self.magic_start_index,
+                    self.magic_stop_indices,
+                    self.magic_assert_indices
+                );
+            }
+        } else {
+            bail!("Magic instruction was triggered by a non-processor object");
         }
+
         Ok(())
     }
 }

@@ -12,11 +12,16 @@ is desired.
     - [Using Snapshots](#using-snapshots)
     - [Using CMPLog](#using-cmplog)
     - [Set Corpus and Solutions Directory](#set-corpus-and-solutions-directory)
+    - [Enable and Set the Checkpoint Path](#enable-and-set-the-checkpoint-path)
     - [Enable Random Corpus Generation](#enable-random-corpus-generation)
     - [Set an Iteration Limit](#set-an-iteration-limit)
     - [Adding Tokens From Target Software](#adding-tokens-from-target-software)
     - [Setting an Architecture Hint](#setting-an-architecture-hint)
     - [Adding a Trace Processor](#adding-a-trace-processor)
+    - [Disabling Coverage Reporting](#disabling-coverage-reporting)
+    - [Enable Logging and Set Log path](#enable-logging-and-set-log-path)
+    - [Keep All Corpus Entries](#keep-all-corpus-entries)
+    - [Use Initial Buffer Contents As Corpus](#use-initial-buffer-contents-as-corpus)
 
 ## Solution Configuration
 
@@ -35,6 +40,18 @@ use the following (for example, to set the timeout to 3 seconds):
 Note that this timeout is in virtual time, not real time. This means that whether the
 simulation runs faster or slower than real time, the timeout will be accurate to the
 target software's execution speed.
+
+The fuzzing executor also has a timeout, which runs in real time. This timeout
+is intended to detect situations where the fuzzer reaches a broken state where
+it is no longer able to iterate (e.g. the virtual time timeout is not working)
+and stop. By default, this timeout is set to 60 seconds and resets each
+iteration. Only iterations which take more than 60 seconds will trigger the
+timeout, but some very large fuzzing cases could exceed this time. To increase
+it, for example to set the timeout to 10 minutes:
+
+```python
+@tsffs.executor_timeout = 600
+```
 
 ### Setting Exception Solutions
 
@@ -163,7 +180,25 @@ changed with:
 
 
 ```python
-tsffs.solutions_directory = SIM_lookup_file("%simics%/other_solutions_directory")
+@tsffs.solutions_directory = SIM_lookup_file("%simics%/other_solutions_directory")
+```
+
+### Enable and Set the Checkpoint Path
+
+The fuzzer captures an on-disk checkpoint before starting fuzzing by default. On Simics
+7 and higher, this increases the snapshot restore speed very significantly, so it should
+only be disabled if required.
+
+To disable this behavior, you can set:
+
+```python
+@tsffs.pre_snapshot_checkpoint = False
+```
+
+To set the path for the checkpoint, you can set:
+
+```python
+@tsffs.checkpoint_path = SIM_lookup_file("%simics%") + "/checkpoint.ckpt"
 ```
 
 ### Enable Random Corpus Generation
@@ -180,6 +215,14 @@ This can be enabled with:
 
 ```python
 @tsffs.generate_random_corpus = True
+```
+
+The size of the initial random corpus can be set via (note, larger random corpuses are
+generally not useful and a real corpus matching the expected data format should be used
+instead!):
+
+```python
+@tsffs.initial_random_corpus_size = 64
 ```
 
 ### Set an Iteration Limit
@@ -249,7 +292,7 @@ running `i386` code in backward-compatibility mode.
 An architecture hint can be set with:
 
 ```python
-@tsffs.iface.tsffs.add_architecture_hint(qsp.mb.cpu0.core[0][0], "i386")
+@tsffs.iface.config.add_architecture_hint(qsp.mb.cpu0.core[0][0], "i386")
 ```
 
 ### Adding a Trace Processor
@@ -259,5 +302,53 @@ to the [manual start API](../harnessing/closed-box.md) is traced during executio
 code running on multiple cores, the additional cores can be added with:
 
 ```python
-@tsffs.iface.tsffs.add_trace_processor(qsp.mb.cpu0.core[0][1])
+@tsffs.iface.config.add_trace_processor(qsp.mb.cpu0.core[0][1])
+```
+
+### Disabling Coverage Reporting
+
+By default, the fuzzer will report new interesting control flow edges. This is
+normally useful to check the fuzzer's progress and ensure it is finding new
+paths. However in some cases, output may not be needed, so coverage reporting
+can be disabled with:
+
+```python
+@tsffs.coverage_reporting = False
+```
+
+### Enable Logging and Set Log path
+
+By default, the fuzzer will log useful informational messages in JSON format to
+a log in the project directory (`log.json`).
+
+The path for this log can be set by setting:
+
+```python
+@tsffs.log_path = SIM_lookup_file("%simics%) + "/log.json"
+```
+
+You can also disable the logging completely with:
+
+```python
+@tsffs.log_to_file = False
+```
+
+### Keep All Corpus Entries
+
+For debugging purposes, TSFFS can be set to keep *all* corpus entries, not just
+corpus entries which cause interesting results. This generates a large number
+of corpus files.
+
+```python
+@tsffs.keep_all_corpus = True
+```
+
+### Use Initial Buffer Contents As Corpus
+
+When using compiled-in or manual harnessing, the initial contents of the
+testcase
+buffer can be used as a seed corpus entry. This can be enabled with:
+
+```python
+@tsffs.use_initial_as_corpus = True
 ```

@@ -7,6 +7,8 @@
 # this only needs to be run if you want to modify the source code for the HelloWorld.efi module,
 # otherwise, the EFI is included in the source tree for ease of use
 
+set -e
+
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 IMAGE_NAME="buildroot-build-tsffs-gcc-riscv64-test"
@@ -23,8 +25,8 @@ fi
 
 pushd "${SCRIPT_DIR}" || exit 1
 
-cp "${SCRIPT_DIR}/../../../harness/tsffs-gcc-riscv64.h" "${SCRIPT_DIR}/tsffs-gcc-riscv64.h"
-cp "${SCRIPT_DIR}/../../../harness/tsffs-gcc-riscv64.h" "${SCRIPT_DIR}/test-kernel-modules/package/kernel-modules/test-mod/tsffs-gcc-riscv64.h"
+cp "${SCRIPT_DIR}/../../../harness/tsffs.h" "${SCRIPT_DIR}/tsffs.h"
+cp "${SCRIPT_DIR}/../../../harness/tsffs.h" "${SCRIPT_DIR}/test-kernel-modules/package/kernel-modules/test-mod/tsffs.h"
 mkdir -p "${SCRIPT_DIR}/targets/risc-v-simple/images/linux/"
 
 echo "Building container"

@@ -51,7 +51,7 @@ index 9cea5f4665..00815adba2 100644
  #include <IndustryStandard/Bmp.h>
  #include <Protocol/BootLogo.h>
  
-+#include "tsffs-gcc-x86_64.h"
++#include "tsffs.h"
  /**
    Convert a *.BMP graphics image to a GOP blt buffer. If a NULL Blt buffer
    is passed in a GopBlt buffer will be allocated by this routine. If a GopBlt
@@ -129,7 +129,7 @@ index 9cea5f4665..00815adba2 100644
 
 EOF
 
-COPY tsffs-gcc-x86_64.h "${PROJECT}/edk2-platforms/Platform/Intel/SimicsOpenBoardPkg/Library/DxeLogoLib/tsffs-gcc-x86_64.h"
+COPY tsffs.h "${PROJECT}/edk2-platforms/Platform/Intel/SimicsOpenBoardPkg/Library/DxeLogoLib/tsffs.h"
 
 RUN git -C "${PROJECT}/edk2-platforms" apply --whitespace fix /tmp/edk2-platforms.patch
 

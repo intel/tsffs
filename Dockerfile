@@ -119,7 +119,7 @@ RUN ispm projects /workspace/projects/example/ --create \
     cp /workspace/tsffs/examples/docker-example/fuzz.simics /workspace/projects/example/ && \
     cp /workspace/tsffs/tests/rsrc/minimal_boot_disk.craff /workspace/projects/example/ && \
     cp /workspace/tsffs/tests/rsrc/x86_64-uefi/* /workspace/projects/example/ && \
-    cp /workspace/tsffs/harness/tsffs-gcc-x86_64.h /workspace/projects/example/ && \
+    cp /workspace/tsffs/harness/tsffs.h /workspace/projects/example/ && \
     ninja
 
 RUN echo 'echo "To run the demo, run ./simics -no-gui --no-win fuzz.simics"' >> /root/.bashrc
