@@ -7,7 +7,7 @@ init-tsffs
 tsffs.log-level 4
 @tsffs.start_on_harness = True
 @tsffs.stop_on_harness = True
-@tsffs.set_timeout = 3.0
+@tsffs.timeout = 3.0
 @tsffs.exceptions = [14]
 
 load-target "risc-v-simple/linux" namespace = riscv machine:hardware:storage:disk1:image = "test.fs.craff"
