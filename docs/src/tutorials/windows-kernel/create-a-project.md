@@ -19,13 +19,6 @@ up on the new simulated hardware.
 `run.simics` should look like this to initialize TSFFS and start the simulation.
 
 ```simics
-load-module tsffs
-init-tsffs
-
-@tsffs.start_on_harness = True
-@tsffs.stop_on_harness = True
-@tsffs.generate_random_corpus = True
-
 $cpu_comp_class = "x86QSP2"
 $disk0_image = "%simics%/windows-11.craff"
 $use_vmp = FALSE

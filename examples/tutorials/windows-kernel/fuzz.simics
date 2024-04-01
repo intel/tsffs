@@ -1,0 +1,27 @@
+load-module tsffs
+init-tsffs
+
+@tsffs.start_on_harness = True
+@tsffs.stop_on_harness = True
+@tsffs.generate_random_corpus = True
+
+$cpu_comp_class = "x86QSP2"
+$disk0_image = "%simics%/windows-11.craff"
+$use_vmp = FALSE
+$create_usb_tablet = TRUE
+
+run-command-file "%simics%/targets/qsp-x86/qsp-hdd-boot.simics"
+board.disk0.hd_image.save-diff-file filename = "windows-11.diff.craff"
+
+script-branch {
+    board.console.con.bp-wait-for-gfx breakpoint-boot 1
+    echo "Got booted BP"
+    bp.time.wait-for seconds = 10
+    echo "Done waiting for agent to come up"
+    start-agent-manager
+    agent_manager.connect-to-agent
+    matic0.run "C:\\Users\\user\\fuzzer\\fuzzer.exe"
+
+}
+
+run
