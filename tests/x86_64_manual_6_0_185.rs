@@ -9,26 +9,26 @@ use std::path::PathBuf;
 
 #[test]
 #[cfg_attr(miri, ignore)]
-fn test_x86_64_manual_max() -> Result<()> {
+fn test_x86_64_manual_6_0_185() -> Result<()> {
     let output = TestEnvSpec::builder()
-        .name("test_x86_64_manual_max")
+        .name("test_x86_64_manual_6_0_185")
         .package_crates([PathBuf::from(env!("CARGO_MANIFEST_DIR"))])
         .packages([
             ProjectPackage::builder()
                 .package_number(1000)
-                .version("latest")
+                .version("6.0.185")
                 .build(),
             ProjectPackage::builder()
                 .package_number(1030)
-                .version("latest")
+                .version("6.0.8")
                 .build(),
             ProjectPackage::builder()
                 .package_number(2096)
-                .version("latest")
+                .version("6.0.73")
                 .build(),
             ProjectPackage::builder()
                 .package_number(8112)
-                .version("latest")
+                .version("6.0.21")
                 .build(),
         ])
         .cargo_target_tmpdir(env!("CARGO_TARGET_TMPDIR"))
@@ -45,14 +45,13 @@ fn test_x86_64_manual_max() -> Result<()> {
             simics.SIM_load_module("tsffs")
 
             tsffs = simics.SIM_create_object(simics.SIM_get_class("tsffs"), "tsffs", [])
-            simics.SIM_set_log_level(tsffs, 2)
+            simics.SIM_set_log_level(tsffs, 4)
             tsffs.start_on_harness = False
             tsffs.stop_on_harness = False
             tsffs.timeout = 3.0
             tsffs.exceptions = [14]
             tsffs.generate_random_corpus = True
             tsffs.iteration_limit = 100
-            tsffs.use_snapshots = True
 
             simics.SIM_load_target(
                 "qsp-x86/uefi-shell",  # Target
@@ -89,23 +88,26 @@ fn test_x86_64_manual_max() -> Result<()> {
                     testcase_address_regno
                 )
                 print("testcase address: ", testcase_address)
-                maximum_size = 8
-                virt = True
+                size_regno = conf.qsp.mb.cpu0.core[0][0].iface.int_register.get_number("rdx")
+                print("size regno: ", size_regno)
+                size_address = conf.qsp.mb.cpu0.core[0][0].iface.int_register.read(size_regno)
+                print("size address: ", size_address)
+                virt = False
 
                 print(
                     "Starting with testcase address",
                     hex(testcase_address),
-                    "maximum_size",
-                    hex(maximum_size),
+                    "size address",
+                    hex(size_address),
                     "virt",
                     virt,
                 )
 
-                tsffs.iface.fuzz.start_with_buffer_ptr_size_value(
+                tsffs.iface.fuzz.start_with_buffer_ptr_size_ptr(
                     conf.qsp.mb.cpu0.core[0][0],
                     testcase_address,
-                    maximum_size,
-                    virt,
+                    size_address,
+                    True,
                 )
 
 

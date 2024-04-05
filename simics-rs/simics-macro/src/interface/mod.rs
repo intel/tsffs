@@ -1,5 +1,5 @@
 use crate::exception::IsResultType;
-use command_ext::{CommandExtCheck, CommandExtPrint};
+use command_ext::CommandExtCheck;
 use darling::{ast::NestedMeta, Error, FromMeta, Result};
 use ispm_wrapper::ispm::{self, GlobalOptions};
 use proc_macro::TokenStream;
@@ -754,7 +754,7 @@ impl CInterface {
                     .join("py-typemaps.c"),
             )
             .arg(interface_subdir.join(&header_name))
-            .print_args()
+            // .print_args()
             .check()
             .map_err(|e| {
                 Error::custom(format!(
@@ -946,7 +946,7 @@ impl CInterface {
             .arg(interface_subdir.join(&pyifaces_interface_i))
             .arg("-o")
             .arg(interface_subdir.join(pyiface_interface))
-            .print_args()
+            // .print_args()
             .check()
             .map_err(|e| Error::custom(format!("Failed to generate pyiface: {e}")))?;
 

@@ -9,22 +9,22 @@ use std::path::PathBuf;
 
 #[test]
 #[cfg_attr(miri, ignore)]
-fn test_riscv_64_userspace_magic() -> Result<()> {
+fn test_riscv_64_kernel_magic_6_0_185() -> Result<()> {
     let output = TestEnvSpec::builder()
-        .name("test_riscv_64_userspace_magic")
+        .name("test_riscv_64_kernel_magic_6_0_185")
         .package_crates([PathBuf::from(env!("CARGO_MANIFEST_DIR"))])
         .packages([
             ProjectPackage::builder()
                 .package_number(1000)
-                .version("latest")
+                .version("6.0.185")
                 .build(),
             ProjectPackage::builder()
                 .package_number(2050)
-                .version("latest")
+                .version("6.0.60")
                 .build(),
             ProjectPackage::builder()
                 .package_number(2053)
-                .version("latest")
+                .version("6.0.4")
                 .build(),
         ])
         .cargo_target_tmpdir(env!("CARGO_TARGET_TMPDIR"))
@@ -45,7 +45,7 @@ fn test_riscv_64_userspace_magic() -> Result<()> {
             @tsffs.exceptions = [14]
             @tsffs.generate_random_corpus = True
             @tsffs.iteration_limit = 1000
-            @tsffs.use_snapshots = True
+            @tsffs.debug_log_libafl = True
 
             load-target "risc-v-simple/linux" namespace = riscv machine:hardware:storage:disk1:image = "test.fs.craff"
 
@@ -55,8 +55,9 @@ fn test_riscv_64_userspace_magic() -> Result<()> {
                 bp.time.wait-for seconds = 1.0
                 board.console.con.input "mount /dev/vdb /mnt/disk0\r\n"
                 bp.time.wait-for seconds = 1.0
-                board.console.con.capture-start out.txt
-                board.console.con.input "/mnt/disk0/test\r\n"
+                board.console.con.input "insmod /mnt/disk0/test-mod.ko\r\n"
+                bp.time.wait-for seconds = 1.0
+                board.console.con.input "/mnt/disk0/test-mod-userspace\r\n"
             }
 
             script-branch {

@@ -4,4 +4,5 @@
 //! Internal non-exported APIs
 
 pub mod core;
+#[allow(unused)]
 pub use self::core::*;

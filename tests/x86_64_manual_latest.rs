@@ -9,9 +9,9 @@ use std::path::PathBuf;
 
 #[test]
 #[cfg_attr(miri, ignore)]
-fn test_x86_64_manual() -> Result<()> {
+fn test_x86_64_manual_latest() -> Result<()> {
     let output = TestEnvSpec::builder()
-        .name("test_x86_64_manual")
+        .name("test_x86_64_manual_latest")
         .package_crates([PathBuf::from(env!("CARGO_MANIFEST_DIR"))])
         .packages([
             ProjectPackage::builder()
@@ -52,7 +52,6 @@ fn test_x86_64_manual() -> Result<()> {
             tsffs.exceptions = [14]
             tsffs.generate_random_corpus = True
             tsffs.iteration_limit = 100
-            tsffs.use_snapshots = True
 
             simics.SIM_load_target(
                 "qsp-x86/uefi-shell",  # Target
