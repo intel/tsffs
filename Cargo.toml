@@ -75,6 +75,7 @@ num-traits = "0.2.18"
 num-derive = "0.4.2"
 tracing-subscriber = "0.3.18"
 tracing = { version = "0.1.40", features = ["log"] }
+yaxpeax-arm = "0.2.5"
 
 [dev-dependencies]
 simics-test = { path = "simics-rs/simics-test" }

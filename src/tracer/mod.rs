@@ -19,11 +19,21 @@ use typed_builder::TypedBuilder;
 use crate::{arch::ArchitectureOperations, Tsffs};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) enum CmpExprShift {
+    Lsl,
+    Lsr,
+    Asr,
+    Ror,
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) enum CmpExpr {
     Deref((Box<CmpExpr>, Option<u8>)),
     Reg((String, u8)),
     Mul((Box<CmpExpr>, Box<CmpExpr>)),
     Add((Box<CmpExpr>, Box<CmpExpr>)),
+    Sub((Box<CmpExpr>, Box<CmpExpr>)),
+    Shift((Box<CmpExpr>, Box<CmpExpr>, CmpExprShift)),
     U8(u8),
     I8(i8),
     U16(u16),
