@@ -4,6 +4,7 @@
 //! Architecture specific data and definitions
 
 use self::{
+    aarch64::AArch64ArchitectureOperations, arm::ARMArchitectureOperations,
     risc_v::RISCVArchitectureOperations, x86::X86ArchitectureOperations,
     x86_64::X86_64ArchitectureOperations,
 };
@@ -39,6 +40,10 @@ pub(crate) enum ArchitectureHint {
     I386,
     /// The architecture is RISCV
     Riscv,
+    /// The architecture is arm
+    Arm,
+    /// The architecture is aarch64
+    Aarch64,
 }
 
 impl FromStr for ArchitectureHint {
@@ -49,6 +54,8 @@ impl FromStr for ArchitectureHint {
             "x86-64" => Self::X86_64,
             "i386" | "i486" | "i586" | "i686" | "ia-32" | "x86" => Self::I386,
             "riscv" | "risc-v" | "riscv32" | "riscv64" => Self::Riscv,
+            "armv4" | "armv5" | "armv6" | "armv7" | "arm" | "arm32" => Self::Arm,
+            "aarch64" | "armv8" | "arm64" => Self::Aarch64,
             _ => bail!("Unknown hint: {}", s),
         })
     }
@@ -60,6 +67,8 @@ impl From<ArchitectureHint> for AttrValueType {
             ArchitectureHint::X86_64 => "x86-64",
             ArchitectureHint::I386 => "i386",
             ArchitectureHint::Riscv => "risc-v",
+            ArchitectureHint::Arm => "arm",
+            ArchitectureHint::Aarch64 => "aarch64",
         }
         .into()
     }
@@ -78,6 +87,12 @@ impl ArchitectureHint {
             ArchitectureHint::Riscv => {
                 Architecture::Riscv(RISCVArchitectureOperations::new_unchecked(cpu)?)
             }
+            ArchitectureHint::Arm => {
+                Architecture::Arm(ARMArchitectureOperations::new_unchecked(cpu)?)
+            }
+            ArchitectureHint::Aarch64 => {
+                Architecture::Aarch64(AArch64ArchitectureOperations::new_unchecked(cpu)?)
+            }
         })
     }
 }
@@ -89,6 +104,10 @@ pub(crate) enum Architecture {
     I386(X86ArchitectureOperations),
     /// The RISC-V architecture
     Riscv(RISCVArchitectureOperations),
+    /// The ARM architecture (v7 and below)
+    Arm(ARMArchitectureOperations),
+    /// The AARCH64 architecture (v8 and above)
+    Aarch64(AArch64ArchitectureOperations),
 }
 
 impl Debug for Architecture {
@@ -100,6 +119,8 @@ impl Debug for Architecture {
                 Architecture::X86_64(_) => "x86-64",
                 Architecture::I386(_) => "i386",
                 Architecture::Riscv(_) => "risc-v",
+                Architecture::Arm(_) => "arm",
+                Architecture::Aarch64(_) => "aarch64",
             }
         )
     }
@@ -515,6 +536,10 @@ impl ArchitectureOperations for Architecture {
             Ok(Self::I386(x86))
         } else if let Ok(riscv) = RISCVArchitectureOperations::new(cpu) {
             Ok(Self::Riscv(riscv))
+        } else if let Ok(arm) = ARMArchitectureOperations::new(cpu) {
+            Ok(Self::Arm(arm))
+        } else if let Ok(aarch64) = AArch64ArchitectureOperations::new(cpu) {
+            Ok(Self::Aarch64(aarch64))
         } else {
             bail!("Unsupported architecture");
         }
@@ -525,6 +550,8 @@ impl ArchitectureOperations for Architecture {
             Architecture::X86_64(x86_64) => x86_64.cpu(),
             Architecture::I386(i386) => i386.cpu(),
             Architecture::Riscv(riscv) => riscv.cpu(),
+            Architecture::Arm(arm) => arm.cpu(),
+            Architecture::Aarch64(aarch64) => aarch64.cpu(),
         }
     }
 
@@ -533,6 +560,8 @@ impl ArchitectureOperations for Architecture {
             Architecture::X86_64(x86_64) => x86_64.disassembler(),
             Architecture::I386(i386) => i386.disassembler(),
             Architecture::Riscv(riscv) => riscv.disassembler(),
+            Architecture::Arm(arm) => arm.disassembler(),
+            Architecture::Aarch64(aarch64) => aarch64.disassembler(),
         }
     }
 
@@ -541,6 +570,8 @@ impl ArchitectureOperations for Architecture {
             Architecture::X86_64(x86_64) => x86_64.int_register(),
             Architecture::I386(i386) => i386.int_register(),
             Architecture::Riscv(riscv) => riscv.int_register(),
+            Architecture::Arm(arm) => arm.int_register(),
+            Architecture::Aarch64(aarch64) => aarch64.int_register(),
         }
     }
 
@@ -549,6 +580,8 @@ impl ArchitectureOperations for Architecture {
             Architecture::X86_64(x86_64) => x86_64.processor_info_v2(),
             Architecture::I386(i386) => i386.processor_info_v2(),
             Architecture::Riscv(riscv) => riscv.processor_info_v2(),
+            Architecture::Arm(arm) => arm.processor_info_v2(),
+            Architecture::Aarch64(aarch64) => aarch64.processor_info_v2(),
         }
     }
 
@@ -557,6 +590,8 @@ impl ArchitectureOperations for Architecture {
             Architecture::X86_64(x86_64) => x86_64.cpu_instruction_query(),
             Architecture::I386(i386) => i386.cpu_instruction_query(),
             Architecture::Riscv(riscv) => riscv.cpu_instruction_query(),
+            Architecture::Arm(arm) => arm.cpu_instruction_query(),
+            Architecture::Aarch64(aarch64) => aarch64.cpu_instruction_query(),
         }
     }
 
@@ -565,6 +600,8 @@ impl ArchitectureOperations for Architecture {
             Architecture::X86_64(x86_64) => x86_64.cpu_instrumentation_subscribe(),
             Architecture::I386(i386) => i386.cpu_instrumentation_subscribe(),
             Architecture::Riscv(riscv) => riscv.cpu_instrumentation_subscribe(),
+            Architecture::Arm(arm) => arm.cpu_instrumentation_subscribe(),
+            Architecture::Aarch64(aarch64) => aarch64.cpu_instrumentation_subscribe(),
         }
     }
 
@@ -573,6 +610,8 @@ impl ArchitectureOperations for Architecture {
             Architecture::X86_64(x86_64) => x86_64.cycle(),
             Architecture::I386(i386) => i386.cycle(),
             Architecture::Riscv(riscv) => riscv.cycle(),
+            Architecture::Arm(arm) => arm.cycle(),
+            Architecture::Aarch64(aarch64) => aarch64.cycle(),
         }
     }
 
@@ -581,6 +620,8 @@ impl ArchitectureOperations for Architecture {
             Architecture::X86_64(x86_64) => x86_64.get_magic_index_selector(),
             Architecture::I386(i386) => i386.get_magic_index_selector(),
             Architecture::Riscv(riscv) => riscv.get_magic_index_selector(),
+            Architecture::Arm(arm) => arm.get_magic_index_selector(),
+            Architecture::Aarch64(aarch64) => aarch64.get_magic_index_selector(),
         }
     }
 
@@ -589,6 +630,8 @@ impl ArchitectureOperations for Architecture {
             Architecture::X86_64(x86_64) => x86_64.get_magic_start_buffer_ptr_size_ptr(),
             Architecture::I386(i386) => i386.get_magic_start_buffer_ptr_size_ptr(),
             Architecture::Riscv(riscv) => riscv.get_magic_start_buffer_ptr_size_ptr(),
+            Architecture::Arm(arm) => arm.get_magic_start_buffer_ptr_size_ptr(),
+            Architecture::Aarch64(aarch64) => aarch64.get_magic_start_buffer_ptr_size_ptr(),
         }
     }
 
@@ -597,6 +640,8 @@ impl ArchitectureOperations for Architecture {
             Architecture::X86_64(x86_64) => x86_64.get_magic_start_buffer_ptr_size_val(),
             Architecture::I386(i386) => i386.get_magic_start_buffer_ptr_size_val(),
             Architecture::Riscv(riscv) => riscv.get_magic_start_buffer_ptr_size_val(),
+            Architecture::Arm(arm) => arm.get_magic_start_buffer_ptr_size_val(),
+            Architecture::Aarch64(aarch64) => aarch64.get_magic_start_buffer_ptr_size_val(),
         }
     }
 
@@ -605,6 +650,8 @@ impl ArchitectureOperations for Architecture {
             Architecture::X86_64(x86_64) => x86_64.get_magic_start_buffer_ptr_size_ptr(),
             Architecture::I386(i386) => i386.get_magic_start_buffer_ptr_size_ptr(),
             Architecture::Riscv(riscv) => riscv.get_magic_start_buffer_ptr_size_ptr(),
+            Architecture::Arm(arm) => arm.get_magic_start_buffer_ptr_size_ptr_val(),
+            Architecture::Aarch64(aarch64) => aarch64.get_magic_start_buffer_ptr_size_ptr_val(),
         }
     }
 
@@ -613,6 +660,8 @@ impl ArchitectureOperations for Architecture {
             Architecture::X86_64(x86_64) => x86_64.get_manual_start_info(info),
             Architecture::I386(i386) => i386.get_manual_start_info(info),
             Architecture::Riscv(riscv) => riscv.get_manual_start_info(info),
+            Architecture::Arm(arm) => arm.get_manual_start_info(info),
+            Architecture::Aarch64(aarch64) => aarch64.get_manual_start_info(info),
         }
     }
 
@@ -621,6 +670,8 @@ impl ArchitectureOperations for Architecture {
             Architecture::X86_64(x86_64) => x86_64.write_start(testcase, info),
             Architecture::I386(i386) => i386.write_start(testcase, info),
             Architecture::Riscv(riscv) => riscv.write_start(testcase, info),
+            Architecture::Arm(arm) => arm.write_start(testcase, info),
+            Architecture::Aarch64(aarch64) => aarch64.write_start(testcase, info),
         }
     }
 
@@ -629,6 +680,8 @@ impl ArchitectureOperations for Architecture {
             Architecture::X86_64(x86_64) => x86_64.trace_pc(instruction_query),
             Architecture::I386(i386) => i386.trace_pc(instruction_query),
             Architecture::Riscv(riscv) => riscv.trace_pc(instruction_query),
+            Architecture::Arm(arm) => arm.trace_pc(instruction_query),
+            Architecture::Aarch64(aarch64) => aarch64.trace_pc(instruction_query),
         }
     }
 
@@ -637,6 +690,8 @@ impl ArchitectureOperations for Architecture {
             Architecture::X86_64(x86_64) => x86_64.trace_cmp(instruction_query),
             Architecture::I386(i386) => i386.trace_cmp(instruction_query),
             Architecture::Riscv(riscv) => riscv.trace_cmp(instruction_query),
+            Architecture::Arm(arm) => arm.trace_cmp(instruction_query),
+            Architecture::Aarch64(aarch64) => aarch64.trace_cmp(instruction_query),
         }
     }
 }
