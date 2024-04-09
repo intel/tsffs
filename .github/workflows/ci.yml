@@ -50,7 +50,7 @@ jobs:
         id: cache-simics-packages
         uses: actions/cache@v4
         with:
-          path: ~/simics
+          path: "${HOME}/simics"
           key: simics-linux-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}-${{ env.PUBLIC_SIMICS_ISPM_VERSION }}
 
       - name: Install SIMICS (External)
@@ -78,8 +78,7 @@ jobs:
         run: |
           mkdir bin && \
           cp "${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}/linux64/bin/craff" bin/craff && \
-          cp "${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}/linux64/bin/craff-fs" bin/craff-fs && \
-          rm -rf "${HOME}/simics/"
+          cp "${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}/linux64/bin/craff-fs" bin/craff-fs
 
       - name: Upload Test Artifacts
         uses: actions/upload-artifact@v4

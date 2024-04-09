@@ -9,9 +9,9 @@ use std::path::PathBuf;
 
 #[test]
 #[cfg_attr(miri, ignore)]
-fn test_x86_64_manual_max() -> Result<()> {
+fn test_x86_64_manual_max_latest() -> Result<()> {
     let output = TestEnvSpec::builder()
-        .name("test_x86_64_manual_max")
+        .name("test_x86_64_manual_max_latest")
         .package_crates([PathBuf::from(env!("CARGO_MANIFEST_DIR"))])
         .packages([
             ProjectPackage::builder()

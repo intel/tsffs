@@ -103,7 +103,7 @@ pub fn local_or_remote_pkg_install(mut options: InstallOptions) -> Result<()> {
 
             let Some(available) = installed.iter().find(|p| {
                 p.package_number == package.package_number
-                    && (Requirement::new(&package.version.to_string()).is_some_and(|r| {
+                    && (Requirement::new(&format!("=={}", package.version)).is_some_and(|r| {
                         Versioning::new(&p.version).is_some_and(|pv| r.matches(&pv))
                     }) || package.version == "latest")
             }) else {
