@@ -47,7 +47,12 @@ impl ArchitectureOperations for AArch64ArchitectureOperations {
             .to_str()?
             .to_string();
 
-        if arch == "aarch64" || arch == "arm64" {
+        if arch == "aarch64"
+            || arch == "arm64"
+            || arch == "armv8"
+            || arch == "armv9"
+            || arch == "armv10"
+        {
             Ok(Self {
                 cpu,
                 disassembler: Disassembler::new(),

@@ -48,7 +48,8 @@ impl ArchitectureOperations for ARMArchitectureOperations {
             .to_str()?
             .to_string();
 
-        if arch == "arm" || arch == "armv7" || arch == "armv6" || arch == "armv5" {
+        if arch == "arm" || arch == "armv7" || arch == "armv6" || arch == "armv5" || arch == "arm32"
+        {
             Ok(Self {
                 cpu,
                 disassembler: Disassembler::new(),
