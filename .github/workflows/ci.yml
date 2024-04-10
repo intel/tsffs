@@ -615,8 +615,8 @@ jobs:
           chmod +x .github/builder/rsrc/rustup-init
           curl -L -o .github/builder/rsrc/cmake-3.28.0-rc5-linux-x86_64.tar.gz \
               "${{ env.CMAKE_URL }}"
-          docker run -v .github/builder/rsrc/rpms:/rpms fedora:20 bash -c \
-              'yum -y update && yum install --downloadonly --downloaddir=/rpms coreutils gcc gcc-c++ make && chmod -R 755 /rpms/'
+          docker run -v "$(pwd)/github/builder/rsrc/rpms:/rpms" fedora:20 bash -c \
+              'yum -y update && yum install --downloadonly --downloaddir=/rpms coreutils gcc gcc-c++ make which && chmod -R 755 /rpms/'
 
       - name: Build Distribution Package
         run: |
@@ -630,48 +630,3 @@ jobs:
         with:
           name: simics-pkg-31337-linux64
           path: packages/simics-pkg-31337-*-linux64.ispm
-
-  test_sles11:
-    name: Test for SLES11SP4
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install Dependencies
-        run: |
-          sudo apt-get -y update && \
-          sudo apt-get -y install \
-            clang libclang-dev cmake curl dosfstools g++ gcc git llvm make \
-            mtools ninja-build openssl libssl-dev python3 python3-pip
-
-      - name: Cache SIMICS Dependencies
-        id: cache-simics-packages
-        uses: actions/cache@v4
-        with:
-          path: "${HOME}/simics"
-          key: simics-linux-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}-${{ env.PUBLIC_SIMICS_ISPM_VERSION }}
-
-      - name: Install SIMICS (External)
-        if: ${{ steps.cache-simics-packages.outputs.cache-hit != 'true' }}
-        run: |
-          mkdir -p "${HOME}/simics/ispm/" && \
-          curl --noproxy -L -o "${HOME}/simics/ispm.tar.gz" \
-              "${{ env.PUBLIC_SIMICS_ISPM_URL }}" && \
-          curl --noproxy -L -o "${HOME}/simics/simics.ispm" \
-              "${{ env.PUBLIC_SIMICS_PKGS_URL }}" && \
-          tar -C "${HOME}/simics/ispm" --strip-components=1 \
-              -xvf "${HOME}/simics/ispm.tar.gz"
-
-      - name: Set up SIMICS Install Directory
-        run: |
-          ispm settings install-dir "${HOME}/simics"
-
-      - name: Install SIMICS Packages
-        if: ${{ steps.cache-simics-packages.outputs.cache-hit != 'true' }}
-        run: |
-          ispm packages --install-bundle "${HOME}/simics/simics.ispm" \
-              --non-interactive --trust-insecure-packages
-
-      - name: Download Distribution Package
-        uses: actions/download-artifact@v4
-        with:
-          name: simics-pkg-31337-linux64
-          path: packages/
