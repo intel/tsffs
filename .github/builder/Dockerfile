@@ -54,7 +54,7 @@ RUN mkdir -p /simics/ispm && \
     ispm settings install-dir /simics && \
     ispm packages --install-bundle .github/builder/rsrc/simics.ispm --non-interactive --trust-insecure-packages
 
-RUN RUSTFLAGS="-C linker=clang -C link-arg=-fuse-ld=$(which ld.lld)" && 
+RUN RUSTFLAGS="-C linker=clang -C link-arg=-fuse-ld=$(which ld.lld)" && \
     export RUSTFLAGS && \
     cargo install --path simics-rs/cargo-simics-build && \
     cargo simics-build -r && \
