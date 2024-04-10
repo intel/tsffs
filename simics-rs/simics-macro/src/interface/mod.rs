@@ -1418,8 +1418,19 @@ pub fn interface_impl(args: TokenStream, input: TokenStream) -> TokenStream {
     // Get the `name = ""` attribute
     let input = parse_macro_input!(input as syn::ItemImpl);
 
-    if let Err(e) = CInterface::generate(&input, &name) {
-        return TokenStream::from(e.write_errors());
+    // Try three times to generate the interface, with a short delay between each
+    // attempt. For an unknown reason, disassembly/emission of the pyiface trampolines can fail.
+    //
+    // TODO: Disassemble these trampolines and emit the data in a more reliable way.
+    for i in 0..3 {
+        if let Err(e) = CInterface::generate(&input, &name) {
+            if i == 2 {
+                return TokenStream::from(e.write_errors());
+            }
+            std::thread::sleep(std::time::Duration::from_secs(1));
+        } else {
+            break;
+        }
     }
 
     let interface = Interface { input, name };
