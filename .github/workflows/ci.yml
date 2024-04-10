@@ -615,6 +615,8 @@ jobs:
               "${{ env.CMAKE_URL }}"
           curl -L -o .github/builder/rsrc/patchelf-0.18.0-x86_64.tar.gz \
               "${{ env.PATCHELF_URL}}"
+          docker run -v .github/builder/rsrc/rpms:/rpms fedora:20 bash -c \
+              'yum -y update && yum install --downloadonly --downloaddir=/rpms coreutils gcc gcc-c++ make && chmod -R 755 /rpms/'
 
       - name: Build Distribution Package
         run: |

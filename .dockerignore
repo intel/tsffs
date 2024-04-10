@@ -1,15 +1,5 @@
-config.mk
-.package-list
-.modcache
-Dockerfile
-.project-properties/
-bin/
-linux64/
-win64/
-packageinfo/
-target/
-documentation
-simics
-simics-eclipse
-simics-gui
-compiler.mk
+# Ignore dockerfile so re-runs with dockerfile-only fixes don't rebuild
+**/Dockerfile
+**/target/
+**/*.img
+**/*.diff.craff

@@ -62,6 +62,15 @@ if [ ! -f "${BUILDER_DIR}/rsrc/patchelf-0.18.0-x86_64.tar.gz" ]; then
         "${PATCHELF_URL}"
 fi
 
+if [ ! -d "${BUILDER_DIR}/rsrc/rpms" ]; then
+    echo "RPM dependencies not found. Downloading..."
+    # NOTE: This may stop working at some point, as Fedora 20 is EOL. Therefore, we download the
+    # packages with the expectation that we will provide them separately if they are no longer
+    # available.
+    docker run -v "${BUILDER_DIR}/rsrc/rpms:/rpms" fedora:20 bash -c \
+        'yum -y update && yum install --downloadonly --downloaddir=/rpms coreutils gcc gcc-c++ make && chmod -R 755 /rpms/'
+fi
+
 unset SIMICS_BASE
 docker build \
     --build-arg \
