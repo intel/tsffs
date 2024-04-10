@@ -11,7 +11,7 @@ COPY .github/builder/rsrc/cfe-5.0.2.src.tar.xz /install/cfe-5.0.2.src.tar.xz
 COPY .github/builder/rsrc/patchelf-0.18.0-x86_64.tar.gz /install/patchelf-0.18.0-x86_64.tar.gz
 COPY .github/builder/rsrc/rpms /install/rpms
 
-RUN yum -y install /install/rpms/*.rpm
+RUN yum -y install /install/rpms/*.rpm && yum clean all
 
 RUN chmod +x /install/rustup-init && \
     /install/rustup-init -y --default-toolchain nightly && \
