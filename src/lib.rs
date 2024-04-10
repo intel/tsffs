@@ -242,11 +242,6 @@ pub(crate) struct Tsffs {
     /// time timeout is exceeded for a single iteration, the iteration is stopped and the testcase
     /// is saved as a solution.
     pub timeout: f64,
-    #[class(attribute(optional, default = 60))]
-    /// The timeout in seconds of virtual time for each iteration of the fuzzer. If the virtual
-    /// time timeout is exceeded for a single iteration, the iteration is stopped and the testcase
-    /// is saved as a solution.
-    pub executor_timeout: u64,
     #[class(attribute(optional, default = true))]
     /// Whether the fuzzer should start on compiled-in harnesses. If set to `True`, the fuzzer
     /// will start fuzzing when a harness macro is executed.
@@ -372,6 +367,12 @@ pub(crate) struct Tsffs {
     #[class(attribute(optional, default = false))]
     /// Whether to enable extra debug logging for LibAFL
     pub debug_log_libafl: bool,
+    #[class(attribute(optional, default = true))]
+    /// Whether to send shut down on stops without reason. This means fuzzing cannot be resumed.
+    pub shutdown_on_stop_without_reason: bool,
+    #[class(attribute(optional, default = true))]
+    /// Whether to quit on iteration limit
+    pub quit_on_iteration_limit: bool,
 
     #[attr_value(skip)]
     /// Handle for the core simulation stopped hap
