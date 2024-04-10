@@ -95,29 +95,6 @@ where
         _input: &<Self as UsesInput>::Input,
         _executor_ptr: *const c_void,
     ) {
-        // unsafe {
-        //     let data = addr_of_mut!(GLOBAL_STATE);
-        //     write_volatile(
-        //         addr_of_mut!((*data).current_input_ptr),
-        //         ptr::from_ref(input) as *const c_void,
-        //     );
-        //     write_volatile(addr_of_mut!((*data).executor_ptr), executor_ptr);
-        //     // Direct raw pointers access /aliasing is pretty undefined behavior.
-        //     // Since the state and event may have moved in memory, refresh them right before the signal may happen
-        //     write_volatile(
-        //         addr_of_mut!((*data).state_ptr),
-        //         ptr::from_mut(state) as *mut c_void,
-        //     );
-        //     write_volatile(
-        //         addr_of_mut!((*data).event_mgr_ptr),
-        //         ptr::from_mut(mgr) as *mut c_void,
-        //     );
-        //     write_volatile(
-        //         addr_of_mut!((*data).fuzzer_ptr),
-        //         ptr::from_mut(fuzzer) as *mut c_void,
-        //     );
-        //     compiler_fence(Ordering::SeqCst);
-        // }
     }
 
     /// This function marks the boundary between the fuzzer and the target
@@ -129,12 +106,6 @@ where
         _mgr: &mut EM,
         _input: &<Self as UsesInput>::Input,
     ) {
-        // unsafe {
-        //     let data = addr_of_mut!(GLOBAL_STATE);
-
-        //     write_volatile(addr_of_mut!((*data).current_input_ptr), null());
-        //     compiler_fence(Ordering::SeqCst);
-        // }
     }
 }
 
