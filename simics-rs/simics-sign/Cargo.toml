@@ -22,6 +22,6 @@ categories = [
 ]
 
 [dependencies]
-object = "0.34.0"
+object = "0.35.0"
 chrono = "0.4.34"
 thiserror = "1.0.57"

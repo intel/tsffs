@@ -1,5 +1,5 @@
 use crate::exception::IsResultType;
-use command_ext::{CommandExtCheck, CommandExtPrint};
+use command_ext::CommandExtCheck;
 use darling::{ast::NestedMeta, Error, FromMeta, Result};
 use ispm_wrapper::ispm::{self, GlobalOptions};
 use proc_macro::TokenStream;
@@ -754,7 +754,6 @@ impl CInterface {
                     .join("py-typemaps.c"),
             )
             .arg(interface_subdir.join(&header_name))
-            .print_args()
             .check()
             .map_err(|e| {
                 Error::custom(format!(
@@ -946,7 +945,7 @@ impl CInterface {
             .arg(interface_subdir.join(&pyifaces_interface_i))
             .arg("-o")
             .arg(interface_subdir.join(pyiface_interface))
-            .print_args()
+            // .print_args()
             .check()
             .map_err(|e| Error::custom(format!("Failed to generate pyiface: {e}")))?;
 
@@ -1418,8 +1417,19 @@ pub fn interface_impl(args: TokenStream, input: TokenStream) -> TokenStream {
     // Get the `name = ""` attribute
     let input = parse_macro_input!(input as syn::ItemImpl);
 
-    if let Err(e) = CInterface::generate(&input, &name) {
-        return TokenStream::from(e.write_errors());
+    // Try three times to generate the interface, with a short delay between each
+    // attempt. For an unknown reason, disassembly/emission of the pyiface trampolines can fail.
+    //
+    // TODO: Disassemble these trampolines and emit the data in a more reliable way.
+    for i in 0..3 {
+        if let Err(e) = CInterface::generate(&input, &name) {
+            if i == 2 {
+                return TokenStream::from(e.write_errors());
+            }
+            std::thread::sleep(std::time::Duration::from_secs(1));
+        } else {
+            break;
+        }
     }
 
     let interface = Interface { input, name };

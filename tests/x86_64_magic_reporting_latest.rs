@@ -9,9 +9,9 @@ use std::path::PathBuf;
 
 #[test]
 #[cfg_attr(miri, ignore)]
-fn test_riscv_64_kernel_magic() -> Result<()> {
+fn test_x86_64_magic_reporting_latest() -> Result<()> {
     let output = TestEnvSpec::builder()
-        .name("test_riscv_64_kernel_magic")
+        .name("test_x86_64_magic_reporting_latest")
         .package_crates([PathBuf::from(env!("CARGO_MANIFEST_DIR"))])
         .packages([
             ProjectPackage::builder()
@@ -19,11 +19,11 @@ fn test_riscv_64_kernel_magic() -> Result<()> {
                 .version("latest")
                 .build(),
             ProjectPackage::builder()
-                .package_number(2050)
+                .package_number(2096)
                 .version("latest")
                 .build(),
             ProjectPackage::builder()
-                .package_number(2053)
+                .package_number(8112)
                 .version("latest")
                 .build(),
         ])
@@ -31,7 +31,7 @@ fn test_riscv_64_kernel_magic() -> Result<()> {
         .directories([PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("tests")
             .join("rsrc")
-            .join("riscv-64")])
+            .join("x86_64-uefi")])
         .build()
         .to_env()?
         .test(indoc! {r#"
@@ -44,21 +44,22 @@ fn test_riscv_64_kernel_magic() -> Result<()> {
             @tsffs.timeout = 3.0
             @tsffs.exceptions = [14]
             @tsffs.generate_random_corpus = True
-            @tsffs.iteration_limit = 1000
-            @tsffs.use_snapshots = True
-            @tsffs.debug_log_libafl = True
+            @tsffs.iteration_limit = 100
+            @tsffs.coverage_reporting = True
+            @tsffs.corpus_directory = "%simics%/corpus2"
 
-            load-target "risc-v-simple/linux" namespace = riscv machine:hardware:storage:disk1:image = "test.fs.craff"
+            load-target "qsp-x86/uefi-shell" namespace = qsp machine:hardware:storage:disk0:image = "minimal_boot_disk.craff"
 
             script-branch {
                 bp.time.wait-for seconds = 15
-                board.console.con.input "mkdir /mnt/disk0\r\n"
-                bp.time.wait-for seconds = 1.0
-                board.console.con.input "mount /dev/vdb /mnt/disk0\r\n"
-                bp.time.wait-for seconds = 1.0
-                board.console.con.input "insmod /mnt/disk0/test-mod.ko\r\n"
-                bp.time.wait-for seconds = 1.0
-                board.console.con.input "/mnt/disk0/test-mod-userspace\r\n"
+                qsp.serconsole.con.input "\n"
+                bp.time.wait-for seconds = .5
+                qsp.serconsole.con.input "FS0:\n"
+                bp.time.wait-for seconds = .5
+                local $manager = (start-agent-manager)
+                qsp.serconsole.con.input ("SimicsAgent.efi --download " + (lookup-file "%simics%/test-cov.efi") + "\n")
+                bp.time.wait-for seconds = .5
+                qsp.serconsole.con.input "test-cov.efi\n"
             }
 
             script-branch {

@@ -105,8 +105,6 @@ pub enum SimicsBuildCmd {
         args: Args,
         #[clap(long)]
         simics_base: Option<PathBuf>,
-        #[clap(long)]
-        with_patchelf: bool,
     },
 }
 
@@ -116,11 +114,7 @@ type Result<T> = std::result::Result<T, Error>;
 
 impl App {
     pub fn run(cmd: Cmd) -> Result<PathBuf> {
-        let SimicsBuildCmd::SimicsBuild {
-            args,
-            simics_base,
-            with_patchelf,
-        } = cmd.simics_build;
+        let SimicsBuildCmd::SimicsBuild { args, simics_base } = cmd.simics_build;
 
         let subcommand = Subcommand::new(args)?;
         let cargo = var("CARGO")?;
@@ -234,46 +228,6 @@ impl App {
             });
 
         signed.write(&signed_module_cdylib)?;
-
-        signed_module_cdylib = signed_module_cdylib.canonicalize()?;
-
-        if with_patchelf {
-            // We need to use patchelf to replace absolute paths to shared objects with
-            // just names
-            String::from_utf8(
-                Command::new("patchelf")
-                    .arg("--print-needed")
-                    .arg(&signed_module_cdylib)
-                    .check()?
-                    .stdout,
-            )?
-            .lines()
-            .filter(|l| l.starts_with('/'))
-            .try_for_each(|l| {
-                let path = PathBuf::from(l);
-                let file_name = path
-                    .file_name()
-                    .ok_or_else(|| Error::NoFilename {
-                        path: PathBuf::from(l),
-                    })?
-                    .to_str()
-                    .ok_or_else(|| Error::NoFilename {
-                        path: PathBuf::from(l),
-                    })?;
-                println!("Replacing needed library {} with {}", l, file_name);
-                Command::new("patchelf")
-                    .arg("--remove-needed")
-                    .arg(&l)
-                    .arg(&signed_module_cdylib)
-                    .check()?;
-                Command::new("patchelf")
-                    .arg("--add-needed")
-                    .arg(file_name)
-                    .arg(&signed_module_cdylib)
-                    .check()?;
-                Ok::<(), Error>(())
-            })?;
-        }
 
         let target_profile_build_dir = subcommand.build_dir(subcommand.target()).join("build");
 

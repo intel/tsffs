@@ -25,9 +25,10 @@ impl Utils {
         run_python(
             r#"print(simics.SIM_get_attribute(simics.SIM_get_object("sim.rexec"), "state_info"))"#,
         )?;
+
         let checkpoints: Vec<MicroCheckpointInfo> =
             get_attribute(get_object("sim.rexec")?, "state_info")?.try_into()?;
-        println!("{:?}", checkpoints);
+
         Ok(checkpoints)
     }
 }
