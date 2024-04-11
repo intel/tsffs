@@ -754,7 +754,6 @@ impl CInterface {
                     .join("py-typemaps.c"),
             )
             .arg(interface_subdir.join(&header_name))
-            // .print_args()
             .check()
             .map_err(|e| {
                 Error::custom(format!(
