@@ -4,9 +4,6 @@ use core::{
     marker::PhantomData,
 };
 
-#[cfg(windows)]
-use windows::Win32::System::Threading::SetThreadStackGuarantee;
-
 use libafl::{
     events::{EventFirer, EventRestarter},
     executors::{hooks::ExecutorHooksTuple, HasObservers},
