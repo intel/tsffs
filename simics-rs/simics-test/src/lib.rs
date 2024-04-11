@@ -468,7 +468,6 @@ impl TestEnv {
                             .map(|v| Self::simics_base_dir(&v, &simics_home_dir))
                             .unwrap_or_else(|| Self::default_simics_base_dir(&simics_home_dir))?,
                     ),
-                    with_patchelf: false,
                 },
             };
 
