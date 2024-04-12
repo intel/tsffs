@@ -123,7 +123,11 @@ impl Tsffs {
 
                 self.send_shutdown()?;
 
-                quit(0)?;
+                if self.quit_on_iteration_limit {
+                    quit(0)?;
+                } else {
+                    return Ok(());
+                }
             }
 
             let fuzzer_tx = self
@@ -290,7 +294,11 @@ impl Tsffs {
 
                 self.send_shutdown()?;
 
-                quit(0)?;
+                if self.quit_on_iteration_limit {
+                    quit(0)?;
+                } else {
+                    return Ok(());
+                }
             }
 
             let fuzzer_tx = self
@@ -374,7 +382,11 @@ impl Tsffs {
 
                 self.send_shutdown()?;
 
-                quit(0)?;
+                if self.quit_on_iteration_limit {
+                    quit(0)?;
+                } else {
+                    return Ok(());
+                }
             }
 
             let fuzzer_tx = self
@@ -470,6 +482,10 @@ impl Tsffs {
                 duration.as_secs_f32(),
                 self.iterations as f32 / duration.as_secs_f32()
             );
+
+            if self.shutdown_on_stop_without_reason {
+                self.send_shutdown()?;
+            }
         }
 
         Ok(())

@@ -197,7 +197,7 @@ impl App {
 
         let mut signed = Sign::new(&module_cdylib)?;
 
-        let mut signed_module_cdylib = module_cdylib
+        let signed_module_cdylib = module_cdylib
             .parent()
             .ok_or_else(|| Error::NoParentDirectory {
                 path: module_cdylib.to_path_buf(),

@@ -41,18 +41,6 @@ Note that this timeout is in virtual time, not real time. This means that whethe
 simulation runs faster or slower than real time, the timeout will be accurate to the
 target software's execution speed.
 
-The fuzzing executor also has a timeout, which runs in real time. This timeout
-is intended to detect situations where the fuzzer reaches a broken state where
-it is no longer able to iterate (e.g. the virtual time timeout is not working)
-and stop. By default, this timeout is set to 60 seconds and resets each
-iteration. Only iterations which take more than 60 seconds will trigger the
-timeout, but some very large fuzzing cases could exceed this time. To increase
-it, for example to set the timeout to 10 minutes:
-
-```python
-@tsffs.executor_timeout = 600
-```
-
 ### Setting Exception Solutions
 
 The primary way TSFFS detects bugs is via CPU exceptions that are raised, but should not
