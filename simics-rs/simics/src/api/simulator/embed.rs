@@ -4,8 +4,6 @@
 //! Functionality for embedding SIMICS into a program or library. These functions are useful for
 //! creating alternate SIMICS frontends
 
-#[cfg(not(simics_deprecated_api_cpu_variant_gui_mode))]
-use crate::sys::{cpu_variant_t, gui_mode_t};
 use crate::{
     simics_exception,
     sys::{
@@ -22,23 +20,23 @@ use std::{
     ptr::null,
 };
 
-#[cfg(not(simics_deprecated_api_cpu_variant_gui_mode))]
+#[cfg(simics_version_6)]
 /// Alias for `cpu_variant_t`
-pub type CpuVariant = cpu_variant_t;
+pub type CpuVariant = crate::sys::cpu_variant_t;
 
-#[cfg(not(simics_deprecated_api_cpu_variant_gui_mode))]
+#[cfg(simics_version_6)]
 #[derive(Debug, Clone)]
 /// Wrapper for `gui_mode_t` which can be converted to a string
-pub struct GuiMode(gui_mode_t);
+pub struct GuiMode(crate::sys::gui_mode_t);
 
-#[cfg(not(simics_deprecated_api_cpu_variant_gui_mode))]
+#[cfg(simics_version_6)]
 impl ToString for GuiMode {
     fn to_string(&self) -> String {
         match self.0 {
-            gui_mode_t::GUI_Mode_None => "no-gui",
-            gui_mode_t::GUI_Mode_Mixed => "mixed",
-            gui_mode_t::GUI_Mode_Only => "gui",
-            gui_mode_t::GUI_Mode_Default => "default",
+            crate::sys::gui_mode_t::GUI_Mode_None => "no-gui",
+            crate::sys::gui_mode_t::GUI_Mode_Mixed => "mixed",
+            crate::sys::gui_mode_t::GUI_Mode_Only => "gui",
+            crate::sys::gui_mode_t::GUI_Mode_Default => "default",
         }
         .to_string()
     }

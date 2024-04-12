@@ -9,9 +9,9 @@ use std::path::PathBuf;
 
 #[test]
 #[cfg_attr(miri, ignore)]
-fn test_x86_64_magic() -> Result<()> {
+fn test_x86_64_edk2_timeout_latest() -> Result<()> {
     let output = TestEnvSpec::builder()
-        .name("test_x86_64_magic")
+        .name("test_x86_64_edk2_timeout_latest")
         .package_crates([PathBuf::from(env!("CARGO_MANIFEST_DIR"))])
         .packages([
             ProjectPackage::builder()
@@ -31,7 +31,7 @@ fn test_x86_64_magic() -> Result<()> {
         .directories([PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("tests")
             .join("rsrc")
-            .join("x86_64-uefi")])
+            .join("x86_64-timeout-uefi-edk2")])
         .build()
         .to_env()?
         .test(indoc! {r#"
@@ -44,7 +44,7 @@ fn test_x86_64_magic() -> Result<()> {
             @tsffs.timeout = 3.0
             @tsffs.exceptions = [14]
             @tsffs.generate_random_corpus = True
-            @tsffs.iteration_limit = 1000
+            @tsffs.iteration_limit = 30
 
             load-target "qsp-x86/uefi-shell" namespace = qsp machine:hardware:storage:disk0:image = "minimal_boot_disk.craff"
 

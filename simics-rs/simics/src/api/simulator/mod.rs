@@ -16,17 +16,24 @@ pub mod modules;
 pub mod paths;
 pub mod processor;
 pub mod python;
-#[cfg(not(simics_deprecated_api_rev_exec))]
+#[cfg(simics_version_6)]
 pub mod rev_exec;
 pub mod script;
 pub mod sim_caches;
 pub mod sim_conf_object;
 pub mod sim_get_class;
-#[cfg(any(
-    simics_experimental_api_snapshots,
-    simics_experimental_api_snapshots_v2,
-    simics_stable_api_snapshots
-))]
+#[cfg(not(any(
+    simics_version_6_0_163,
+    simics_version_6_0_164,
+    simics_version_6_0_165,
+    simics_version_6_0_166,
+    simics_version_6_0_167,
+    simics_version_6_0_168,
+    simics_version_6_0_169,
+    simics_version_6_0_170,
+    simics_version_6_0_171,
+    simics_version_6_0_172,
+)))]
 pub mod snapshots;
 
 pub use breakpoints::*;
@@ -42,15 +49,22 @@ pub use modules::*;
 pub use paths::*;
 pub use processor::*;
 pub use python::*;
-#[cfg(not(simics_deprecated_api_rev_exec))]
+#[cfg(simics_version_6)]
 pub use rev_exec::*;
 pub use script::*;
 pub use sim_caches::*;
 pub use sim_conf_object::*;
 pub use sim_get_class::*;
-#[cfg(any(
-    simics_experimental_api_snapshots,
-    simics_experimental_api_snapshots_v2,
-    simics_stable_api_snapshots
-))]
+#[cfg(not(any(
+    simics_version_6_0_163,
+    simics_version_6_0_164,
+    simics_version_6_0_165,
+    simics_version_6_0_166,
+    simics_version_6_0_167,
+    simics_version_6_0_168,
+    simics_version_6_0_169,
+    simics_version_6_0_170,
+    simics_version_6_0_171,
+    simics_version_6_0_172,
+)))]
 pub use snapshots::*;

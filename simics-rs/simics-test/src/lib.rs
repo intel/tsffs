@@ -103,9 +103,20 @@ pub fn local_or_remote_pkg_install(mut options: InstallOptions) -> Result<()> {
 
             let Some(available) = installed.iter().find(|p| {
                 p.package_number == package.package_number
-                    && (Requirement::new(&package.version.to_string()).is_some_and(|r| {
-                        Versioning::new(&p.version).is_some_and(|pv| r.matches(&pv))
-                    }) || package.version == "latest")
+                    && (Requirement::new(&format!("={}", package.version))
+                        .or_else(|| {
+                            eprintln!("Failed to parse requirement {}", package.version);
+                            None
+                        })
+                        .is_some_and(|r| {
+                            Versioning::new(&p.version)
+                                .or_else(|| {
+                                    eprintln!("Failed to parse version{}", p.version);
+                                    None
+                                })
+                                .is_some_and(|pv| r.matches(&pv))
+                        })
+                        || package.version == "latest")
             }) else {
                 bail!("Did not find package {package:?} in {installed:?}");
             };
@@ -179,6 +190,10 @@ pub struct TestEnvSpec {
     install_all: bool,
     #[builder(default, setter(into))]
     package_crates: Vec<PathBuf>,
+    #[builder(default, setter(into, strip_option))]
+    build_simics_version: Option<String>,
+    #[builder(default, setter(into))]
+    run_simics_version: Option<String>,
 }
 
 impl TestEnvSpec {
@@ -205,7 +220,7 @@ pub struct TestEnv {
 
 impl TestEnv {
     /// Return a reference to the test base directory
-    pub fn simics_base_dir<P>(simics_home_dir: P) -> Result<PathBuf>
+    pub fn default_simics_base_dir<P>(simics_home_dir: P) -> Result<PathBuf>
     where
         P: AsRef<Path>,
     {
@@ -218,6 +233,28 @@ impl TestEnv {
                     n.to_string_lossy().starts_with("simics-6.")
                         || n.to_string_lossy().starts_with("simics-7.")
                 })
+            })
+            .ok_or_else(|| {
+                anyhow!(
+                    "No simics base in home directory {:?}",
+                    simics_home_dir.as_ref()
+                )
+            })
+    }
+
+    /// Return a reference to the base directory specified by a version
+    pub fn simics_base_dir<S, P>(version: S, simics_home_dir: P) -> Result<PathBuf>
+    where
+        P: AsRef<Path>,
+        S: AsRef<str>,
+    {
+        read_dir(simics_home_dir.as_ref())?
+            .filter_map(|d| d.ok())
+            .filter(|d| d.path().is_dir())
+            .map(|d| d.path())
+            .find(|d| {
+                d.file_name()
+                    .is_some_and(|n| n.to_string_lossy() == format!("simics-{}", version.as_ref()))
             })
             .ok_or_else(|| {
                 anyhow!(
@@ -365,12 +402,27 @@ impl TestEnv {
                 )?;
 
                 if let Some(installed) = installed.installed_packages {
-                    installed_packages.extend(installed.iter().map(|ip| {
-                        ProjectPackage::builder()
-                            .package_number(ip.package_number)
-                            .version(ip.version.clone())
-                            .build()
-                    }));
+                    installed_packages.extend(
+                        installed
+                            .iter()
+                            .filter(|ip| {
+                                if ip.package_number == 1000 {
+                                    if let Some(run_version) = spec.run_simics_version.as_ref() {
+                                        *run_version == ip.version
+                                    } else {
+                                        true
+                                    }
+                                } else {
+                                    true
+                                }
+                            })
+                            .map(|ip| {
+                                ProjectPackage::builder()
+                                    .package_number(ip.package_number)
+                                    .version(ip.version.clone())
+                                    .build()
+                            }),
+                    );
                 }
             }
         }
@@ -410,8 +462,12 @@ impl TestEnv {
             let cmd = Cmd {
                 simics_build: SimicsBuildCmd::SimicsBuild {
                     args: install_args,
-                    simics_base: Some(Self::simics_base_dir(&simics_home_dir)?),
-                    with_patchelf: false,
+                    simics_base: Some(
+                        spec.build_simics_version
+                            .as_ref()
+                            .map(|v| Self::simics_base_dir(&v, &simics_home_dir))
+                            .unwrap_or_else(|| Self::default_simics_base_dir(&simics_home_dir))?,
+                    ),
                 },
             };
 

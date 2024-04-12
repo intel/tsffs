@@ -9,9 +9,9 @@ use std::path::PathBuf;
 
 #[test]
 #[cfg_attr(miri, ignore)]
-fn test_x86_userspace() -> Result<()> {
+fn test_x86_userspace_latest() -> Result<()> {
     let output = TestEnvSpec::builder()
-        .name("test_x86_userspace")
+        .name("test_x86_userspace_latest")
         .package_crates([PathBuf::from(env!("CARGO_MANIFEST_DIR"))])
         .packages([
             ProjectPackage::builder()

@@ -1,7 +1,7 @@
 // Copyright (C) 2024 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::{anyhow, ensure};
+use anyhow::{anyhow, ensure, Result};
 use ispm_wrapper::ispm::{self, GlobalOptions};
 use std::{
     env::var,
@@ -9,32 +9,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
-/// Configuration indicating that the experimental snapshots API is available (as of
-/// 6.0.173)
-pub const CFG_SIMICS_EXPERIMENTAL_API_SNAPSHOTS: &str = "simics_experimental_api_snapshots";
-/// Configuration indicating that the experimental snapshots API is available under the
-/// new `VT_take_snapshot` API name instead of the original `VT_save_snapshot` API name
-/// (as of 6.0.180))
-pub const CFG_SIMICS_EXPERIMENTAL_API_SNAPSHOTS_V2: &str = "simics_experimental_api_snapshots_v2";
-/// Configuration indicating that SIM_log_info is deprecated and should be replaced with
-/// VT_log_info until an API update
-pub const CFG_SIMICS_DEPRECATED_API_SIM_LOG: &str = "simics_deprecated_api_sim_log";
-/// Configuration indicating that `SIM_register_copyright` is deprecated (as of 7.0.0)
-pub const CFG_SIMICS_DEPRECATED_API_SIM_REGISTER_COPYRIGHT: &str =
-    "simics_deprecated_api_sim_register_copyright";
-/// Configuration indicating that all rev-exec features are deprecated (as of 7.0.0)
-pub const CFG_SIMICS_DEPRECATED_API_REV_EXEC: &str = "simics_deprecated_api_rev_exec";
-/// Configuration indicating that the snapshots API has been stabilized and is available under
-/// the name `SIM_` instead of `VT_` (as of 7.0.0)
-pub const CFG_SIMICS_STABLE_API_SNAPSHOTS: &str = "simics_stable_api_snapshots";
-/// Configuration indicating that the `cpu_variant_t` and `gui_mode_t` command-line options are
-/// deprecated (as of 7.0.0)
-pub const CFG_SIMICS_DEPRECATED_API_CPU_VARIANT_GUI_MODE: &str =
-    "simics_deprecated_api_cpu_variant_gui_mode";
-
 /// Get the only subdirectory of a directory, if only one exists. If zero or more than one subdirectories
 /// exist, returns an error
-pub fn subdir<P>(dir: P) -> anyhow::Result<PathBuf>
+pub fn subdir<P>(dir: P) -> Result<PathBuf>
 where
     P: AsRef<Path>,
 {
@@ -55,71 +32,39 @@ where
         .ok_or_else(|| anyhow!("No sub-directories found"))
 }
 
-/// Emit configuration directives used in the build process to conditionally enable
-/// features that aren't compatible with all supported SIMICS versions, based on the
-/// SIMICS version of the low level bindings. This is not needed for all consumers of the
-/// API, but is useful for consumers which need to remain compatible with a wide range of
-/// SIMICS base versions.
-pub fn emit_cfg_directives() -> anyhow::Result<()> {
+/// Emit CFG directives for the version of the Simics API being compiled against. For example,
+/// simics_version_6_0_185 and simics_version_6. Both a full triple version and a major version
+/// directive is emitted.
+///
+/// This function can be used in the `build.rs` script of a crate that depends on the `simics`
+/// crate to conditionally enable experimental features in its own code.
+pub fn emit_cfg_directives() -> Result<()> {
     // Set configurations to conditionally enable experimental features that aren't
     // compatible with all supported SIMICS versions, based on the SIMICS version of the
     // low level bindings.
 
     let simics_api_version = versions::Versioning::new(simics_api_sys::SIMICS_VERSION)
-        .ok_or_else(|| anyhow::anyhow!("Invalid version {}", simics_api_sys::SIMICS_VERSION))?;
+        .ok_or_else(|| anyhow!("Invalid version {}", simics_api_sys::SIMICS_VERSION))?;
 
-    // Conditional configurations for API versions
+    // Exports a configuration directive indicating which Simics version is *compiled* against.
+    println!(
+        "cargo:rustc-cfg=simics_version_{}",
+        simics_api_version.to_string().replace('.', "_")
+    );
 
-    if <versions::Requirement as std::str::FromStr>::from_str("<6.0.163")?
-        .matches(&simics_api_version)
-    {
-        // Bail out if we are targeting a version before 6.0.163. We don't test any earlier than
-        // this.
-        panic!("Target SIMICS API version is too old. The minimum version supported is 6.0.163.");
-    }
-
-    if <versions::Requirement as std::str::FromStr>::from_str(">=6.0.177")?
-        .matches(&simics_api_version)
-    {
-        // Deprecate (temporarily) the SIM_log APIs for versions over 6.0.177 (where the API
-        // was first deprecated)
-        // NOTE: This will be un-deprecated at an unspecified time in the future
-        println!("cargo:rustc-cfg={CFG_SIMICS_DEPRECATED_API_SIM_LOG}");
-    }
-
-    if <versions::Requirement as std::str::FromStr>::from_str(">=6.0.173")?
-        .matches(&simics_api_version)
-        && <versions::Requirement as std::str::FromStr>::from_str("<6.0.180")?
-            .matches(&simics_api_version)
-    {
-        // Enable the experimental snapshots api for versions over 6.0.173 (where the API first
-        // appears)
-        println!("cargo:rustc-cfg={CFG_SIMICS_EXPERIMENTAL_API_SNAPSHOTS}");
-    }
-
-    if <versions::Requirement as std::str::FromStr>::from_str(">=6.0.180")?
-        .matches(&simics_api_version)
-        && <versions::Requirement as std::str::FromStr>::from_str("<7.0.0")?
-            .matches(&simics_api_version)
-    {
-        // Enable the changed snapshot API (VT_save_snapshot has been renamed to
-        // VT_take_snapshot) as of 6.0.180
-        println!("cargo:rustc-cfg={CFG_SIMICS_EXPERIMENTAL_API_SNAPSHOTS_V2}");
-    }
-
-    if <versions::Requirement as std::str::FromStr>::from_str(">=7.0.0")?
-        .matches(&simics_api_version)
-    {
-        println!("cargo:rustc-cfg={CFG_SIMICS_DEPRECATED_API_SIM_REGISTER_COPYRIGHT}");
-        println!("cargo:rustc-cfg={CFG_SIMICS_DEPRECATED_API_REV_EXEC}");
-        println!("cargo:rustc-cfg={CFG_SIMICS_STABLE_API_SNAPSHOTS}");
-        println!("cargo:rustc-cfg={CFG_SIMICS_DEPRECATED_API_CPU_VARIANT_GUI_MODE}");
-    }
+    println!(
+        "cargo:rustc-cfg=simics_version_{}",
+        simics_api_version
+            .to_string()
+            .split('.')
+            .next()
+            .ok_or_else(|| anyhow!("No major version found"))?
+    );
 
     Ok(())
 }
 
-pub fn emit_link_info() -> anyhow::Result<()> {
+pub fn emit_link_info() -> Result<()> {
     #[cfg(unix)]
     const HOST_DIRNAME: &str = "linux64";
 
@@ -132,11 +77,6 @@ pub fn emit_link_info() -> anyhow::Result<()> {
         println!("cargo:warning=No SIMICS_BASE environment variable found, using ispm to find installed packages and using latest base version");
 
         let mut packages = ispm::packages::list(&GlobalOptions::default())?;
-
-        println!(
-            "cargo:warning=Found {:?} installed packages",
-            packages.installed_packages
-        );
 
         packages.sort();
 
@@ -151,7 +91,7 @@ pub fn emit_link_info() -> anyhow::Result<()> {
         println!("cargo:warning=Using Simics base version {}", base.version);
         base.paths
             .first()
-            .ok_or_else(|| anyhow::anyhow!("No paths found for package with package number 1000"))?
+            .ok_or_else(|| anyhow!("No paths found for package with package number 1000"))?
             .clone()
     };
 
@@ -194,7 +134,7 @@ pub fn emit_link_info() -> anyhow::Result<()> {
                 .map(|p| p.path())
                 .next()
                 .ok_or_else(|| {
-                    anyhow::anyhow!("No libpythonX.XX.so.X.X found in {}", sys_lib_dir.display())
+                    anyhow!("No libpythonX.XX.so.X.X found in {}", sys_lib_dir.display())
                 })?,
         );
 
@@ -202,48 +142,45 @@ pub fn emit_link_info() -> anyhow::Result<()> {
             "cargo:rustc-link-lib=dylib:+verbatim={}",
             libsimics_common
                 .file_name()
-                .ok_or_else(|| anyhow::anyhow!(
-                    "No file name found for {}",
-                    libsimics_common.display()
-                ))?
+                .ok_or_else(|| anyhow!("No file name found for {}", libsimics_common.display()))?
                 .to_str()
-                .ok_or_else(|| anyhow::anyhow!("Could not convert path to string"))?
+                .ok_or_else(|| anyhow!("Could not convert path to string"))?
         );
         println!(
             "cargo:rustc-link-lib=dylib:+verbatim={}",
             libvtutils
                 .file_name()
-                .ok_or_else(|| anyhow::anyhow!("No file name found for {}", libvtutils.display()))?
+                .ok_or_else(|| anyhow!("No file name found for {}", libvtutils.display()))?
                 .to_str()
-                .ok_or_else(|| anyhow::anyhow!("Could not convert path to string"))?
+                .ok_or_else(|| anyhow!("Could not convert path to string"))?
         );
         println!(
             "cargo:rustc-link-lib=dylib:+verbatim={}",
             libpython
                 .file_name()
-                .ok_or_else(|| anyhow::anyhow!("No file name found for {}", libpython.display()))?
+                .ok_or_else(|| anyhow!("No file name found for {}", libpython.display()))?
                 .to_str()
-                .ok_or_else(|| anyhow::anyhow!("Could not convert path to string"))?
+                .ok_or_else(|| anyhow!("Could not convert path to string"))?
         );
         println!(
             "cargo:rustc-link-search=native={}",
             bin_dir
                 .to_str()
-                .ok_or_else(|| anyhow::anyhow!("Could not convert path to string"))?
+                .ok_or_else(|| anyhow!("Could not convert path to string"))?
         );
         println!(
             "cargo:rustc-link-search=native={}",
             sys_lib_dir
                 .to_str()
-                .ok_or_else(|| anyhow::anyhow!("Could not convert path to string"))?
+                .ok_or_else(|| anyhow!("Could not convert path to string"))?
         );
         let ld_library_path = [
             bin_dir
                 .to_str()
-                .ok_or_else(|| anyhow::anyhow!("Could not convert path to string"))?,
+                .ok_or_else(|| anyhow!("Could not convert path to string"))?,
             sys_lib_dir
                 .to_str()
-                .ok_or_else(|| anyhow::anyhow!("Could not convert path to string"))?,
+                .ok_or_else(|| anyhow!("Could not convert path to string"))?,
         ]
         .join(":");
 
@@ -335,57 +272,52 @@ pub fn emit_link_info() -> anyhow::Result<()> {
                 })
                 .map(|p| p.path())
                 .next()
-                .ok_or_else(|| {
-                    anyhow::anyhow!("No pythonX.XX.dll found in {}", sys_lib_dir.display())
-                })?,
+                .ok_or_else(|| anyhow!("No pythonX.XX.dll found in {}", sys_lib_dir.display()))?,
         );
 
         println!(
             "cargo:rustc-link-lib=dylib:+verbatim={}",
             libsimics_common
                 .file_name()
-                .ok_or_else(|| anyhow::anyhow!(
-                    "No file name found for {}",
-                    libsimics_common.display()
-                ))?
+                .ok_or_else(|| anyhow!("No file name found for {}", libsimics_common.display()))?
                 .to_str()
-                .ok_or_else(|| anyhow::anyhow!("Could not convert path to string"))?
+                .ok_or_else(|| anyhow!("Could not convert path to string"))?
         );
         println!(
             "cargo:rustc-link-lib=dylib:+verbatim={}",
             libvtutils
                 .file_name()
-                .ok_or_else(|| anyhow::anyhow!("No file name found for {}", libvtutils.display()))?
+                .ok_or_else(|| anyhow!("No file name found for {}", libvtutils.display()))?
                 .to_str()
-                .ok_or_else(|| anyhow::anyhow!("Could not convert path to string"))?
+                .ok_or_else(|| anyhow!("Could not convert path to string"))?
         );
         println!(
             "cargo:rustc-link-lib=dylib:+verbatim={}",
             libpython
                 .file_name()
-                .ok_or_else(|| anyhow::anyhow!("No file name found for {}", libpython.display()))?
+                .ok_or_else(|| anyhow!("No file name found for {}", libpython.display()))?
                 .to_str()
-                .ok_or_else(|| anyhow::anyhow!("Could not convert path to string"))?
+                .ok_or_else(|| anyhow!("Could not convert path to string"))?
         );
         println!(
             "cargo:rustc-link-search=native={}",
             bin_dir
                 .to_str()
-                .ok_or_else(|| anyhow::anyhow!("Could not convert path to string"))?
+                .ok_or_else(|| anyhow!("Could not convert path to string"))?
         );
         println!(
             "cargo:rustc-link-search=native={}",
             sys_lib_dir
                 .to_str()
-                .ok_or_else(|| anyhow::anyhow!("Could not convert path to string"))?
+                .ok_or_else(|| anyhow!("Could not convert path to string"))?
         );
         let ld_library_path = vec![
             bin_dir
                 .to_str()
-                .ok_or_else(|| anyhow::anyhow!("Could not convert path to string"))?,
+                .ok_or_else(|| anyhow!("Could not convert path to string"))?,
             sys_lib_dir
                 .to_str()
-                .ok_or_else(|| anyhow::anyhow!("Could not convert path to string"))?,
+                .ok_or_else(|| anyhow!("Could not convert path to string"))?,
         ]
         .join(":");
     }

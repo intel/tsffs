@@ -10,11 +10,11 @@ on:
 env:
   CARGO_TERM_COLOR: always
   CFE_URL: "https://releases.llvm.org/5.0.2/cfe-5.0.2.src.tar.xz"
+  LLD_URL: "https://releases.llvm.org/5.0.2/lld-5.0.2.src.tar.xz"
   LLVM_SRC_URL: "https://releases.llvm.org/5.0.2/llvm-5.0.2.src.tar.xz"
   MAKE_SRC_URL: "https://ftp.gnu.org/gnu/make/make-4.4.1.tar.gz"
   RUSTUP_INIT_URL: "https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init"
   CMAKE_URL: "https://github.com/Kitware/CMake/releases/download/v3.28.0-rc5/cmake-3.28.0-rc5-linux-x86_64.tar.gz"
-  PATCHELF_URL: "https://github.com/NixOS/patchelf/releases/download/0.18.0/patchelf-0.18.0-x86_64.tar.gz"
   PUBLIC_SIMICS_PKGS_URL_WINDOWS: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/simics-6-packages-2024-05-win64.ispm"
   # NOTE: We use the old ISPM because there is something wrong with 1.8.3 with unattended installation
   # PUBLIC_SIMICS_ISPM_URL_WINDOWS: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/881ee76a-c24d-41c0-af13-5d89b2a857ff/intel-simics-package-manager-1.7.5-win64.exe"
@@ -23,11 +23,11 @@ env:
   PUBLIC_SIMICS_ISPM_URL: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/intel-simics-package-manager-1.8.3-linux64.tar.gz"
   PUBLIC_SIMICS_PACKAGE_VERSION_1000: "6.0.185"
   PUBLIC_SIMICS_ISPM_VERSION: "1.8.3"
+  BUILDER_LLD_VERSION: "5.0.2"
   BUILDER_CFE_VERSION: "5.0.2"
   BUILDER_LLVM_VERSION: "5.0.2"
   BUILDER_MAKE_VERSION: "4.4.1"
   BUILDER_CMAKE_VERSION: "3.28.0-rc5"
-  BUILDER_PATCHELF_VERSION: "0.18.0"
   MINGW_URL: "https://github.com/brechtsanders/winlibs_mingw/releases/download/13.2.0-16.0.6-11.0.0-ucrt-r1/winlibs-x86_64-posix-seh-gcc-13.2.0-llvm-16.0.6-mingw-w64ucrt-11.0.0-r1.7z"
   MINGW_VERSION: "13.2.0-16.0.6-11.0.0-ucrt-r1"
 
@@ -50,7 +50,7 @@ jobs:
         id: cache-simics-packages
         uses: actions/cache@v4
         with:
-          path: ~/simics
+          path: "${HOME}/simics"
           key: simics-linux-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}-${{ env.PUBLIC_SIMICS_ISPM_VERSION }}
 
       - name: Install SIMICS (External)
@@ -78,8 +78,7 @@ jobs:
         run: |
           mkdir bin && \
           cp "${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}/linux64/bin/craff" bin/craff && \
-          cp "${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}/linux64/bin/craff-fs" bin/craff-fs && \
-          rm -rf "${HOME}/simics/"
+          cp "${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}/linux64/bin/craff-fs" bin/craff-fs
 
       - name: Upload Test Artifacts
         uses: actions/upload-artifact@v4
@@ -483,7 +482,7 @@ jobs:
 
       - name: Test Project
         run: |
-          SIMICS_TEST_CLEANUP_EACH=1 SIMICS_TEST_LOCAL_PACKAGES_ONLY=1 cargo test --no-fail-fast -r || ( echo "❗ Tests failed" && exit 1 )
+          SIMICS_TEST_CLEANUP_EACH=1 SIMICS_TEST_LOCAL_PACKAGES_ONLY=1 cargo test --no-fail-fast -r _latest || ( echo "❗ Tests failed" && exit 1 )
           echo "✅ Tests passed"
 
       - name: Build Docs
@@ -593,7 +592,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .github/builder/rsrc
-          key: "cache-builder-dependencies-${{ env.PUBLIC_SIMICS_ISPM_VERSION }}-${{ env.BUILDER_CFE_VERSION }}-${{ env.BUILDER_LLVM_VERSION }}-${{ env.BUILDER_MAKE_VERSION }}-${{ env.BUILDER_CMAKE_VERSION }}"
+          key: "cache-builder-dependencies-${{ env.PUBLIC_SIMICS_ISPM_VERSION }}-${{ env.BUILDER_LLD_VERSION }}-${{ env.BUILDER_CFE_VERSION }}-${{ env.BUILDER_LLVM_VERSION }}-${{ env.BUILDER_MAKE_VERSION }}-${{ env.BUILDER_CMAKE_VERSION }}"
 
       - name: Download Builder Dependencies
         if: ${{ steps.cache-builder-dependencies.outputs.cache-hit != 'true' }}
@@ -605,6 +604,8 @@ jobs:
               "${{ env.PUBLIC_SIMICS_PKGS_URL }}"
           curl -L -o .github/builder/rsrc/cfe-5.0.2.src.tar.xz \
               "${{ env.CFE_URL }}"
+          curl -L -o .github/builder/rsrc/lld-5.0.2.src.tar.xz \
+              "${{ env.LLD_URL }}"
           curl -L -o .github/builder/rsrc/llvm-5.0.2.src.tar.xz \
               "${{ env.LLVM_SRC_URL }}"
           curl -L -o .github/builder/rsrc/make-4.4.1.tar.gz \
@@ -614,8 +615,8 @@ jobs:
           chmod +x .github/builder/rsrc/rustup-init
           curl -L -o .github/builder/rsrc/cmake-3.28.0-rc5-linux-x86_64.tar.gz \
               "${{ env.CMAKE_URL }}"
-          curl -L -o .github/builder/rsrc/patchelf-0.18.0-x86_64.tar.gz \
-              "${{ env.PATCHELF_URL}}"
+          docker run -v "$(pwd)/.github/builder/rsrc/rpms:/rpms" fedora:20 bash -c \
+              'yum -y update && yum install --downloadonly --downloaddir=/rpms coreutils gcc gcc-c++ make which && chmod -R 755 /rpms/'
 
       - name: Build Distribution Package
         run: |
