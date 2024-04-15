@@ -84,13 +84,42 @@ Note the screen width and height. We will not capture the entire screen, only th
 top left -- enough to conclude the system is booted but not enough to capture any time
 data.
 
+To determine the size of screenshot we need, we'll save the screen to a PNG with:
+
 ```simics
-board.console.con.save-break-xy breakpoint-boot 0 0 60 60
+board.console.con.screenshot filename = screenshot.png
+```
+
+Then, we can crop it on the command line with ImageMagick (`dnf -y install ImageMagick`)
+and examine the result:
+
+```sh
+convert screenshot.png -crop 80x80+0+0 cropped.png
+```
+
+Then, check the screenshot in your favorite viewer (a web browser works conveniently for
+this), e.g.:
+
+```sh
+firefox cropped.png
+```
+
+In this case, we want to see the desktop and the CMD window that tells us the Simics
+agent is running. Importantly, we do *not* want to see the time printed by either the
+Simics agent at startup, or the time on the taskbar (or anything else that could change
+from run to run).
+
+![](images/2024-04-12-12-49-03.png)
+
+With our graphical breakpoint size decided, we can save our boot breakpoint:
+
+```simics
+board.console.con.save-break-xy breakpoint-boot 0 0 80 80
 ```
 
 This will save a graphical capture of the graphical console containing the top left of
-the displayed screen (enough to capture the booted desktop, and exclude the time in the
-taskbar).
+the displayed screen (enough to capture the booted desktop and CMD prompt window, and
+exclude the time in the taskbar and CMD prompt).
 
 We will then resume the simulation by running (in the Simics CLI):
 

@@ -23,6 +23,8 @@ $cpu_comp_class = "x86QSP2"
 $disk0_image = "%simics%/windows-11.craff"
 $use_vmp = FALSE
 $create_usb_tablet = TRUE
+$num_cores = 1
+$num_threads = 2
 
 run-command-file "%simics%/targets/qsp-x86/qsp-hdd-boot.simics"
 ```
