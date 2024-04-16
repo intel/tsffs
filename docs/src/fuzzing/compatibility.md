@@ -32,7 +32,7 @@ Supported Architectures:
 If your model's target architecture is one of these, it is supported by TSFFS. If not,
 file an issue or pull request. Adding new architectures is easy, and can be a good
 first contribution to the fuzzer. See the generic and specific architecture information
-[here](../../../modules/tsffs/src/tsffs/src/arch).
+[here](https://github.com/intel/tsffs/tree/main/src/arch).
 
 ## Micro Checkpoints
 
@@ -51,8 +51,10 @@ model with a simple test.
 ### Testing Micro Checkpoints
 
 As an example, let's consider the x86 QSP platform model that ships with SIMICS and the
-Hello World EFI [example](../../../examples/tests/x86_64-uefi/). The process for fuzzing
-this target software follows the basic flow:
+Hello World EFI [resource
+example](https://github.com/intel/tsffs/tree/main/tests/rsrc/x86_64-uefi) which you can
+build by running `./build.sh` in the resource directory. The process for fuzzing this
+target software follows the basic flow:
 
 1. Boot the x86 QSP BIOS with the QSP x86 hdd boot script, with a minimal boot disk
 2. Upload the test.efi EFI app using the SIMICS agent (for most real targets, we
@@ -210,7 +212,7 @@ running>
 You'll see several automatic actions on the SIMICS GUI, and you will end up with the
 console screen below.
 
-![The EFI console, with the prompt FS0: \\>](../../images/REQUIREMENTS_Test_Micro_Checkpoints_Pre.png)
+![The EFI console, with the prompt FS0: \\>](../images/REQUIREMENTS_Test_Micro_Checkpoints_Pre.png)
 
 First, we'll run our EFI app to make sure all is well.
 
@@ -220,7 +222,7 @@ running> $system.console.con.input "test.efi\n"
 
 You should see "Working..." print out on the console.
 
-![The EFI console, after test run](../../images/REQUIREMENTS_Test_Micro_Checkpoints_TestRun.png)
+![The EFI console, after test run](../images/REQUIREMENTS_Test_Micro_Checkpoints_TestRun.png)
 
 Now, we'll go ahead stop the simulation and take our micro checkpoint.
 
@@ -242,7 +244,7 @@ running> stop
 We stopped our execution after the app executed, so you should see the output from the
 second time we ran it ("Working...") printed on the GUI console.
 
-![The EFI console, after running again](../../images/REQUIREMENTS_Test_Micro_Checkpoints_Post.png)
+![The EFI console, after running again](../images/REQUIREMENTS_Test_Micro_Checkpoints_Post.png)
 
 Now, we will restore our micro checkpoint and clear the recorder. The second step is
 important, because if we did not clear the recorder we would *replay* the execution of
@@ -259,7 +261,7 @@ simics> continue
 The console should be back to the state it was before you ran the second app execution,
 and will look like this:
 
-![The EFI console, after test run](../../images/REQUIREMENTS_Test_Micro_Checkpoints_TestRun.png)
+![The EFI console, after test run](../images/REQUIREMENTS_Test_Micro_Checkpoints_TestRun.png)
 
 #### Testing for Your App
 
@@ -279,12 +281,12 @@ somewhat depending on your project. In general, try to follow this flow:
 
 ## Snapshots
 
-Newer versions of SIMICS (>= 6.0.175) support a new feature called snapshots, which are
+Newer versions of SIMICS (>= 7.0.0) support a new feature called snapshots, which are
 similar to micro checkpoints but do not rely on underlying rev-exec support. If your
 model supports a new version of SIMICS, follow the same instructions as for micro
 checkpoints, but replace:
 
-* `VT_save_micro_checkpoint("origin", 0)` with `VT_take_snapshot("origin")`
+* `VT_save_micro_checkpoint("origin", 0)` with `VT_save_snapshot("origin")`
 * `VT_restore_micro_checkpoint(0)` with `VT_restore_snapshot("origin")`
 
 And do not call `CORE_discard_future`.

@@ -7,3 +7,7 @@ language = "en"
 multilingual = false
 src = "src"
 title = "TSFFS: Target Software Fuzzer for SIMICS"
+
+[output.html]
+
+[output.linkcheck]

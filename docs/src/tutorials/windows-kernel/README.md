@@ -5,3 +5,5 @@ Windows Kernel Mode Driver (KMD) running on the simulated x86_64 platform on Win
 
 - [Building a Windows Image](building-windows-image/README.md)
 - [Create a Simics Project](create-a-project.md)
+- [Run and Set Up the Simulation](run-the-simulation.md)
+- [Run the Fuzzer](run-the-fuzzer.md)
