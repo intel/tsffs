@@ -53,17 +53,8 @@ script-branch {
     $matic.wait-for-job
     $matic.agent-poll-interval ms = 60000
     stop
-    load-module tsffs
-    init-tsffs
-    @tsffs.log_level = 4
-    @tsffs.start_on_harness = True
-    @tsffs.stop_on_harness = True
-    @tsffs.timeout = 3.0
-    @tsffs.exceptions = [13]
-    @tsffs.generate_random_corpus = True
-    @tsffs.iteration_limit = 1000
-
     $matic.upload-dir -overwrite "%simics%/fuzzer/"
+    # Without fuzzing, this should blue screen the machine
     $matic.run "C:\\fuzzer\\fuzzer.exe"
     continue
     $matic.wait-for-job
