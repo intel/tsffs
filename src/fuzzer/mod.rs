@@ -4,7 +4,10 @@
 //! Fuzzing engine implementation, configure and run LibAFL on a separate thread
 
 use crate::{
-    fuzzer::{feedbacks::ReportingMapFeedback, messages::FuzzerMessage},
+    fuzzer::{
+        executors::inprocess::InProcessExecutor, feedbacks::ReportingMapFeedback,
+        messages::FuzzerMessage,
+    },
     Tsffs,
 };
 use anyhow::{anyhow, Result};
@@ -14,9 +17,9 @@ use libafl::{
     prelude::{
         havoc_mutations, ondisk::OnDiskMetadataFormat, tokens_mutations, AFLppRedQueen, BytesInput,
         CachedOnDiskCorpus, Corpus, CrashFeedback, ExitKind, HasCurrentCorpusIdx, HasTargetBytes,
-        HitcountsMapObserver, I2SRandReplace, InProcessExecutor, MaxMapFeedback, OnDiskCorpus,
-        RandBytesGenerator, SimpleEventManager, SimpleMonitor, StdCmpValuesObserver,
-        StdMOptMutator, StdMapObserver, StdScheduledMutator, TimeFeedback, TimeObserver, Tokens,
+        HitcountsMapObserver, I2SRandReplace, MaxMapFeedback, OnDiskCorpus, RandBytesGenerator,
+        SimpleEventManager, SimpleMonitor, StdCmpValuesObserver, StdMOptMutator, StdMapObserver,
+        StdScheduledMutator, TimeFeedback, TimeObserver, Tokens,
     },
     schedulers::{
         powersched::PowerSchedule, IndexesLenTimeMinimizerScheduler, StdWeightedScheduler,
@@ -40,7 +43,7 @@ use libafl_targets::{AFLppCmpLogObserver, AFLppCmplogTracingStage};
 use simics::{api::AsConfObject, debug, trace, warn};
 use std::{
     cell::RefCell, fmt::Debug, fs::write, io::stderr, slice::from_raw_parts_mut,
-    sync::mpsc::channel, thread::spawn, time::Duration,
+    sync::mpsc::channel, thread::spawn,
 };
 use tokenize::{tokenize_executable_file, tokenize_src_file};
 use tracing::{level_filters::LevelFilter, Level};
@@ -48,6 +51,7 @@ use tracing_subscriber::{
     filter::filter_fn, fmt, layer::SubscriberExt, registry, util::SubscriberInitExt, Layer,
 };
 
+pub mod executors;
 pub mod feedbacks;
 pub mod messages;
 pub mod tokenize;
@@ -179,7 +183,6 @@ impl Tsffs {
         let input_tokens = self.tokens.clone();
         let generate_random_corpus = self.generate_random_corpus;
         let initial_random_corpus_size = self.initial_random_corpus_size;
-        let executor_timeout = self.executor_timeout;
         let debug_log_libafl = self.debug_log_libafl;
         let initial_contents = self
             .use_initial_as_corpus
@@ -350,39 +353,33 @@ impl Tsffs {
 
                 let mut manager = SimpleEventManager::new(monitor);
 
-                let mut executor = InProcessExecutor::with_timeout(
+                let mut executor = InProcessExecutor::new(
                     &mut harness,
                     tuple_list!(edges_observer, time_observer),
                     &mut fuzzer,
-                    &mut state,
                     &mut manager,
-                    Duration::from_secs(executor_timeout),
                 )
                 .map_err(|e| {
                     eprintln!("Couldn't initialize fuzzer executor: {e}");
                     anyhow!("Couldn't initialize fuzzer executor: {e}")
                 })?;
 
-                let aflpp_cmp_executor = InProcessExecutor::with_timeout(
+                let aflpp_cmp_executor = InProcessExecutor::new(
                     &mut aflpp_cmp_harness,
                     tuple_list!(aflpp_cmp_observer),
                     &mut fuzzer,
-                    &mut state,
                     &mut manager,
-                    Duration::from_secs(executor_timeout),
                 )
                 .map_err(|e| {
                     eprintln!("Couldn't initialize fuzzer AFL++ cmplog executor: {e}");
                     anyhow!("Couldn't initialize fuzzer AFL++ cmplog executor: {e}")
                 })?;
 
-                let tracing_executor = InProcessExecutor::with_timeout(
+                let tracing_executor = InProcessExecutor::new(
                     &mut tracing_harness,
                     tuple_list!(cmplog_observer),
                     &mut fuzzer,
-                    &mut state,
                     &mut manager,
-                    Duration::from_secs(executor_timeout),
                 )
                 .map_err(|e| {
                     eprintln!("Couldn't initialize fuzzer AFL++ cmplog executor: {e}");
