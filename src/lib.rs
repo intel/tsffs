@@ -30,7 +30,7 @@
 
 use crate::interfaces::{config::config, fuzz::fuzz};
 use crate::state::SolutionKind;
-#[cfg(not(simics_deprecated_api_rev_exec))]
+#[cfg(simics_version_6)]
 use crate::util::Utils;
 use anyhow::{anyhow, Result};
 use arch::{Architecture, ArchitectureHint, ArchitectureOperations};
@@ -43,34 +43,24 @@ use magic::MagicNumber;
 use num_traits::FromPrimitive as _;
 use serde::{Deserialize, Serialize};
 use simics::{
-    break_simulation, class, error, free_attribute, get_class, get_interface, get_processor_number,
-    info, lookup_file, object_clock, run_command, run_python, simics_init, trace, AsConfObject,
-    BreakpointId, ClassCreate, ClassObjectsFinalize, ConfObject, CoreBreakpointMemopHap,
-    CoreExceptionHap, CoreMagicInstructionHap, CoreSimulationStoppedHap,
+    break_simulation, class, debug, error, free_attribute, get_class, get_interface,
+    get_processor_number, info, lookup_file, object_clock, run_command, run_python, simics_init,
+    trace, AsConfObject, BreakpointId, ClassCreate, ClassObjectsFinalize, ConfObject,
+    CoreBreakpointMemopHap, CoreExceptionHap, CoreMagicInstructionHap, CoreSimulationStoppedHap,
     CpuInstrumentationSubscribeInterface, Event, EventClassFlag, FromConfObject, HapHandle,
     Interface, IntoAttrValueDict,
 };
-#[cfg(any(
-    simics_experimental_api_snapshots,
-    simics_experimental_api_snapshots_v2,
-    simics_stable_api_snapshots
-))]
-// NOTE: save_snapshot used because it is a stable alias for both save_snapshot and take_snapshot
-// which is necessary because this module is compatible with base versions which cross the
-// deprecation boundary
-use simics::{
-    debug, restore_snapshot, save_snapshot, sys::save_flags_t, write_configuration_to_file,
-};
-#[cfg(not(simics_deprecated_api_rev_exec))]
+#[cfg(simics_version_6)]
 use simics::{
     discard_future, restore_micro_checkpoint, save_micro_checkpoint, MicroCheckpointFlags,
 };
+#[cfg(simics_version_7)]
+// NOTE: save_snapshot used because it is a stable alias for both save_snapshot and take_snapshot
+// which is necessary because this module is compatible with base versions which cross the
+// deprecation boundary
+use simics::{restore_snapshot, save_snapshot, sys::save_flags_t, write_configuration_to_file};
 use state::StopReason;
-#[cfg(any(
-    simics_experimental_api_snapshots,
-    simics_experimental_api_snapshots_v2,
-    simics_stable_api_snapshots
-))]
+#[cfg(simics_version_7)]
 use std::fs::remove_dir_all;
 use std::{
     alloc::{alloc_zeroed, Layout},
@@ -252,11 +242,6 @@ pub(crate) struct Tsffs {
     /// time timeout is exceeded for a single iteration, the iteration is stopped and the testcase
     /// is saved as a solution.
     pub timeout: f64,
-    #[class(attribute(optional, default = 60))]
-    /// The timeout in seconds of virtual time for each iteration of the fuzzer. If the virtual
-    /// time timeout is exceeded for a single iteration, the iteration is stopped and the testcase
-    /// is saved as a solution.
-    pub executor_timeout: u64,
     #[class(attribute(optional, default = true))]
     /// Whether the fuzzer should start on compiled-in harnesses. If set to `True`, the fuzzer
     /// will start fuzzing when a harness macro is executed.
@@ -265,16 +250,6 @@ pub(crate) struct Tsffs {
     /// Whether the fuzzer should stop on compiled-in harnesses. If set to `True`, the fuzzer
     /// will start fuzzing when a harness macro is executed.
     pub stop_on_harness: bool,
-    #[class(attribute(optional, default = true))]
-    /// Whether snapshots should be used. Snapshots are introduced as of Simics 6.0.173 and
-    /// replace rev-exec micro checkpoints as the only method of taking full simulation
-    /// snapshots as of Simics 7.0.0. If set to `True`, the fuzzer will use snapshots to
-    /// restore the state of the simulation to a known state before each iteration. If set to
-    /// `False` the fuzzer will use rev-exec micro checkpoints to restore the state of the
-    /// simulation to a known state before each iteration. If snapshots are not supported by
-    /// the version of SIMICS being used, the fuzzer will quit with an error message when this
-    /// option is set.
-    pub use_snapshots: bool,
     #[class(attribute(optional, default = 0))]
     /// The index number which is passed to the platform-specific magic instruction HAP
     /// by a compiled-in harness to signal that the fuzzer should start the fuzzing loop.
@@ -392,6 +367,12 @@ pub(crate) struct Tsffs {
     #[class(attribute(optional, default = false))]
     /// Whether to enable extra debug logging for LibAFL
     pub debug_log_libafl: bool,
+    #[class(attribute(optional, default = true))]
+    /// Whether to send shut down on stops without reason. This means fuzzing cannot be resumed.
+    pub shutdown_on_stop_without_reason: bool,
+    #[class(attribute(optional, default = true))]
+    /// Whether to quit on iteration limit
+    pub quit_on_iteration_limit: bool,
 
     #[attr_value(skip)]
     /// Handle for the core simulation stopped hap
@@ -670,67 +651,58 @@ impl Tsffs {
     /// Save the initial snapshot using the configured method (either rev-exec micro checkpoints
     /// or snapshots)
     pub fn save_initial_snapshot(&mut self) -> Result<()> {
-        if self.use_snapshots && self.snapshot_name.get().is_none() {
-            #[cfg(any(
-                simics_experimental_api_snapshots,
-                simics_experimental_api_snapshots_v2,
-                simics_stable_api_snapshots
-            ))]
-            {
-                if self.checkpoint_path.exists() {
-                    remove_dir_all(&self.checkpoint_path)?;
-                }
+        if self.have_initial_snapshot() {
+            return Ok(());
+        }
 
-                debug!(
-                    self.as_conf_object(),
-                    "Saving checkpoint to {}",
-                    self.checkpoint_path.display()
-                );
-
-                if self.pre_snapshot_checkpoint {
-                    write_configuration_to_file(&self.checkpoint_path, save_flags_t(0))?;
-                }
-
-                save_snapshot(Self::SNAPSHOT_NAME)?;
-                self.snapshot_name
-                    .set(Self::SNAPSHOT_NAME.to_string())
-                    .map_err(|_| anyhow!("Snapshot name already set"))?;
-            }
-            #[cfg(not(any(
-                simics_experimental_api_snapshots,
-                simics_experimental_api_snapshots_v2,
-                simics_stable_api_snapshots
-            )))]
-            panic!("Snapshots cannot be used without SIMICS support from recent SIMICS versions.");
-        } else if !self.use_snapshots
-            && self.snapshot_name.get().is_none()
-            && self.micro_checkpoint_index.get().is_none()
+        #[cfg(simics_version_7)]
         {
-            #[cfg(not(simics_deprecated_api_rev_exec))]
-            {
-                save_micro_checkpoint(
-                    Self::SNAPSHOT_NAME,
-                    MicroCheckpointFlags::Sim_MC_ID_User | MicroCheckpointFlags::Sim_MC_Persistent,
-                )?;
-
-                self.snapshot_name
-                    .set(Self::SNAPSHOT_NAME.to_string())
-                    .map_err(|_| anyhow!("Snapshot name already set"))?;
-
-                self.micro_checkpoint_index
-                    .set(
-                        Utils::get_micro_checkpoints()?
-                            .iter()
-                            .enumerate()
-                            .find_map(|(i, c)| (c.name == Self::SNAPSHOT_NAME).then_some(i as i32))
-                            .ok_or_else(|| {
-                                anyhow!("No micro checkpoint with just-registered name found")
-                            })?,
-                    )
-                    .map_err(|_| anyhow!("Micro checkpoint index already set"))?;
+            if self.checkpoint_path.exists() {
+                remove_dir_all(&self.checkpoint_path)?;
             }
-            #[cfg(simics_deprecated_api_rev_exec)]
-            panic!("Micro checkpoints are deprecated in SIMICS >=7.0.0 and cannot be used. Set `use_snapshots` to `true` to use snapshots instead.");
+
+            debug!(
+                self.as_conf_object(),
+                "Saving checkpoint to {}",
+                self.checkpoint_path.display()
+            );
+
+            if self.pre_snapshot_checkpoint {
+                write_configuration_to_file(&self.checkpoint_path, save_flags_t(0))?;
+            }
+
+            debug!(self.as_conf_object(), "Saving initial snapshot");
+
+            save_snapshot(Self::SNAPSHOT_NAME)?;
+            self.snapshot_name
+                .set(Self::SNAPSHOT_NAME.to_string())
+                .map_err(|_| anyhow!("Snapshot name already set"))?;
+        }
+
+        #[cfg(simics_version_6)]
+        {
+            debug!(self.as_conf_object(), "Saving initial micro checkpoint");
+
+            save_micro_checkpoint(
+                Self::SNAPSHOT_NAME,
+                MicroCheckpointFlags::Sim_MC_ID_User | MicroCheckpointFlags::Sim_MC_Persistent,
+            )?;
+
+            self.snapshot_name
+                .set(Self::SNAPSHOT_NAME.to_string())
+                .map_err(|_| anyhow!("Snapshot name already set"))?;
+
+            self.micro_checkpoint_index
+                .set(
+                    Utils::get_micro_checkpoints()?
+                        .iter()
+                        .enumerate()
+                        .find_map(|(i, c)| (c.name == Self::SNAPSHOT_NAME).then_some(i as i32))
+                        .ok_or_else(|| {
+                            anyhow!("No micro checkpoint with just-registered name found")
+                        })?,
+                )
+                .map_err(|_| anyhow!("Micro checkpoint index already set"))?;
         }
 
         Ok(())
@@ -739,30 +711,15 @@ impl Tsffs {
     /// Restore the initial snapshot using the configured method (either rev-exec micro checkpoints
     /// or snapshots)
     pub fn restore_initial_snapshot(&mut self) -> Result<()> {
-        if self.use_snapshots {
-            #[cfg(any(
-                simics_experimental_api_snapshots,
-                simics_experimental_api_snapshots_v2,
-                simics_stable_api_snapshots
-            ))]
-            restore_snapshot(Self::SNAPSHOT_NAME)?;
-            #[cfg(not(any(
-                simics_experimental_api_snapshots,
-                simics_experimental_api_snapshots_v2,
-                simics_stable_api_snapshots
-            )))]
-            panic!("Snapshots cannot be used without SIMICS support from recent SIMICS versions.");
-        } else {
-            #[cfg(not(simics_deprecated_api_rev_exec))]
-            {
-                restore_micro_checkpoint(*self.micro_checkpoint_index.get().ok_or_else(|| {
-                    anyhow!("Not using snapshots and no micro checkpoint index present")
-                })?)?;
-                discard_future()?;
-            }
+        #[cfg(simics_version_7)]
+        restore_snapshot(Self::SNAPSHOT_NAME)?;
+        #[cfg(simics_version_6)]
+        {
+            restore_micro_checkpoint(*self.micro_checkpoint_index.get().ok_or_else(|| {
+                anyhow!("Not using snapshots and no micro checkpoint index present")
+            })?)?;
 
-            #[cfg(simics_deprecated_api_rev_exec)]
-            panic!("Micro checkpoints are deprecated in SIMICS >=7.0.0 and cannot be used. Set `use_snapshots` to `true` to use snapshots instead.");
+            discard_future()?;
         }
 
         Ok(())
@@ -770,10 +727,15 @@ impl Tsffs {
 
     /// Whether an initial snapshot has been saved
     pub fn have_initial_snapshot(&self) -> bool {
-        (self.snapshot_name.get().is_some() && self.use_snapshots)
-            || (self.snapshot_name.get().is_some()
-                && self.micro_checkpoint_index.get().is_some()
-                && !self.use_snapshots)
+        let have = if cfg!(simics_version_7) {
+            self.snapshot_name.get().is_some()
+        } else if cfg!(simics_version_6) {
+            self.snapshot_name.get().is_some() && self.micro_checkpoint_index.get().is_some()
+        } else {
+            error!(self.as_conf_object(), "Unsupported SIMICS version");
+            false
+        };
+        have
     }
 
     /// Save a repro bookmark if one is needed

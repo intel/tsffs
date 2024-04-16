@@ -5,11 +5,6 @@
 
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
-#[cfg(not(simics_deprecated_api_sim_log))]
-use crate::sys::{
-    SIM_log_critical, SIM_log_error, SIM_log_info, SIM_log_spec_violation, SIM_log_unimplemented,
-};
-#[cfg(simics_deprecated_api_sim_log)]
 use crate::sys::{
     VT_log_critical, VT_log_error, VT_log_info, VT_log_spec_violation, VT_log_unimplemented,
 };
@@ -46,38 +41,6 @@ where
     s.as_ref().replace('%', "%%")
 }
 
-#[cfg(not(simics_deprecated_api_sim_log))]
-#[simics_exception]
-/// Log an info-level message through the SIMICS logging functions
-///
-/// # Arguments
-///
-/// * `level` - The level to emit this log message at
-/// * `device` - The device to emit this log message through
-/// * `msg` - The message to log
-///
-/// # Notes
-///
-/// The macros [`simics::error`], [`simics::warn`], [`simics::info`], [`simics::debug`],
-/// and [`simics::trace`] are more flexible and user friendly. They should be used instead.
-///
-/// # Context
-///
-/// All Contexts
-pub fn log_info<S>(level: LogLevel, device: *mut ConfObject, msg: S) -> Result<()>
-where
-    S: AsRef<str>,
-{
-    let msg_cstring = CString::new(msg.as_ref())?;
-
-    unsafe {
-        SIM_log_info(level as i32, device, LOG_GROUP, msg_cstring.as_ptr());
-    };
-
-    Ok(())
-}
-
-#[cfg(simics_deprecated_api_sim_log)]
 #[simics_exception]
 /// Log an info-level message through the SIMICS logging functions
 ///
@@ -108,37 +71,6 @@ where
     Ok(())
 }
 
-#[cfg(not(simics_deprecated_api_sim_log))]
-#[simics_exception]
-/// Log an info-level message through the SIMICS logging functions
-///
-/// # Arguments
-///
-/// * `device` - The device to emit this log message through
-/// * `msg` - The message to log
-///
-/// # Notes
-///
-/// The macros [`simics::error`], [`simics::warn`], [`simics::info`], [`simics::debug`],
-/// and [`simics::trace`] are more flexible and user friendly. They should be used instead.
-///
-/// # Context
-///
-/// All Contexts
-pub fn log_error<S>(device: *mut ConfObject, msg: S) -> Result<()>
-where
-    S: AsRef<str>,
-{
-    let msg_cstring = CString::new(sanitize(msg.as_ref()))?;
-
-    unsafe {
-        SIM_log_error(device, LOG_GROUP, msg_cstring.as_ptr());
-    };
-
-    Ok(())
-}
-
-#[cfg(simics_deprecated_api_sim_log)]
 #[simics_exception]
 /// Log an info-level message through the SIMICS logging functions
 ///
@@ -168,41 +100,6 @@ where
     Ok(())
 }
 
-#[cfg(not(simics_deprecated_api_sim_log))]
-#[simics_exception]
-/// Log an info-level message through the SIMICS logging functions
-///
-/// # Arguments
-///
-/// * `device` - The device to emit this log message through
-/// * `msg` - The message to log
-///
-/// # Notes
-///
-/// This function causes a frontend exception. Only use it if the error is truly critical.
-///
-/// # Context
-///
-/// All Contexts
-pub fn log_critical<S>(device: *mut ConfObject, msg: S) -> Result<()>
-where
-    S: AsRef<str>,
-{
-    let msg_cstring = CString::new(sanitize(msg.as_ref()))?;
-
-    unsafe {
-        SIM_log_critical(device, LOG_GROUP, msg_cstring.as_ptr());
-    };
-
-    #[cfg(simics_deprecated_api_sim_log)]
-    unsafe {
-        VT_log_critical(device, LOG_GROUP as u64, msg_cstring.as_ptr());
-    };
-
-    Ok(())
-}
-
-#[cfg(simics_deprecated_api_sim_log)]
 #[simics_exception]
 /// Log an info-level message through the SIMICS logging functions
 ///
@@ -231,29 +128,6 @@ where
     Ok(())
 }
 
-#[cfg(not(simics_deprecated_api_sim_log))]
-#[simics_exception]
-/// Log an error-level message through the SIMICS logging functions
-///
-/// # Context
-///
-/// All Contexts
-pub fn log_spec_violation(level: LogLevel, device: *mut ConfObject, msg: String) -> Result<()> {
-    let msg_cstring = CString::new(sanitize(msg))?;
-
-    unsafe {
-        SIM_log_spec_violation(level as i32, device, LOG_GROUP, msg_cstring.as_ptr());
-    };
-
-    #[cfg(simics_deprecated_api_sim_log)]
-    unsafe {
-        VT_log_spec_violation(level as i32, device, LOG_GROUP as u64, msg_cstring.as_ptr());
-    };
-
-    Ok(())
-}
-
-#[cfg(simics_deprecated_api_sim_log)]
 #[simics_exception]
 /// Log an error-level message through the SIMICS logging functions
 ///
@@ -270,24 +144,6 @@ pub fn log_spec_violation(level: LogLevel, device: *mut ConfObject, msg: String)
     Ok(())
 }
 
-#[cfg(not(simics_deprecated_api_sim_log))]
-#[simics_exception]
-/// Log an error-level message through the SIMICS logging functions
-///
-/// # Context
-///
-/// All Contexts
-pub fn log_unimplemented(level: LogLevel, device: *mut ConfObject, msg: String) -> Result<()> {
-    let msg_cstring = CString::new(sanitize(msg))?;
-
-    unsafe {
-        SIM_log_unimplemented(level as i32, device, LOG_GROUP, msg_cstring.as_ptr());
-    };
-
-    Ok(())
-}
-
-#[cfg(simics_deprecated_api_sim_log)]
 #[simics_exception]
 /// Log an error-level message through the SIMICS logging functions
 ///

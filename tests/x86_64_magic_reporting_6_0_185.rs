@@ -9,22 +9,22 @@ use std::path::PathBuf;
 
 #[test]
 #[cfg_attr(miri, ignore)]
-fn test_x86_64_magic_speedtest() -> Result<()> {
+fn test_x86_64_magic_reporting_6_0_185() -> Result<()> {
     let output = TestEnvSpec::builder()
-        .name("test_x86_64_magic_speedtest")
+        .name("test_x86_64_magic_reporting_6_0_185")
         .package_crates([PathBuf::from(env!("CARGO_MANIFEST_DIR"))])
         .packages([
             ProjectPackage::builder()
                 .package_number(1000)
-                .version("latest")
+                .version("6.0.185")
                 .build(),
             ProjectPackage::builder()
                 .package_number(2096)
-                .version("latest")
+                .version("6.0.73")
                 .build(),
             ProjectPackage::builder()
                 .package_number(8112)
-                .version("latest")
+                .version("6.0.21")
                 .build(),
         ])
         .cargo_target_tmpdir(env!("CARGO_TARGET_TMPDIR"))
@@ -44,8 +44,9 @@ fn test_x86_64_magic_speedtest() -> Result<()> {
             @tsffs.timeout = 3.0
             @tsffs.exceptions = [14]
             @tsffs.generate_random_corpus = True
-            @tsffs.iteration_limit = 1000
-            @tsffs.use_snapshots = True
+            @tsffs.iteration_limit = 100
+            @tsffs.coverage_reporting = True
+            @tsffs.corpus_directory = "%simics%/corpus2"
 
             load-target "qsp-x86/uefi-shell" namespace = qsp machine:hardware:storage:disk0:image = "minimal_boot_disk.craff"
 
@@ -56,9 +57,9 @@ fn test_x86_64_magic_speedtest() -> Result<()> {
                 qsp.serconsole.con.input "FS0:\n"
                 bp.time.wait-for seconds = .5
                 local $manager = (start-agent-manager)
-                qsp.serconsole.con.input ("SimicsAgent.efi --download " + (lookup-file "%simics%/test-fast.efi") + "\n")
+                qsp.serconsole.con.input ("SimicsAgent.efi --download " + (lookup-file "%simics%/test-cov.efi") + "\n")
                 bp.time.wait-for seconds = .5
-                qsp.serconsole.con.input "test-fast.efi\n"
+                qsp.serconsole.con.input "test-cov.efi\n"
             }
 
             script-branch {
