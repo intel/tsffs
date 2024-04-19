@@ -76,7 +76,10 @@ impl ToTokens for IntoAttrValueListOpts {
                 .iter()
                 .filter(|f| !f.skip.is_present())
                 .map(|f| {
-                    let ident = f.ident.as_ref().unwrap();
+                    let ident = f
+                        .ident
+                        .as_ref()
+                        .expect("No identifier for field. This should be impossible");
                     quote!(#ident.into())
                 })
                 .collect::<Vec<_>>();
@@ -109,7 +112,10 @@ impl ToTokens for IntoAttrValueListOpts {
                 .iter()
                 .filter(|f| !f.skip.is_present())
                 .map(|f| {
-                    let ident = f.ident.as_ref().unwrap();
+                    let ident = f
+                        .ident
+                        .as_ref()
+                        .expect("No identifier for field. This should be impossible");
                     quote!(#ident.into())
                 })
                 .collect::<Vec<_>>();
@@ -206,7 +212,10 @@ impl ToTokens for IntoAttrValueDictOpts {
                 .iter()
                 .filter(|f| !f.skip.is_present())
                 .map(|f| {
-                    let ident = f.ident.as_ref().unwrap();
+                    let ident = f
+                        .ident
+                        .as_ref()
+                        .expect("No identifier for field. This should be impossible");
                     quote!(#ident.into())
                 })
                 .collect::<Vec<_>>();
@@ -236,7 +245,10 @@ impl ToTokens for IntoAttrValueDictOpts {
                 .iter()
                 .filter(|f| !f.skip.is_present())
                 .map(|f| {
-                    let ident = f.ident.as_ref().unwrap();
+                    let ident = f
+                        .ident
+                        .as_ref()
+                        .expect("No identifier for field. This should be impossible.");
                     quote!(#ident.into())
                 })
                 .collect::<Vec<_>>();

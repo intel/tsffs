@@ -518,11 +518,21 @@ mod test {
     use super::Sign;
     use std::{env::var, path::PathBuf};
 
+    #[cfg(debug_assertions)]
+    const TARGET_DIR: &str = "debug";
+
+    #[cfg(not(debug_assertions))]
+    const TARGET_DIR: &str = "release";
+
     #[test]
     #[cfg(windows)]
     fn test_windows() {
         let manifest_dir = PathBuf::from(var("CARGO_MANIFEST_DIR").unwrap());
-        let hello_world_dll = manifest_dir.join("hello_world.dll");
+        let workspace_dir = manifest_dir.parent().unwrap();
+        let hello_world = workspace_dir
+            .join("target")
+            .join(TARGET_DIR)
+            .join("hello_world.dll");
         let _signed = Sign::sign(hello_world).unwrap().data().unwrap();
     }
 
@@ -530,7 +540,12 @@ mod test {
     #[cfg(unix)]
     fn test_linux() {
         let manifest_dir = PathBuf::from(var("CARGO_MANIFEST_DIR").unwrap());
-        let hello_world = manifest_dir.join("libhello_world.so");
+        let workspace_dir = manifest_dir.parent().unwrap();
+        let hello_world = workspace_dir
+            .join("target")
+            .join(TARGET_DIR)
+            .join("libhello_world.so");
+        println!("{:?}", hello_world);
         let _signed = Sign::new(hello_world).unwrap().data().unwrap();
     }
 }

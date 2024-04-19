@@ -83,12 +83,12 @@ jobs:
       - name: Generate SIMICS Documentation
         run: |
           ispm projects "$(pwd)" --create --ignore-existing-files --non-interactive
-          ./documentation -o docs/book/simics --dont-open --project "$(pwd)"
+          ./documentation -o docs/book/html/simics --dont-open --project "$(pwd)"
 
       - name: Generate Crate Documentation
         run: |
           SIMICS_BASE="${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}" RUSTDOCFLAGS="--enable-index-page -Zunstable-options" TSFFS_TESTS_SKIP_BUILD=1 cargo doc --document-private-items --workspace --no-deps
-          cp -a target/doc/ docs/book/crates/
+          cp -a target/doc/ docs/book/html/crates/
 
       - name: Set Documentation Permissions
         run: |
@@ -104,7 +104,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v2
         with:
-          path: "./docs/book/"
+          path: "./docs/book/html/"
 
       - name: Deploy to GitHub Pages
         id: deployment

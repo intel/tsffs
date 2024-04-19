@@ -9,7 +9,6 @@ is desired.
     - [Setting Exception Solutions](#setting-exception-solutions)
     - [Setting Breakpoint Solutions](#setting-breakpoint-solutions)
   - [Fuzzer Settings](#fuzzer-settings)
-    - [Using Snapshots](#using-snapshots)
     - [Using CMPLog](#using-cmplog)
     - [Set Corpus and Solutions Directory](#set-corpus-and-solutions-directory)
     - [Enable and Set the Checkpoint Path](#enable-and-set-the-checkpoint-path)
@@ -121,23 +120,6 @@ code. For example, userspace code should typically not execute code from its sta
 heap.
 
 ## Fuzzer Settings
-
-### Using Snapshots
-
-SIMICS 6.0.175 introduced an experimental snapshots feature that is not dependent on
-reverse execution micro-checkpoints. In some cases, this snapshot method is faster and
-in some cases resolves issues with model incompatibility with micro-checkpoints. This
-feature is not enabled by default.
-
-To use reverse-execution micro-checkpoints instead, use:
-
-```python
-@tsffs.use_snapshots = False
-```
-
-Micro-checkpoints cannot be used by when compiling the module against versions of SIMICS
-which do not support them, and a runtime panic will occur when attempting to take a
-snapshot if enabled on an older version of SIMICS.
 
 ### Using CMPLog
 

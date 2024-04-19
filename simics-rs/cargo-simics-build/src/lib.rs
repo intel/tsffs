@@ -131,8 +131,7 @@ impl App {
         {
             let line = output.stdout.lines().next().transpose()?;
             line.clone()
-                .map(|l| l.split('=').last().map(|s| s.trim().replace('"', "")))
-                .flatten()
+                .and_then(|l| l.split('=').last().map(|s| s.trim().replace('"', "")))
                 .map(PathBuf::from)
                 .ok_or_else(|| Error::SimicsBaseParseError { output: line })?
         } else if let Ok(simics_base) = var("SIMICS_BASE") {
@@ -171,7 +170,7 @@ impl App {
         build_cmd.env("SIMICS_BASE", simics_base);
         subcommand.args().apply(&mut build_cmd);
         #[cfg(unix)]
-        build_cmd.args(&["--", "-C", "link-args=-Wl,--gc-sections"]);
+        build_cmd.args(["--", "-C", "link-args=-Wl,--gc-sections"]);
         build_cmd.check()?;
 
         // Get the module cdylib
@@ -283,8 +282,7 @@ impl App {
             .filter_map(|p| {
                 p.clone()
                     .file_name()
-                    .map(|n| n.to_str().map(|n| (p, n.to_string())))
-                    .flatten()
+                    .and_then(|n| n.to_str().map(|n| (p, n.to_string())))
             })
             .sorted_by(|(_, a), (_, b)| a.cmp(b))
             .group_by(|(_, n)| n.clone())
@@ -293,7 +291,7 @@ impl App {
             .filter_map(|(_, g)| {
                 g.max_by_key(|(p, _)| {
                     p.metadata()
-                        .map(|m| m.modified().unwrap_or_else(|_| SystemTime::UNIX_EPOCH))
+                        .map(|m| m.modified().unwrap_or(SystemTime::UNIX_EPOCH))
                         .unwrap_or_else(|_| SystemTime::UNIX_EPOCH)
                 })
             })

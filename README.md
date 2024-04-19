@@ -1,5 +1,3 @@
-<p align="center"><img src="docs/images/logo.png" alt="TSFFS Logo"></p>
-
 # TSFFS: Target Software Fuzzer For SIMICS
 
 TSFFS is a snapshotting, coverage-guided fuzzer built on the
@@ -67,9 +65,10 @@ TSFFS is focused on several primary use cases:
 
 However, TSFFS is also capable of fuzzing:
 
-- Kernel & kernel drivers
-- User-space applications
+- Kernel & kernel drivers on Windows Linux, and more
+- User-space applications on Windows, Linux, and more
 - Network applications
+- Hypervisors and bare-metal systems
 
 ## Contact
 

@@ -14,7 +14,11 @@ use crate::{
 };
 use paste::paste;
 use raw_cstr::raw_cstr;
-use std::{mem::forget, ptr::null};
+use std::{
+    fmt::{self, Display, Formatter},
+    mem::forget,
+    ptr::null,
+};
 
 #[cfg(simics_version_6)]
 /// Alias for `cpu_variant_t`
@@ -50,10 +54,10 @@ pub enum DeprecationLevel {
     NewAndFutureDeprecated = 2,
 }
 
-impl ToString for DeprecationLevel {
-    fn to_string(&self) -> String {
+impl Display for DeprecationLevel {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let val: u32 = *self as u32;
-        val.to_string()
+        write!(f, "{}", val)
     }
 }
 
