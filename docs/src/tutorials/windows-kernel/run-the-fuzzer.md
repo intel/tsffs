@@ -34,6 +34,7 @@ Next, we'll add a `script-branch` that will wait for our graphical breakpoint. T
 allows us to unattended-ly wait until the system is booted and the Simics agent, which
 allows us to run commands and upload files to the system, is started.
 
+
 Once we get the breakpoint, we will save the booted checkpoint if we did not have
 one already.
 
@@ -42,6 +43,45 @@ simulation (since we are running without VMP) will not time out.
 
 Finally, we run our fuzzer executable and wait for all commands to execute. Once the
 fuzzer executable runs, the fuzzer will start and the execution loop will begin.
+
+```simics
+script-branch {
+    board.console.con.bp-wait-for-gfx breakpoint-boot 1
+    echo "Got booted breakpoint. Waiting 10 seconds..."
+    bp.time.wait-for seconds = 10
+    echo "Got booted breakpoint, stopping..."
+    stop
+
+    if not (file-exists "booted.ckpt") {
+        echo "Got booted BP, saving checkpoint..."
+        write-configuration booted.ckpt
+    } else {
+        echo "Already had checkpoint, not saving..."
+    }
+
+    start-agent-manager
+    $matic = (agent_manager.connect-to-agent)
+    continue
+    $matic.wait-for-job
+    $matic.agent-poll-interval ms = 60000
+    stop
+    load-module tsffs
+    init-tsffs
+    @tsffs.log_level = 4
+    @tsffs.start_on_harness = True
+    @tsffs.stop_on_harness = True
+    @tsffs.timeout = 3.0
+    @tsffs.exceptions = [13]
+    @tsffs.generate_random_corpus = True
+    @tsffs.iteration_limit = 1000
+
+    $matic.upload-dir -overwrite "%simics%/fuzzer/"
+    $matic.run "C:\\fuzzer\\fuzzer.exe"
+    continue
+    $matic.wait-for-job
+    echo "Done with jobs..."
+}
+```
 
 For example, you should see something like below. Note that you should see a very large
 initial spike in coverage on the first fuzzer execution.
