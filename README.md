@@ -101,6 +101,6 @@ Rowan Hart
 Brandon Marken Ph.D.
 <brandon.marken@intel.com>
 
-Robert Geunzel Ph.D.
-<robert.geunzel@intel.com>
+Robert Guenzel Ph.D.
+<robert.guenzel@intel.com>
 
