@@ -384,14 +384,21 @@ impl Tsffs {
                             from_raw_parts(instruction_bytes.data, instruction_bytes.size)
                         };
 
-                        ExecutionTraceEntry::builder()
-                            .pc(arch.processor_info_v2().get_program_counter()?)
-                            .insn(
-                                arch.disassembler()
-                                    .disassemble_to_string(instruction_bytes)?,
-                            )
-                            .insn_bytes(instruction_bytes.to_vec())
-                            .build()
+                        if let Ok(disassembly_string) =
+                            arch.disassembler().disassemble_to_string(instruction_bytes)
+                        {
+                            ExecutionTraceEntry::builder()
+                                .pc(arch.processor_info_v2().get_program_counter()?)
+                                .insn(disassembly_string)
+                                .insn_bytes(instruction_bytes.to_vec())
+                                .build()
+                        } else {
+                            ExecutionTraceEntry::builder()
+                                .pc(arch.processor_info_v2().get_program_counter()?)
+                                .insn("(unknown)".to_string())
+                                .insn_bytes(instruction_bytes.to_vec())
+                                .build()
+                        }
                     });
             }
         }
