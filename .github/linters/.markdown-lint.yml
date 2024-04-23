@@ -32,6 +32,7 @@ MD029: false # Ordered list item prefix
 MD033: false # Allow inline HTML
 MD036: false # Emphasis used instead of a heading
 MD041: false # HTML can be at the top of the file for the image and such
+MD045: false # Do not require alt text
 
 #################
 # Rules by tags #

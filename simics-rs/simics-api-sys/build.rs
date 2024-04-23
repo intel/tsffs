@@ -737,7 +737,7 @@ pub mod common {
 
     pub fn emit_link_info() -> Result<()> {
         #[cfg(unix)]
-        const HOST_DIRNAME: &'static str = "linux64";
+        const HOST_DIRNAME: &str = "linux64";
 
         #[cfg(not(unix))]
         const HOST_DIRNAME: &'static str = "win64";
@@ -845,7 +845,7 @@ pub mod common {
                     .to_str()
                     .ok_or_else(|| anyhow!("Could not convert path to string"))?
             );
-            let ld_library_path = vec![
+            let ld_library_path = [
                 bin_dir
                     .to_str()
                     .ok_or_else(|| anyhow!("Could not convert path to string"))?,

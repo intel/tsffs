@@ -431,7 +431,7 @@ impl TestEnv {
 
         spec.package_crates.iter().try_for_each(|c| {
             // change directory to c
-            set_current_dir(&c)
+            set_current_dir(c)
                 .map_err(|e| anyhow!("Failed to set current directory to {c:?}: {e}"))?;
 
             #[cfg(debug_assertions)]

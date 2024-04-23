@@ -14,7 +14,7 @@ when creating projects.
 
 Projects are created using `ispm` (Intel Simics Package Manager). The command below
 would create a project with packages numbered 1000 (SIMICS Base), 2096 (Quick Start
-Platform [QSP] x86), 8112 (QSP CPU), and 31337 (TSFFS), each with the latest version
+Platform, or QSP, x86), 8112 (QSP CPU), and 31337 (TSFFS), each with the latest version
 except SIMICS base, which here is specified as 6.0.169. All that is required to create
 a new project with the TSFFS package included is to add it after the `--create` flag
 to `ispm`. Using the `-latest` version is recommended for simplicity, but if you are a

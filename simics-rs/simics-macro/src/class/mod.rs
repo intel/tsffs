@@ -128,68 +128,63 @@ impl ClassDeriveOpts {
             data.fields
                 .iter()
                 .filter_map(|f| {
-                    f.attribute
-                        .as_ref()
-                        .map(|a| {
-                            let Some(field_name) = f.ident.as_ref().map(|n| n.to_string()) else {
-                                return None;
-                            };
+                    f.attribute.as_ref().and_then(|a| {
+                        let field_name = f.ident.as_ref().map(|n| n.to_string())?;
 
-                            if let Some(default) = a.default.as_ref() {
-                                Some(quote! {
-                                    simics::set_attribute_default(
-                                        instance,
-                                        #field_name,
-                                        #default.try_into()?,
-                                    )?;
-                                })
-                            } else if a.optional.is_present() {
-                                // We handle two kinds of f.ty:
-                                // * `i64`, `u64`, `f64`, `String`, `bool` - simple types are
-                                //   directly used
-                                // * `BTreeSet<i64>` - complex types are transformed into e.g.
-                                //   `BTreeSet::<i64>::default()`
-                                let field_ty = &f.ty;
+                        if let Some(default) = a.default.as_ref() {
+                            Some(quote! {
+                                simics::set_attribute_default(
+                                    instance,
+                                    #field_name,
+                                    #default.try_into()?,
+                                )?;
+                            })
+                        } else if a.optional.is_present() {
+                            // We handle two kinds of f.ty:
+                            // * `i64`, `u64`, `f64`, `String`, `bool` - simple types are
+                            //   directly used
+                            // * `BTreeSet<i64>` - complex types are transformed into e.g.
+                            //   `BTreeSet::<i64>::default()`
+                            let field_ty = &f.ty;
 
-                                let new_field_ty = if let Type::Path(mut p) = f.ty.clone() {
-                                    if let Some(segment) = p.path.segments.last() {
-                                        if segment.arguments.is_empty() {
-                                            quote!(#field_ty)
-                                        } else {
-                                            let args = p
-                                                .path
-                                                .segments
-                                                .last()
-                                                .expect("Known to exist here")
-                                                .arguments
-                                                .clone();
-                                            p.path
-                                                .segments
-                                                .last_mut()
-                                                .expect("Known to exist here")
-                                                .arguments = PathArguments::None;
-                                            let ty = Type::Path(p);
-                                            quote!(#ty::#args)
-                                        }
-                                    } else {
+                            let new_field_ty = if let Type::Path(mut p) = f.ty.clone() {
+                                if let Some(segment) = p.path.segments.last() {
+                                    if segment.arguments.is_empty() {
                                         quote!(#field_ty)
+                                    } else {
+                                        let args = p
+                                            .path
+                                            .segments
+                                            .last()
+                                            .expect("Known to exist here")
+                                            .arguments
+                                            .clone();
+                                        p.path
+                                            .segments
+                                            .last_mut()
+                                            .expect("Known to exist here")
+                                            .arguments = PathArguments::None;
+                                        let ty = Type::Path(p);
+                                        quote!(#ty::#args)
                                     }
                                 } else {
                                     quote!(#field_ty)
-                                };
-
-                                Some(quote! {
-                                    simics::set_attribute_default(
-                                        instance,
-                                        #field_name,
-                                        #new_field_ty::default().try_into()?,
-                                    )?;
-                                })
+                                }
                             } else {
-                                None
-                            }
-                        })
-                        .flatten()
+                                quote!(#field_ty)
+                            };
+
+                            Some(quote! {
+                                simics::set_attribute_default(
+                                    instance,
+                                    #field_name,
+                                    #new_field_ty::default().try_into()?,
+                                )?;
+                            })
+                        } else {
+                            None
+                        }
+                    })
                 })
                 .collect()
         } else {
@@ -431,7 +426,7 @@ impl ClassDeriveOpts {
         let (_impl_generics, ty_generics, _where_clause) = self.generics.split_for_impl();
         if let Some(data) = self.data.as_ref().take_struct() {
             data.fields.iter().filter_map(|f| {
-                f.attribute.as_ref().map(|a| {
+                f.attribute.as_ref().and_then(|a| {
                     if let Some(ref ident) = f.ident.as_ref() {
                         let ty = &f.ty;
                         // Check if type is an integer
@@ -491,7 +486,7 @@ impl ClassDeriveOpts {
                     } else {
                         None
                     }
-                }).flatten()
+                })
             }).collect()
         } else {
             vec![]

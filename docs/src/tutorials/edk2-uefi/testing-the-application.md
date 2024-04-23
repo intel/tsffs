@@ -3,7 +3,7 @@
 Before we harness the application for fuzzing, we should test it to make sure it runs.
 
 Before this step, you'll need to have the TSFFS SIMICS package installed in your system
-by following the [setup steps](../setup/README.md) or by installing a prebuilt `ispm`
+by following the [setup steps](../../setup/README.md) or by installing a prebuilt `ispm`
 package. You'll also need the SIMICS base package (1000), the QSP-x86 package (2096),
 and the QSP-CPU (8112) package. All three are available in the public simics release.
 

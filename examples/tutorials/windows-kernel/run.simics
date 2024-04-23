@@ -1,0 +1,64 @@
+
+$cpu_comp_class = "x86QSP2"
+$disk0_image = "%simics%/windows-11.img"
+$use_vmp = FALSE
+$create_usb_tablet = TRUE
+$num_cores = 1
+$num_threads = 2
+
+if not (file-exists "breakpoint-boot") {
+    echo "Breakpoint screenshot not found, booting. You must create the breakpoint screenshot manually."
+    # If we haven't taken a screenshot yet, we need to manually run, screenshot, and
+    # save the diff file
+    run-command-file "%simics%/targets/qsp-x86/qsp-hdd-boot.simics"
+
+    # Once the machine is booted up and you can see the Agent CMD window, press Ctrl+C
+    # and run these two commands in the Simics console to take a screenshot and save the
+    # diff file
+    #
+    # board.disk0.hd_image.save-diff-file filename = "windows-11.diff.craff"
+    # board.console.con.save-break-xy breakpoint-boot 0 0 120 120
+
+    run
+}
+
+if file-exists "booted.ckpt" {
+    echo "Booted checkpoint found, loading..."
+    read-configuration "booted.ckpt"
+} else {
+    echo "No booted checkpoint saved, running..."
+    run-command-file "%simics%/targets/qsp-x86/qsp-hdd-boot.simics"
+    board.disk0.hd_image.add-diff-file filename = "windows-11.diff.craff"
+    # Uncomment this line to enable VNC for headless access
+    # board.console.con.vnc-setup port = 7500 password = "PassPass"
+}
+
+script-branch {
+    board.console.con.bp-wait-for-gfx breakpoint-boot 1
+    echo "Got booted breakpoint. Waiting 10 seconds..."
+    bp.time.wait-for seconds = 10
+    echo "Got booted breakpoint, stopping..."
+    stop
+
+    if not (file-exists "booted.ckpt") {
+        echo "Got booted BP, saving checkpoint..."
+        write-configuration booted.ckpt
+    } else {
+        echo "Already had checkpoint, not saving..."
+    }
+
+    start-agent-manager
+    $matic = (agent_manager.connect-to-agent)
+    continue
+    $matic.wait-for-job
+    $matic.agent-poll-interval ms = 60000
+    stop
+    $matic.upload-dir -overwrite "%simics%/fuzzer/"
+    # Without fuzzing, this should blue screen the machine
+    $matic.run "C:\\fuzzer\\fuzzer.exe"
+    continue
+    $matic.wait-for-job
+    echo "Done with jobs..."
+}
+
+run
