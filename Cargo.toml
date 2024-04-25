@@ -22,7 +22,7 @@ version = "0.2.1"
 [package.metadata.simics]
 package-number = 31337
 
-version = "7.0.1"
+version = "6.1.0"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
