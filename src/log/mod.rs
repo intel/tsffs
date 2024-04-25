@@ -74,6 +74,10 @@ impl Tsffs {
 
                         self.edges_seen_since_last.clear();
                     }
+
+                    if self.save_interesting_execution_traces {
+                        self.save_execution_trace()?;
+                    }
                 }
             }
 

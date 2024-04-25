@@ -964,6 +964,14 @@ impl TracerDisassembler for Disassembler {
         Ok(())
     }
 
+    fn disassemble_to_string(&mut self, bytes: &[u8]) -> Result<String> {
+        if let Ok(insn) = self.decoder.decode_slice(bytes) {
+            Ok(insn.to_string())
+        } else {
+            bail!("Could not disassemble {:?}", bytes);
+        }
+    }
+
     fn cmp(&self) -> Vec<CmpExpr> {
         let mut cmp_exprs = Vec::new();
         if self.last_was_cmp() {

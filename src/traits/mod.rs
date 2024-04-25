@@ -8,6 +8,7 @@ use anyhow::Result;
 /// and compare tracing
 pub trait TracerDisassembler {
     fn disassemble(&mut self, bytes: &[u8]) -> Result<()>;
+    fn disassemble_to_string(&mut self, bytes: &[u8]) -> Result<String>;
     fn last_was_control_flow(&self) -> bool;
     fn last_was_call(&self) -> bool;
     fn last_was_ret(&self) -> bool;
