@@ -1053,6 +1053,16 @@ impl TracerDisassembler for Disassembler {
         Ok(())
     }
 
+    fn disassemble_to_string(&mut self, bytes: &[u8]) -> Result<String> {
+        let mut r = U8Reader::new(bytes);
+
+        if let Ok(insn) = self.decoder.decode(&mut r) {
+            Ok(insn.to_string())
+        } else {
+            bail!("Could not disassemble {:?}", bytes);
+        }
+    }
+
     fn last_was_control_flow(&self) -> bool {
         if let Some(last) = self.last.as_ref() {
             // NOTE: This is imprecise on ARM because PC is not restricted
