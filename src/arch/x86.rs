@@ -730,6 +730,10 @@ impl X86ArchitectureOperations {
                         .to_le_bytes();
                 Ok(CmpValue::U64(u64::from_le_bytes(bytes)))
             }
+            _ => {
+                // There are other types but they are never emitted on x86
+                bail!("Unsupported expression type");
+            }
         }
     }
 }
