@@ -8,7 +8,7 @@ LLD_URL="https://releases.llvm.org/5.0.2/lld-5.0.2.src.tar.xz"
 CFE_URL="https://releases.llvm.org/5.0.2/cfe-5.0.2.src.tar.xz"
 LLVM_SRC_URL="https://releases.llvm.org/5.0.2/llvm-5.0.2.src.tar.xz"
 MAKE_SRC_URL="https://ftp.gnu.org/gnu/make/make-4.4.1.tar.gz"
-RUSTUP_INIT_URL="https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init"
+RUST_URL="https://static.rust-lang.org/dist/rust-nightly-x86_64-unknown-linux-gnu.tar.xz"
 CMAKE_URL="https://github.com/Kitware/CMake/releases/download/v3.28.0-rc5/cmake-3.28.0-rc5-linux-x86_64.tar.gz"
 PUBLIC_SIMICS_PKGS_URL="https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/simics-6-packages-2024-05-linux64.ispm"
 PUBLIC_SIMICS_ISPM_URL="https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/intel-simics-package-manager-1.8.3-linux64.tar.gz"
@@ -58,11 +58,10 @@ if [ ! -f "${BUILDER_DIR}/rsrc/make-4.4.1.tar.gz" ]; then
         "${MAKE_SRC_URL}"
 fi
 
-if [ ! -f "${BUILDER_DIR}/rsrc/rustup-init" ]; then
-    echo "rustup not found. Downloading..."
-    curl --noproxy '*.intel.com' -L -o "${BUILDER_DIR}/rsrc/rustup-init" \
-        "${RUSTUP_INIT_URL}"
-    chmod +x "${BUILDER_DIR}/rsrc/rustup-init"
+if [ ! -f "${BUILDER_DIR}/rsrc/rust-nightly-x86_64-unknown-linux-gnu.tar.xz" ]; then
+    echo "rust not found. Downloading..."
+    curl --noproxy '*.intel.com' -L -o "${BUILDER_DIR}/rsrc/rust-nightly-x86_64-unknown-linux-gnu.tar.xz" \
+        "${RUST_URL}"
 fi
 
 if [ ! -f "${BUILDER_DIR}/rsrc/cmake-3.28.0-rc5-linux-x86_64.tar.gz" ]; then
