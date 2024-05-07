@@ -1,6 +1,8 @@
 # hadolint global ignore=DL3033,SC3044
 FROM fedora:20
 
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
 ENV PATH="${PATH}:/root/.cargo/bin/"
 
 COPY .github/builder/rsrc/rust-nightly-x86_64-unknown-linux-gnu.tar.xz /install/rust-nightly-x86_64-unknown-linux-gnu.tar.xz
@@ -56,7 +58,8 @@ RUN ispm settings install-dir /simics && \
 RUN RUSTFLAGS="-C linker=clang -C link-arg=-fuse-ld=$(which ld.lld)" && \
     export RUSTFLAGS && \
     cargo install --path simics-rs/cargo-simics-build && \
-    export SIMICS_PACKAGE_VERSION="$(ispm packages --list | grep 1000 | awk '{print $3}' | cut -d '.' -f1).$(grep -E '^version = ' < Cargo.toml | sed -n '$p' | grep -oE '\"[^\"]+\"' | tr -d '\"' | cut -d'.' -f2-)" && \
+    SIMICS_PACKAGE_VERSION="$(ispm packages --list | grep 1000 | awk '{print $3}' | cut -d '.' -f1).$(grep -E '^version = ' < Cargo.toml | sed -n '$p' | grep -oE '\"[^\"]+\"' | tr -d '\"' | cut -d'.' -f2-)" && \
+    export SIMICS_PACKAGE_VERSION && \
     cargo simics-build -r && \
     mkdir -p /packages-internal && \
     cp target/release/*.ispm /packages-internal
