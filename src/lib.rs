@@ -42,6 +42,7 @@ use libafl_targets::AFLppCmpLogMap;
 use magic::MagicNumber;
 use num_traits::FromPrimitive as _;
 use serde::{Deserialize, Serialize};
+use serde_json::to_writer;
 use simics::{
     break_simulation, class, debug, error, free_attribute, get_class, get_interface,
     get_processor_number, info, lookup_file, object_clock, run_command, run_python, simics_init,
@@ -66,7 +67,8 @@ use std::{
     alloc::{alloc_zeroed, Layout},
     cell::OnceCell,
     collections::{hash_map::Entry, BTreeSet, HashMap, HashSet},
-    fs::File,
+    fs::{create_dir_all, File},
+    hash::{DefaultHasher, Hash, Hasher},
     path::PathBuf,
     ptr::null_mut,
     str::FromStr,
@@ -74,7 +76,10 @@ use std::{
     thread::JoinHandle,
     time::SystemTime,
 };
-use tracer::tsffs::{on_instruction_after, on_instruction_before};
+use tracer::{
+    tsffs::{on_instruction_after, on_instruction_before},
+    ExecutionTrace,
+};
 use typed_builder::TypedBuilder;
 use versions::{Requirement, Versioning};
 
@@ -375,6 +380,25 @@ pub(crate) struct Tsffs {
     #[class(attribute(optional, default = true))]
     /// Whether to quit on iteration limit
     pub quit_on_iteration_limit: bool,
+    #[class(attribute(optional, default = false))]
+    /// Whether to save execution traces of test cases which result in a solution
+    pub save_solution_execution_traces: bool,
+    #[class(attribute(optional, default = false))]
+    /// Whether to save execution traces of test cases which result in an interesting input
+    pub save_interesting_execution_traces: bool,
+    #[class(attribute(optional, default = false))]
+    /// Whether to save all execution traces. This will consume a very large amount of resources
+    /// and should only be used for debugging and testing purposes.
+    pub save_all_execution_traces: bool,
+    #[class(attribute(optional, default = lookup_file("%simics%")?.join("execution-traces")))]
+    #[attr_value(fallible)]
+    /// The directory to save execution traces to, if any are set to be saved. This
+    /// directory may be a SIMICS relative path prefixed with "%simics%". If not
+    /// provided, "%simics%/execution-traces" will be used by default.
+    pub execution_trace_directory: PathBuf,
+    #[class(attribute(optional, default = false))]
+    /// Whether execution traces should include just PC (vs instruction text and bytes)
+    pub execution_trace_pc_only: bool,
 
     #[attr_value(skip)]
     /// Handle for the core simulation stopped hap
@@ -440,8 +464,11 @@ pub(crate) struct Tsffs {
     edges_seen: HashSet<u64>,
     #[attr_value(skip)]
     /// A map of the new edges to their AFL indices seen since the last time the fuzzer
-    /// provided an update
+    /// provided an update. This is not cleared every execution.
     edges_seen_since_last: HashMap<u64, u64>,
+    #[attr_value(skip)]
+    /// The set of PCs comprising the current execution trace. This is cleared every execution.
+    execution_trace: ExecutionTrace,
 
     #[attr_value(skip)]
     /// The name of the fuzz snapshot, if saved
@@ -863,6 +890,29 @@ impl Tsffs {
                 .ok_or_else(|| anyhow!("No timeout event set"))?
                 .cancel_time(start_processor_cpu, start_processor_clock)?;
         }
+        Ok(())
+    }
+
+    /// Save the current execution trace to a file
+    pub fn save_execution_trace(&mut self) -> Result<()> {
+        let mut hasher = DefaultHasher::new();
+        self.execution_trace.hash(&mut hasher);
+        let hash = hasher.finish();
+
+        if !self.execution_trace_directory.is_dir() {
+            create_dir_all(&self.execution_trace_directory)?;
+        }
+
+        let trace_path = self
+            .execution_trace_directory
+            .join(format!("{:x}.json", hash));
+
+        if !trace_path.exists() {
+            let trace_file = File::create(trace_path)?;
+
+            to_writer(trace_file, &self.execution_trace)?;
+        }
+
         Ok(())
     }
 }

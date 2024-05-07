@@ -6,6 +6,7 @@ use ffi::ffi;
 use libafl::prelude::CmpValues;
 use libafl_bolts::{AsMutSlice, AsSlice};
 use libafl_targets::{AFLppCmpLogOperands, AFL_CMP_TYPE_INS, CMPLOG_MAP_H};
+use serde::{Deserialize, Serialize};
 use simics::{
     api::{
         get_processor_number, sys::instruction_handle_t, AsConfObject, AttrValue, AttrValueType,
@@ -13,10 +14,44 @@ use simics::{
     },
     trace,
 };
-use std::{collections::HashMap, ffi::c_void, fmt::Display, num::Wrapping, str::FromStr};
+use std::{
+    collections::HashMap, ffi::c_void, fmt::Display, hash::Hash, num::Wrapping,
+    slice::from_raw_parts, str::FromStr,
+};
 use typed_builder::TypedBuilder;
 
 use crate::{arch::ArchitectureOperations, Tsffs};
+
+#[derive(Deserialize, Serialize, Debug, Default)]
+pub(crate) struct ExecutionTrace(pub HashMap<i32, Vec<ExecutionTraceEntry>>);
+
+impl Hash for ExecutionTrace {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        for (k, v) in self.0.iter() {
+            for entry in v.iter() {
+                k.hash(state);
+                entry.hash(state);
+            }
+        }
+    }
+}
+
+#[derive(TypedBuilder, Deserialize, Serialize, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) struct ExecutionTraceEntry {
+    pc: u64,
+    #[builder(default, setter(into, strip_option))]
+    insn: Option<String>,
+    #[builder(default, setter(into, strip_option))]
+    insn_bytes: Option<Vec<u8>>,
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) enum CmpExprShift {
+    Lsl,
+    Lsr,
+    Asr,
+    Ror,
+}
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) enum CmpExpr {
@@ -24,6 +59,8 @@ pub(crate) enum CmpExpr {
     Reg((String, u8)),
     Mul((Box<CmpExpr>, Box<CmpExpr>)),
     Add((Box<CmpExpr>, Box<CmpExpr>)),
+    Sub((Box<CmpExpr>, Box<CmpExpr>)),
+    Shift((Box<CmpExpr>, Box<CmpExpr>, CmpExprShift)),
     U8(u8),
     I8(i8),
     U16(u16),
@@ -333,6 +370,46 @@ impl Tsffs {
                         // trace!(self.as_conf_object(), "Error tracing for CMP: {e}");
                     }
                 }
+            }
+        }
+
+        if self.coverage_enabled
+            && (self.save_all_execution_traces
+                || self.save_interesting_execution_traces
+                || self.save_solution_execution_traces)
+        {
+            if let Some(arch) = self.processors.get_mut(&processor_number) {
+                self.execution_trace
+                    .0
+                    .entry(processor_number)
+                    .or_default()
+                    .push(if self.execution_trace_pc_only {
+                        ExecutionTraceEntry::builder()
+                            .pc(arch.processor_info_v2().get_program_counter()?)
+                            .build()
+                    } else {
+                        let instruction_bytes =
+                            arch.cpu_instruction_query().get_instruction_bytes(handle)?;
+                        let instruction_bytes = unsafe {
+                            from_raw_parts(instruction_bytes.data, instruction_bytes.size)
+                        };
+
+                        if let Ok(disassembly_string) =
+                            arch.disassembler().disassemble_to_string(instruction_bytes)
+                        {
+                            ExecutionTraceEntry::builder()
+                                .pc(arch.processor_info_v2().get_program_counter()?)
+                                .insn(disassembly_string)
+                                .insn_bytes(instruction_bytes.to_vec())
+                                .build()
+                        } else {
+                            ExecutionTraceEntry::builder()
+                                .pc(arch.processor_info_v2().get_program_counter()?)
+                                .insn("(unknown)".to_string())
+                                .insn_bytes(instruction_bytes.to_vec())
+                                .build()
+                        }
+                    });
             }
         }
 

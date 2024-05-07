@@ -18,7 +18,7 @@ The build script for our application created a `project` directory for us if it 
 exist, so we'll instantiate that directory as our project with `ispm`:
 
 ```sh
-ispm projects project --create 1000-latest 2096-latest 8112-latest 31337-latest \
+ispm projects project --create 1000-latest 2096-latest 2050-latest 2053-latest 8112-latest 31337-latest \
   --ignore-existing-files
 cd project
 ```

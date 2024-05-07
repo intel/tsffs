@@ -704,6 +704,10 @@ impl X86_64ArchitectureOperations {
                         .to_le_bytes();
                 Ok(CmpValue::U64(u64::from_le_bytes(bytes)))
             }
+            _ => {
+                // There are other types but they are never emitted on x86_64
+                bail!("Unsupported expression type")
+            }
         }
     }
 }
@@ -958,6 +962,14 @@ impl TracerDisassembler for Disassembler {
         }
 
         Ok(())
+    }
+
+    fn disassemble_to_string(&mut self, bytes: &[u8]) -> Result<String> {
+        if let Ok(insn) = self.decoder.decode_slice(bytes) {
+            Ok(insn.to_string())
+        } else {
+            bail!("Could not disassemble {:?}", bytes);
+        }
     }
 
     fn cmp(&self) -> Vec<CmpExpr> {

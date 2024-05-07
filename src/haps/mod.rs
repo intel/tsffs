@@ -58,6 +58,7 @@ impl Tsffs {
             self.post_timeout_event()?;
         }
 
+        self.execution_trace.0.clear();
         self.save_repro_bookmark_if_needed()?;
 
         debug!(self.as_conf_object(), "Resuming simulation");
@@ -152,6 +153,10 @@ impl Tsffs {
             self.post_timeout_event()?;
         }
 
+        if self.save_all_execution_traces {
+            self.save_execution_trace()?;
+        }
+
         debug!(self.as_conf_object(), "Resuming simulation");
 
         run_alone(|| {
@@ -204,6 +209,7 @@ impl Tsffs {
             self.post_timeout_event()?;
         }
 
+        self.execution_trace.0.clear();
         self.save_repro_bookmark_if_needed()?;
 
         debug!(self.as_conf_object(), "Resuming simulation");
@@ -233,6 +239,7 @@ impl Tsffs {
             self.post_timeout_event()?;
         }
 
+        self.execution_trace.0.clear();
         self.save_repro_bookmark_if_needed()?;
 
         debug!(self.as_conf_object(), "Resuming simulation");
@@ -321,6 +328,10 @@ impl Tsffs {
             }
 
             self.post_timeout_event()?;
+        }
+
+        if self.save_all_execution_traces {
+            self.save_execution_trace()?;
         }
 
         debug!(self.as_conf_object(), "Resuming simulation");
@@ -414,6 +425,10 @@ impl Tsffs {
             }
 
             self.post_timeout_event()?;
+        }
+
+        if self.save_all_execution_traces || self.save_solution_execution_traces {
+            self.save_execution_trace()?;
         }
 
         debug!(self.as_conf_object(), "Resuming simulation");
