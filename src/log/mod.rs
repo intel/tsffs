@@ -102,10 +102,7 @@ impl Tsffs {
             match m {
                 FuzzerMessage::String(s) => {
                     info!(self.as_conf_object(), "Fuzzer message: {s}");
-                    self.log(LogMessage::Message {
-                        timestamp: Utc::now().to_rfc3339(),
-                        message: s.clone(),
-                    })?;
+                    self.log(LogMessage::message(s.clone()))?;
                 }
                 FuzzerMessage::Interesting { indices, input } => {
                     info!(
@@ -132,14 +129,11 @@ impl Tsffs {
                             self.edges_seen.len(),
                         );
 
-                        self.log(LogMessage::Interesting {
-                            timestamp: Utc::now().to_rfc3339(),
-                            message: LogMessageInteresting {
-                                indices: indices.clone(),
-                                input: input.clone(),
-                                edges,
-                            },
-                        })?;
+                        self.log(LogMessage::interesting(
+                            indices.clone(),
+                            input.clone(),
+                            edges,
+                        ))?;
 
                         self.edges_seen_since_last.clear();
                     }
