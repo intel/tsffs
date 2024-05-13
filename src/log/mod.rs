@@ -56,20 +56,24 @@ pub(crate) enum LogMessage {
 }
 
 impl LogMessage {
-    pub fn startup() -> Self {
+    pub(crate) fn startup() -> Self {
         Self::Startup {
             timestamp: Utc::now().to_rfc3339(),
         }
     }
 
-    pub fn message(message: String) -> Self {
+    pub(crate) fn message(message: String) -> Self {
         Self::Message {
             timestamp: Utc::now().to_rfc3339(),
             message,
         }
     }
 
-    pub fn interesting(indices: Vec<usize>, input: Vec<u8>, edges: Vec<LogMessageEdge>) -> Self {
+    pub(crate) fn interesting(
+        indices: Vec<usize>,
+        input: Vec<u8>,
+        edges: Vec<LogMessageEdge>,
+    ) -> Self {
         Self::Interesting {
             timestamp: Utc::now().to_rfc3339(),
             message: LogMessageInteresting {
@@ -80,7 +84,7 @@ impl LogMessage {
         }
     }
 
-    pub fn heartbeat(iterations: usize, solutions: usize, timeouts: usize) -> Self {
+    pub(crate) fn heartbeat(iterations: usize, solutions: usize, timeouts: usize) -> Self {
         Self::Heartbeat {
             iterations,
             solutions,
