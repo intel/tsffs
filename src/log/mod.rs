@@ -51,6 +51,7 @@ pub(crate) enum LogMessage {
         iterations: usize,
         solutions: usize,
         timeouts: usize,
+        edges: usize,
         timestamp: String,
     },
 }
@@ -84,11 +85,17 @@ impl LogMessage {
         }
     }
 
-    pub(crate) fn heartbeat(iterations: usize, solutions: usize, timeouts: usize) -> Self {
+    pub(crate) fn heartbeat(
+        iterations: usize,
+        solutions: usize,
+        timeouts: usize,
+        edges: usize,
+    ) -> Self {
         Self::Heartbeat {
             iterations,
             solutions,
             timeouts,
+            edges,
             timestamp: Utc::now().to_rfc3339(),
         }
     }
@@ -223,6 +230,7 @@ impl Tsffs {
                     self.iterations,
                     self.solutions,
                     self.timeouts,
+                    self.edges_seen.len(),
                 ))?;
 
                 // Set the last heartbeat time
