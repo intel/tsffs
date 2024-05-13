@@ -11,18 +11,14 @@
 
 set -e
 
-LLD_URL="https://releases.llvm.org/5.0.2/lld-5.0.2.src.tar.xz"
-CFE_URL="https://releases.llvm.org/5.0.2/cfe-5.0.2.src.tar.xz"
-LLVM_SRC_URL="https://releases.llvm.org/5.0.2/llvm-5.0.2.src.tar.xz"
-MAKE_SRC_URL="https://ftp.gnu.org/gnu/make/make-4.4.1.tar.gz"
-RUST_URL="https://static.rust-lang.org/dist/rust-nightly-x86_64-unknown-linux-gnu.tar.xz"
-CMAKE_URL="https://github.com/Kitware/CMake/releases/download/v3.28.0-rc5/cmake-3.28.0-rc5-linux-x86_64.tar.gz"
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 ROOT_DIR="${SCRIPT_DIR}/../"
 BUILDER_DIR="${ROOT_DIR}/.github/builder/"
 IMAGE_NAME="tsffs-builder-internal"
 CONTAINER_UID=$(echo "${RANDOM}" | sha256sum | head -c 8)
 CONTAINER_NAME="${IMAGE_NAME}-tmp-${CONTAINER_UID}"
+
+source "${BUILDER_DIR}/common.sh"
 
 mkdir -p "${BUILDER_DIR}/rsrc"
 
@@ -54,50 +50,7 @@ if [ ! -d "${BUILDER_DIR}/rsrc/simics" ]; then
         --non-interactive
 fi
 
-if [ ! -f "${BUILDER_DIR}/rsrc/lld-5.0.2.src.tar.xz" ]; then
-    echo "LLD not found. Downloading..."
-    curl --noproxy '*.intel.com' -L -o "${BUILDER_DIR}/rsrc/lld-5.0.2.src.tar.xz" \
-        "${LLD_URL}"
-fi
-
-if [ ! -f "${BUILDER_DIR}/rsrc/cfe-5.0.2.src.tar.xz" ]; then
-    echo "CFE not found. Downloading..."
-    curl --noproxy '*.intel.com' -L -o "${BUILDER_DIR}/rsrc/cfe-5.0.2.src.tar.xz" \
-        "${CFE_URL}"
-fi
-
-if [ ! -f "${BUILDER_DIR}/rsrc/llvm-5.0.2.src.tar.xz" ]; then
-    echo "LLVM not found. Downloading..."
-    curl --noproxy '*.intel.com' -L -o "${BUILDER_DIR}/rsrc/llvm-5.0.2.src.tar.xz" \
-        "${LLVM_SRC_URL}"
-fi
-
-if [ ! -f "${BUILDER_DIR}/rsrc/make-4.4.1.tar.gz" ]; then
-    echo "Make not found. Downloading..."
-    curl --noproxy '*.intel.com' -L -o "${BUILDER_DIR}/rsrc/make-4.4.1.tar.gz" \
-        "${MAKE_SRC_URL}"
-fi
-
-if [ ! -f "${BUILDER_DIR}/rsrc/rust-nightly-x86_64-unknown-linux-gnu.tar.xz" ]; then
-    echo "rust not found. Downloading..."
-    curl --noproxy '*.intel.com' -L -o "${BUILDER_DIR}/rsrc/rust-nightly-x86_64-unknown-linux-gnu.tar.xz" \
-        "${RUST_URL}"
-fi
-
-if [ ! -f "${BUILDER_DIR}/rsrc/cmake-3.28.0-rc5-linux-x86_64.tar.gz" ]; then
-    echo "CMake not found. Downloading..."
-    curl --noproxy '*.intel.com' -L -o "${BUILDER_DIR}/rsrc/cmake-3.28.0-rc5-linux-x86_64.tar.gz" \
-        "${CMAKE_URL}"
-fi
-
-if [ ! -d "${BUILDER_DIR}/rsrc/rpms" ]; then
-    echo "RPM dependencies not found. Downloading..."
-    # NOTE: This may stop working at some point, as Fedora 20 is EOL. Therefore, we download the
-    # packages with the expectation that we will provide them separately if they are no longer
-    # available.
-    docker run -v "${BUILDER_DIR}/rsrc/rpms:/rpms" fedora:20 bash -c \
-        'yum -y update && yum install --downloadonly --downloaddir=/rpms coreutils gcc gcc-c++ make which && chmod -R 755 /rpms/'
-fi
+download_and_verify_builder_deps
 
 unset SIMICS_BASE
 docker build \
