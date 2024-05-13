@@ -3,3 +3,6 @@
 **/target/
 **/*.img
 **/*.diff.craff
+# Don't add scripts so that builds dont have to rerun on script changes to those builds
+scripts
+target

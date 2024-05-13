@@ -3,7 +3,7 @@
 
 //! Specifications for internal file formats used in the Simics packaging process
 
-use std::{iter::once, path::PathBuf};
+use std::{env::var, iter::once, path::PathBuf};
 
 use crate::{Error, PackageArtifacts, Result, HOST_DIRNAME};
 use cargo_metadata::{MetadataCommand, Package};
@@ -372,6 +372,50 @@ impl ManifestPackageSpec {
 
         if spec.doc_title.is_none() {
             spec.doc_title = Some(package.name.clone());
+        }
+
+        if let Ok(package_name) = var("SIMICS_PACKAGE_PACKAGE_NAME") {
+            spec.package_name = Some(package_name);
+        }
+
+        if let Ok(package_number) = var("SIMICS_PACKAGE_PACKAGE_NUMBER") {
+            spec.package_number = Some(package_number.parse().map_err(Error::from)?);
+        }
+
+        if let Ok(package_name) = var("SIMICS_PACKAGE_NAME") {
+            spec.name = Some(package_name);
+        }
+
+        if let Ok(description) = var("SIMICS_PACKAGE_DESCRIPTION") {
+            spec.description = Some(description);
+        }
+
+        if let Ok(host) = var("SIMICS_PACKAGE_HOST") {
+            spec.host = Some(host);
+        }
+
+        if let Ok(version) = var("SIMICS_PACKAGE_VERSION") {
+            spec.version = Some(version);
+        }
+
+        if let Ok(build_id) = var("SIMICS_PACKAGE_BUILD_ID") {
+            spec.build_id = Some(build_id.parse().map_err(Error::from)?);
+        }
+
+        if let Ok(build_id_namespace) = var("SIMICS_PACKAGE_BUILD_ID_NAMESPACE") {
+            spec.build_id_namespace = Some(build_id_namespace);
+        }
+
+        if let Ok(confidentiality) = var("SIMICS_PACKAGE_CONFIDENTIALITY") {
+            spec.confidentiality = Some(confidentiality);
+        }
+
+        if let Ok(typ) = var("SIMICS_PACKAGE_TYPE") {
+            spec.typ = Some(typ);
+        }
+
+        if let Ok(doc_title) = var("SIMICS_PACKAGE_DOC_TITLE") {
+            spec.doc_title = Some(doc_title);
         }
 
         Ok(spec)
