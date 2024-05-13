@@ -18,6 +18,7 @@ IMAGE_NAME="tsffs-builder-internal"
 CONTAINER_UID=$(echo "${RANDOM}" | sha256sum | head -c 8)
 CONTAINER_NAME="${IMAGE_NAME}-tmp-${CONTAINER_UID}"
 
+# shellcheck disable=SC1091
 source "${BUILDER_DIR}/common.sh"
 
 mkdir -p "${BUILDER_DIR}/rsrc"
