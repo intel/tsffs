@@ -185,7 +185,6 @@ download_and_verify_simics() {
     PUBLIC_SIMICS_PKGS_SHA384="90d498e3b2afa54191bf09c5a0dcb9641595150eb9eab8dbaf9101ad6a1e7e892ef5db9637da85d1a4787bd541dea806"
     PUBLIC_SIMICS_ISPM_URL="https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/intel-simics-package-manager-1.8.3-linux64.tar.gz"
     PUBLIC_SIMICS_ISPM_SHA384="a2c42ea1577e54c4c68e1d6a7d2ad3da3c7298412f008c71fb3b98a1ffddb89f20f96998de9a9d9c20424fe6ae4c9882"
-    PUBLIC_SIMICS_PACKAGE_VERSION_1000="6.0.185"
 
     if [ -z "${BUILDER_DIR}" ]; then
         echo "BUILDER_DIR not set. Exiting..."
