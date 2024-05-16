@@ -21,8 +21,7 @@ version = "0.2.1"
 
 [package.metadata.simics]
 package-number = 31337
-
-version = "6.1.0"
+version = "6.1.1"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -76,6 +75,7 @@ num-derive = "0.4.2"
 tracing-subscriber = "0.3.18"
 tracing = { version = "0.1.40", features = ["log"] }
 yaxpeax-arm = "0.2.5"
+chrono = "0.4.38"
 
 [dev-dependencies]
 simics-test = { path = "simics-rs/simics-test" }

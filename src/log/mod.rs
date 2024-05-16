@@ -5,9 +5,10 @@
 
 use crate::{fuzzer::messages::FuzzerMessage, Tsffs};
 use anyhow::{anyhow, Result};
+use chrono::Utc;
 use serde::Serialize;
 use simics::{info, AsConfObject};
-use std::{fs::OpenOptions, io::Write};
+use std::{fs::OpenOptions, io::Write, time::SystemTime};
 
 #[derive(Clone, Debug, Serialize)]
 pub(crate) struct LogMessageEdge {
@@ -22,10 +23,82 @@ pub(crate) struct LogMessageInteresting {
     pub edges: Vec<LogMessageEdge>,
 }
 
+pub(crate) type LogMessageSolution = LogMessageInteresting;
+pub(crate) type LogMessageTimeout = LogMessageInteresting;
+
 #[derive(Clone, Debug, Serialize)]
 pub(crate) enum LogMessage {
-    Message(String),
-    Interesting(LogMessageInteresting),
+    Startup {
+        timestamp: String,
+    },
+    Message {
+        timestamp: String,
+        message: String,
+    },
+    Interesting {
+        timestamp: String,
+        message: LogMessageInteresting,
+    },
+    Solution {
+        timestamp: String,
+        message: LogMessageSolution,
+    },
+    Timeout {
+        timestamp: String,
+        message: LogMessageTimeout,
+    },
+    Heartbeat {
+        iterations: usize,
+        solutions: usize,
+        timeouts: usize,
+        edges: usize,
+        timestamp: String,
+    },
+}
+
+impl LogMessage {
+    pub(crate) fn startup() -> Self {
+        Self::Startup {
+            timestamp: Utc::now().to_rfc3339(),
+        }
+    }
+
+    pub(crate) fn message(message: String) -> Self {
+        Self::Message {
+            timestamp: Utc::now().to_rfc3339(),
+            message,
+        }
+    }
+
+    pub(crate) fn interesting(
+        indices: Vec<usize>,
+        input: Vec<u8>,
+        edges: Vec<LogMessageEdge>,
+    ) -> Self {
+        Self::Interesting {
+            timestamp: Utc::now().to_rfc3339(),
+            message: LogMessageInteresting {
+                indices,
+                input,
+                edges,
+            },
+        }
+    }
+
+    pub(crate) fn heartbeat(
+        iterations: usize,
+        solutions: usize,
+        timeouts: usize,
+        edges: usize,
+    ) -> Self {
+        Self::Heartbeat {
+            iterations,
+            solutions,
+            timeouts,
+            edges,
+            timestamp: Utc::now().to_rfc3339(),
+        }
+    }
 }
 
 impl Tsffs {
@@ -40,7 +113,7 @@ impl Tsffs {
             match m {
                 FuzzerMessage::String(s) => {
                     info!(self.as_conf_object(), "Fuzzer message: {s}");
-                    self.log(LogMessage::Message(s.clone()))?;
+                    self.log(LogMessage::message(s.clone()))?;
                 }
                 FuzzerMessage::Interesting { indices, input } => {
                     info!(
@@ -57,6 +130,7 @@ impl Tsffs {
                                 afl_idx: *a,
                             })
                             .collect::<Vec<_>>();
+
                         edges.sort_by(|e1, e2| e1.pc.cmp(&e2.pc));
 
                         info!(
@@ -66,11 +140,11 @@ impl Tsffs {
                             self.edges_seen.len(),
                         );
 
-                        self.log(LogMessage::Interesting(LogMessageInteresting {
-                            indices: indices.clone(),
-                            input: input.clone(),
+                        self.log(LogMessage::interesting(
+                            indices.clone(),
+                            input.clone(),
                             edges,
-                        }))?;
+                        ))?;
 
                         self.edges_seen_since_last.clear();
                     }
@@ -79,10 +153,90 @@ impl Tsffs {
                         self.save_execution_trace()?;
                     }
                 }
+                FuzzerMessage::Crash { indices, input } => {
+                    info!(
+                        self.as_conf_object(),
+                        "Solution input for AFL indices {indices:?} with input {input:?}"
+                    );
+
+                    if !self.edges_seen_since_last.is_empty() {
+                        let mut edges = self
+                            .edges_seen_since_last
+                            .iter()
+                            .map(|(p, a)| LogMessageEdge {
+                                pc: *p,
+                                afl_idx: *a,
+                            })
+                            .collect::<Vec<_>>();
+
+                        edges.sort_by(|e1, e2| e1.pc.cmp(&e2.pc));
+
+                        self.log(LogMessage::Solution {
+                            timestamp: Utc::now().to_rfc3339(),
+                            message: LogMessageSolution {
+                                indices: indices.clone(),
+                                input: input.clone(),
+                                edges,
+                            },
+                        })?;
+                    }
+
+                    if self.save_solution_execution_traces {
+                        self.save_execution_trace()?;
+                    }
+                }
+                FuzzerMessage::Timeout { indices, input } => {
+                    info!(
+                        self.as_conf_object(),
+                        "Timeout input for AFL indices {indices:?} with input {input:?}"
+                    );
+
+                    if !self.edges_seen_since_last.is_empty() {
+                        let mut edges = self
+                            .edges_seen_since_last
+                            .iter()
+                            .map(|(p, a)| LogMessageEdge {
+                                pc: *p,
+                                afl_idx: *a,
+                            })
+                            .collect::<Vec<_>>();
+
+                        edges.sort_by(|e1, e2| e1.pc.cmp(&e2.pc));
+
+                        self.log(LogMessage::Timeout {
+                            timestamp: Utc::now().to_rfc3339(),
+                            message: LogMessageTimeout {
+                                indices: indices.clone(),
+                                input: input.clone(),
+                                edges,
+                            },
+                        })?;
+                    }
+
+                    if self.save_timeout_execution_traces {
+                        self.save_execution_trace()?;
+                    }
+                }
             }
 
             Ok::<(), anyhow::Error>(())
         })?;
+
+        if self.heartbeat {
+            let last = self.last_heartbeat_time.get_or_insert_with(SystemTime::now);
+
+            if last.elapsed()?.as_secs() >= self.heartbeat_interval {
+                self.log(LogMessage::heartbeat(
+                    self.iterations,
+                    self.solutions,
+                    self.timeouts,
+                    self.edges_seen.len(),
+                ))?;
+
+                // Set the last heartbeat time
+                self.last_heartbeat_time = Some(SystemTime::now());
+            }
+        }
 
         Ok(())
     }
