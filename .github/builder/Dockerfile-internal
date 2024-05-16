@@ -1,6 +1,8 @@
 # hadolint global ignore=DL3033,SC3044
 FROM fedora:20
 
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
 ENV PATH="${PATH}:/root/.cargo/bin/"
 
 COPY .github/builder/rsrc/rust-nightly-x86_64-unknown-linux-gnu.tar.xz /install/rust-nightly-x86_64-unknown-linux-gnu.tar.xz
@@ -10,6 +12,8 @@ COPY .github/builder/rsrc/lld-5.0.2.src.tar.xz /install/lld-5.0.2.src.tar.xz
 COPY .github/builder/rsrc/cfe-5.0.2.src.tar.xz /install/cfe-5.0.2.src.tar.xz
 COPY .github/builder/rsrc/llvm-5.0.2.src.tar.xz /install/llvm-5.0.2.src.tar.xz
 COPY .github/builder/rsrc/rpms /install/rpms
+COPY .github/builder/rsrc/simics /simics
+COPY .github/builder/rsrc/ispm /simics/ispm
 
 RUN yum -y install /install/rpms/*.rpm && yum clean all
 
@@ -41,7 +45,6 @@ RUN tar -C /install -xvf /install/rust-nightly-x86_64-unknown-linux-gnu.tar.xz &
 
 WORKDIR /
 
-ARG PUBLIC_SIMICS_PACKAGE_VERSION_1000
 ENV PATH="${PATH}:/simics/ispm/"
 ENV PATH="${PATH}:/root/.cargo/bin/"
 
@@ -49,14 +52,14 @@ COPY . /tsffs/
 
 WORKDIR /tsffs/
 
-RUN mkdir -p /simics/ispm && \
-    tar -C /simics/ispm --strip-components=1 -xf .github/builder/rsrc/ispm.tar.gz && \
-    ispm settings install-dir /simics && \
-    ispm packages --install-bundle .github/builder/rsrc/simics.ispm --non-interactive --trust-insecure-packages
+RUN ispm settings install-dir /simics && \
+    ispm packages --list
 
 RUN RUSTFLAGS="-C linker=clang -C link-arg=-fuse-ld=$(which ld.lld)" && \
     export RUSTFLAGS && \
     cargo install --path simics-rs/cargo-simics-build && \
+    SIMICS_PACKAGE_VERSION="$(ispm packages --list | grep 1000 | awk '{print $3}' | cut -d '.' -f1).$(grep -E '^version = ' < Cargo.toml | sed -n '$p' | grep -oE '\"[^\"]+\"' | tr -d '\"' | cut -d'.' -f2-)" && \
+    export SIMICS_PACKAGE_VERSION && \
     cargo simics-build -r && \
-    mkdir -p /packages && \
-    cp target/release/*.ispm /packages
+    mkdir -p /packages-internal && \
+    cp target/release/*.ispm /packages-internal
