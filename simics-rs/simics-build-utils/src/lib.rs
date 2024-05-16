@@ -32,6 +32,22 @@ where
         .ok_or_else(|| anyhow!("No sub-directories found"))
 }
 
+/// Emit expected CFG directives for check-cfg feature tests
+pub fn emit_expected_cfg_directives() {
+    println!("cargo:rustc-check-cfg=cfg(simics_version_6)");
+    println!("cargo:rustc-check-cfg=cfg(simics_version_7)");
+
+    // We emit all the way up to 9.99.999 as expected CFG directives
+    for i in 6_00_000..7_99_999 {
+        println!(
+            "cargo:rustc-check-cfg=cfg(simics_version_{}_{}_{})",
+            i / 100_000,
+            i / 1_000 % 100,
+            i % 1_000
+        );
+    }
+}
+
 /// Emit CFG directives for the version of the Simics API being compiled against. For example,
 /// simics_version_6_0_185 and simics_version_6. Both a full triple version and a major version
 /// directive is emitted.
@@ -42,6 +58,8 @@ pub fn emit_cfg_directives() -> Result<()> {
     // Set configurations to conditionally enable experimental features that aren't
     // compatible with all supported SIMICS versions, based on the SIMICS version of the
     // low level bindings.
+
+    emit_expected_cfg_directives();
 
     let simics_api_version = versions::Versioning::new(simics_api_sys::SIMICS_VERSION)
         .ok_or_else(|| anyhow!("Invalid version {}", simics_api_sys::SIMICS_VERSION))?;
