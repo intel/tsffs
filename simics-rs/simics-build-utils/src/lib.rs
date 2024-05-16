@@ -34,6 +34,10 @@ where
 
 /// Emit expected CFG directives for check-cfg feature tests
 pub fn emit_expected_cfg_directives() {
+    for i in 5..9 {
+        println!("cargo:rustc-check-cfg=cfg(simics_version_{})", i);
+    }
+
     // We emit all the way up to 9.99.999 as expected CFG directives
     for i in 5_99_999..9_99_999 {
         println!(
