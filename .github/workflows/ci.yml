@@ -468,6 +468,7 @@ jobs:
           cargo clippy > clippy.log \
             || ( echo "❗ [CT39 (1/2)] Failed clippy static analysis checks" && exit 1 )
           cargo clippy --message-format=json 2> /dev/null | jq 'select(.reason == "compiler-message")' 2>/dev/null > clippy.json
+          cargo clippy --message-format=json > clippy-full.json 2>&1
           echo "✅ [CT39 (1/2)] Passed clippy static analysis checks"
 
       - name: Upload Clippy Check Results
@@ -476,6 +477,7 @@ jobs:
           name: clippy-json
           path: |
             clippy.json
+            clippy-full.json
             clippy.log
 
       - name: Test Project
