@@ -285,7 +285,7 @@ impl App {
                     .and_then(|n| n.to_str().map(|n| (p, n.to_string())))
             })
             .sorted_by(|(_, a), (_, b)| a.cmp(b))
-            .group_by(|(_, n)| n.clone())
+            .chunk_by(|(_, n)| n.clone())
             // Get the newest one
             .into_iter()
             .filter_map(|(_, g)| {

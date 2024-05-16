@@ -39,6 +39,7 @@ use indoc::indoc;
 use libafl::{inputs::HasBytesVec, prelude::ExitKind};
 use libafl_bolts::prelude::OwnedMutSlice;
 use libafl_targets::AFLppCmpLogMap;
+use log::LogMessage;
 use magic::MagicNumber;
 use num_traits::FromPrimitive as _;
 use serde::{Deserialize, Serialize};
@@ -381,6 +382,9 @@ pub(crate) struct Tsffs {
     /// Whether to quit on iteration limit
     pub quit_on_iteration_limit: bool,
     #[class(attribute(optional, default = false))]
+    /// Whether to save execution traces of test cases which result in a timeout
+    pub save_timeout_execution_traces: bool,
+    #[class(attribute(optional, default = false))]
     /// Whether to save execution traces of test cases which result in a solution
     pub save_solution_execution_traces: bool,
     #[class(attribute(optional, default = false))]
@@ -399,6 +403,12 @@ pub(crate) struct Tsffs {
     #[class(attribute(optional, default = false))]
     /// Whether execution traces should include just PC (vs instruction text and bytes)
     pub execution_trace_pc_only: bool,
+    #[class(attribute(optional, default = true))]
+    /// Whether a heartbeat message should be emitted every `heartbeat_interval` seconds
+    pub heartbeat: bool,
+    #[class(attribute(optional, default = 60))]
+    /// The interval in seconds between heartbeat messages
+    pub heartbeat_interval: u64,
 
     #[attr_value(skip)]
     /// Handle for the core simulation stopped hap
@@ -489,6 +499,10 @@ pub(crate) struct Tsffs {
     // #[builder(default = SystemTime::now())]
     /// The time the fuzzer was started at
     start_time: OnceCell<SystemTime>,
+    #[attr_value(skip)]
+    // #[builder(default = SystemTime::now())]
+    /// The time the fuzzer was started at
+    last_heartbeat_time: Option<SystemTime>,
 
     #[attr_value(skip)]
     log: OnceCell<File>,
@@ -521,6 +535,12 @@ pub(crate) struct Tsffs {
     #[attr_value(skip)]
     /// Whether snapshots are used. Snapshots are used on Simics 7.0.0 and later.
     use_snapshots: bool,
+    #[attr_value(skip)]
+    /// The number of timeouts so far
+    timeouts: usize,
+    #[attr_value(skip)]
+    /// The number of solutions so far
+    solutions: usize,
 }
 
 impl ClassObjectsFinalize for Tsffs {
@@ -711,6 +731,7 @@ impl Tsffs {
         if let Err(e) = run_command("disable-vmp") {
             warn!(self.as_conf_object(), "Failed to disable VMP: {}", e);
         }
+        self.log(LogMessage::startup())?;
 
         #[cfg(simics_version_7)]
         {
@@ -852,9 +873,8 @@ impl Tsffs {
                 start_processor_cpu,
                 start_processor_clock,
                 self.timeout,
-                move |obj| {
+                move |_obj| {
                     let tsffs: &'static mut Tsffs = tsffs_ptr.into();
-                    info!(tsffs.as_conf_object_mut(), "timeout({:#x})", obj as usize);
                     tsffs
                         .stop_simulation(StopReason::Solution {
                             kind: SolutionKind::Timeout,

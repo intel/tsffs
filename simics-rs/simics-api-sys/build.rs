@@ -174,7 +174,7 @@ pub mod common {
                             match p.path().canonicalize() {
                                 Ok(p) => p.strip_prefix(&include_path).map_or_else(
                                     |e| {
-                                        eprintln!(
+                                        println!(
                                             "cargo:warning=Failed to strip prefix {} from {}: {}",
                                             include_path.as_ref().display(),
                                             p.display(),
@@ -185,7 +185,7 @@ pub mod common {
                                     |p| Some(p.to_path_buf()),
                                 ),
                                 Err(e) => {
-                                    eprintln!(
+                                    println!(
                                         "cargo:warning=Failed to canonicalize path {}: {}",
                                         p.path().display(),
                                         e
@@ -194,7 +194,7 @@ pub mod common {
                                 }
                             }
                         } else {
-                            eprintln!(
+                            println!(
                                 "cargo:warning=Ignoring path {}, no '.h' extension",
                                 p.path().display()
                             );
@@ -202,7 +202,7 @@ pub mod common {
                         }
                     }
                     None => {
-                        eprintln!(
+                        println!(
                             "cargo:warning=Ignoring path {}, no extension",
                             p.path().display()
                         );

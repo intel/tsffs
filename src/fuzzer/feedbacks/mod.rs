@@ -65,11 +65,14 @@ where
                 .ok_or_else(|| {
                     libafl::Error::unknown("Failed to get observer from observers tuple")
                 })?;
+
             let map_state = state
                 .named_metadata_map_mut()
                 .get_mut::<MapFeedbackMetadata<T>>(self.name())
                 .ok_or_else(|| libafl::Error::unknown("Failed to get metadata"))?;
+
             let len = observer.len();
+
             if map_state.history_map.len() < len {
                 map_state.history_map.resize(len, observer.initial());
             }
@@ -99,6 +102,106 @@ where
                     sender
                         .send(FuzzerMessage::Interesting {
                             indices: interesting_indices,
+                            input: input.target_bytes().as_slice().to_vec(),
+                        })
+                        .ok()
+                })
+                .ok_or_else(|| libafl::Error::unknown("Failed to send report"))?;
+        }
+
+        if *exit_kind == ExitKind::Crash {
+            let observer = observers
+                .match_name::<O>(self.observer_name())
+                .ok_or_else(|| {
+                    libafl::Error::unknown("Failed to get observer from observers tuple")
+                })?;
+
+            let map_state = state
+                .named_metadata_map_mut()
+                .get_mut::<MapFeedbackMetadata<T>>(self.name())
+                .ok_or_else(|| libafl::Error::unknown("Failed to get metadata"))?;
+
+            let len = observer.len();
+
+            if map_state.history_map.len() < len {
+                map_state.history_map.resize(len, observer.initial());
+            }
+
+            let history_map = map_state.history_map.as_slice();
+
+            let initial = observer.initial();
+
+            let mut indices = vec![];
+
+            for (i, item) in observer
+                .as_iter()
+                .copied()
+                .enumerate()
+                .filter(|(_, item)| *item != initial)
+            {
+                let existing = unsafe { *history_map.get_unchecked(i) };
+                let reduced = R::reduce(existing, item);
+                if N::is_novel(existing, reduced) {
+                    indices.push(i);
+                }
+            }
+
+            self.sender
+                .get_mut()
+                .and_then(|sender| {
+                    sender
+                        .send(FuzzerMessage::Crash {
+                            indices,
+                            input: input.target_bytes().as_slice().to_vec(),
+                        })
+                        .ok()
+                })
+                .ok_or_else(|| libafl::Error::unknown("Failed to send report"))?;
+        }
+
+        if *exit_kind == ExitKind::Timeout {
+            let observer = observers
+                .match_name::<O>(self.observer_name())
+                .ok_or_else(|| {
+                    libafl::Error::unknown("Failed to get observer from observers tuple")
+                })?;
+
+            let map_state = state
+                .named_metadata_map_mut()
+                .get_mut::<MapFeedbackMetadata<T>>(self.name())
+                .ok_or_else(|| libafl::Error::unknown("Failed to get metadata"))?;
+
+            let len = observer.len();
+
+            if map_state.history_map.len() < len {
+                map_state.history_map.resize(len, observer.initial());
+            }
+
+            let history_map = map_state.history_map.as_slice();
+
+            let initial = observer.initial();
+
+            let mut indices = vec![];
+
+            for (i, item) in observer
+                .as_iter()
+                .copied()
+                .enumerate()
+                .filter(|(_, item)| *item != initial)
+            {
+                let existing = unsafe { *history_map.get_unchecked(i) };
+                let reduced = R::reduce(existing, item);
+                if N::is_novel(existing, reduced) {
+                    indices.push(i);
+                }
+            }
+
+            self.sender
+                .get_mut()
+                .and_then(|sender| {
+                    sender
+                        .send(FuzzerMessage::Timeout {
+                            indices,
                             input: input.target_bytes().as_slice().to_vec(),
                         })
                         .ok()

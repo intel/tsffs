@@ -406,8 +406,12 @@ impl Tsffs {
                 .ok_or_else(|| anyhow!("No fuzzer tx channel"))?;
 
             match kind {
-                SolutionKind::Timeout => fuzzer_tx.send(ExitKind::Timeout)?,
+                SolutionKind::Timeout => {
+                    self.timeouts += 1;
+                    fuzzer_tx.send(ExitKind::Timeout)?
+                }
                 SolutionKind::Exception | SolutionKind::Breakpoint | SolutionKind::Manual => {
+                    self.solutions += 1;
                     fuzzer_tx.send(ExitKind::Crash)?
                 }
             }
@@ -427,7 +431,7 @@ impl Tsffs {
             self.post_timeout_event()?;
         }
 
-        if self.save_all_execution_traces || self.save_solution_execution_traces {
+        if self.save_all_execution_traces {
             self.save_execution_trace()?;
         }
 
