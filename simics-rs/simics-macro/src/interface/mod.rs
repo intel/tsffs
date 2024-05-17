@@ -613,7 +613,6 @@ impl CInterface {
         let simics_base = if let Ok(simics_base) = var("SIMICS_BASE") {
             PathBuf::from(simics_base)
         } else {
-            println!("cargo:warning=No SIMICS_BASE environment variable found, using ispm to find installed packages and using latest base version");
             let mut packages = ispm::packages::list(&GlobalOptions::default())
                 .map_err(|e| Error::custom(format!("Could not get installed packages: {e}")))?;
             packages.sort();
@@ -627,7 +626,6 @@ impl CInterface {
                 "No SIMICS_BASE variable set and did not find a package with package number 1000"
                 ));
             };
-            println!("cargo:warning=Using Simics base version {}", base.version);
             base.paths
                 .first()
                 .ok_or_else(|| {

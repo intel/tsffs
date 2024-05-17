@@ -46,11 +46,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::to_writer;
 use simics::{
     break_simulation, class, debug, error, free_attribute, get_class, get_interface,
-    get_processor_number, lookup_file, object_clock, run_command, run_python, simics_init, trace,
-    version_base, AsConfObject, BreakpointId, ClassCreate, ClassObjectsFinalize, ConfObject,
-    CoreBreakpointMemopHap, CoreExceptionHap, CoreMagicInstructionHap, CoreSimulationStoppedHap,
-    CpuInstrumentationSubscribeInterface, Event, EventClassFlag, FromConfObject, HapHandle,
-    Interface, IntoAttrValueDict,
+    get_processor_number, info, lookup_file, object_clock, run_command, run_python, simics_init,
+    trace, version_base, warn, AsConfObject, BreakpointId, ClassCreate, ClassObjectsFinalize,
+    ConfObject, CoreBreakpointMemopHap, CoreExceptionHap, CoreMagicInstructionHap,
+    CoreSimulationStoppedHap, CpuInstrumentationSubscribeInterface, Event, EventClassFlag,
+    FromConfObject, HapHandle, Interface, IntoAttrValueDict,
 };
 #[cfg(simics_version_6)]
 use simics::{
@@ -725,6 +725,12 @@ impl Tsffs {
             return Ok(());
         }
 
+        // Disable VMP if it is enabled
+        info!("Disabling VMP");
+
+        if let Err(e) = run_command("disable-vmp") {
+            warn!(self.as_conf_object(), "Failed to disable VMP: {}", e);
+        }
         self.log(LogMessage::startup())?;
 
         #[cfg(simics_version_7)]
