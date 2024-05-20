@@ -47,10 +47,11 @@ use serde_json::to_writer;
 use simics::{
     break_simulation, class, debug, error, free_attribute, get_class, get_interface,
     get_processor_number, info, lookup_file, object_clock, run_command, run_python, simics_init,
-    trace, version_base, warn, AsConfObject, BreakpointId, ClassCreate, ClassObjectsFinalize,
-    ConfObject, CoreBreakpointMemopHap, CoreExceptionHap, CoreMagicInstructionHap,
-    CoreSimulationStoppedHap, CpuInstrumentationSubscribeInterface, Event, EventClassFlag,
-    FromConfObject, HapHandle, Interface, IntoAttrValueDict,
+    sys::save_flags_t, trace, version_base, warn, write_configuration_to_file, AsConfObject,
+    BreakpointId, ClassCreate, ClassObjectsFinalize, ConfObject, CoreBreakpointMemopHap,
+    CoreExceptionHap, CoreMagicInstructionHap, CoreSimulationStoppedHap,
+    CpuInstrumentationSubscribeInterface, Event, EventClassFlag, FromConfObject, HapHandle,
+    Interface, IntoAttrValueDict,
 };
 #[cfg(simics_version_6)]
 use simics::{
@@ -60,15 +61,13 @@ use simics::{
 // NOTE: save_snapshot used because it is a stable alias for both save_snapshot and take_snapshot
 // which is necessary because this module is compatible with base versions which cross the
 // deprecation boundary
-use simics::{restore_snapshot, save_snapshot, sys::save_flags_t, write_configuration_to_file};
+use simics::{restore_snapshot, save_snapshot};
 use state::StopReason;
-#[cfg(simics_version_7)]
-use std::fs::remove_dir_all;
 use std::{
     alloc::{alloc_zeroed, Layout},
     cell::OnceCell,
     collections::{hash_map::Entry, BTreeSet, HashMap, HashSet},
-    fs::{create_dir_all, File},
+    fs::{create_dir_all, remove_dir_all, File},
     hash::{DefaultHasher, Hash, Hasher},
     path::PathBuf,
     ptr::null_mut,
@@ -735,17 +734,17 @@ impl Tsffs {
 
         #[cfg(simics_version_7)]
         {
-            if self.checkpoint_path.exists() {
-                remove_dir_all(&self.checkpoint_path)?;
-            }
-
-            debug!(
-                self.as_conf_object(),
-                "Saving checkpoint to {}",
-                self.checkpoint_path.display()
-            );
-
             if self.pre_snapshot_checkpoint {
+                debug!(
+                    self.as_conf_object(),
+                    "Saving checkpoint to {}",
+                    self.checkpoint_path.display()
+                );
+
+                if self.checkpoint_path.exists() {
+                    remove_dir_all(&self.checkpoint_path)?;
+                }
+
                 write_configuration_to_file(&self.checkpoint_path, save_flags_t(0))?;
             }
 
@@ -759,6 +758,20 @@ impl Tsffs {
 
         #[cfg(simics_version_6)]
         {
+            if self.pre_snapshot_checkpoint {
+                debug!(
+                    self.as_conf_object(),
+                    "Saving checkpoint to {}",
+                    self.checkpoint_path.display()
+                );
+
+                if self.checkpoint_path.exists() {
+                    remove_dir_all(&self.checkpoint_path)?;
+                }
+
+                write_configuration_to_file(&self.checkpoint_path, save_flags_t(0))?;
+            }
+
             debug!(self.as_conf_object(), "Saving initial micro checkpoint");
 
             save_micro_checkpoint(
