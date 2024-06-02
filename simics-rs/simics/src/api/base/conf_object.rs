@@ -5,6 +5,98 @@
 
 //! Bindings for configuration objects
 
+#[cfg(any(
+    simics_version_6_0_163,
+    simics_version_6_0_164,
+    simics_version_6_0_165,
+    simics_version_6_0_166,
+    simics_version_6_0_167,
+    simics_version_6_0_168,
+    simics_version_6_0_169,
+    simics_version_6_0_170,
+    simics_version_6_0_171,
+    simics_version_6_0_172,
+    simics_version_6_0_173,
+    simics_version_6_0_174,
+    simics_version_6_0_175,
+    simics_version_6_0_176,
+    simics_version_6_0_177,
+    simics_version_6_0_178,
+    simics_version_6_0_179,
+    simics_version_6_0_180,
+    simics_version_6_0_181,
+    simics_version_6_0_182,
+    simics_version_6_0_183,
+    simics_version_6_0_184,
+    simics_version_6_0_185,
+    simics_version_6_0_186,
+    simics_version_6_0_187,
+    simics_version_6_0_188,
+    simics_version_6_0_189,
+    simics_version_6_0_190,
+    simics_version_6_0_191,
+    simics_version_6_0_192,
+    simics_version_6_0_193,
+    simics_version_6_0_194,
+    simics_version_7_0_0,
+    simics_version_7_1_0,
+    simics_version_7_2_0,
+    simics_version_7_3_0,
+    simics_version_7_4_0,
+    simics_version_7_5_0,
+    simics_version_7_6_0,
+    simics_version_7_7_0,
+    simics_version_7_8_0,
+    simics_version_7_9_0,
+))]
+use crate::sys::{SIM_object_iterator, SIM_shallow_object_iterator};
+
+#[cfg(not(any(
+    simics_version_6_0_163,
+    simics_version_6_0_164,
+    simics_version_6_0_165,
+    simics_version_6_0_166,
+    simics_version_6_0_167,
+    simics_version_6_0_168,
+    simics_version_6_0_169,
+    simics_version_6_0_170,
+    simics_version_6_0_171,
+    simics_version_6_0_172,
+    simics_version_6_0_173,
+    simics_version_6_0_174,
+    simics_version_6_0_175,
+    simics_version_6_0_176,
+    simics_version_6_0_177,
+    simics_version_6_0_178,
+    simics_version_6_0_179,
+    simics_version_6_0_180,
+    simics_version_6_0_181,
+    simics_version_6_0_182,
+    simics_version_6_0_183,
+    simics_version_6_0_184,
+    simics_version_6_0_185,
+    simics_version_6_0_186,
+    simics_version_6_0_187,
+    simics_version_6_0_188,
+    simics_version_6_0_189,
+    simics_version_6_0_190,
+    simics_version_6_0_191,
+    simics_version_6_0_192,
+    simics_version_6_0_193,
+    simics_version_6_0_194,
+    simics_version_7_0_0,
+    simics_version_7_1_0,
+    simics_version_7_2_0,
+    simics_version_7_3_0,
+    simics_version_7_4_0,
+    simics_version_7_5_0,
+    simics_version_7_6_0,
+    simics_version_7_7_0,
+    simics_version_7_8_0,
+    simics_version_7_9_0,
+)))]
+use crate::sys::{VT_object_iterator, VT_shallow_object_iterator};
+
 use crate::{
     last_error, simics_exception,
     sys::{
@@ -13,12 +105,11 @@ use crate::{
         set_error_t, SIM_attribute_error, SIM_copy_class, SIM_create_class, SIM_extend_class,
         SIM_extension_data, SIM_get_class_data, SIM_get_class_interface, SIM_get_class_name,
         SIM_get_interface, SIM_marked_for_deletion, SIM_object_data, SIM_object_descendant,
-        SIM_object_id, SIM_object_is_configured, SIM_object_iterator, SIM_object_iterator_next,
-        SIM_object_name, SIM_object_parent, SIM_register_attribute_with_user_data,
-        SIM_register_class_alias, SIM_register_class_attribute_with_user_data,
-        SIM_register_interface, SIM_register_typed_attribute, SIM_register_typed_class_attribute,
-        SIM_require_object, SIM_set_class_data, SIM_set_object_configured,
-        SIM_shallow_object_iterator,
+        SIM_object_id, SIM_object_is_configured, SIM_object_iterator_next, SIM_object_name,
+        SIM_object_parent, SIM_register_attribute_with_user_data, SIM_register_class_alias,
+        SIM_register_class_attribute_with_user_data, SIM_register_interface,
+        SIM_register_typed_attribute, SIM_register_typed_class_attribute, SIM_require_object,
+        SIM_set_class_data, SIM_set_object_configured,
     },
     AttrValue, Error, Interface, Result,
 };
@@ -589,6 +680,50 @@ where
     }
 }
 
+#[cfg(any(
+    simics_version_6_0_163,
+    simics_version_6_0_164,
+    simics_version_6_0_165,
+    simics_version_6_0_166,
+    simics_version_6_0_167,
+    simics_version_6_0_168,
+    simics_version_6_0_169,
+    simics_version_6_0_170,
+    simics_version_6_0_171,
+    simics_version_6_0_172,
+    simics_version_6_0_173,
+    simics_version_6_0_174,
+    simics_version_6_0_175,
+    simics_version_6_0_176,
+    simics_version_6_0_177,
+    simics_version_6_0_178,
+    simics_version_6_0_179,
+    simics_version_6_0_180,
+    simics_version_6_0_181,
+    simics_version_6_0_182,
+    simics_version_6_0_183,
+    simics_version_6_0_184,
+    simics_version_6_0_185,
+    simics_version_6_0_186,
+    simics_version_6_0_187,
+    simics_version_6_0_188,
+    simics_version_6_0_189,
+    simics_version_6_0_190,
+    simics_version_6_0_191,
+    simics_version_6_0_192,
+    simics_version_6_0_193,
+    simics_version_6_0_194,
+    simics_version_7_0_0,
+    simics_version_7_1_0,
+    simics_version_7_2_0,
+    simics_version_7_3_0,
+    simics_version_7_4_0,
+    simics_version_7_5_0,
+    simics_version_7_6_0,
+    simics_version_7_7_0,
+    simics_version_7_8_0,
+    simics_version_7_9_0,
+))]
 #[simics_exception]
 /// Obtain an iterator over the child objects at all depths of a given object
 ///
@@ -607,6 +742,50 @@ pub fn object_iterator(obj: *mut ConfObject) -> ObjectIter {
     unsafe { SIM_object_iterator(obj) }
 }
 
+#[cfg(any(
+    simics_version_6_0_163,
+    simics_version_6_0_164,
+    simics_version_6_0_165,
+    simics_version_6_0_166,
+    simics_version_6_0_167,
+    simics_version_6_0_168,
+    simics_version_6_0_169,
+    simics_version_6_0_170,
+    simics_version_6_0_171,
+    simics_version_6_0_172,
+    simics_version_6_0_173,
+    simics_version_6_0_174,
+    simics_version_6_0_175,
+    simics_version_6_0_176,
+    simics_version_6_0_177,
+    simics_version_6_0_178,
+    simics_version_6_0_179,
+    simics_version_6_0_180,
+    simics_version_6_0_181,
+    simics_version_6_0_182,
+    simics_version_6_0_183,
+    simics_version_6_0_184,
+    simics_version_6_0_185,
+    simics_version_6_0_186,
+    simics_version_6_0_187,
+    simics_version_6_0_188,
+    simics_version_6_0_189,
+    simics_version_6_0_190,
+    simics_version_6_0_191,
+    simics_version_6_0_192,
+    simics_version_6_0_193,
+    simics_version_6_0_194,
+    simics_version_7_0_0,
+    simics_version_7_1_0,
+    simics_version_7_2_0,
+    simics_version_7_3_0,
+    simics_version_7_4_0,
+    simics_version_7_5_0,
+    simics_version_7_6_0,
+    simics_version_7_7_0,
+    simics_version_7_8_0,
+    simics_version_7_9_0,
+))]
 #[simics_exception]
 /// Obtain an iterator over the child objects at depth 1 of a given object
 ///
@@ -623,6 +802,130 @@ pub fn object_iterator(obj: *mut ConfObject) -> ObjectIter {
 /// Unknown
 pub fn shallow_object_iterator(obj: *mut ConfObject) -> ObjectIter {
     unsafe { SIM_shallow_object_iterator(obj) }
+}
+
+#[cfg(not(any(
+    simics_version_6_0_163,
+    simics_version_6_0_164,
+    simics_version_6_0_165,
+    simics_version_6_0_166,
+    simics_version_6_0_167,
+    simics_version_6_0_168,
+    simics_version_6_0_169,
+    simics_version_6_0_170,
+    simics_version_6_0_171,
+    simics_version_6_0_172,
+    simics_version_6_0_173,
+    simics_version_6_0_174,
+    simics_version_6_0_175,
+    simics_version_6_0_176,
+    simics_version_6_0_177,
+    simics_version_6_0_178,
+    simics_version_6_0_179,
+    simics_version_6_0_180,
+    simics_version_6_0_181,
+    simics_version_6_0_182,
+    simics_version_6_0_183,
+    simics_version_6_0_184,
+    simics_version_6_0_185,
+    simics_version_6_0_186,
+    simics_version_6_0_187,
+    simics_version_6_0_188,
+    simics_version_6_0_189,
+    simics_version_6_0_190,
+    simics_version_6_0_191,
+    simics_version_6_0_192,
+    simics_version_6_0_193,
+    simics_version_6_0_194,
+    simics_version_7_0_0,
+    simics_version_7_1_0,
+    simics_version_7_2_0,
+    simics_version_7_3_0,
+    simics_version_7_4_0,
+    simics_version_7_5_0,
+    simics_version_7_6_0,
+    simics_version_7_7_0,
+    simics_version_7_8_0,
+    simics_version_7_9_0,
+)))]
+#[simics_exception]
+/// Obtain an iterator over the child objects at all depths of a given object
+///
+/// # Argument
+///
+/// * `obj` - The object to get an iterator for
+///
+/// # Return Value
+///
+/// The iterator over the object's children
+///
+/// # Context
+///
+/// Unknown
+pub fn object_iterator(obj: *mut ConfObject) -> ObjectIter {
+    unsafe { VT_object_iterator(obj) }
+}
+
+#[cfg(not(any(
+    simics_version_6_0_163,
+    simics_version_6_0_164,
+    simics_version_6_0_165,
+    simics_version_6_0_166,
+    simics_version_6_0_167,
+    simics_version_6_0_168,
+    simics_version_6_0_169,
+    simics_version_6_0_170,
+    simics_version_6_0_171,
+    simics_version_6_0_172,
+    simics_version_6_0_173,
+    simics_version_6_0_174,
+    simics_version_6_0_175,
+    simics_version_6_0_176,
+    simics_version_6_0_177,
+    simics_version_6_0_178,
+    simics_version_6_0_179,
+    simics_version_6_0_180,
+    simics_version_6_0_181,
+    simics_version_6_0_182,
+    simics_version_6_0_183,
+    simics_version_6_0_184,
+    simics_version_6_0_185,
+    simics_version_6_0_186,
+    simics_version_6_0_187,
+    simics_version_6_0_188,
+    simics_version_6_0_189,
+    simics_version_6_0_190,
+    simics_version_6_0_191,
+    simics_version_6_0_192,
+    simics_version_6_0_193,
+    simics_version_6_0_194,
+    simics_version_7_0_0,
+    simics_version_7_1_0,
+    simics_version_7_2_0,
+    simics_version_7_3_0,
+    simics_version_7_4_0,
+    simics_version_7_5_0,
+    simics_version_7_6_0,
+    simics_version_7_7_0,
+    simics_version_7_8_0,
+    simics_version_7_9_0,
+)))]
+#[simics_exception]
+/// Obtain an iterator over the child objects at depth 1 of a given object
+///
+/// # Arguments
+///
+/// * `obj` - The object to get an iterator for
+///
+/// # Return Value
+///
+/// An iterator over the object's children, non-recursively
+///
+/// # Context
+///
+/// Unknown
+pub fn shallow_object_iterator(obj: *mut ConfObject) -> ObjectIter {
+    unsafe { VT_shallow_object_iterator(obj) }
 }
 
 #[simics_exception]
