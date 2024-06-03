@@ -118,6 +118,7 @@ where
     /// * `hooks` - the hooks run before and after the harness's execution
     /// * `harness_fn` - the harness, executing the function
     /// * `observers` - the observers observing the target during execution
+    ///
     /// This may return an error on unix, if signal handler setup fails
     pub(crate) fn new<EM, OF, Z>(
         hooks: HT,

@@ -164,6 +164,7 @@ where
     /// * `user_hooks` - the hooks run before and after the harness's execution
     /// * `harness_fn` - the harness, executing the function
     /// * `observers` - the observers observing the target during execution
+    ///
     /// This may return an error on unix, if signal handler setup fails
     pub(crate) fn new<EM, OF, Z>(
         harness_fn: &'a mut H,
@@ -207,6 +208,7 @@ where
     /// * `user_hooks` - the hooks run before and after the harness's execution
     /// * `harness_fn` - the harness, executing the function
     /// * `observers` - the observers observing the target during execution
+    ///
     /// This may return an error on unix, if signal handler setup fails
     pub(crate) fn generic<EM, OF, Z>(
         user_hooks: HT,
