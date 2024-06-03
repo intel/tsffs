@@ -26,10 +26,10 @@ categories = [
 
 [build-dependencies]
 ispm-wrapper = { version = "0.1.0", path = "../ispm-wrapper" }
-anyhow = "1.0.80"
+anyhow = "1.0.86"
 bindgen = "0.69.4"
 scraper = "0.19.0"
-walkdir = "2.4.0"
+walkdir = "2.5.0"
 
 [features]
 default = ["link"]
@@ -38,5 +38,5 @@ default = ["link"]
 link = []
 
 [dev-dependencies]
-anyhow = "1.0.80"
+anyhow = "1.0.86"
 raw-cstr = "0.1.4"
