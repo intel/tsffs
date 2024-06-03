@@ -24,15 +24,15 @@ categories = [
 [dependencies]
 simics-api-sys = { version = "0.1.0", path = "../simics-api-sys" }
 simics-macro = { version = "0.1.0", path = "../simics-macro" }
-anyhow = "1.0.80"
+anyhow = "1.0.86"
 raw-cstr = "0.1.4"
-paste = "1.0.14"
-regex = "1.10.3"
-walkdir = "2.4.0"
-thiserror = "1.0.57"
-typed-builder = "0.18.1"
+paste = "1.0.15"
+regex = "1.10.4"
+walkdir = "2.5.0"
+thiserror = "1.0.61"
+typed-builder = "0.18.2"
 ordered-float = "4.2.0"
-versions = { version = "6.1.0", features = ["serde"] }
+versions = { version = "6.2.0", features = ["serde"] }
 
 [features]
 default = ["link", "global-allocator"]
@@ -46,10 +46,10 @@ global-allocator = []
 simics-api-sys = { version = "0.1.0", path = "../simics-api-sys" }
 simics-macro = { version = "0.1.0", path = "../simics-macro" }
 simics-build-utils = { version = "0.1.0", path = "../simics-build-utils" }
-anyhow = "1.0.80"
-prettyplease = "0.2.16"
-syn = "2.0.50"
-versions = "6.1.0"
-darling = "0.20.8"
-proc-macro2 = "1.0.78"
-quote = "1.0.35"
+anyhow = "1.0.86"
+prettyplease = "0.2.20"
+syn = "2.0.66"
+versions = "6.2.0"
+darling = "0.20.9"
+proc-macro2 = "1.0.85"
+quote = "1.0.36"

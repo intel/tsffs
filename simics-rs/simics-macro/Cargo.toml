@@ -28,10 +28,10 @@ proc-macro = true
 simics-api-sys = { version = "0.1.0", path = "../simics-api-sys" }
 simics-sign = { version = "0.1.0", path = "../simics-sign" }
 ispm-wrapper = { version = "0.1.0", path = "../ispm-wrapper" }
-quote = "1.0.35"
-syn = { version = "2.0.50", features = ["full"] }
-proc-macro2 = "1.0.78"
-darling = "0.20.8"
-indoc = "2.0.4"
+quote = "1.0.36"
+syn = { version = "2.0.66", features = ["full"] }
+proc-macro2 = "1.0.85"
+darling = "0.20.9"
+indoc = "2.0.5"
 command-ext = "0.1.2"
-chrono = "0.4.34"
+chrono = "0.4.38"

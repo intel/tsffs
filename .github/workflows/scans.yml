@@ -150,7 +150,7 @@ jobs:
 
           cargo audit
 
-          if ! cargo outdated --exit-code 1; then
+          if ! cargo outdated -R --exit-code 1; then
               echo "❗ [T186] Out of date third party dependencies found"
               exit 1
           fi

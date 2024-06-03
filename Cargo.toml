@@ -28,7 +28,7 @@ crate-type = ["cdylib", "rlib"]
 test = false
 
 [dependencies]
-anyhow = { version = "1.0.80" }
+anyhow = { version = "1.0.86" }
 libafl = { git = "https://github.com/AFLplusplus/LibAFL", rev = "0f26f6ea32aa74ee526636558842ec06bbfb49bb", default-features = false, features = [
     "std",
     "derive",
@@ -48,7 +48,7 @@ libafl_bolts = { git = "https://github.com/AFLplusplus/LibAFL", rev = "0f26f6ea3
 libafl_targets = { git = "https://github.com/AFLplusplus/LibAFL", rev = "0f26f6ea32aa74ee526636558842ec06bbfb49bb", default-features = false, features = [
     "std",
 ] }
-yaxpeax-arch = { version = "0.2.7", default-features = false, features = [
+yaxpeax-arch = { version = "0.2.8", default-features = false, features = [
     "std",
     "use-serde",
 ] }
@@ -57,20 +57,20 @@ yaxpeax-x86 = { version = "1.2.2", default-features = false, features = [
     "use-serde",
     "fmt",
 ] }
-typed-builder = "0.18.1"
+typed-builder = "0.18.2"
 raw-cstr = "0.1.4"
-goblin = "0.8.0"
+goblin = "0.8.2"
 yaxpeax-riscv = { git = "https://github.com/DrChat/yaxpeax-riscv", version = "0.1.0", features = [
     "serde",
 ], rev = "0e2151b" }
-crc32fast = "1.4.0"
+crc32fast = "1.4.2"
 simics = { path = "simics-rs/simics" }
-indoc = "2.0.4"
-serde = { version = "1.0.197", features = ["derive"] }
-serde_json = "1.0.114"
-versions = { version = "6.1.0", features = ["serde"] }
+indoc = "2.0.5"
+serde = { version = "1.0.203", features = ["derive"] }
+serde_json = "1.0.117"
+versions = { version = "6.2.0", features = ["serde"] }
 ffi = "0.1.1"
-num-traits = "0.2.18"
+num-traits = "0.2.19"
 num-derive = "0.4.2"
 tracing-subscriber = "0.3.18"
 tracing = { version = "0.1.40", features = ["log"] }
@@ -79,11 +79,11 @@ chrono = "0.4.38"
 
 [dev-dependencies]
 simics-test = { path = "simics-rs/simics-test" }
-anyhow = "1.0.80"
+anyhow = "1.0.86"
 command-ext = "0.1.2"
-indoc = "2.0.4"
+indoc = "2.0.5"
 ispm-wrapper = { path = "simics-rs/ispm-wrapper" }
-versions = { version = "6.1.0", features = ["serde"] }
+versions = { version = "6.2.0", features = ["serde"] }
 
 [build-dependencies]
 simics = { path = "simics-rs/simics" }
