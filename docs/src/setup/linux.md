@@ -134,7 +134,7 @@ cd $HOME/simics/tsffs/
 With the repository cloned, you can install and run the build utility:
 
 ```sh
-cargo install --path simics-rs/cargo-simics-build
+cargo install cargo-simics-build
 cargo simics-build -r
 ```
 

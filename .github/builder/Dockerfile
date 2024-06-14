@@ -56,7 +56,7 @@ RUN mkdir -p /simics/ispm && \
 
 RUN RUSTFLAGS="-C linker=clang -C link-arg=-fuse-ld=$(which ld.lld)" && \
     export RUSTFLAGS && \
-    cargo install --path simics-rs/cargo-simics-build && \
+    cargo install cargo-simics-build && \
     cargo simics-build -r && \
     mkdir -p /packages && \
     cp target/release/*.ispm /packages

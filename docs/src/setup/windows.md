@@ -243,7 +243,7 @@ Clone TSFFS to your system (anywhere you like) and build with:
 ```powershell
 git clone https://github.com/intel/tsffs
 cd tsffs
-cargo install --path simics-rs/cargo-simics-build
+cargo install cargo-simics-build
 cargo simics-build -r
 ```
 
