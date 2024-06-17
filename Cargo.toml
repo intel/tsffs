@@ -17,11 +17,11 @@ license = "Apache-2.0"
 publish = false
 readme = "README.md"
 repository = "https://github.com/intel/tsffs"
-version = "0.2.1"
+version = "0.2.2"
 
 [package.metadata.simics]
 package-number = 31337
-version = "6.1.3"
+version = "6.1.4"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
