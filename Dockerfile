@@ -93,7 +93,7 @@ WORKDIR /workspace/tsffs/
 # Build the project by initializing it as a project associated with the local SIMICS installation
 # and building the module using the build script. Then, install the built TSFFS SIMICS
 # package into the local SIMICS installation for use.
-RUN cargo install --path simics-rs/cargo-simics-build && \
+RUN cargo install cargo-simics-build && \
     cargo simics-build -r && \
     ispm packages \
         -i target/release/*-linux64.ispm \

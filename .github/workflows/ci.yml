@@ -457,7 +457,7 @@ jobs:
 
       - name: Install SIMICS Build
         run: |
-          cargo install --path simics-rs/cargo-simics-build
+          cargo install cargo-simics-build
 
       - name: Build TSFFS Package
         run: |
@@ -570,7 +570,7 @@ jobs:
 
       - name: Setup, Build, and Install TSFFS
         run: |
-          cargo install --path simics-rs/cargo-simics-build
+          cargo install cargo-simics-build
           cargo simics-build -r
 
       - name: Upload Distribution Package

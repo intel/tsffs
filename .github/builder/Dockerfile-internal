@@ -57,7 +57,7 @@ RUN ispm settings install-dir /simics && \
 
 RUN RUSTFLAGS="-C linker=clang -C link-arg=-fuse-ld=$(which ld.lld)" && \
     export RUSTFLAGS && \
-    cargo install --path simics-rs/cargo-simics-build && \
+    cargo install cargo-simics-build && \
     SIMICS_PACKAGE_VERSION="$(ispm packages --list | grep 1000 | awk '{print $3}' | cut -d '.' -f1).$(grep -E '^version = ' < Cargo.toml | sed -n '$p' | grep -oE '\"[^\"]+\"' | tr -d '\"' | cut -d'.' -f2-)" && \
     export SIMICS_PACKAGE_VERSION && \
     cargo simics-build -r && \
