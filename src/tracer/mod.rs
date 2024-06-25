@@ -12,15 +12,28 @@ use simics::{
         get_processor_number, sys::instruction_handle_t, AsConfObject, AttrValue, AttrValueType,
         ConfObject,
     },
-    trace,
+    get_interface, trace, ProcessorInfoV2Interface,
 };
 use std::{
     collections::HashMap, ffi::c_void, fmt::Display, hash::Hash, num::Wrapping,
     slice::from_raw_parts, str::FromStr,
 };
+use symbolic::demangle::Demangle;
 use typed_builder::TypedBuilder;
 
 use crate::{arch::ArchitectureOperations, Tsffs};
+
+#[derive(Deserialize, Serialize, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) struct ExecutionTraceSymbol {
+    /// The symbol name
+    pub symbol: String,
+    /// The demangled symbol name, if it demangles correctly
+    pub symbol_demangled: Option<String>,
+    /// The offset into the symbol
+    pub offset: u64,
+    /// The containing module's name (usually the path to the executable)
+    pub module: String,
+}
 
 #[derive(Deserialize, Serialize, Debug, Default)]
 pub(crate) struct ExecutionTrace(pub HashMap<i32, Vec<ExecutionTraceEntry>>);
@@ -43,6 +56,8 @@ pub(crate) struct ExecutionTraceEntry {
     insn: Option<String>,
     #[builder(default, setter(into, strip_option))]
     insn_bytes: Option<Vec<u8>>,
+    #[builder(default, setter(into))]
+    symbol: Option<ExecutionTraceSymbol>,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -356,7 +371,7 @@ impl Tsffs {
     ) -> Result<()> {
         let processor_number = get_processor_number(cpu)?;
 
-        if self.cmplog && self.cmplog_enabled {
+        if self.coverage_enabled && self.cmplog && self.cmplog_enabled {
             if let Some(arch) = self.processors.get_mut(&processor_number) {
                 match arch.trace_cmp(handle) {
                     Ok(r) => {
@@ -372,6 +387,30 @@ impl Tsffs {
                 }
             }
         }
+
+        let symcov = if self.coverage_enabled && self.windows && self.symbolic_coverage {
+            // Get the current instruction address
+            let mut processor_information_v2 = get_interface::<ProcessorInfoV2Interface>(cpu)?;
+            let pc = processor_information_v2.get_program_counter()?;
+            self.windows_os_info
+                .symbol_lookup_trees
+                .get(&processor_number)
+                .and_then(|lookup_tree| {
+                    lookup_tree.query(pc..pc + 1).next().map(|q| {
+                        let offset = pc - q.range.start;
+                        let symbol_demangled = symbolic::common::Name::from(&q.value.name)
+                            .demangle(symbolic::demangle::DemangleOptions::complete());
+                        ExecutionTraceSymbol {
+                            symbol: q.value.name.clone(),
+                            symbol_demangled,
+                            offset,
+                            module: q.value.module.clone(),
+                        }
+                    })
+                })
+        } else {
+            None
+        };
 
         if self.coverage_enabled
             && (self.save_all_execution_traces
@@ -401,12 +440,14 @@ impl Tsffs {
                                 .pc(arch.processor_info_v2().get_program_counter()?)
                                 .insn(disassembly_string)
                                 .insn_bytes(instruction_bytes.to_vec())
+                                .symbol(symcov)
                                 .build()
                         } else {
                             ExecutionTraceEntry::builder()
                                 .pc(arch.processor_info_v2().get_program_counter()?)
                                 .insn("(unknown)".to_string())
                                 .insn_bytes(instruction_bytes.to_vec())
+                                .symbol(symcov)
                                 .build()
                         }
                     });

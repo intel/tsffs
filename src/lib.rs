@@ -42,6 +42,7 @@ use libafl_targets::AFLppCmpLogMap;
 use log::LogMessage;
 use magic::MagicNumber;
 use num_traits::FromPrimitive as _;
+use os::windows::WindowsOsInfo;
 use serde::{Deserialize, Serialize};
 use serde_json::to_writer;
 use simics::{
@@ -49,9 +50,9 @@ use simics::{
     get_processor_number, info, lookup_file, object_clock, run_command, run_python, simics_init,
     sys::save_flags_t, trace, version_base, warn, write_configuration_to_file, AsConfObject,
     BreakpointId, ClassCreate, ClassObjectsFinalize, ConfObject, CoreBreakpointMemopHap,
-    CoreExceptionHap, CoreMagicInstructionHap, CoreSimulationStoppedHap,
-    CpuInstrumentationSubscribeInterface, Event, EventClassFlag, FromConfObject, HapHandle,
-    Interface, IntoAttrValueDict,
+    CoreControlRegisterWriteHap, CoreExceptionHap, CoreMagicInstructionHap,
+    CoreSimulationStoppedHap, CpuInstrumentationSubscribeInterface, Event, EventClassFlag,
+    FromConfObject, HapHandle, Interface,
 };
 #[cfg(simics_version_6)]
 use simics::{
@@ -89,6 +90,7 @@ pub(crate) mod haps;
 pub(crate) mod interfaces;
 pub(crate) mod log;
 pub(crate) mod magic;
+pub(crate) mod os;
 pub(crate) mod state;
 pub(crate) mod tracer;
 pub(crate) mod traits;
@@ -200,8 +202,8 @@ pub(crate) enum ManualStartSize {
     },
 }
 
-#[class(name = "tsffs", skip_objects_finalize, attr_value)]
-#[derive(AsConfObject, FromConfObject, Default, IntoAttrValueDict)]
+#[class(name = "tsffs", skip_objects_finalize)]
+#[derive(AsConfObject, FromConfObject, Default)]
 /// The main module class for the TSFFS fuzzer, stores state and configuration information
 pub(crate) struct Tsffs {
     #[class(attribute(optional, default = false))]
@@ -227,7 +229,6 @@ pub(crate) struct Tsffs {
     /// most processors will generate exceptions during start-up and during normal operation.
     pub all_exceptions_are_solutions: bool,
     #[class(attribute(optional))]
-    #[attr_value(fallible)]
     /// The set of exceptions which are treated as solutions. For example on x86_64, setting:
     ///
     /// @tsffs.exceptions = [14]
@@ -235,7 +236,6 @@ pub(crate) struct Tsffs {
     /// would treat any page fault as a solution.
     pub exceptions: BTreeSet<i64>,
     #[class(attribute(optional))]
-    #[attr_value(fallible)]
     /// The set of breakpoints which are treated as solutions. For example, to set a solution
     /// breakpoint on the address $addr (note the breakpoint set from the Simics command is
     /// accessed through the simenv namespace):
@@ -268,7 +268,6 @@ pub(crate) struct Tsffs {
     /// (and they cannot be nested). This only has an effect if `start_on_harness` is set.
     pub magic_start_index: u64,
     #[class(attribute(optional, default = vec![0]))]
-    #[attr_value(fallible)]
     /// The magic numbers which is passed to the platform-specific magic instruction HAP
     /// by a compiled-in harness to signal that the fuzzer should stop execution of the current
     /// iteration.
@@ -279,7 +278,6 @@ pub(crate) struct Tsffs {
     /// This only has an effect if `stop_on_harness` is set.
     pub magic_stop_indices: Vec<u64>,
     #[class(attribute(optional, default = vec![0]))]
-    #[attr_value(fallible)]
     /// The numbers which are passed to the platform-specific magic instruction HAP by a
     /// compiled-in harness to signal that the fuzzer should stop execution of the
     /// current iteration and save the testcase as a solution.
@@ -297,7 +295,6 @@ pub(crate) struct Tsffs {
     /// fuzzing loop.
     pub initial_random_corpus_size: usize,
     #[class(attribute(optional, default = lookup_file("%simics%")?.join("corpus")))]
-    #[attr_value(fallible)]
     /// The directory to load the corpus from and save new corpus items to. This directory
     /// may be a SIMICS relative path prefixed with "%simics%". It is an error to provide no
     /// corpus directory when `set_generate_random_corpus(True)` has not been called prior to
@@ -306,7 +303,6 @@ pub(crate) struct Tsffs {
     /// be used by default.
     pub corpus_directory: PathBuf,
     #[class(attribute(optional, default = lookup_file("%simics%")?.join("solutions")))]
-    #[attr_value(fallible)]
     /// The directory to save solutions to. This directory may be a SIMICS relative path
     /// prefixed with "%simics%". If not provided, "%simics%/solutions" will be used by
     /// default.
@@ -330,18 +326,15 @@ pub(crate) struct Tsffs {
     /// be logged.
     pub coverage_reporting: bool,
     #[class(attribute(optional))]
-    #[attr_value(fallible)]
     /// A set of executable files to tokenize. Tokens will be extracted from these files and
     /// used to drive token mutations of testcases.
     pub token_executables: Vec<PathBuf>,
     #[class(attribute(optional))]
-    #[attr_value(fallible)]
     /// A set of source files to tokenize. Tokens will be extracted from these files and used
     /// to drive token mutations of testcases. C source files are expected, and strings and
     /// tokens will be extracted from strings in the source files.
     pub token_src_files: Vec<PathBuf>,
     #[class(attribute(optional))]
-    #[attr_value(fallible)]
     /// Files in the format of:
     ///
     /// x = "hello"
@@ -350,18 +343,15 @@ pub(crate) struct Tsffs {
     /// which will be used to drive token mutations of testcases.
     pub token_files: Vec<PathBuf>,
     #[class(attribute(optional))]
-    #[attr_value(fallible)]
     /// Sets of tokens to use to drive token mutations of testcases. Each token set is a
     /// bytes which will be randomically inserted into testcases.
     pub tokens: Vec<Vec<u8>>,
     #[class(attribute(optional, default = lookup_file("%simics%")?.join("checkpoint.ckpt")))]
-    #[attr_value(fallible)]
     /// The path to the checkpoint saved prior to fuzzing when using snapshots
     pub checkpoint_path: PathBuf,
     #[class(attribute(optional, default = true))]
     pub pre_snapshot_checkpoint: bool,
     #[class(attribute(optional, default = lookup_file("%simics%")?.join("log.json")))]
-    #[attr_value(fallible)]
     /// The path to the log file which will be used to log the fuzzer's output statistics
     pub log_path: PathBuf,
     #[class(attribute(optional, default = true))]
@@ -394,7 +384,6 @@ pub(crate) struct Tsffs {
     /// and should only be used for debugging and testing purposes.
     pub save_all_execution_traces: bool,
     #[class(attribute(optional, default = lookup_file("%simics%")?.join("execution-traces")))]
-    #[attr_value(fallible)]
     /// The directory to save execution traces to, if any are set to be saved. This
     /// directory may be a SIMICS relative path prefixed with "%simics%". If not
     /// provided, "%simics%/execution-traces" will be used by default.
@@ -409,22 +398,37 @@ pub(crate) struct Tsffs {
     /// The interval in seconds between heartbeat messages
     pub heartbeat_interval: u64,
 
-    #[attr_value(skip)]
+    #[class(attribute(optional, default = false))]
+    /// Whether symbolic coverage should be used during fuzzing
+    pub symbolic_coverage: bool,
+    #[class(attribute(optional, default = false))]
+    /// Whether windows is being run in the simulation
+    pub windows: bool,
+    #[class(attribute(optional, default = lookup_file("%simics%")?.join("debuginfo-cache")))]
+    /// Directory in which to download PDB and EXE files from symbol servers on Windows
+    pub debuginfo_download_directory: PathBuf,
+    #[class(attribute(optional, default = true))]
+    /// Whether to guess the size of each function provided by a PDB file
+    pub guess_pdb_function_size: bool,
+    #[class(attribute(optional))]
+    /// Mapping of file name (name and extension e.g. fuzzer-app.exe or target.sys)
+    /// to a tuple of (exe path, debuginfo path) where debuginfo is either a PDB or DWARF
+    /// file
+    pub debug_info: HashMap<String, Vec<PathBuf>>,
+
     /// Handle for the core simulation stopped hap
     stop_hap_handle: HapHandle,
-    #[attr_value(skip)]
     /// Handle for the core breakpoint memop hap
     breakpoint_memop_hap_handle: HapHandle,
-    #[attr_value(skip)]
     /// Handle for exception HAP
     exception_hap_handle: HapHandle,
-    #[attr_value(skip)]
     /// The handle for the registered magic HAP, used to
     /// listen for magic start and stop if `start_on_harness`
     /// or `stop_on_harness` are set.
     magic_hap_handle: HapHandle,
+    /// Handle for the core control register write hap
+    control_register_write_hap_handle: HapHandle,
 
-    #[attr_value(skip)]
     /// A mapping of architecture hints from CPU index to architecture hint. This architecture
     /// hint overrides the detected architecture of the CPU core. This is useful when the
     /// architecture of the CPU core is not detected correctly, or when the architecture of the
@@ -432,114 +436,85 @@ pub(crate) struct Tsffs {
     /// report their architecture as x86_64 can be overridden to x86.
     pub architecture_hints: HashMap<i32, ArchitectureHint>,
     // Threads and message channels
-    #[attr_value(skip)]
     /// Fuzzer thread
     fuzz_thread: OnceCell<JoinHandle<Result<()>>>,
-    #[attr_value(skip)]
     /// Message sender to the fuzzer thread. TSFFS sends exit kinds to the fuzzer thread to
     /// report whether testcases resulted in normal exit, timeout, or solutions.
     fuzzer_tx: OnceCell<Sender<ExitKind>>,
-    #[attr_value(skip)]
     /// Message receiver from the fuzzer thread. TSFFS receives new testcases and run configuration
     /// from the fuzzer thread.
     fuzzer_rx: OnceCell<Receiver<Testcase>>,
-    #[attr_value(skip)]
     /// A message sender to inform the fuzzer thread that it should exit.
     fuzzer_shutdown: OnceCell<Sender<ShutdownMessage>>,
-    #[attr_value(skip)]
     /// Reciever from the fuzzer thread to receive messages from the fuzzer thread
     /// including status messages and structured introspection data like new edge findings.
     fuzzer_messages: OnceCell<Receiver<FuzzerMessage>>,
 
     // Fuzzer coverage maps
-    #[attr_value(skip)]
     /// The coverage map
     coverage_map: OnceCell<OwnedMutSlice<'static, u8>>,
-    #[attr_value(skip)]
     /// A pointer to the AFL++ comparison map
     aflpp_cmp_map_ptr: OnceCell<*mut AFLppCmpLogMap>,
-    #[attr_value(skip)]
     /// The owned AFL++ comparison map
     aflpp_cmp_map: OnceCell<&'static mut AFLppCmpLogMap>,
-    #[attr_value(skip)]
     /// The previous location for coverage for calculating the hash of edges.
     coverage_prev_loc: u64,
-    #[attr_value(skip)]
     /// The registered timeout event which is registered and used to detect timeouts in
     /// virtual time
     timeout_event: OnceCell<Event>,
-    #[attr_value(skip)]
     /// The set of edges which have been seen at least once.
     edges_seen: HashSet<u64>,
-    #[attr_value(skip)]
     /// A map of the new edges to their AFL indices seen since the last time the fuzzer
     /// provided an update. This is not cleared every execution.
     edges_seen_since_last: HashMap<u64, u64>,
-    #[attr_value(skip)]
     /// The set of PCs comprising the current execution trace. This is cleared every execution.
     execution_trace: ExecutionTrace,
 
-    #[attr_value(skip)]
     /// The name of the fuzz snapshot, if saved
     snapshot_name: OnceCell<String>,
-    #[attr_value(skip)]
     /// The index of the micro checkpoint saved for the fuzzer. Only present if not using
     /// snapshots.
     micro_checkpoint_index: OnceCell<i32>,
 
-    #[attr_value(skip)]
     /// The reason the current stop occurred
     stop_reason: Option<StopReason>,
-    #[attr_value(skip)]
     /// The buffer and size information, if saved
     start_info: OnceCell<StartInfo>,
 
-    #[attr_value(skip)]
     // #[builder(default = SystemTime::now())]
     /// The time the fuzzer was started at
     start_time: OnceCell<SystemTime>,
-    #[attr_value(skip)]
     // #[builder(default = SystemTime::now())]
     /// The time the fuzzer was started at
     last_heartbeat_time: Option<SystemTime>,
 
-    #[attr_value(skip)]
     log: OnceCell<File>,
 
-    #[attr_value(skip)]
     /// Whether cmplog is currently enabled
     coverage_enabled: bool,
-    #[attr_value(skip)]
     /// Whether cmplog is currently enabled
     cmplog_enabled: bool,
-    #[attr_value(skip)]
     /// The number of the processor which starts the fuzzing loop (via magic or manual methods)
     start_processor_number: OnceCell<i32>,
-    #[attr_value(skip)]
     /// Tracked processors. This always includes the start processor, and may include
     /// additional processors that are manually added by the user
     processors: HashMap<i32, Architecture>,
-    #[attr_value(skip)]
     /// A testcase to use for repro
     repro_testcase: Option<Vec<u8>>,
-    #[attr_value(skip)]
     /// Whether a bookmark has been set for repro mode
     repro_bookmark_set: bool,
-    #[attr_value(skip)]
     /// Whether the fuzzer is currently stopped in repro mode
     stopped_for_repro: bool,
-    #[attr_value(skip)]
     /// The number of iterations which have been executed so far
     iterations: usize,
-    #[attr_value(skip)]
     /// Whether snapshots are used. Snapshots are used on Simics 7.0.0 and later.
     use_snapshots: bool,
-    #[attr_value(skip)]
     /// The number of timeouts so far
     timeouts: usize,
-    #[attr_value(skip)]
     /// The number of solutions so far
     solutions: usize,
+
+    windows_os_info: WindowsOsInfo,
 }
 
 impl ClassObjectsFinalize for Tsffs {
@@ -588,6 +563,13 @@ impl ClassObjectsFinalize for Tsffs {
                         .on_magic_instruction(trigger_obj, magic_number)
                         .expect("Failed to execute on_magic_instruction callback")
                 }
+            })?;
+        tsffs.control_register_write_hap_handle =
+            CoreControlRegisterWriteHap::add_callback(move |trigger_obj, register_nr, value| {
+                let tsffs: &'static mut Tsffs = instance.into();
+                tsffs
+                    .on_control_register_write(trigger_obj, register_nr, value)
+                    .expect("Failed to execute on_control_register_write callback")
             })?;
         tsffs
             .coverage_map
@@ -726,10 +708,10 @@ impl Tsffs {
 
         // Disable VMP if it is enabled
         info!("Disabling VMP");
-
         if let Err(e) = run_command("disable-vmp") {
             warn!(self.as_conf_object(), "Failed to disable VMP: {}", e);
         }
+
         self.log(LogMessage::startup())?;
 
         #[cfg(simics_version_7)]

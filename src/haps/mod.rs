@@ -29,6 +29,7 @@ impl Tsffs {
             let start_processor = self
                 .start_processor()
                 .ok_or_else(|| anyhow!("No start processor"))?;
+            let start_processor_raw = start_processor.cpu();
 
             let start_info = match magic_number {
                 MagicNumber::StartBufferPtrSizePtr => {
@@ -54,6 +55,15 @@ impl Tsffs {
                 .map_err(|_| anyhow!("Failed to set start time"))?;
             self.coverage_enabled = true;
             self.save_initial_snapshot()?;
+            // Collect windows coverage info if enabled
+            if self.windows && self.symbolic_coverage {
+                self.windows_os_info.collect(
+                    start_processor_raw,
+                    &self.debuginfo_download_directory,
+                    self.guess_pdb_function_size,
+                    &self.debug_info,
+                )?;
+            }
             self.get_and_write_testcase()?;
             self.post_timeout_event()?;
         }
@@ -204,6 +214,16 @@ impl Tsffs {
             self.coverage_enabled = true;
             self.save_initial_snapshot()?;
 
+            // Collect windows coverage info if enabled
+            if self.windows && self.symbolic_coverage {
+                self.windows_os_info.collect(
+                    processor,
+                    &self.debuginfo_download_directory,
+                    self.guess_pdb_function_size,
+                    &self.debug_info,
+                )?;
+            }
+
             self.get_and_write_testcase()?;
 
             self.post_timeout_event()?;
@@ -235,6 +255,16 @@ impl Tsffs {
                 .map_err(|_| anyhow!("Failed to set start time"))?;
             self.coverage_enabled = true;
             self.save_initial_snapshot()?;
+
+            // Collect windows coverage info if enabled
+            if self.windows && self.symbolic_coverage {
+                self.windows_os_info.collect(
+                    processor,
+                    &self.debuginfo_download_directory,
+                    self.guess_pdb_function_size,
+                    &self.debug_info,
+                )?;
+            }
 
             self.post_timeout_event()?;
         }
@@ -571,7 +601,7 @@ impl Tsffs {
     ) -> Result<()> {
         trace!(
             self.as_conf_object(),
-            "on_magic_instruction({magic_number})"
+            "Got magic instruction with magic #{magic_number})"
         );
 
         if object_is_processor(trigger_obj)? {
@@ -626,6 +656,17 @@ impl Tsffs {
         } else {
             bail!("Magic instruction was triggered by a non-processor object");
         }
+
+        Ok(())
+    }
+
+    pub fn on_control_register_write(
+        &mut self,
+        trigger_obj: *mut ConfObject,
+        register_nr: i64,
+        value: i64,
+    ) -> Result<()> {
+        self.on_control_register_write_windows_symcov(trigger_obj, register_nr, value)?;
 
         Ok(())
     }
