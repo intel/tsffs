@@ -2,10 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::{anyhow, bail, Error, Result};
+use cpp_demangle::{DemangleOptions, Symbol};
 use ffi::ffi;
 use libafl::prelude::CmpValues;
 use libafl_bolts::{AsMutSlice, AsSlice};
 use libafl_targets::{AFLppCmpLogOperands, AFL_CMP_TYPE_INS, CMPLOG_MAP_H};
+use rustc_demangle::try_demangle;
 use serde::{Deserialize, Serialize};
 use simics::{
     api::{
@@ -18,7 +20,6 @@ use std::{
     collections::HashMap, ffi::c_void, fmt::Display, hash::Hash, num::Wrapping,
     slice::from_raw_parts, str::FromStr,
 };
-use symbolic::demangle::Demangle;
 use typed_builder::TypedBuilder;
 
 use crate::{arch::ArchitectureOperations, Tsffs};
@@ -397,9 +398,15 @@ impl Tsffs {
                 .get(&processor_number)
                 .and_then(|lookup_tree| {
                     lookup_tree.query(pc..pc + 1).next().map(|q| {
-                        let offset = pc - q.range.start;
-                        let symbol_demangled = symbolic::common::Name::from(&q.value.name)
-                            .demangle(symbolic::demangle::DemangleOptions::complete());
+                        let offset = pc - q.value.base + q.value.rva;
+                        let symbol_demangled = try_demangle(&q.value.name)
+                            .map(|d| d.to_string())
+                            .ok()
+                            .or_else(|| {
+                                Symbol::new(&q.value.name)
+                                    .ok()
+                                    .and_then(|s| s.demangle(&DemangleOptions::new()).ok())
+                            });
                         ExecutionTraceSymbol {
                             symbol: q.value.name.clone(),
                             symbol_demangled,

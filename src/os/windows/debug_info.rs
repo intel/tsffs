@@ -360,6 +360,7 @@ impl ProcessModule {
                                     if let Some(rva) = p.offset.to_rva(&address_map) {
                                         let info = SymbolInfo::new(
                                             rva.0 as u64,
+                                            self.base,
                                             0,
                                             p.name.to_string().to_string(),
                                             self.full_name.clone(),
@@ -372,6 +373,7 @@ impl ProcessModule {
                                 if let Some(rva) = p.offset.to_rva(&address_map) {
                                     let info = SymbolInfo::new(
                                         rva.0 as u64,
+                                        self.base,
                                         p.len as u64,
                                         p.name.to_string().to_string(),
                                         self.full_name.clone(),
@@ -422,15 +424,17 @@ pub struct Process {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SymbolInfo {
     pub rva: u64,
+    pub base: u64,
     pub size: u64,
     pub name: String,
     pub module: String,
 }
 
 impl SymbolInfo {
-    pub fn new(rva: u64, size: u64, name: String, module: String) -> Self {
+    pub fn new(rva: u64, base: u64, size: u64, name: String, module: String) -> Self {
         Self {
             rva,
+            base,
             size,
             name,
             module,
@@ -470,6 +474,7 @@ impl Module {
                                     if let Some(rva) = p.offset.to_rva(&address_map) {
                                         let info = SymbolInfo::new(
                                             rva.0 as u64,
+                                            self.base,
                                             1,
                                             p.name.to_string().to_string(),
                                             self.full_name.clone(),
@@ -482,6 +487,7 @@ impl Module {
                                 if let Some(rva) = p.offset.to_rva(&address_map) {
                                     let info = SymbolInfo::new(
                                         rva.0 as u64,
+                                        self.base,
                                         p.len as u64,
                                         p.name.to_string().to_string(),
                                         self.full_name.clone(),
