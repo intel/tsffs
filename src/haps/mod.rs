@@ -57,6 +57,7 @@ impl Tsffs {
             self.save_initial_snapshot()?;
             // Collect windows coverage info if enabled
             if self.windows && self.symbolic_coverage {
+                info!(self.as_conf_object(), "Collecting initial coverage info");
                 self.windows_os_info.collect(
                     start_processor_raw,
                     &self.debuginfo_download_directory,
@@ -216,6 +217,7 @@ impl Tsffs {
 
             // Collect windows coverage info if enabled
             if self.windows && self.symbolic_coverage {
+                info!(self.as_conf_object(), "Collecting initial coverage info");
                 self.windows_os_info.collect(
                     processor,
                     &self.debuginfo_download_directory,
@@ -258,6 +260,7 @@ impl Tsffs {
 
             // Collect windows coverage info if enabled
             if self.windows && self.symbolic_coverage {
+                info!(self.as_conf_object(), "Collecting initial coverage info");
                 self.windows_os_info.collect(
                     processor,
                     &self.debuginfo_download_directory,

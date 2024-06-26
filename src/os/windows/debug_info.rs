@@ -11,7 +11,7 @@ use std::{
 };
 
 use lending_iterator::{windows_mut, LendingIterator};
-use simics::{debug, info, ConfObject};
+use simics::{debug, get_object, info, ConfObject};
 use windows::Win32::System::{
     Diagnostics::Debug::{
         IMAGE_DEBUG_DIRECTORY, IMAGE_DEBUG_TYPE_CODEVIEW, IMAGE_DIRECTORY_ENTRY_DEBUG,
@@ -46,7 +46,10 @@ impl<'a> DebugInfo<'a> {
         P: AsRef<Path>,
     {
         if let Some(info) = user_debug_info.get(name) {
-            debug!("Have user-provided debug info for {name}");
+            debug!(
+                get_object("tsffs")?,
+                "Have user-provided debug info for {name}"
+            );
             let exe_path = info[0].clone();
             let pdb_path = info[1].clone();
 
@@ -115,7 +118,7 @@ impl<'a> DebugInfo<'a> {
                 .join(format!("{}.exe", &exe_guid));
 
             if !exe_path.exists() && !not_found_full_name_cache.contains(name) {
-                info!("Downloading PE file from {}", exe_url);
+                info!(get_object("tsffs")?, "Downloading PE file from {}", exe_url);
                 match get(&exe_url)?.error_for_status() {
                     Ok(response) => {
                         let mut file = File::create(&exe_path)?;
@@ -135,7 +138,10 @@ impl<'a> DebugInfo<'a> {
 
             if !pdb_path.exists() && !not_found_full_name_cache.contains(cv_info_pdb70.file_name())
             {
-                info!("Downloading PDB file from {}", pdb_url);
+                info!(
+                    get_object("tsffs")?,
+                    "Downloading PDB file from {}", pdb_url
+                );
                 match get(&pdb_url)?.error_for_status() {
                     Ok(response) => {
                         let mut file = File::create(&pdb_path)?;
@@ -177,7 +183,10 @@ impl<'a> DebugInfo<'a> {
         P: AsRef<Path>,
     {
         if let Some(info) = user_debug_info.get(name) {
-            debug!("Have user-provided debug info for {name}");
+            debug!(
+                get_object("tsffs")?,
+                "Have user-provided debug info for {name}"
+            );
             let exe_path = info[0].clone();
             let pdb_path = info[1].clone();
 
@@ -257,7 +266,7 @@ impl<'a> DebugInfo<'a> {
                 .join(format!("{}.exe", &exe_guid));
 
             if !exe_path.exists() && !not_found_full_name_cache.contains(name) {
-                info!("Downloading PE file from {}", exe_url);
+                info!(get_object("tsffs")?, "Downloading PE file from {}", exe_url);
                 match get(&exe_url)?.error_for_status() {
                     Ok(response) => {
                         let mut file = File::create(&exe_path)?;
@@ -279,7 +288,10 @@ impl<'a> DebugInfo<'a> {
 
             if !pdb_path.exists() && !not_found_full_name_cache.contains(cv_info_pdb70.file_name())
             {
-                info!("Downloading PDB file from {}", pdb_url);
+                info!(
+                    get_object("tsffs")?,
+                    "Downloading PDB file from {}", pdb_url
+                );
                 match get(&pdb_url)?.error_for_status() {
                     Ok(response) => {
                         let mut file = File::create(&pdb_path)?;

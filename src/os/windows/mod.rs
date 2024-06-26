@@ -5,7 +5,7 @@ use intervaltree::IntervalTree;
 use kernel::{find_kernel_with_idt, KernelInfo};
 use raw_cstr::AsRawCstr;
 use simics::{
-    get_interface, get_processor_number, sys::cpu_cb_handle_t, ConfObject,
+    get_interface, get_object, get_processor_number, info, sys::cpu_cb_handle_t, ConfObject,
     CpuInstrumentationSubscribeInterface, IntRegisterInterface, ProcessorInfoV2Interface,
 };
 use std::{
@@ -73,10 +73,12 @@ impl WindowsOsInfo {
     where
         P: AsRef<Path>,
     {
+        info!(get_object("tsffs")?, "Collecting Windows OS information");
         let processor_nr = get_processor_number(processor)?;
         let mut processor_info_v2: ProcessorInfoV2Interface = get_interface(processor)?;
 
         if self.kernel_info.is_none() {
+            info!(get_object("tsffs")?, "Collecting kernel information");
             // Make sure we're running 64-bit Windows
             ensure!(
                 processor_info_v2.get_logical_address_width()? == 64,
@@ -100,6 +102,8 @@ impl WindowsOsInfo {
             let _ = WindowsKpcr::new(processor, maj, min, build)?;
             let kernel_base = find_kernel_with_idt(processor, build)?;
 
+            info!(get_object("tsffs")?, "Found kernel base {kernel_base:#x}");
+
             self.kernel_info = Some(KernelInfo::new(
                 processor,
                 "ntoskrnl.exe",
@@ -109,6 +113,8 @@ impl WindowsOsInfo {
                 user_debug_info,
             )?);
         }
+
+        info!(get_object("tsffs")?, "Collecting process list");
 
         self.processes.insert(
             processor_nr,
@@ -122,6 +128,8 @@ impl WindowsOsInfo {
                     user_debug_info,
                 )?,
         );
+
+        info!(get_object("tsffs")?, "Collecting module list");
 
         self.modules.insert(
             processor_nr,
@@ -179,41 +187,39 @@ impl WindowsOsInfo {
     }
 }
 
-#[ffi(expect, self_ty = "*mut std::ffi::c_void")]
-impl Tsffs {
-    #[ffi(arg(rest), arg(self))]
-    pub fn on_instruction_before_symcov(
-        &mut self,
-        _obj: *mut ConfObject,
-        cpu: *mut ConfObject,
-        _handle: *mut simics::sys::instruction_handle_t,
-    ) -> Result<()> {
-        let cpu_nr = get_processor_number(cpu)?;
-
-        Ok(())
-    }
-}
-
 impl Tsffs {
     pub fn on_control_register_write_windows_symcov(
         &mut self,
         trigger_obj: *mut ConfObject,
         register_nr: i64,
-        _value: i64,
+        value: i64,
     ) -> Result<()> {
         let mut int_register: IntRegisterInterface = get_interface(trigger_obj)?;
+        let processor_nr = get_processor_number(trigger_obj)?;
 
-        // Check if the register was CR3
-        if self.windows
+        if self.processors.contains_key(&processor_nr)
+            && self.coverage_enabled
+            && self.windows
             && self.symbolic_coverage
             && register_nr == int_register.get_number("cr3".as_raw_cstr()?)? as i64
+            && self
+                .cr3_cache
+                .get(&processor_nr)
+                .is_some_and(|v| *v != value)
         {
+            info!(
+                    get_object("tsffs")?,
+                    "Got write {value:#x} to CR3 for processor {processor_nr}, refreshing kernel & process mappings"
+                );
+
             self.windows_os_info.collect(
                 trigger_obj,
                 &self.debuginfo_download_directory,
                 self.guess_pdb_function_size,
                 &self.debug_info,
             )?;
+
+            self.cr3_cache.insert(processor_nr, value);
         }
 
         Ok(())

@@ -5,7 +5,7 @@ use std::{
 
 use anyhow::{anyhow, bail, Result};
 use pdb::{FallibleIterator, SymbolData};
-use simics::{debug, get_attribute, ConfObject};
+use simics::{debug, get_attribute, get_object, ConfObject};
 use vergilius::bindings::*;
 use windows::Win32::System::{
     Diagnostics::Debug::{IMAGE_DIRECTORY_ENTRY_EXPORT, IMAGE_NT_HEADERS64},
@@ -55,7 +55,7 @@ pub fn page_is_kernel(processor: *mut ConfObject, address: u64) -> Result<bool> 
     );
 
     if nt_header.FileHeader.SizeOfOptionalHeader == 0 {
-        debug!("Optional header size was 0");
+        debug!(get_object("tsffs")?, "Optional header size was 0");
         return Ok(false);
     }
 
@@ -74,7 +74,7 @@ pub fn page_is_kernel(processor: *mut ConfObject, address: u64) -> Result<bool> 
 
     let image_size = nt_header.OptionalHeader.SizeOfImage as u64;
 
-    debug!("Image size is {:#x}", image_size);
+    debug!(get_object("tsffs")?, "Image size is {:#x}", image_size);
 
     let export_header_offset = nt_header.OptionalHeader.DataDirectory
         [IMAGE_DIRECTORY_ENTRY_EXPORT.0 as usize]
@@ -108,7 +108,7 @@ pub fn page_is_kernel(processor: *mut ConfObject, address: u64) -> Result<bool> 
 
     let name = read_nul_terminated_string(processor, address + export_directory.Name as u64)?;
 
-    debug!("Read image name {}", name);
+    debug!(get_object("tsffs")?, "Read image name {}", name);
 
     if name == "ntoskrnl.exe" {
         return Ok(true);
@@ -147,11 +147,14 @@ pub fn find_kernel_with_idt(processor: *mut ConfObject, build: u32) -> Result<u6
             sim_idtr_base + (i * std::mem::size_of::<IdtEntry64>() as u64),
         )?;
         if !idtr_entry0.present() {
-            debug!("Entry {} not present, skipping", i);
+            debug!(get_object("tsffs")?, "Entry {} not present, skipping", i);
             continue;
         }
         let idtr_entry0_offset = idtr_entry0.offset();
-        debug!("Got valid IDT entry with offset {:#x}", idtr_entry0_offset);
+        debug!(
+            get_object("tsffs")?,
+            "Got valid IDT entry with offset {:#x}", idtr_entry0_offset
+        );
         return find_kernel(
             processor,
             idtr_entry0_offset,
@@ -261,7 +264,10 @@ impl KernelInfo {
         P: AsRef<Path>,
     {
         let list_address = self.find_ps_loaded_module_list_address()?;
-        debug!("PsLoadedModuleList: {:#x}", list_address);
+        debug!(
+            get_object("tsffs")?,
+            "PsLoadedModuleList: {:#x}", list_address
+        );
         let list = read_virtual::<LIST_ENTRY>(processor, list_address)?;
         let mut modules = Vec::new();
 

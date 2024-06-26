@@ -515,6 +515,7 @@ pub(crate) struct Tsffs {
     solutions: usize,
 
     windows_os_info: WindowsOsInfo,
+    cr3_cache: HashMap<i32, i64>,
 }
 
 impl ClassObjectsFinalize for Tsffs {
@@ -707,7 +708,7 @@ impl Tsffs {
         }
 
         // Disable VMP if it is enabled
-        info!("Disabling VMP");
+        info!(self.as_conf_object(), "Disabling VMP");
         if let Err(e) = run_command("disable-vmp") {
             warn!(self.as_conf_object(), "Failed to disable VMP: {}", e);
         }
@@ -968,7 +969,7 @@ fn init() {
         )
     "#})
     .map_err(|e| {
-        error!("{e}");
+        error!(tsffs, "{e}");
         e
     })
     .expect("Failed to run python");

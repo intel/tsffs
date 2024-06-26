@@ -6,7 +6,7 @@ use std::{
 
 use anyhow::{anyhow, bail, ensure, Result};
 use raw_cstr::AsRawCstr;
-use simics::{debug, get_attribute, get_interface, ConfObject, IntRegisterInterface};
+use simics::{debug, get_attribute, get_interface, get_object, ConfObject, IntRegisterInterface};
 use vergilius::bindings::*;
 use windows::Win32::{Foundation::UNICODE_STRING, System::Kernel::LIST_ENTRY};
 
@@ -68,12 +68,8 @@ impl WindowsKpcr {
         let ia32_kernel_gs_base = int_register.read(ia32_kernel_gs_base_nr)?;
         let ia32_gs_base = int_register.read(ia32_gs_base_nr)?;
         let sim_idtr_base: u64 = get_attribute(processor, "idtr_base")?.try_into()?;
-        debug!("Got SIM IDTR Base {:#x}", sim_idtr_base);
 
         let kpcr_address = max(ia32_gs_base, ia32_kernel_gs_base);
-        debug!("Got KPCR address {:#x}", kpcr_address);
-
-        debug!("Initializing KPCR for Windows {}.{}.{}", maj, min, build);
 
         match (maj, min, build) {
             (10, 0, 10240) => {
@@ -370,8 +366,6 @@ impl WindowsKprcb {
         build: u32,
         kpcrb_address: u64,
     ) -> Result<Self> {
-        debug!("Initializing KPRCB for Windows {}.{}.{}", maj, min, build);
-
         match (maj, min, build) {
             (10, 0, 10240) => {
                 let kprcb =
@@ -2326,7 +2320,6 @@ impl WindowsTeb {
             WindowsTeb::Windows10_0_22621_382 { teb } => teb.ProcessEnvironmentBlock as u64,
             WindowsTeb::Windows10_0_22631_2428 { teb } => teb.ProcessEnvironmentBlock as u64,
         };
-        debug!("peb_address: {:#x}", peb_address);
         WindowsPeb::new(processor, major, minor, build, peb_address)
     }
 }
@@ -2762,7 +2755,6 @@ impl WindowsEProcess {
             WindowsEProcess::Windows10_0_22621_382 { eprocess } => eprocess.Pcb.DirectoryTableBase,
             WindowsEProcess::Windows10_0_22631_2428 { eprocess } => eprocess.Pcb.DirectoryTableBase,
         };
-        debug!("Using directory table base {:#x}", directory_table_base);
 
         if directory_table_base == 0 {
             directory_table_base = match self {
@@ -2806,12 +2798,10 @@ impl WindowsEProcess {
                     eprocess.Pcb.UserDirectoryTableBase
                 }
             };
-            debug!("Invalid DTB, using user DTB: {:#x}", directory_table_base);
         }
 
         let mut modules = Vec::new();
 
-        debug!("PEB ADDRESS: {:x}", peb_address);
         if peb_address != 0 {
             let peb = WindowsPeb::new_dtb(
                 processor,
