@@ -15,10 +15,13 @@ use windows::Win32::System::{
     },
 };
 
-use crate::os::windows::{
-    debug_info::DebugInfo,
-    idt::IdtEntry64,
-    util::{read_nul_terminated_string, read_unicode_string, read_virtual},
+use crate::os::{
+    windows::{
+        debug_info::DebugInfo,
+        idt::IdtEntry64,
+        util::{read_nul_terminated_string, read_unicode_string, read_virtual},
+    },
+    DebugInfoConfig,
 };
 
 use super::{
@@ -181,7 +184,7 @@ impl KernelInfo {
         base: u64,
         download_directory: P,
         not_found_full_name_cache: &mut HashSet<String>,
-        user_debug_info: &HashMap<String, Vec<PathBuf>>,
+        user_debug_info: DebugInfoConfig,
     ) -> Result<Self>
     where
         P: AsRef<Path>,
@@ -258,7 +261,7 @@ impl KernelInfo {
         processor: *mut ConfObject,
         download_directory: P,
         not_found_full_name_cache: &mut HashSet<String>,
-        user_debug_info: &HashMap<String, Vec<PathBuf>>,
+        user_debug_info: DebugInfoConfig,
     ) -> Result<Vec<Module>>
     where
         P: AsRef<Path>,
@@ -313,7 +316,7 @@ impl KernelInfo {
                         base,
                         download_directory.as_ref(),
                         not_found_full_name_cache,
-                        user_debug_info,
+                        user_debug_info.clone(),
                     )
                 })
                 .ok();
@@ -382,7 +385,7 @@ impl KernelInfo {
         processor: *mut ConfObject,
         download_directory: P,
         not_found_full_name_cache: &mut HashSet<String>,
-        user_debug_info: &HashMap<String, Vec<PathBuf>>,
+        user_debug_info: DebugInfoConfig,
     ) -> Result<Process>
     where
         P: AsRef<Path>,
@@ -427,7 +430,7 @@ impl KernelInfo {
         processor: *mut ConfObject,
         download_directory: P,
         not_found_full_name_cache: &mut HashSet<String>,
-        user_debug_info: &HashMap<String, Vec<PathBuf>>,
+        user_debug_info: DebugInfoConfig,
     ) -> Result<Vec<Process>>
     where
         P: AsRef<Path>,
@@ -477,7 +480,7 @@ impl KernelInfo {
                         self.build,
                         download_directory.as_ref(),
                         not_found_full_name_cache,
-                        user_debug_info,
+                        user_debug_info.clone(),
                     )
                     .unwrap_or_default(),
             });

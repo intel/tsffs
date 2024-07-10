@@ -20,6 +20,8 @@ use windows::Win32::System::{
     SystemServices::IMAGE_DOS_HEADER,
 };
 
+use crate::os::DebugInfoConfig;
+
 use super::{
     pdb::{CvInfoPdb70, Export},
     util::{read_virtual, read_virtual_dtb},
@@ -40,12 +42,12 @@ impl<'a> DebugInfo<'a> {
         base: u64,
         download_directory: P,
         not_found_full_name_cache: &mut HashSet<String>,
-        user_debug_info: &HashMap<String, Vec<PathBuf>>,
+        user_debug_info: DebugInfoConfig,
     ) -> Result<Self>
     where
         P: AsRef<Path>,
     {
-        if let Some(info) = user_debug_info.get(name) {
+        if let Some(info) = user_debug_info.user_debug_info.get(name) {
             debug!(
                 get_object("tsffs")?,
                 "Have user-provided debug info for {name}"
@@ -177,12 +179,12 @@ impl<'a> DebugInfo<'a> {
         download_directory: P,
         directory_table_base: u64,
         not_found_full_name_cache: &mut HashSet<String>,
-        user_debug_info: &HashMap<String, Vec<PathBuf>>,
+        user_debug_info: DebugInfoConfig,
     ) -> Result<Self>
     where
         P: AsRef<Path>,
     {
-        if let Some(info) = user_debug_info.get(name) {
+        if let Some(info) = user_debug_info.user_debug_info.get(name) {
             debug!(
                 get_object("tsffs")?,
                 "Have user-provided debug info for {name}"

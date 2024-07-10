@@ -10,7 +10,10 @@ use simics::{debug, get_attribute, get_interface, get_object, ConfObject, IntReg
 use vergilius::bindings::*;
 use windows::Win32::{Foundation::UNICODE_STRING, System::Kernel::LIST_ENTRY};
 
-use crate::os::windows::{debug_info::DebugInfo, util::read_virtual};
+use crate::os::{
+    windows::{debug_info::DebugInfo, util::read_virtual},
+    DebugInfoConfig,
+};
 
 use super::{
     debug_info::ProcessModule,
@@ -2718,7 +2721,7 @@ impl WindowsEProcess {
         build: u32,
         download_directory: P,
         not_found_full_name_cache: &mut HashSet<String>,
-        user_debug_info: &HashMap<String, Vec<PathBuf>>,
+        user_debug_info: DebugInfoConfig,
     ) -> Result<Vec<ProcessModule>>
     where
         P: AsRef<Path>,
@@ -2849,7 +2852,7 @@ impl WindowsEProcess {
                             base,
                             download_directory.as_ref(),
                             not_found_full_name_cache,
-                            user_debug_info,
+                            user_debug_info.clone(),
                         )
                     })
                     .ok();

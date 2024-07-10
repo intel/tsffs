@@ -8,6 +8,7 @@ use std::time::SystemTime;
 use crate::{
     arch::ArchitectureOperations,
     magic::MagicNumber,
+    os::DebugInfoConfig,
     state::{SolutionKind, StopReason},
     ManualStartInfo, Tsffs,
 };
@@ -62,7 +63,10 @@ impl Tsffs {
                     start_processor_raw,
                     &self.debuginfo_download_directory,
                     self.guess_pdb_function_size,
-                    &self.debug_info,
+                    DebugInfoConfig {
+                        system: self.symbolic_coverage_system,
+                        user_debug_info: &self.debug_info,
+                    },
                 )?;
             }
             self.get_and_write_testcase()?;
@@ -222,7 +226,10 @@ impl Tsffs {
                     processor,
                     &self.debuginfo_download_directory,
                     self.guess_pdb_function_size,
-                    &self.debug_info,
+                    DebugInfoConfig {
+                        system: self.symbolic_coverage_system,
+                        user_debug_info: &self.debug_info,
+                    },
                 )?;
             }
 
@@ -265,7 +272,10 @@ impl Tsffs {
                     processor,
                     &self.debuginfo_download_directory,
                     self.guess_pdb_function_size,
-                    &self.debug_info,
+                    DebugInfoConfig {
+                        system: self.symbolic_coverage_system,
+                        user_debug_info: &self.debug_info,
+                    },
                 )?;
             }
 

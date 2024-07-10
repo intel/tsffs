@@ -415,6 +415,14 @@ pub(crate) struct Tsffs {
     /// to a tuple of (exe path, debuginfo path) where debuginfo is either a PDB or DWARF
     /// file
     pub debug_info: HashMap<String, Vec<PathBuf>>,
+    #[class(attribute(optional, default = lookup_file("%simics%")?.join("debuginfo-source")))]
+    /// Directory in which source files are located. Source files do not need to be arranged in
+    /// the same directory structure as the compiled source, and are looked up by hash.
+    pub debuginfo_source_directory: PathBuf,
+    #[class(attribute(optional, default = false))]
+    /// Whether symbolic coverage should be collected for system components by downloading
+    /// executable and debug info files where possible.
+    pub symbolic_coverage_system: bool,
 
     /// Handle for the core simulation stopped hap
     stop_hap_handle: HapHandle,

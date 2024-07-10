@@ -20,6 +20,8 @@ use vergilius::bindings::*;
 
 use crate::Tsffs;
 
+use super::DebugInfoConfig;
+
 pub mod debug_info;
 pub mod idt;
 pub mod kernel;
@@ -68,7 +70,7 @@ impl WindowsOsInfo {
         processor: *mut ConfObject,
         download_directory: P,
         guess_pdb_function_size: bool,
-        user_debug_info: &HashMap<String, Vec<PathBuf>>,
+        user_debug_info: DebugInfoConfig,
     ) -> Result<()>
     where
         P: AsRef<Path>,
@@ -110,7 +112,7 @@ impl WindowsOsInfo {
                 kernel_base,
                 download_directory.as_ref(),
                 &mut self.not_found_full_name_cache,
-                user_debug_info,
+                user_debug_info.clone(),
             )?);
         }
 
@@ -125,7 +127,7 @@ impl WindowsOsInfo {
                     processor,
                     download_directory.as_ref(),
                     &mut self.not_found_full_name_cache,
-                    user_debug_info,
+                    user_debug_info.clone(),
                 )?,
         );
 
@@ -140,7 +142,7 @@ impl WindowsOsInfo {
                     processor,
                     download_directory.as_ref(),
                     &mut self.not_found_full_name_cache,
-                    user_debug_info,
+                    user_debug_info.clone(),
                 )?,
         );
 
@@ -216,7 +218,10 @@ impl Tsffs {
                 trigger_obj,
                 &self.debuginfo_download_directory,
                 self.guess_pdb_function_size,
-                &self.debug_info,
+                DebugInfoConfig {
+                    system: self.symbolic_coverage_system,
+                    user_debug_info: &self.debug_info,
+                },
             )?;
 
             self.cr3_cache.insert(processor_nr, value);
