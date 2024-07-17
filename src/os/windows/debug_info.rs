@@ -20,7 +20,7 @@ use windows::Win32::System::{
     SystemServices::IMAGE_DOS_HEADER,
 };
 
-use crate::os::DebugInfoConfig;
+use crate::{os::DebugInfoConfig, source_cov::SourceCache};
 
 use super::{
     pdb::{CvInfoPdb70, Export},
@@ -43,7 +43,7 @@ impl<'a> DebugInfo<'a> {
         download_directory: P,
         not_found_full_name_cache: &mut HashSet<String>,
         user_debug_info: DebugInfoConfig,
-    ) -> Result<Self>
+    ) -> Result<Option<Self>>
     where
         P: AsRef<Path>,
     {
@@ -61,13 +61,13 @@ impl<'a> DebugInfo<'a> {
 
             let pdb = PDB::open(pdb_file)?;
 
-            Ok(Self {
+            Ok(Some(Self {
                 exe_path,
                 pdb_path,
                 exe_file_contents,
                 pdb,
-            })
-        } else {
+            }))
+        } else if user_debug_info.system {
             let dos_header = read_virtual::<IMAGE_DOS_HEADER>(processor, base)?;
             let nt_header =
                 read_virtual::<IMAGE_NT_HEADERS64>(processor, base + dos_header.e_lfanew as u64)?;
@@ -163,12 +163,15 @@ impl<'a> DebugInfo<'a> {
 
             let pdb = PDB::open(pdb_file)?;
 
-            Ok(Self {
+            Ok(Some(Self {
                 exe_path,
                 pdb_path,
                 exe_file_contents,
                 pdb,
-            })
+            }))
+        } else {
+            // bail!("No debug info provided for {name}");
+            Ok(None)
         }
     }
 
@@ -180,7 +183,7 @@ impl<'a> DebugInfo<'a> {
         directory_table_base: u64,
         not_found_full_name_cache: &mut HashSet<String>,
         user_debug_info: DebugInfoConfig,
-    ) -> Result<Self>
+    ) -> Result<Option<Self>>
     where
         P: AsRef<Path>,
     {
@@ -198,13 +201,13 @@ impl<'a> DebugInfo<'a> {
 
             let pdb = PDB::open(pdb_file)?;
 
-            Ok(Self {
+            Ok(Some(Self {
                 exe_path,
                 pdb_path,
                 exe_file_contents,
                 pdb,
-            })
-        } else {
+            }))
+        } else if user_debug_info.system {
             let dos_header =
                 read_virtual_dtb::<IMAGE_DOS_HEADER>(processor, directory_table_base, base)?;
             let nt_header = read_virtual_dtb::<IMAGE_NT_HEADERS64>(
@@ -311,12 +314,14 @@ impl<'a> DebugInfo<'a> {
 
             let pdb = PDB::open(pdb_file)?;
 
-            Ok(Self {
+            Ok(Some(Self {
                 exe_path,
                 pdb_path,
                 exe_file_contents,
                 pdb,
-            })
+            }))
+        } else {
+            Ok(None)
         }
     }
 
@@ -342,73 +347,104 @@ pub struct ProcessModule {
 impl ProcessModule {
     pub fn intervals(
         &mut self,
-        guess_pdb_function_size: bool,
+        source_cache: &SourceCache,
     ) -> Result<Vec<Element<u64, SymbolInfo>>> {
-        let mut syms = Vec::new();
+        let Some(debug_info) = self.debug_info.as_mut() else {
+            bail!("No debug info for module {}", self.full_name);
+        };
 
-        if let Some(debug_info) = self.debug_info.as_mut() {
-            let symbol_table = debug_info.pdb.global_symbols()?;
-            let address_map = debug_info.pdb.address_map()?;
-            // let debug_information = debug_info.pdb.debug_information()?;
-            let mut symbols = symbol_table.iter();
-            while let Some(symbol) = symbols.next()? {
-                match symbol.parse() {
-                    Ok(sd) => {
-                        match sd {
-                            SymbolData::Public(p) => {
-                                if p.function {
-                                    // NOTE: Public symbols don't have sizes, the address is just
-                                    // the RVA of their entry point, so we just do an entry of size 1
-                                    if let Some(rva) = p.offset.to_rva(&address_map) {
-                                        let info = SymbolInfo::new(
-                                            rva.0 as u64,
-                                            self.base,
-                                            0,
-                                            p.name.to_string().to_string(),
-                                            self.full_name.clone(),
-                                        );
-                                        syms.push(info);
-                                    }
-                                }
-                            }
-                            SymbolData::Procedure(p) => {
-                                if let Some(rva) = p.offset.to_rva(&address_map) {
-                                    let info = SymbolInfo::new(
-                                        rva.0 as u64,
-                                        self.base,
-                                        p.len as u64,
-                                        p.name.to_string().to_string(),
-                                        self.full_name.clone(),
-                                    );
-                                    syms.push(info);
-                                }
-                            }
-                            SymbolData::ProcedureReference(_p) => {
-                                // TODO
-                            }
-                            SymbolData::Trampoline(_t) => {
-                                // TODO
-                            }
-                            _ => {}
-                        }
-                    }
-                    Err(e) => {
-                        let _ = e;
-                    }
-                }
-            }
-        }
+        let string_table = debug_info.pdb.string_table()?;
+        let address_map = debug_info.pdb.address_map()?;
+        let symbols = debug_info
+            .pdb
+            .debug_information()?
+            .modules()?
+            .iterator()
+            .filter_map(|module| module.ok())
+            .filter_map(|module| {
+                debug_info
+                    .pdb
+                    .module_info(&module)
+                    .ok()
+                    .flatten()
+                    .map(|module_info| (module, module_info))
+            })
+            .flat_map(|(_module, module_info)| {
+                let Ok(line_program) = module_info.line_program() else {
+                    return Vec::new();
+                };
 
-        if guess_pdb_function_size {
-            syms.sort_by(|a, b| a.rva.cmp(&b.rva));
-            windows_mut(&mut syms).for_each(|w: &mut [SymbolInfo; 2]| {
-                if w[0].size == 0 {
-                    w[0].size = w[1].rva - w[0].rva;
-                }
-            });
-        }
+                let Ok(symbols) = module_info.symbols() else {
+                    return Vec::new();
+                };
 
-        Ok(syms
+                symbols
+                    .iterator()
+                    .filter_map(|symbol| symbol.ok())
+                    .filter_map(|symbol| {
+                        symbol.parse().ok().map(|symbol_data| (symbol, symbol_data))
+                    })
+                    .filter_map(|(_symbol, symbol_data)| {
+                        let SymbolData::Procedure(procedure_symbol) = symbol_data else {
+                            return None;
+                        };
+                        let symbol_name = symbol_data.name()?;
+                        let procedure_rva = procedure_symbol.offset.to_rva(&address_map)?;
+
+                        let lines = line_program
+                            .lines_for_symbol(procedure_symbol.offset)
+                            .iterator()
+                            .filter_map(|line| line.ok())
+                            .filter_map(|line_info| {
+                                line_program
+                                    .get_file_info(line_info.file_index)
+                                    .ok()
+                                    .and_then(|line_file_info| {
+                                        string_table
+                                            .get(line_file_info.name)
+                                            .map(|line_file_name| (line_file_info, line_file_name))
+                                            .ok()
+                                    })
+                                    .and_then(|(line_file_info, line_file_name)| {
+                                        line_info.offset.to_rva(&address_map).map(|line_rva| {
+                                            (line_file_info, line_file_name, line_rva, line_info)
+                                        })
+                                    })
+                                    .and_then(
+                                        |(line_file_info, line_file_name, line_rva, line_info)| {
+                                            source_cache
+                                                .lookup_pdb(
+                                                    &line_file_info,
+                                                    &line_file_name.to_string(),
+                                                )
+                                                .ok()
+                                                .flatten()
+                                                .map(|p| p.to_path_buf())
+                                                .map(|file_path| LineInfo {
+                                                    rva: line_rva.0 as u64,
+                                                    size: line_info.length.unwrap_or(1),
+                                                    file_path,
+                                                    start_line: line_info.line_start,
+                                                    end_line: line_info.line_end,
+                                                })
+                                        },
+                                    )
+                            })
+                            .collect::<Vec<_>>();
+                        Some(SymbolInfo::new(
+                            procedure_rva.0 as u64,
+                            self.base,
+                            procedure_symbol.len as u64,
+                            symbol_name.to_string().to_string(),
+                            self.full_name.clone(),
+                            lines,
+                        ))
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+
+        Ok(symbols
             .into_iter()
             .map(|s| (self.base + s.rva..self.base + s.rva + s.size, s).into())
             .collect())
@@ -423,23 +459,47 @@ pub struct Process {
     pub modules: Vec<ProcessModule>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct LineInfo {
+    /// The relative virtual address in the executable image
+    pub rva: u64,
+    /// The size in bytes of the code this line represents
+    pub size: u32,
+    /// The file path of the source file on the *local* filesystem. This path is found by
+    /// looking up the pdb source path in the source cache on a best-effort approach
+    pub file_path: PathBuf,
+    /// The line number in the source file that this line starts at
+    pub start_line: u32,
+    /// The line number in the source file that this line ends at
+    pub end_line: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SymbolInfo {
     pub rva: u64,
     pub base: u64,
     pub size: u64,
     pub name: String,
     pub module: String,
+    pub lines: Vec<LineInfo>,
 }
 
 impl SymbolInfo {
-    pub fn new(rva: u64, base: u64, size: u64, name: String, module: String) -> Self {
+    pub fn new(
+        rva: u64,
+        base: u64,
+        size: u64,
+        name: String,
+        module: String,
+        lines: Vec<LineInfo>,
+    ) -> Self {
         Self {
             rva,
             base,
             size,
             name,
             module,
+            lines,
         }
     }
 }
@@ -457,72 +517,104 @@ pub struct Module {
 impl Module {
     pub fn intervals(
         &mut self,
-        guess_pdb_function_size: bool,
+        source_cache: &SourceCache,
     ) -> Result<Vec<Element<u64, SymbolInfo>>> {
-        let mut syms = Vec::new();
+        let Some(debug_info) = self.debug_info.as_mut() else {
+            bail!("No debug info for module {}", self.full_name);
+        };
 
-        if let Some(debug_info) = self.debug_info.as_mut() {
-            let symbol_table = debug_info.pdb.global_symbols()?;
-            let address_map = debug_info.pdb.address_map()?;
-            let mut symbols = symbol_table.iter();
-            while let Some(symbol) = symbols.next()? {
-                match symbol.parse() {
-                    Ok(sd) => {
-                        match sd {
-                            SymbolData::Public(p) => {
-                                if p.function {
-                                    // NOTE: Public symbols don't have sizes, the address is just
-                                    // the RVA of their entry point, so we just do an entry of size 1
-                                    if let Some(rva) = p.offset.to_rva(&address_map) {
-                                        let info = SymbolInfo::new(
-                                            rva.0 as u64,
-                                            self.base,
-                                            1,
-                                            p.name.to_string().to_string(),
-                                            self.full_name.clone(),
-                                        );
-                                        syms.push(info);
-                                    }
-                                }
-                            }
-                            SymbolData::Procedure(p) => {
-                                if let Some(rva) = p.offset.to_rva(&address_map) {
-                                    let info = SymbolInfo::new(
-                                        rva.0 as u64,
-                                        self.base,
-                                        p.len as u64,
-                                        p.name.to_string().to_string(),
-                                        self.full_name.clone(),
-                                    );
-                                    syms.push(info);
-                                }
-                            }
-                            SymbolData::ProcedureReference(_p) => {
-                                // TODO
-                            }
-                            SymbolData::Trampoline(_t) => {
-                                // TODO
-                            }
-                            _ => {}
-                        }
-                    }
-                    Err(e) => {
-                        let _ = e;
-                    }
-                }
-            }
-        }
+        let string_table = debug_info.pdb.string_table()?;
+        let address_map = debug_info.pdb.address_map()?;
+        let symbols = debug_info
+            .pdb
+            .debug_information()?
+            .modules()?
+            .iterator()
+            .filter_map(|module| module.ok())
+            .filter_map(|module| {
+                debug_info
+                    .pdb
+                    .module_info(&module)
+                    .ok()
+                    .flatten()
+                    .map(|module_info| (module, module_info))
+            })
+            .flat_map(|(_module, module_info)| {
+                let Ok(line_program) = module_info.line_program() else {
+                    return Vec::new();
+                };
 
-        if guess_pdb_function_size {
-            syms.sort_by(|a, b| a.rva.cmp(&b.rva));
-            windows_mut(&mut syms).for_each(|w: &mut [SymbolInfo; 2]| {
-                if w[0].size == 0 {
-                    w[0].size = w[1].rva - w[0].rva;
-                }
-            });
-        }
+                let Ok(symbols) = module_info.symbols() else {
+                    return Vec::new();
+                };
 
-        Ok(syms
+                symbols
+                    .iterator()
+                    .filter_map(|symbol| symbol.ok())
+                    .filter_map(|symbol| {
+                        symbol.parse().ok().map(|symbol_data| (symbol, symbol_data))
+                    })
+                    .filter_map(|(_symbol, symbol_data)| {
+                        let SymbolData::Procedure(procedure_symbol) = symbol_data else {
+                            return None;
+                        };
+                        let symbol_name = symbol_data.name()?;
+                        let procedure_rva = procedure_symbol.offset.to_rva(&address_map)?;
+
+                        let lines = line_program
+                            .lines_for_symbol(procedure_symbol.offset)
+                            .iterator()
+                            .filter_map(|line| line.ok())
+                            .filter_map(|line_info| {
+                                line_program
+                                    .get_file_info(line_info.file_index)
+                                    .ok()
+                                    .and_then(|line_file_info| {
+                                        string_table
+                                            .get(line_file_info.name)
+                                            .map(|line_file_name| (line_file_info, line_file_name))
+                                            .ok()
+                                    })
+                                    .and_then(|(line_file_info, line_file_name)| {
+                                        line_info.offset.to_rva(&address_map).map(|line_rva| {
+                                            (line_file_info, line_file_name, line_rva, line_info)
+                                        })
+                                    })
+                                    .and_then(
+                                        |(line_file_info, line_file_name, line_rva, line_info)| {
+                                            source_cache
+                                                .lookup_pdb(
+                                                    &line_file_info,
+                                                    &line_file_name.to_string(),
+                                                )
+                                                .ok()
+                                                .flatten()
+                                                .map(|p| p.to_path_buf())
+                                                .map(|file_path| LineInfo {
+                                                    rva: line_rva.0 as u64,
+                                                    size: line_info.length.unwrap_or(1),
+                                                    file_path,
+                                                    start_line: line_info.line_start,
+                                                    end_line: line_info.line_end,
+                                                })
+                                        },
+                                    )
+                            })
+                            .collect::<Vec<_>>();
+                        Some(SymbolInfo::new(
+                            procedure_rva.0 as u64,
+                            self.base,
+                            procedure_symbol.len as u64,
+                            symbol_name.to_string().to_string(),
+                            self.full_name.clone(),
+                            lines,
+                        ))
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+
+        Ok(symbols
             .into_iter()
             .map(|s| (self.base + s.rva..self.base + s.rva + s.size, s).into())
             .collect())

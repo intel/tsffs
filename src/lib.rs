@@ -63,6 +63,7 @@ use simics::{
 // which is necessary because this module is compatible with base versions which cross the
 // deprecation boundary
 use simics::{restore_snapshot, save_snapshot};
+use source_cov::{Coverage, SourceCache};
 use state::StopReason;
 use std::{
     alloc::{alloc_zeroed, Layout},
@@ -91,6 +92,7 @@ pub(crate) mod interfaces;
 pub(crate) mod log;
 pub(crate) mod magic;
 pub(crate) mod os;
+pub(crate) mod source_cov;
 pub(crate) mod state;
 pub(crate) mod tracer;
 pub(crate) mod traits;
@@ -407,9 +409,6 @@ pub(crate) struct Tsffs {
     #[class(attribute(optional, default = lookup_file("%simics%")?.join("debuginfo-cache")))]
     /// Directory in which to download PDB and EXE files from symbol servers on Windows
     pub debuginfo_download_directory: PathBuf,
-    #[class(attribute(optional, default = true))]
-    /// Whether to guess the size of each function provided by a PDB file
-    pub guess_pdb_function_size: bool,
     #[class(attribute(optional))]
     /// Mapping of file name (name and extension e.g. fuzzer-app.exe or target.sys)
     /// to a tuple of (exe path, debuginfo path) where debuginfo is either a PDB or DWARF
@@ -477,6 +476,9 @@ pub(crate) struct Tsffs {
     edges_seen_since_last: HashMap<u64, u64>,
     /// The set of PCs comprising the current execution trace. This is cleared every execution.
     execution_trace: ExecutionTrace,
+    /// The current line coverage state comprising the total execution. This is not
+    /// cleared and is persistent across the full campaign until the fuzzer stops.
+    coverage: Coverage,
 
     /// The name of the fuzz snapshot, if saved
     snapshot_name: OnceCell<String>,
@@ -524,6 +526,7 @@ pub(crate) struct Tsffs {
 
     windows_os_info: WindowsOsInfo,
     cr3_cache: HashMap<i32, i64>,
+    source_file_cache: SourceCache,
 }
 
 impl ClassObjectsFinalize for Tsffs {

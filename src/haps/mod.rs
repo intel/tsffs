@@ -62,11 +62,11 @@ impl Tsffs {
                 self.windows_os_info.collect(
                     start_processor_raw,
                     &self.debuginfo_download_directory,
-                    self.guess_pdb_function_size,
                     DebugInfoConfig {
                         system: self.symbolic_coverage_system,
                         user_debug_info: &self.debug_info,
                     },
+                    &self.source_file_cache,
                 )?;
             }
             self.get_and_write_testcase()?;
@@ -225,11 +225,11 @@ impl Tsffs {
                 self.windows_os_info.collect(
                     processor,
                     &self.debuginfo_download_directory,
-                    self.guess_pdb_function_size,
                     DebugInfoConfig {
                         system: self.symbolic_coverage_system,
                         user_debug_info: &self.debug_info,
                     },
+                    &self.source_file_cache,
                 )?;
             }
 
@@ -271,11 +271,11 @@ impl Tsffs {
                 self.windows_os_info.collect(
                     processor,
                     &self.debuginfo_download_directory,
-                    self.guess_pdb_function_size,
                     DebugInfoConfig {
                         system: self.symbolic_coverage_system,
                         user_debug_info: &self.debug_info,
                     },
+                    &self.source_file_cache,
                 )?;
             }
 

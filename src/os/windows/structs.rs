@@ -2855,7 +2855,8 @@ impl WindowsEProcess {
                             user_debug_info.clone(),
                         )
                     })
-                    .ok();
+                    .ok()
+                    .flatten();
 
                 modules.push(ProcessModule {
                     base,

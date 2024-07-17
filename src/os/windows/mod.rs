@@ -18,7 +18,7 @@ use util::read_virtual;
 
 use vergilius::bindings::*;
 
-use crate::Tsffs;
+use crate::{source_cov::SourceCache, Tsffs};
 
 use super::DebugInfoConfig;
 
@@ -69,8 +69,8 @@ impl WindowsOsInfo {
         &mut self,
         processor: *mut ConfObject,
         download_directory: P,
-        guess_pdb_function_size: bool,
         user_debug_info: DebugInfoConfig,
+        source_cache: &SourceCache,
     ) -> Result<()>
     where
         P: AsRef<Path>,
@@ -151,7 +151,7 @@ impl WindowsOsInfo {
             .get_mut(&processor_nr)
             .ok_or_else(|| anyhow!("No modules for processor {processor_nr}"))?
             .iter_mut()
-            .map(|m| m.intervals(guess_pdb_function_size))
+            .map(|m| m.intervals(source_cache))
             .collect::<Result<Vec<_>>>()?
             .into_iter()
             .chain(
@@ -166,7 +166,7 @@ impl WindowsOsInfo {
                     )?
                     .modules
                     .iter_mut()
-                    .map(|m| m.intervals(guess_pdb_function_size))
+                    .map(|m| m.intervals(source_cache))
                     .collect::<Result<Vec<_>>>()?,
             )
             .flatten()
@@ -217,11 +217,11 @@ impl Tsffs {
             self.windows_os_info.collect(
                 trigger_obj,
                 &self.debuginfo_download_directory,
-                self.guess_pdb_function_size,
                 DebugInfoConfig {
                     system: self.symbolic_coverage_system,
                     user_debug_info: &self.debug_info,
                 },
+                &self.source_file_cache,
             )?;
 
             self.cr3_cache.insert(processor_nr, value);

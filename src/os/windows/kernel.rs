@@ -195,8 +195,14 @@ impl KernelInfo {
             base,
             download_directory,
             not_found_full_name_cache,
-            user_debug_info,
-        )?;
+            // NOTE: We override that system must be true for the kernel because we must
+            // download it
+            DebugInfoConfig {
+                system: true,
+                user_debug_info: user_debug_info.user_debug_info,
+            },
+        )?
+        .ok_or_else(|| anyhow!("Failed to get debug info for kernel"))?;
 
         let kuser_shared_data = read_virtual::<windows_10_0_22631_2428_x64::_KUSER_SHARED_DATA>(
             processor,
@@ -319,7 +325,8 @@ impl KernelInfo {
                         user_debug_info.clone(),
                     )
                 })
-                .ok();
+                .ok()
+                .flatten();
 
             modules.push(Module {
                 base,
