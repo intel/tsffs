@@ -5,7 +5,7 @@ use intervaltree::IntervalTree;
 use kernel::{find_kernel_with_idt, KernelInfo};
 use raw_cstr::AsRawCstr;
 use simics::{
-    get_interface, get_object, get_processor_number, info, sys::cpu_cb_handle_t, ConfObject,
+    get_interface, get_object, get_processor_number, info, sys::cpu_cb_handle_t, warn, ConfObject,
     CpuInstrumentationSubscribeInterface, IntRegisterInterface, ProcessorInfoV2Interface,
 };
 use std::{
@@ -48,6 +48,7 @@ impl From<CpuInstrumentationCbHandle> for *mut cpu_cb_handle_t {
 }
 
 #[derive(Debug, Default)]
+/// Container for various types of information about a running Windows OS
 pub struct WindowsOsInfo {
     /// Kernel info
     pub kernel_info: Option<KernelInfo>,
@@ -65,11 +66,13 @@ pub struct WindowsOsInfo {
 }
 
 impl WindowsOsInfo {
+    /// Collect or refresh OS info. Typically run on new CR3 writes to refresh for
+    /// possibly-changed address space mappings.
     pub fn collect<P>(
         &mut self,
         processor: *mut ConfObject,
         download_directory: P,
-        user_debug_info: DebugInfoConfig,
+        user_debug_info: &mut DebugInfoConfig,
         source_cache: &SourceCache,
     ) -> Result<()>
     where
@@ -112,7 +115,7 @@ impl WindowsOsInfo {
                 kernel_base,
                 download_directory.as_ref(),
                 &mut self.not_found_full_name_cache,
-                user_debug_info.clone(),
+                user_debug_info,
             )?);
         }
 
@@ -127,7 +130,7 @@ impl WindowsOsInfo {
                     processor,
                     download_directory.as_ref(),
                     &mut self.not_found_full_name_cache,
-                    user_debug_info.clone(),
+                    user_debug_info,
                 )?,
         );
 
@@ -142,7 +145,7 @@ impl WindowsOsInfo {
                     processor,
                     download_directory.as_ref(),
                     &mut self.not_found_full_name_cache,
-                    user_debug_info.clone(),
+                    user_debug_info,
                 )?,
         );
 
@@ -151,8 +154,20 @@ impl WindowsOsInfo {
             .get_mut(&processor_nr)
             .ok_or_else(|| anyhow!("No modules for processor {processor_nr}"))?
             .iter_mut()
-            .map(|m| m.intervals(source_cache))
-            .collect::<Result<Vec<_>>>()?
+            .filter_map(|m| {
+                m.intervals(source_cache).ok().or_else(|| {
+                    get_object("tsffs")
+                        .and_then(|obj| {
+                            warn!(obj, "Failed to get intervals for module {}", &m.full_name);
+                            Err(
+                                anyhow!("Failed to get intervals for module {}", &m.full_name)
+                                    .into(),
+                            )
+                        })
+                        .ok()
+                })
+            })
+            .collect::<Vec<_>>()
             .into_iter()
             .chain(
                 self.kernel_info
@@ -166,8 +181,24 @@ impl WindowsOsInfo {
                     )?
                     .modules
                     .iter_mut()
-                    .map(|m| m.intervals(source_cache))
-                    .collect::<Result<Vec<_>>>()?,
+                    .filter_map(|m| {
+                        m.intervals(source_cache).ok().or_else(|| {
+                            get_object("tsffs")
+                                .and_then(|obj| {
+                                    warn!(
+                                        obj,
+                                        "Failed to get intervals for module {}", &m.full_name
+                                    );
+                                    Err(anyhow!(
+                                        "Failed to get intervals for module {}",
+                                        &m.full_name
+                                    )
+                                    .into())
+                                })
+                                .ok()
+                        })
+                    })
+                    .collect::<Vec<_>>(),
             )
             .flatten()
             .collect::<Vec<_>>();
@@ -180,6 +211,23 @@ impl WindowsOsInfo {
             .filter(|e| filtered_elements.insert(e.range.clone()))
             .collect::<Vec<_>>();
 
+        // Populate elements into the coverage record set
+        elements.iter().map(|e| &e.value).for_each(|si| {
+            if let Some(first) = si.lines.first() {
+                let record = user_debug_info.coverage.get_or_insert_mut(&first.file_path);
+                record.add_function_if_not_exists(
+                    first.start_line as usize,
+                    si.lines.last().map(|l| l.end_line as usize),
+                    &si.name,
+                );
+                si.lines.iter().for_each(|l| {
+                    (l.start_line..l.end_line).for_each(|line| {
+                        record.add_line_if_not_exists(line as usize);
+                    });
+                });
+            }
+        });
+
         self.symbol_lookup_trees.insert(
             processor_nr,
             elements.iter().cloned().collect::<IntervalTree<_, _>>(),
@@ -190,6 +238,7 @@ impl WindowsOsInfo {
 }
 
 impl Tsffs {
+    /// Triggered on control register write to refresh windows OS information if necessary
     pub fn on_control_register_write_windows_symcov(
         &mut self,
         trigger_obj: *mut ConfObject,
@@ -217,9 +266,10 @@ impl Tsffs {
             self.windows_os_info.collect(
                 trigger_obj,
                 &self.debuginfo_download_directory,
-                DebugInfoConfig {
+                &mut DebugInfoConfig {
                     system: self.symbolic_coverage_system,
                     user_debug_info: &self.debug_info,
+                    coverage: &mut self.coverage,
                 },
                 &self.source_file_cache,
             )?;

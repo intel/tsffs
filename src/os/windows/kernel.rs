@@ -5,7 +5,7 @@ use std::{
 
 use anyhow::{anyhow, bail, Result};
 use pdb::{FallibleIterator, SymbolData};
-use simics::{debug, get_attribute, get_object, ConfObject};
+use simics::{debug, get_attribute, get_object, info, ConfObject};
 use vergilius::bindings::*;
 use windows::Win32::System::{
     Diagnostics::Debug::{IMAGE_DIRECTORY_ENTRY_EXPORT, IMAGE_NT_HEADERS64},
@@ -31,6 +31,7 @@ use super::{
 
 const KUSER_SHARED_DATA_ADDRESS_X86_64: u64 = 0xFFFFF78000000000;
 
+/// Returns whether the given page is the ntos kernel
 pub fn page_is_kernel(processor: *mut ConfObject, address: u64) -> Result<bool> {
     const OPTIONAL_HEADER_SIGNATURE_PE32: u16 = 0x10b;
     const OPTIONAL_HEADER_SIGNATURE_PE32_PLUS: u16 = 0x20b;
@@ -120,6 +121,7 @@ pub fn page_is_kernel(processor: *mut ConfObject, address: u64) -> Result<bool> 
     Ok(false)
 }
 
+/// Search for the ntos kernel within a given address range
 pub fn find_kernel(processor: *mut ConfObject, start: u64, step: u64) -> Result<u64> {
     let mut scan_address = start & !(step - 1);
     let stop_address = start & !(0x1000000000000 - 1);
@@ -140,6 +142,7 @@ pub fn find_kernel(processor: *mut ConfObject, start: u64, step: u64) -> Result<
     bail!("Kernel not found");
 }
 
+/// Search for the ntos kernel by using the IDT to determine scan ranges, given a build number
 pub fn find_kernel_with_idt(processor: *mut ConfObject, build: u32) -> Result<u64> {
     let sim_idtr_base: u64 = get_attribute(processor, "idtr_base")?.try_into()?;
 
@@ -169,22 +172,29 @@ pub fn find_kernel_with_idt(processor: *mut ConfObject, build: u32) -> Result<u6
 }
 
 #[derive(Debug)]
+/// Information about the currently running windows kernel
 pub struct KernelInfo {
+    /// The base address of the kernel
     pub base: u64,
+    /// The major version of windows
     pub major: u32,
+    /// The minor version of windows
     pub minor: u32,
+    /// the build number of windows
     pub build: u32,
+    /// The loaded debug information for the kernel
     pub debug_info: DebugInfo<'static>,
 }
 
 impl KernelInfo {
+    /// Create a new kernel info struct
     pub fn new<P>(
         processor: *mut ConfObject,
         name: &str,
         base: u64,
         download_directory: P,
         not_found_full_name_cache: &mut HashSet<String>,
-        user_debug_info: DebugInfoConfig,
+        user_debug_info: &mut DebugInfoConfig,
     ) -> Result<Self>
     where
         P: AsRef<Path>,
@@ -197,9 +207,10 @@ impl KernelInfo {
             not_found_full_name_cache,
             // NOTE: We override that system must be true for the kernel because we must
             // download it
-            DebugInfoConfig {
+            &DebugInfoConfig {
                 system: true,
                 user_debug_info: user_debug_info.user_debug_info,
+                coverage: user_debug_info.coverage,
             },
         )?
         .ok_or_else(|| anyhow!("Failed to get debug info for kernel"))?;
@@ -262,12 +273,13 @@ impl KernelInfo {
         }
     }
 
+    /// Return the list of currently loaded modules
     pub fn loaded_module_list<P>(
         &mut self,
         processor: *mut ConfObject,
         download_directory: P,
         not_found_full_name_cache: &mut HashSet<String>,
-        user_debug_info: DebugInfoConfig,
+        user_debug_info: &DebugInfoConfig,
     ) -> Result<Vec<Module>>
     where
         P: AsRef<Path>,
@@ -322,7 +334,7 @@ impl KernelInfo {
                         base,
                         download_directory.as_ref(),
                         not_found_full_name_cache,
-                        user_debug_info.clone(),
+                        user_debug_info,
                     )
                 })
                 .ok()
@@ -387,12 +399,13 @@ impl KernelInfo {
         }
     }
 
+    /// Return the currently running process
     pub fn current_process<P>(
         &mut self,
         processor: *mut ConfObject,
         download_directory: P,
         not_found_full_name_cache: &mut HashSet<String>,
-        user_debug_info: DebugInfoConfig,
+        user_debug_info: &DebugInfoConfig,
     ) -> Result<Process>
     where
         P: AsRef<Path>,
@@ -432,12 +445,13 @@ impl KernelInfo {
         })
     }
 
+    /// Return the list of loaded processes
     pub fn process_list<P>(
         &mut self,
         processor: *mut ConfObject,
         download_directory: P,
         not_found_full_name_cache: &mut HashSet<String>,
-        user_debug_info: DebugInfoConfig,
+        user_debug_info: &DebugInfoConfig,
     ) -> Result<Vec<Process>>
     where
         P: AsRef<Path>,
@@ -473,23 +487,32 @@ impl KernelInfo {
                 self.build,
                 list_entry.Flink as u64,
             )?;
+            let pid = eprocess.pid();
+            let file_name = eprocess.file_name(processor)?;
+            let base_address =
+                eprocess.base_address(processor, self.major, self.minor, self.build)?;
+            debug!(
+                get_object("tsffs")?,
+                "Found process {} at {:#x}", file_name, base_address
+            );
+            let modules = eprocess
+                .modules(
+                    processor,
+                    self.major,
+                    self.minor,
+                    self.build,
+                    download_directory.as_ref(),
+                    not_found_full_name_cache,
+                    user_debug_info,
+                )
+                .unwrap_or_default();
+            debug!(get_object("tsffs")?, "Found {} modules", modules.len());
 
             processes.push(Process {
-                pid: eprocess.pid(),
-                file_name: eprocess.file_name(processor)?,
-                base_address: eprocess
-                    .base_address(processor, self.major, self.minor, self.build)?,
-                modules: eprocess
-                    .modules(
-                        processor,
-                        self.major,
-                        self.minor,
-                        self.build,
-                        download_directory.as_ref(),
-                        not_found_full_name_cache,
-                        user_debug_info.clone(),
-                    )
-                    .unwrap_or_default(),
+                pid,
+                file_name,
+                base_address,
+                modules,
             });
 
             list_entry = eprocess.active_process_links();

@@ -8,6 +8,7 @@ use super::paging::{
     PTE, VIRTUAL_ADDRESS,
 };
 
+/// Read from a virtual address
 pub fn read_virtual<T>(processor: *mut ConfObject, virtual_address: u64) -> Result<T>
 where
     T: Sized,
@@ -35,6 +36,7 @@ where
     }
 }
 
+/// Read from a physical address
 pub fn read_physical<T>(processor: *mut ConfObject, physical_address: u64) -> Result<T> {
     let mut processor_info_v2: ProcessorInfoV2Interface = get_interface(processor)?;
 
@@ -57,6 +59,7 @@ pub fn read_physical<T>(processor: *mut ConfObject, physical_address: u64) -> Re
     }
 }
 
+/// Read from a virtual address with a specific directory table base
 pub fn read_virtual_dtb<T>(
     processor: *mut ConfObject,
     directory_table_base: u64,
@@ -66,6 +69,7 @@ pub fn read_virtual_dtb<T>(
     read_physical(processor, physical_address)
 }
 
+/// Translate a virtual to physical address using a directory table base
 pub fn virtual_to_physical(
     processor: *mut ConfObject,
     directory_table_base: u64,
@@ -147,6 +151,10 @@ pub fn read_unicode_string(
     length: usize,
     buffer: *const u16,
 ) -> Result<String> {
+    if length == 0 || buffer.is_null() {
+        return Ok(String::new());
+    }
+
     let mut string = Vec::new();
     let mut address = buffer as u64;
 
@@ -170,6 +178,9 @@ pub fn read_unicode_string_dtb(
     buffer: *const u16,
     directory_table_base: u64,
 ) -> Result<String> {
+    if length == 0 || buffer.is_null() {
+        return Ok(String::new());
+    }
     let mut string = Vec::new();
     let mut address = buffer as u64;
 
@@ -188,6 +199,9 @@ pub fn read_unicode_string_dtb(
 }
 
 pub fn read_nul_terminated_string(processor: *mut ConfObject, address: u64) -> Result<String> {
+    if address == 0 {
+        return Ok(String::new());
+    }
     let mut string = String::new();
     let mut address = address;
 
@@ -210,6 +224,9 @@ pub fn read_nul_terminated_string_dtb(
     address: u64,
     directory_table_base: u64,
 ) -> Result<String> {
+    if address == 0 {
+        return Ok(String::new());
+    }
     let mut string = String::new();
     let mut address = address;
 

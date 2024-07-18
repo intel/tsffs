@@ -62,9 +62,10 @@ impl Tsffs {
                 self.windows_os_info.collect(
                     start_processor_raw,
                     &self.debuginfo_download_directory,
-                    DebugInfoConfig {
+                    &mut DebugInfoConfig {
                         system: self.symbolic_coverage_system,
                         user_debug_info: &self.debug_info,
+                        coverage: &mut self.coverage,
                     },
                     &self.source_file_cache,
                 )?;
@@ -225,9 +226,10 @@ impl Tsffs {
                 self.windows_os_info.collect(
                     processor,
                     &self.debuginfo_download_directory,
-                    DebugInfoConfig {
+                    &mut DebugInfoConfig {
                         system: self.symbolic_coverage_system,
                         user_debug_info: &self.debug_info,
+                        coverage: &mut self.coverage,
                     },
                     &self.source_file_cache,
                 )?;
@@ -271,9 +273,10 @@ impl Tsffs {
                 self.windows_os_info.collect(
                     processor,
                     &self.debuginfo_download_directory,
-                    DebugInfoConfig {
+                    &mut DebugInfoConfig {
                         system: self.symbolic_coverage_system,
                         user_debug_info: &self.debug_info,
+                        coverage: &mut self.coverage,
                     },
                     &self.source_file_cache,
                 )?;

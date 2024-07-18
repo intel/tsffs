@@ -6,7 +6,9 @@ use std::{
 
 use anyhow::{anyhow, bail, ensure, Result};
 use raw_cstr::AsRawCstr;
-use simics::{debug, get_attribute, get_interface, get_object, ConfObject, IntRegisterInterface};
+use simics::{
+    debug, get_attribute, get_interface, get_object, info, ConfObject, IntRegisterInterface,
+};
 use vergilius::bindings::*;
 use windows::Win32::{Foundation::UNICODE_STRING, System::Kernel::LIST_ENTRY};
 
@@ -2677,8 +2679,14 @@ impl WindowsEProcess {
                 eprocess.SeAuditProcessCreationInfo.ImageFileName as u64
             }
         };
+
+        if object_name_information_addr == 0 {
+            return Ok("".to_string());
+        }
+
         let object_name_information =
             read_virtual::<UNICODE_STRING>(processor, object_name_information_addr)?;
+
         read_unicode_string(
             processor,
             object_name_information.Length as usize,
@@ -2721,7 +2729,7 @@ impl WindowsEProcess {
         build: u32,
         download_directory: P,
         not_found_full_name_cache: &mut HashSet<String>,
-        user_debug_info: DebugInfoConfig,
+        user_debug_info: &DebugInfoConfig,
     ) -> Result<Vec<ProcessModule>>
     where
         P: AsRef<Path>,
@@ -2852,11 +2860,13 @@ impl WindowsEProcess {
                             base,
                             download_directory.as_ref(),
                             not_found_full_name_cache,
-                            user_debug_info.clone(),
+                            user_debug_info,
                         )
                     })
                     .ok()
                     .flatten();
+
+                debug!(get_object("tsffs")?, "Found module: {}", full_name);
 
                 modules.push(ProcessModule {
                     base,

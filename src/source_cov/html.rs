@@ -36,7 +36,6 @@ define! {
     Style {
 
     }
-
     CurrentView(summary: HtmlSummaryInfo) {
         table {
             tr {

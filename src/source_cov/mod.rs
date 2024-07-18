@@ -5,6 +5,7 @@ use std::{
 };
 
 use anyhow::Result;
+use lcov::Records;
 use md5::compute;
 use pdb::{FileChecksum, FileInfo};
 use sha1::{Digest, Sha1};
@@ -17,7 +18,6 @@ pub(crate) mod lcov;
 
 #[derive(Debug, Clone, Default)]
 pub struct SourceCache {
-    file_paths: Vec<PathBuf>,
     prefix_lookup: HashMap<Vec<String>, PathBuf>,
     md5_lookup: HashMap<Vec<u8>, PathBuf>,
     sha1_lookup: HashMap<Vec<u8>, PathBuf>,
@@ -70,7 +70,6 @@ impl SourceCache {
         }
 
         Ok(Self {
-            file_paths,
             prefix_lookup,
             md5_lookup,
             sha1_lookup,
@@ -132,6 +131,3 @@ impl SourceCache {
         })
     }
 }
-
-#[derive(Default)]
-pub struct Coverage {}

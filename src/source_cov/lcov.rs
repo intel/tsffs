@@ -1,13 +1,11 @@
 use anyhow::{anyhow, Result};
-use markup::Render;
 use petgraph::{
-    dot::Dot,
     graph::{DiGraph, NodeIndex},
-    visit::{DfsPostOrder, IntoNeighborsDirected},
-    Direction, Graph,
+    visit::DfsPostOrder,
+    Direction,
 };
 use std::{
-    collections::{btree_map::Entry, BTreeMap, HashMap, HashSet},
+    collections::{btree_map::Entry, BTreeMap, HashMap},
     fs::{create_dir_all, read_to_string, write},
     iter::repeat,
     path::{Component, Path, PathBuf},
@@ -360,11 +358,6 @@ impl Record {
             .collect::<Vec<_>>();
         functions.sort_by(|a, b| a.name.cmp(&b.name));
         functions
-    }
-
-    pub fn to_html(&self) -> Result<String> {
-        let contents = read_to_string(self.source_file.0.as_path())?;
-        Ok(Default::default())
     }
 }
 

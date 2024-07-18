@@ -28,21 +28,27 @@ use super::{
 };
 
 #[derive(Debug)]
+/// Debug info for an executable (which may be a .exe, .sys, etc)
 pub struct DebugInfo<'a> {
+    /// The path to the executable file on the local system
     pub exe_path: PathBuf,
+    /// The path to the PDB file corresponding to the executable on the local system
     pub pdb_path: PathBuf,
+    /// The contents of the executable file
     pub exe_file_contents: Vec<u8>,
+    /// The loaded PDB info
     pub pdb: PDB<'a, File>,
 }
 
 impl<'a> DebugInfo<'a> {
+    /// Instantiate a new debug info for an object
     pub fn new<P>(
         processor: *mut ConfObject,
         name: &str,
         base: u64,
         download_directory: P,
         not_found_full_name_cache: &mut HashSet<String>,
-        user_debug_info: DebugInfoConfig,
+        user_debug_info: &DebugInfoConfig,
     ) -> Result<Option<Self>>
     where
         P: AsRef<Path>,
@@ -175,6 +181,7 @@ impl<'a> DebugInfo<'a> {
         }
     }
 
+    /// Instantiate a new debug info for an object with a specific directory table base
     pub fn new_dtb<P>(
         processor: *mut ConfObject,
         name: &str,
@@ -325,26 +332,36 @@ impl<'a> DebugInfo<'a> {
         }
     }
 
+    /// Return the parsed PE file
     pub fn exe(&self) -> Result<PE<'_>> {
         PE::parse(&self.exe_file_contents)
             .map_err(move |e| anyhow!("Failed to parse PE file: {}", e))
     }
 
+    /// Get a list of exports from the PE file
     pub fn exports(&self) -> Result<Vec<Export>> {
         Ok(self.exe()?.exports.iter().map(Export::from).collect())
     }
 }
 
 #[derive(Debug)]
+/// A module (or object) loaded in a specific process
 pub struct ProcessModule {
+    /// The base of the object
     pub base: u64,
+    /// The size of the object
     pub size: u64,
+    /// The full name (typically a path) of the object on disk
     pub full_name: String,
+    /// The base name of the object
     pub base_name: String,
+    /// Loaded debug info for the object
     pub debug_info: Option<DebugInfo<'static>>,
 }
 
 impl ProcessModule {
+    /// Return lookup intervals for symbols in the process module which can be used to build
+    /// an interval tree
     pub fn intervals(
         &mut self,
         source_cache: &SourceCache,
@@ -452,14 +469,20 @@ impl ProcessModule {
 }
 
 #[derive(Debug)]
+/// A process
 pub struct Process {
+    /// The unique PID of the process
     pub pid: u64,
+    /// The file name of the process's main object
     pub file_name: String,
+    /// The base address of the process's main object
     pub base_address: u64,
+    /// The list of modules/objects loaded into the process's address space
     pub modules: Vec<ProcessModule>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+/// Information about a line in a source file from a PDB
 pub struct LineInfo {
     /// The relative virtual address in the executable image
     pub rva: u64,
@@ -475,12 +498,19 @@ pub struct LineInfo {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+/// Information about a symbol in a PDB, including the member lines of the symbol, if any.
 pub struct SymbolInfo {
+    /// The relative virtual address in the executable image
     pub rva: u64,
+    /// The base address of the executable image
     pub base: u64,
+    /// The size of the symbol (e.g. function size)
     pub size: u64,
+    /// The (possibly mangled) name of the symbol
     pub name: String,
+    /// The name of the module the symbol is in
     pub module: String,
+    /// The source lines of code for the symbol
     pub lines: Vec<LineInfo>,
 }
 
@@ -505,16 +535,24 @@ impl SymbolInfo {
 }
 
 #[derive(Debug)]
+/// A kernel module/driver
 pub struct Module {
+    /// The base address of the module
     pub base: u64,
+    /// The entrypoint of the module
     pub entry: u64,
+    /// The size of the module
     pub size: u64,
+    /// The full name of the module
     pub full_name: String,
+    /// The base name of the module
     pub base_name: String,
+    /// The loaded debug info for the module
     pub debug_info: Option<DebugInfo<'static>>,
 }
 
 impl Module {
+    /// Return lookup intervals for symbols in the module which can be used to build an interval tree
     pub fn intervals(
         &mut self,
         source_cache: &SourceCache,

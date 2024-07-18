@@ -7,6 +7,7 @@ use crate::os::windows::util::{
 
 #[derive(Debug, Clone)]
 #[repr(C)]
+/// The GUID structure in a CV 7.0 header
 pub struct Guid {
     pub data0: u32,
     pub data1: u16,
@@ -15,6 +16,7 @@ pub struct Guid {
 }
 
 #[derive(Debug, Clone)]
+/// The header of a CV (coreview) 7.0 file
 pub struct CvInfoPdb70 {
     pub cv_signature: u32,
     pub signature: Guid,
@@ -23,6 +25,7 @@ pub struct CvInfoPdb70 {
 }
 
 impl CvInfoPdb70 {
+    /// Parse a CV 7.0 header from a given address
     pub fn new(processor: *mut ConfObject, address: u64) -> Result<Self> {
         let cv_signature = read_virtual::<u32>(processor, address)?;
         let signature =
@@ -49,6 +52,7 @@ impl CvInfoPdb70 {
         })
     }
 
+    /// Parse a CV 7.0 header from a given address with a DTB
     pub fn new_dtb(
         processor: *mut ConfObject,
         directory_table_base: u64,
@@ -100,6 +104,7 @@ impl CvInfoPdb70 {
 }
 
 #[derive(Debug, Clone)]
+/// An export from a PE file
 pub struct Export {
     pub name: Option<String>,
     pub offset: Option<usize>,

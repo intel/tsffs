@@ -63,7 +63,7 @@ use simics::{
 // which is necessary because this module is compatible with base versions which cross the
 // deprecation boundary
 use simics::{restore_snapshot, save_snapshot};
-use source_cov::{Coverage, SourceCache};
+use source_cov::{lcov::Records, SourceCache};
 use state::StopReason;
 use std::{
     alloc::{alloc_zeroed, Layout},
@@ -75,7 +75,7 @@ use std::{
     ptr::null_mut,
     str::FromStr,
     sync::mpsc::{Receiver, Sender},
-    thread::JoinHandle,
+    thread::{spawn, JoinHandle},
     time::SystemTime,
 };
 use tracer::{
@@ -422,6 +422,10 @@ pub(crate) struct Tsffs {
     /// Whether symbolic coverage should be collected for system components by downloading
     /// executable and debug info files where possible.
     pub symbolic_coverage_system: bool,
+    #[class(attribute(optional, default = lookup_file("%simics%")?.join("symbolic-coverage")))]
+    /// Directory in which source files are located. Source files do not need to be arranged in
+    /// the same directory structure as the compiled source, and are looked up by hash.
+    pub symbolic_coverage_directory: PathBuf,
 
     /// Handle for the core simulation stopped hap
     stop_hap_handle: HapHandle,
@@ -478,7 +482,7 @@ pub(crate) struct Tsffs {
     execution_trace: ExecutionTrace,
     /// The current line coverage state comprising the total execution. This is not
     /// cleared and is persistent across the full campaign until the fuzzer stops.
-    coverage: Coverage,
+    coverage: Records,
 
     /// The name of the fuzz snapshot, if saved
     snapshot_name: OnceCell<String>,
@@ -724,6 +728,10 @@ impl Tsffs {
             warn!(self.as_conf_object(), "Failed to disable VMP: {}", e);
         }
 
+        // Initialize the source cache for source/line lookups
+        info!(self.as_conf_object(), "Initializing source cache");
+        self.source_file_cache = SourceCache::new(&self.debuginfo_source_directory)?;
+
         self.log(LogMessage::startup())?;
 
         #[cfg(simics_version_7)]
@@ -929,23 +937,38 @@ impl Tsffs {
 
     /// Save the current execution trace to a file
     pub fn save_execution_trace(&mut self) -> Result<()> {
-        let mut hasher = DefaultHasher::new();
-        self.execution_trace.hash(&mut hasher);
-        let hash = hasher.finish();
+        let execution_trace = self.execution_trace.clone();
+        let execution_trace_dir = self.execution_trace_directory.clone();
+        let coverage = self.coverage.clone();
+        let symbolic_coverage_directory = self.symbolic_coverage_directory.clone();
+        // We just fire and forget this thread -- we won't know if it fails but it's basically
+        // guaranteed not to. This stops us from having to wait every exec to write a huge file.
+        spawn(move || {
+            let mut hasher = DefaultHasher::new();
+            execution_trace.hash(&mut hasher);
+            let hash = hasher.finish();
 
-        if !self.execution_trace_directory.is_dir() {
-            create_dir_all(&self.execution_trace_directory)?;
-        }
+            if !execution_trace_dir.is_dir() {
+                create_dir_all(&execution_trace_dir)?;
+            }
 
-        let trace_path = self
-            .execution_trace_directory
-            .join(format!("{:x}.json", hash));
+            let trace_path = execution_trace_dir.join(format!("{:x}.json", hash));
 
-        if !trace_path.exists() {
-            let trace_file = File::create(trace_path)?;
+            if !trace_path.exists() {
+                let trace_file = File::create(&trace_path)?;
+                println!("Saving execution trace to {}", trace_path.display());
+                to_writer(trace_file, &execution_trace)?;
+            }
 
-            to_writer(trace_file, &self.execution_trace)?;
-        }
+            if !symbolic_coverage_directory.is_dir() {
+                create_dir_all(&symbolic_coverage_directory)?;
+            }
+
+            println!("Saving coverage information to symbolic coverage directory {symbolic_coverage_directory:?}");
+            coverage.to_html(&symbolic_coverage_directory)?;
+
+            Ok::<(), anyhow::Error>(())
+        });
 
         Ok(())
     }

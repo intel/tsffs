@@ -1,6 +1,6 @@
 #[repr(C)] // NOTE: Without repr(C) alignment causes corruption
 #[derive(Debug, Clone)]
-// NOTE: The vergilius generated struct is incorrectly sized
+// NOTE: The vergilius generated struct is incorrectly sized so we use this one
 pub struct IdtEntry64 {
     offset_low: u16,
     selector: u16,
