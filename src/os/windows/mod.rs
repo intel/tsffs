@@ -52,8 +52,8 @@ impl From<CpuInstrumentationCbHandle> for *mut cpu_cb_handle_t {
 pub struct WindowsOsInfo {
     /// Kernel info
     pub kernel_info: Option<KernelInfo>,
-    /// Per-CPU process list, there may be overlap between them.
-    pub processes: HashMap<i32, Vec<Process>>,
+    /// Per-CPU current process, there may be overlap between them.
+    pub processes: HashMap<i32, Process>,
     /// Per-CPU kernel module list, there may be overlap between them.
     pub modules: HashMap<i32, Vec<Module>>,
     /// Per-CPU Symbol lookup trees
@@ -126,7 +126,7 @@ impl WindowsOsInfo {
             self.kernel_info
                 .as_mut()
                 .expect("Kernel Info must be set at this point")
-                .process_list(
+                .current_process(
                     processor,
                     download_directory.as_ref(),
                     &mut self.not_found_full_name_cache,
