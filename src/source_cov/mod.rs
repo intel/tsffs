@@ -5,11 +5,11 @@ use std::{
 };
 
 use anyhow::Result;
-use lcov::Records;
 use md5::compute;
 use pdb::{FileChecksum, FileInfo};
 use sha1::{Digest, Sha1};
 use sha2::Sha256;
+use simics::{debug, get_object};
 use typed_path::{TypedComponent, TypedPath, UnixComponent, WindowsComponent};
 use walkdir::WalkDir;
 
@@ -69,6 +69,10 @@ impl SourceCache {
             }
         }
 
+        if let Ok(o) = get_object("tsffs") {
+            debug!(o, "Cached {} source files", file_paths.len());
+        }
+
         Ok(Self {
             prefix_lookup,
             md5_lookup,
@@ -99,7 +103,6 @@ impl SourceCache {
             .collect::<Vec<_>>();
 
         while !file_name_components.is_empty() {
-            println!("Looking up {:?}", file_name_components);
             if let Some(file_path) = self.prefix_lookup.get(&file_name_components) {
                 return Some(file_path);
             }

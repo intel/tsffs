@@ -17,7 +17,7 @@ use simics::{
     get_interface, trace, ProcessorInfoV2Interface,
 };
 use std::{
-    collections::HashMap, ffi::c_void, fmt::Display, hash::Hash, num::Wrapping, path::PathBuf,
+    collections::HashMap, ffi::c_void, fmt::Display, hash::Hash, num::Wrapping,
     slice::from_raw_parts, str::FromStr,
 };
 use typed_builder::TypedBuilder;
@@ -391,7 +391,13 @@ impl Tsffs {
             }
         }
 
-        let symcov = if self.coverage_enabled && self.windows && self.symbolic_coverage {
+        let symcov = if self.coverage_enabled
+            && self.windows
+            && self.symbolic_coverage
+            && (self.save_all_execution_traces
+                || self.save_interesting_execution_traces
+                || self.save_solution_execution_traces)
+        {
             // Get the current instruction address
             let mut processor_information_v2 = get_interface::<ProcessorInfoV2Interface>(cpu)?;
             let pc = processor_information_v2.get_program_counter()?;
@@ -453,6 +459,61 @@ impl Tsffs {
                         }
                     })
                 })
+        } else if self.coverage_enabled && self.symbolic_coverage {
+            let mut processor_information_v2 = get_interface::<ProcessorInfoV2Interface>(cpu)?;
+            let pc = processor_information_v2.get_program_counter()?;
+            if let Some(lookup_tree) = self
+                .windows_os_info
+                .symbol_lookup_trees
+                .get(&processor_number)
+            {
+                if let Some(q) = lookup_tree.query(pc..pc + 1).next() {
+                    let symbol_demangled = try_demangle(&q.value.name)
+                        .map(|d| d.to_string())
+                        .ok()
+                        .or_else(|| {
+                            Symbol::new(&q.value.name)
+                                .ok()
+                                .and_then(|s| s.demangle(&DemangleOptions::new()).ok())
+                        });
+
+                    let function_end_line = q.value.lines.last().map(|f| f.end_line);
+                    // Update coverage record
+                    if let Some(function_start_line) = q.value.lines.first() {
+                        let record = self
+                            .coverage
+                            .get_or_insert_mut(&function_start_line.file_path);
+                        record.add_function_if_not_exists(
+                            function_start_line.start_line as usize,
+                            function_end_line.map(|l| l as usize),
+                            symbol_demangled.as_ref().unwrap_or(&q.value.name),
+                        );
+                        q.value.lines.iter().for_each(|l| {
+                            (l.start_line..l.end_line).for_each(|line| {
+                                record.add_line_if_not_exists(line as usize);
+                            });
+                        });
+                        let pc_line = q
+                            .value
+                            .lines
+                            .iter()
+                            .find(|l| {
+                                l.rva <= pc - q.value.base
+                                    && l.rva + l.size as u64 >= pc - q.value.base
+                            })
+                            .map(|l| l.start_line as usize);
+                        if pc_line.is_some_and(|pcl| function_start_line.start_line as usize == pcl)
+                        {
+                            // Increment function hit counter if we just hit the fn
+                            record.increment_function_data(&q.value.name);
+                        }
+                        if let Some(pc_line) = pc_line {
+                            record.increment_line(pc_line);
+                        }
+                    }
+                }
+            }
+            None
         } else {
             None
         };

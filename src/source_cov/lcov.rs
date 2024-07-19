@@ -6,7 +6,7 @@ use petgraph::{
 };
 use std::{
     collections::{btree_map::Entry, BTreeMap, HashMap},
-    fs::{create_dir_all, read_to_string, write},
+    fs::{create_dir_all, read, write},
     iter::repeat,
     path::{Component, Path, PathBuf},
 };
@@ -238,9 +238,12 @@ impl Record {
         let entry = self
             .function_data
             .entry(name.as_ref().to_string())
-            .or_insert_with(|| FunctionDataRecordEntry {
-                hits: 0,
-                name: name.as_ref().to_string(),
+            .or_insert_with(|| {
+                self.functions_found.0 += 1;
+                FunctionDataRecordEntry {
+                    hits: 0,
+                    name: name.as_ref().to_string(),
+                }
             });
 
         if entry.hits == 0 {
@@ -266,14 +269,14 @@ impl Record {
     }
 
     pub fn increment_line(&mut self, line_number: usize) {
-        let entry = self
-            .lines
-            .entry(line_number)
-            .or_insert_with(|| LineRecordEntry {
+        let entry = self.lines.entry(line_number).or_insert_with(|| {
+            self.lines_found.0 += 1;
+            LineRecordEntry {
                 line_number,
                 hit_count: 0,
                 checksum: None,
-            });
+            }
+        });
 
         if entry.hit_count == 0 {
             self.lines_hit.0 += 1;
@@ -329,7 +332,8 @@ impl Record {
     }
 
     pub fn lines(&self) -> Result<Vec<HtmlLineInfo>> {
-        let contents = read_to_string(self.source_file.0.as_path())?;
+        let contents_raw = read(self.source_file.0.as_path())?;
+        let contents = String::from_utf8_lossy(&contents_raw);
         let lines = contents
             .lines()
             .enumerate()
@@ -388,6 +392,31 @@ impl std::fmt::Display for Records {
     }
 }
 
+struct GraphNode {
+    pub path: PathBuf,
+    pub summary: Option<HtmlSummaryInfo>,
+}
+
+impl GraphNode {
+    pub fn new(path: PathBuf, summary: Option<HtmlSummaryInfo>) -> Self {
+        Self { path, summary }
+    }
+}
+
+impl std::fmt::Display for GraphNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.path.to_string_lossy())
+    }
+}
+
+struct GraphEdge {}
+
+impl std::fmt::Display for GraphEdge {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "")
+    }
+}
+
 impl Records {
     /// Output LCOV records to HTML format, like a mini genhtml
     pub fn to_html<P>(&self, output_directory: P) -> Result<()>
@@ -395,7 +424,7 @@ impl Records {
         P: AsRef<Path>,
     {
         // Build a tree out of the output paths
-        let mut graph = DiGraph::<(PathBuf, Option<HtmlSummaryInfo>), ()>::new();
+        let mut graph = DiGraph::<GraphNode, GraphEdge>::new();
         let mut node_ids = HashMap::<PathBuf, NodeIndex>::new();
 
         let entries = self
@@ -422,7 +451,7 @@ impl Records {
                 if let std::collections::hash_map::Entry::Vacant(entry) =
                     node_ids.entry(output_path.clone())
                 {
-                    entry.insert(graph.add_node((output_path.clone(), None)));
+                    entry.insert(graph.add_node(GraphNode::new(output_path.clone(), None)));
                 }
 
                 let mut path = output_path.as_path();
@@ -430,7 +459,7 @@ impl Records {
                     if let std::collections::hash_map::Entry::Vacant(entry) =
                         node_ids.entry(parent.to_path_buf())
                     {
-                        entry.insert(graph.add_node((parent.to_path_buf(), None)));
+                        entry.insert(graph.add_node(GraphNode::new(parent.to_path_buf(), None)));
                     }
 
                     if graph
@@ -451,7 +480,7 @@ impl Records {
                             *node_ids
                                 .get(path)
                                 .ok_or_else(|| anyhow!("output path not found"))?,
-                            (),
+                            GraphEdge {},
                         );
                     }
 
@@ -479,10 +508,13 @@ impl Records {
         let mut traversal = DfsPostOrder::new(&graph, *root);
 
         while let Some(node) = traversal.next(&graph) {
+            let weight = graph
+                .node_weight(node)
+                .ok_or_else(|| anyhow!("No weight for node"))?;
             let path = graph
                 .node_weight(node)
                 .ok_or_else(|| anyhow!("No weight for node"))?
-                .0
+                .path
                 .clone();
             // Calculate the depth of this path from the output directory
             if let Some(record) = entries.get(path.as_path()) {
@@ -502,7 +534,7 @@ impl Records {
                 graph
                     .node_weight_mut(node)
                     .ok_or_else(|| anyhow!("No weight for node"))?
-                    .1 = Some(summary.clone());
+                    .summary = Some(summary.clone());
                 let lines = record.lines()?;
                 let functions = record.functions();
                 let page = Page {
@@ -543,10 +575,9 @@ impl Records {
                             let summary = graph
                                 .node_weight(neighbor)
                                 .ok_or_else(|| anyhow!("No weight for node"))?
-                                .1
+                                .summary
                                 .as_ref()
                                 .ok_or_else(|| anyhow!("No summary for node"))?;
-                            println!("Adding neighbor {:?}", summary);
                             Ok::<(usize, usize, usize, usize), anyhow::Error>((
                                 total_lines + summary.total_lines,
                                 hit_lines + summary.hit_lines,
@@ -585,7 +616,7 @@ impl Records {
                                     .node_weight(neighbor)
                                     .ok_or_else(|| anyhow!("No weight for node"))
                                     .ok()
-                                    .and_then(|weight| weight.1.as_ref().cloned())
+                                    .and_then(|weight| weight.summary.as_ref().cloned())
                             })
                             .collect(),
                     },
@@ -595,15 +626,15 @@ impl Records {
                 graph
                     .node_weight_mut(node)
                     .ok_or_else(|| anyhow!("No weight for node"))?
-                    .1 = Some(summary);
+                    .summary = Some(summary);
             }
         }
 
         // NOTE: Left for easy debugging of the directory graph
-        // let dot = Dot::new(&graph);
+        // let dot = petgraph::dot::Dot::new(&graph);
         // write(
         //     output_directory.as_ref().join("graph.dot"),
-        //     format!("{:?}", dot),
+        //     format!("{}", dot),
         // )?;
 
         Ok(())

@@ -5,8 +5,9 @@ use intervaltree::IntervalTree;
 use kernel::{find_kernel_with_idt, KernelInfo};
 use raw_cstr::AsRawCstr;
 use simics::{
-    get_interface, get_object, get_processor_number, info, sys::cpu_cb_handle_t, warn, ConfObject,
-    CpuInstrumentationSubscribeInterface, IntRegisterInterface, ProcessorInfoV2Interface,
+    debug, get_interface, get_object, get_processor_number, info, sys::cpu_cb_handle_t, warn,
+    ConfObject, CpuInstrumentationSubscribeInterface, IntRegisterInterface,
+    ProcessorInfoV2Interface,
 };
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
@@ -158,7 +159,10 @@ impl WindowsOsInfo {
                 m.intervals(source_cache).ok().or_else(|| {
                     get_object("tsffs")
                         .and_then(|obj| {
-                            warn!(obj, "Failed to get intervals for module {}", &m.full_name);
+                            debug!(
+                                obj,
+                                "Failed (or skipped) getting intervals for module {}", &m.full_name
+                            );
                             Err(
                                 anyhow!("Failed to get intervals for module {}", &m.full_name)
                                     .into(),
@@ -185,9 +189,10 @@ impl WindowsOsInfo {
                         m.intervals(source_cache).ok().or_else(|| {
                             get_object("tsffs")
                                 .and_then(|obj| {
-                                    warn!(
+                                    debug!(
                                         obj,
-                                        "Failed to get intervals for module {}", &m.full_name
+                                        "Failed (or skipped) getting intervals for module {}",
+                                        &m.full_name
                                     );
                                     Err(anyhow!(
                                         "Failed to get intervals for module {}",

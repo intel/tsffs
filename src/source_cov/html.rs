@@ -30,6 +30,16 @@ pub(crate) struct HtmlSummaryInfo {
     pub(crate) hit_functions: usize,
 }
 
+impl std::fmt::Display for HtmlSummaryInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "HtmlSummaryInfo {{ is_dir: {}, top_level: {:?}, parent: {:?}, filename: {:?}, total_lines: {}, hit_lines: {}, total_functions: {}, hit_functions: {} }}",
+            self.is_dir, self.top_level, self.parent, self.filename, self.total_lines, self.hit_lines, self.total_functions, self.hit_functions
+        )
+    }
+}
+
 define! {
     Head {
     }

@@ -173,6 +173,10 @@ impl Tsffs {
             self.save_execution_trace()?;
         }
 
+        if self.symbolic_coverage {
+            self.save_symbolic_coverage()?;
+        }
+
         debug!(self.as_conf_object(), "Resuming simulation");
 
         run_alone(|| {
@@ -380,6 +384,10 @@ impl Tsffs {
             self.save_execution_trace()?;
         }
 
+        if self.symbolic_coverage {
+            self.save_symbolic_coverage()?;
+        }
+
         debug!(self.as_conf_object(), "Resuming simulation");
 
         run_alone(|| {
@@ -479,6 +487,10 @@ impl Tsffs {
 
         if self.save_all_execution_traces {
             self.save_execution_trace()?;
+        }
+
+        if self.symbolic_coverage {
+            self.save_symbolic_coverage()?;
         }
 
         debug!(self.as_conf_object(), "Resuming simulation");

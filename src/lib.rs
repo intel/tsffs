@@ -935,41 +935,46 @@ impl Tsffs {
         Ok(())
     }
 
+    pub fn save_symbolic_coverage(&mut self) -> Result<()> {
+        if self.symbolic_coverage_directory.is_dir() {
+            create_dir_all(&self.symbolic_coverage_directory)?;
+        }
+
+        debug!(
+            self.as_conf_object(),
+            "Saving symbolic coverage to {}",
+            self.symbolic_coverage_directory.display()
+        );
+
+        self.coverage.to_html(&self.symbolic_coverage_directory)?;
+
+        debug!(
+            self.as_conf_object(),
+            "Symbolic coverage saved to {}",
+            self.symbolic_coverage_directory.display()
+        );
+
+        Ok(())
+    }
+
     /// Save the current execution trace to a file
     pub fn save_execution_trace(&mut self) -> Result<()> {
-        let execution_trace = self.execution_trace.clone();
-        let execution_trace_dir = self.execution_trace_directory.clone();
-        let coverage = self.coverage.clone();
-        let symbolic_coverage_directory = self.symbolic_coverage_directory.clone();
-        // We just fire and forget this thread -- we won't know if it fails but it's basically
-        // guaranteed not to. This stops us from having to wait every exec to write a huge file.
-        spawn(move || {
-            let mut hasher = DefaultHasher::new();
-            execution_trace.hash(&mut hasher);
-            let hash = hasher.finish();
+        let mut hasher = DefaultHasher::new();
+        self.execution_trace.hash(&mut hasher);
+        let hash = hasher.finish();
 
-            if !execution_trace_dir.is_dir() {
-                create_dir_all(&execution_trace_dir)?;
-            }
+        if !self.execution_trace_directory.is_dir() {
+            create_dir_all(&self.execution_trace_directory)?;
+        }
 
-            let trace_path = execution_trace_dir.join(format!("{:x}.json", hash));
+        let trace_path = self
+            .execution_trace_directory
+            .join(format!("{:x}.json", hash));
 
-            if !trace_path.exists() {
-                let trace_file = File::create(&trace_path)?;
-                println!("Saving execution trace to {}", trace_path.display());
-                to_writer(trace_file, &execution_trace)?;
-            }
-
-            if !symbolic_coverage_directory.is_dir() {
-                create_dir_all(&symbolic_coverage_directory)?;
-            }
-
-            println!("Saving coverage information to symbolic coverage directory {symbolic_coverage_directory:?}");
-            coverage.to_html(&symbolic_coverage_directory)?;
-
-            Ok::<(), anyhow::Error>(())
-        });
-
+        if !trace_path.exists() {
+            let trace_file = File::create(&trace_path)?;
+            to_writer(trace_file, &self.execution_trace)?;
+        }
         Ok(())
     }
 }

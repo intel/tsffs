@@ -11,13 +11,13 @@ use std::{
 };
 
 use lending_iterator::{windows_mut, LendingIterator};
-use simics::{debug, get_object, info, ConfObject};
+use simics::{debug, get_object, info, warn, ConfObject};
 use windows::Win32::System::{
     Diagnostics::Debug::{
         IMAGE_DEBUG_DIRECTORY, IMAGE_DEBUG_TYPE_CODEVIEW, IMAGE_DIRECTORY_ENTRY_DEBUG,
         IMAGE_NT_HEADERS64,
     },
-    SystemServices::IMAGE_DOS_HEADER,
+    SystemServices::{FILE_NOTIFY_FULL_INFORMATION, IMAGE_DOS_HEADER},
 };
 
 use crate::{os::DebugInfoConfig, source_cov::SourceCache};
@@ -448,14 +448,18 @@ impl ProcessModule {
                                     )
                             })
                             .collect::<Vec<_>>();
-                        Some(SymbolInfo::new(
+                        let info = SymbolInfo::new(
                             procedure_rva.0 as u64,
                             self.base,
                             procedure_symbol.len as u64,
                             symbol_name.to_string().to_string(),
                             self.full_name.clone(),
                             lines,
-                        ))
+                        );
+                        if let Ok(o) = get_object("tsffs") {
+                            debug!(o, "Got symbol: {:?}", info);
+                        }
+                        Some(info)
                     })
                     .collect::<Vec<_>>()
             })
@@ -604,49 +608,67 @@ impl Module {
                             .iterator()
                             .filter_map(|line| line.ok())
                             .filter_map(|line_info| {
-                                line_program
-                                    .get_file_info(line_info.file_index)
-                                    .ok()
-                                    .and_then(|line_file_info| {
-                                        string_table
-                                            .get(line_file_info.name)
-                                            .map(|line_file_name| (line_file_info, line_file_name))
-                                            .ok()
-                                    })
-                                    .and_then(|(line_file_info, line_file_name)| {
-                                        line_info.offset.to_rva(&address_map).map(|line_rva| {
-                                            (line_file_info, line_file_name, line_rva, line_info)
-                                        })
-                                    })
-                                    .and_then(
-                                        |(line_file_info, line_file_name, line_rva, line_info)| {
-                                            source_cache
-                                                .lookup_pdb(
-                                                    &line_file_info,
-                                                    &line_file_name.to_string(),
-                                                )
-                                                .ok()
-                                                .flatten()
-                                                .map(|p| p.to_path_buf())
-                                                .map(|file_path| LineInfo {
-                                                    rva: line_rva.0 as u64,
-                                                    size: line_info.length.unwrap_or(1),
-                                                    file_path,
-                                                    start_line: line_info.line_start,
-                                                    end_line: line_info.line_end,
-                                                })
-                                        },
-                                    )
+                                let Ok(line_file_info) =
+                                    line_program.get_file_info(line_info.file_index)
+                                else {
+                                    if let Ok(o) = get_object("tsffs") {
+                                        debug!(o, "No file info for line {:?}", line_info);
+                                    }
+                                    return None;
+                                };
+
+                                let Ok(line_file_name) = string_table.get(line_file_info.name)
+                                else {
+                                    if let Ok(o) = get_object("tsffs") {
+                                        debug!(o, "No file name for line {:?}", line_file_info);
+                                    }
+                                    return None;
+                                };
+
+                                let Some(line_rva) = line_info.offset.to_rva(&address_map) else {
+                                    if let Ok(o) = get_object("tsffs") {
+                                        debug!(o, "No RVA for line {:?}", line_info);
+                                    }
+                                    return None;
+                                };
+
+                                let Ok(Some(source_file)) = source_cache
+                                    .lookup_pdb(&line_file_info, &line_file_name.to_string())
+                                else {
+                                    if let Ok(o) = get_object("tsffs") {
+                                        debug!(o, "No source file path for line {:?}", line_info);
+                                    }
+                                    return None;
+                                };
+
+                                let info = LineInfo {
+                                    rva: line_rva.0 as u64,
+                                    size: line_info.length.unwrap_or(1),
+                                    file_path: source_file.to_path_buf(),
+                                    start_line: line_info.line_start,
+                                    end_line: line_info.line_end,
+                                };
+                                if let Ok(o) = get_object("tsffs") {
+                                    debug!(o, "Got line info {:?}", line_info);
+                                }
+
+                                Some(info)
                             })
                             .collect::<Vec<_>>();
-                        Some(SymbolInfo::new(
+
+                        let info = SymbolInfo::new(
                             procedure_rva.0 as u64,
                             self.base,
                             procedure_symbol.len as u64,
                             symbol_name.to_string().to_string(),
                             self.full_name.clone(),
                             lines,
-                        ))
+                        );
+
+                        if let Ok(o) = get_object("tsffs") {
+                            debug!(o, "Got symbol: {:?}", info);
+                        }
+                        Some(info)
                     })
                     .collect::<Vec<_>>()
             })
