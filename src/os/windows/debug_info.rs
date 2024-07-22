@@ -456,9 +456,7 @@ impl ProcessModule {
                             self.full_name.clone(),
                             lines,
                         );
-                        if let Ok(o) = get_object("tsffs") {
-                            debug!(o, "Got symbol: {:?}", info);
-                        }
+
                         Some(info)
                     })
                     .collect::<Vec<_>>()
@@ -665,9 +663,6 @@ impl Module {
                             lines,
                         );
 
-                        if let Ok(o) = get_object("tsffs") {
-                            debug!(o, "Got symbol: {:?}", info);
-                        }
                         Some(info)
                     })
                     .collect::<Vec<_>>()

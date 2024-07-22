@@ -226,7 +226,7 @@ impl WindowsOsInfo {
                     &si.name,
                 );
                 si.lines.iter().for_each(|l| {
-                    (l.start_line..l.end_line).for_each(|line| {
+                    (l.start_line..=l.end_line).for_each(|line| {
                         record.add_line_if_not_exists(line as usize);
                     });
                 });

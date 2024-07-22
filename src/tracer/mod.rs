@@ -405,59 +405,54 @@ impl Tsffs {
                 .symbol_lookup_trees
                 .get(&processor_number)
                 .and_then(|lookup_tree| {
-                    lookup_tree.query(pc..pc + 1).next().map(|q| {
-                        let offset = pc - q.value.base + q.value.rva;
-                        let symbol_demangled = try_demangle(&q.value.name)
-                            .map(|d| d.to_string())
-                            .ok()
-                            .or_else(|| {
-                                Symbol::new(&q.value.name)
-                                    .ok()
-                                    .and_then(|s| s.demangle(&DemangleOptions::new()).ok())
-                            });
-
-                        let function_end_line = q.value.lines.last().map(|f| f.end_line);
-                        // Update coverage record
-                        if let Some(function_start_line) = q.value.lines.first() {
-                            let record = self
-                                .coverage
-                                .get_or_insert_mut(&function_start_line.file_path);
-                            record.add_function_if_not_exists(
-                                function_start_line.start_line as usize,
-                                function_end_line.map(|l| l as usize),
-                                &q.value.name,
-                            );
-                            q.value.lines.iter().for_each(|l| {
-                                (l.start_line..l.end_line).for_each(|line| {
-                                    record.add_line_if_not_exists(line as usize);
+                    lookup_tree
+                        .query(pc..pc + 1)
+                        .next()
+                        .map(|symbol_for_query| {
+                            let offset =
+                                pc - symbol_for_query.value.base + symbol_for_query.value.rva;
+                            let symbol_demangled = try_demangle(&symbol_for_query.value.name)
+                                .map(|d| d.to_string())
+                                .ok()
+                                .or_else(|| {
+                                    Symbol::new(&symbol_for_query.value.name)
+                                        .ok()
+                                        .and_then(|s| s.demangle(&DemangleOptions::new()).ok())
                                 });
-                            });
-                            let pc_line = q
-                                .value
-                                .lines
-                                .iter()
-                                .find(|l| {
-                                    l.rva <= pc - q.value.base
-                                        && l.rva + l.size as u64 >= pc - q.value.base
-                                })
-                                .map(|l| l.start_line as usize);
-                            if pc_line
-                                .is_some_and(|pcl| function_start_line.start_line as usize == pcl)
+
+                            if let Some(function_start_line) = symbol_for_query.value.lines.first()
                             {
-                                // Increment function hit counter if we just hit the fn
-                                record.increment_function_data(&q.value.name);
+                                let record = self
+                                    .coverage
+                                    .get_or_insert_mut(&function_start_line.file_path);
+                                let pc_lines = symbol_for_query
+                                    .value
+                                    .lines
+                                    .iter()
+                                    .filter(|line_info| {
+                                        pc - symbol_for_query.value.base >= line_info.rva
+                                            && pc - symbol_for_query.value.base
+                                                < line_info.rva + line_info.size as u64
+                                    })
+                                    .flat_map(|l| (l.start_line..=l.end_line).map(|i| i as usize))
+                                    .collect::<Vec<_>>();
+
+                                if pc_lines.contains(&(function_start_line.start_line as usize)) {
+                                    // Increment function hit counter if we just hit the fn
+                                    record.increment_function_data(&symbol_for_query.value.name);
+                                }
+
+                                pc_lines.iter().for_each(|line| {
+                                    record.increment_line(*line);
+                                });
                             }
-                            if let Some(pc_line) = pc_line {
-                                record.increment_line(pc_line);
+                            ExecutionTraceSymbol {
+                                symbol: symbol_for_query.value.name.clone(),
+                                symbol_demangled,
+                                offset,
+                                module: symbol_for_query.value.module.clone(),
                             }
-                        }
-                        ExecutionTraceSymbol {
-                            symbol: q.value.name.clone(),
-                            symbol_demangled,
-                            offset,
-                            module: q.value.module.clone(),
-                        }
-                    })
+                        })
                 })
         } else if self.coverage_enabled && self.symbolic_coverage {
             let mut processor_information_v2 = get_interface::<ProcessorInfoV2Interface>(cpu)?;
@@ -467,49 +462,31 @@ impl Tsffs {
                 .symbol_lookup_trees
                 .get(&processor_number)
             {
-                if let Some(q) = lookup_tree.query(pc..pc + 1).next() {
-                    let symbol_demangled = try_demangle(&q.value.name)
-                        .map(|d| d.to_string())
-                        .ok()
-                        .or_else(|| {
-                            Symbol::new(&q.value.name)
-                                .ok()
-                                .and_then(|s| s.demangle(&DemangleOptions::new()).ok())
-                        });
-
-                    let function_end_line = q.value.lines.last().map(|f| f.end_line);
-                    // Update coverage record
-                    if let Some(function_start_line) = q.value.lines.first() {
+                if let Some(symbol_for_query) = lookup_tree.query(pc..pc + 1).next() {
+                    if let Some(function_start_line) = symbol_for_query.value.lines.first() {
                         let record = self
                             .coverage
                             .get_or_insert_mut(&function_start_line.file_path);
-                        record.add_function_if_not_exists(
-                            function_start_line.start_line as usize,
-                            function_end_line.map(|l| l as usize),
-                            symbol_demangled.as_ref().unwrap_or(&q.value.name),
-                        );
-                        q.value.lines.iter().for_each(|l| {
-                            (l.start_line..l.end_line).for_each(|line| {
-                                record.add_line_if_not_exists(line as usize);
-                            });
-                        });
-                        let pc_line = q
+                        let pc_lines = symbol_for_query
                             .value
                             .lines
                             .iter()
-                            .find(|l| {
-                                l.rva <= pc - q.value.base
-                                    && l.rva + l.size as u64 >= pc - q.value.base
+                            .filter(|line_info| {
+                                pc - symbol_for_query.value.base >= line_info.rva
+                                    && pc - symbol_for_query.value.base
+                                        < line_info.rva + line_info.size as u64
                             })
-                            .map(|l| l.start_line as usize);
-                        if pc_line.is_some_and(|pcl| function_start_line.start_line as usize == pcl)
-                        {
+                            .flat_map(|l| (l.start_line..=l.end_line).map(|i| i as usize))
+                            .collect::<Vec<_>>();
+
+                        if pc_lines.contains(&(function_start_line.start_line as usize)) {
                             // Increment function hit counter if we just hit the fn
-                            record.increment_function_data(&q.value.name);
+                            record.increment_function_data(&symbol_for_query.value.name);
                         }
-                        if let Some(pc_line) = pc_line {
-                            record.increment_line(pc_line);
-                        }
+
+                        pc_lines.iter().for_each(|line| {
+                            record.increment_line(*line);
+                        });
                     }
                 }
             }

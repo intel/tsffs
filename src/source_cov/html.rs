@@ -104,31 +104,22 @@ define! {
                 th[style = "text-align: right;"] {
                     "Lines"
                 }
-                @if (summary.hit_lines as f32 / summary.total_lines as f32)
-                    * 100.0 >= 90.0 {
+                @let ratio = if summary.total_lines == 0 {
+                    0.0
+                } else {
+                    summary.hit_lines as f32 / summary.total_lines as f32 * 100.0
+                };
+                @if ratio >= 90.0 {
                     td[style = "text-align: right; background-color: #a7fc9d;"] {
-                        @format!(
-                            "{:.02}%",
-                            (summary.hit_lines as f32 / summary.total_lines as f32)
-                            * 100.0
-                        )
+                        @format!("{ratio:.02}%")
                     }
-                } else if (summary.hit_lines as f32 / summary.total_lines as f32)
-                    * 100.0 >= 30.0 {
+                } else if ratio >= 30.0 {
                     td[style = "text-align: right; background-color: #ffea20;"] {
-                        @format!(
-                            "{:.02}%",
-                            (summary.hit_lines as f32 / summary.total_lines as f32)
-                            * 100.0
-                        )
+                        @format!("{ratio:.02}%")
                     }
                 } else {
                     td[style = "text-align: right; background-color: #ff6230;"] {
-                        @format!(
-                            "{:.02}%",
-                            (summary.hit_lines as f32 / summary.total_lines as f32)
-                            * 100.0
-                        )
+                        @format!("{ratio:.02}%")
                     }
                 }
 
@@ -143,32 +134,23 @@ define! {
                 th[style = "text-align: right;"] {
                     "Functions"
                 }
-                @if (summary.hit_functions as f32 / summary.total_functions as f32)
-                    * 100.0 >= 90.0 {
+                @let ratio = if summary.total_functions == 0 {
+                    0.0
+                } else {
+                    summary.hit_functions as f32 / summary.total_functions as f32 * 100.0
+                };
+                @if ratio >= 90.0 {
                     td[style = "text-align: right; background-color: #a7fc9d;"] {
-                        @format!(
-                            "{:.02}%",
-                            (summary.hit_functions as f32 / summary.total_functions as f32)
-                            * 100.0
-                        )
+                        @format!("{ratio:.02}%")
                     }
-                } else if (summary.hit_functions as f32 / summary.total_functions as f32)
-                    * 100.0 >= 30.0 {
+                } else if ratio >= 30.0 {
                     td[style = "text-align: right; background-color: #ffea20;"] {
-                        @format!(
-                            "{:.02}%",
-                            (summary.hit_functions as f32 / summary.total_functions as f32)
-                            * 100.0
-                        )
+                        @format!("{ratio:.02}%")
                     }
 
                 } else {
                     td[style = "text-align: right; background-color: #ff6230;"] {
-                        @format!(
-                            "{:.02}%",
-                            (summary.hit_functions as f32 / summary.total_functions as f32)
-                            * 100.0
-                        )
+                        @format!("{ratio:.02}%")
                     }
                 }
                 td[style = "text-align: right; background-color: #cad7fe;"] {
@@ -351,69 +333,58 @@ define! {
                                 "<unknown>"
                             }
                         }
-                        @if (summary.hit_lines as f32 / summary.total_lines as f32)
-                            * 100.0 >= 90.0 {
+                        @let line_ratio = if summary.total_lines == 0 {
+                            0.0
+                        } else {
+                            summary.hit_lines as f32 / summary.total_lines as f32 * 100.0
+                        };
+
+                        @let function_ratio = if summary.total_functions == 0 {
+                            0.0
+                        } else {
+                            summary.hit_functions as f32 / summary.total_functions as f32 * 100.0
+                        };
+
+                        @if line_ratio >= 90.0 {
                             td[style = "text-align: right; background-color: #a7fc9d;"] {
-                                @format!(
-                                    "{:.02}%",
-                                    (summary.hit_lines as f32 / summary.total_lines as f32)
-                                    * 100.0
-                                )
+                                @format!("{line_ratio:.02}%")
                             }
-                        } else if (summary.hit_lines as f32 / summary.total_lines as f32)
-                            * 100.0 >= 30.0 {
+                        } else if line_ratio >= 30.0 {
                             td[style = "text-align: right; background-color: #ffea20;"] {
-                                @format!(
-                                    "{:.02}%",
-                                    (summary.hit_lines as f32 / summary.total_lines as f32)
-                                    * 100.0
-                                )
+                                @format!("{line_ratio:.02}%")
                             }
                         } else {
                             td[style = "text-align: right; background-color: #ff6230;"] {
-                                @format!(
-                                    "{:.02}%",
-                                    (summary.hit_lines as f32 / summary.total_lines as f32)
-                                    * 100.0
-                                )
+                                @format!("{line_ratio:.02}%")
                             }
                         }
+
                         td[style = "text-align: right; background-color: #cad7fe;"] {
                             @summary.total_lines
                         }
+
                         td[style = "text-align: right; background-color: #cad7fe;"] {
                             @summary.hit_lines
                         }
-                        @if (summary.hit_functions as f32 / summary.total_functions as f32)
-                            * 100.0 >= 90.0 {
+
+                        @if function_ratio >= 90.0 {
                             td[style = "text-align: right; background-color: #a7fc9d;"] {
-                                @format!(
-                                    "{:.02}%",
-                                    (summary.hit_functions as f32 / summary.total_functions as f32)
-                                    * 100.0
-                                )
+                                @format!("{function_ratio:.02}%")
                             }
-                        } else if (summary.hit_functions as f32 / summary.total_functions as f32)
-                            * 100.0 >= 30.0 {
+                        } else if function_ratio >= 30.0 {
                             td[style = "text-align: right; background-color: #ffea20;"] {
-                                @format!(
-                                    "{:.02}%",
-                                    (summary.hit_functions as f32 / summary.total_functions as f32)
-                                    * 100.0
-                                )
+                                @format!("{function_ratio:.02}%")
                             }
                         } else {
                             td[style = "text-align: right; background-color: #ff6230;"] {
-                                @format!(
-                                    "{:.02}%",
-                                    (summary.hit_functions as f32 / summary.total_functions as f32)
-                                    * 100.0
-                                )
+                                @format!("{function_ratio:.02}%")
                             }
                         }
+
                         td[style = "text-align: right; background-color: #cad7fe;"] {
                             @summary.total_functions
                         }
+
                         td[style = "text-align: right; background-color: #cad7fe;"] {
                             @summary.hit_functions
                         }

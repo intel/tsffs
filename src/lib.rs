@@ -75,7 +75,7 @@ use std::{
     ptr::null_mut,
     str::FromStr,
     sync::mpsc::{Receiver, Sender},
-    thread::{spawn, JoinHandle},
+    thread::JoinHandle,
     time::SystemTime,
 };
 use tracer::{

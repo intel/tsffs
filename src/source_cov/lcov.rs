@@ -508,9 +508,6 @@ impl Records {
         let mut traversal = DfsPostOrder::new(&graph, *root);
 
         while let Some(node) = traversal.next(&graph) {
-            let weight = graph
-                .node_weight(node)
-                .ok_or_else(|| anyhow!("No weight for node"))?;
             let path = graph
                 .node_weight(node)
                 .ok_or_else(|| anyhow!("No weight for node"))?
