@@ -12,7 +12,7 @@ use std::{
 
 use lending_iterator::{windows_mut, LendingIterator};
 use simics::{debug, get_object, info, warn, ConfObject};
-use windows::Win32::System::{
+use windows_sys::Win32::System::{
     Diagnostics::Debug::{
         IMAGE_DEBUG_DIRECTORY, IMAGE_DEBUG_TYPE_CODEVIEW, IMAGE_DIRECTORY_ENTRY_DEBUG,
         IMAGE_NT_HEADERS64,
@@ -78,10 +78,10 @@ impl<'a> DebugInfo<'a> {
             let nt_header =
                 read_virtual::<IMAGE_NT_HEADERS64>(processor, base + dos_header.e_lfanew as u64)?;
             let debug_data_directory_offset = nt_header.OptionalHeader.DataDirectory
-                [IMAGE_DIRECTORY_ENTRY_DEBUG.0 as usize]
+                [IMAGE_DIRECTORY_ENTRY_DEBUG as usize]
                 .VirtualAddress;
             let debug_data_directory_size =
-                nt_header.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_DEBUG.0 as usize].Size;
+                nt_header.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_DEBUG as usize].Size;
             let debug_directory = (base + debug_data_directory_offset as u64
                 ..base + debug_data_directory_offset as u64 + debug_data_directory_size as u64)
                 .step_by(std::mem::size_of::<IMAGE_DEBUG_DIRECTORY>())
@@ -223,10 +223,10 @@ impl<'a> DebugInfo<'a> {
                 base + dos_header.e_lfanew as u64,
             )?;
             let debug_data_directory_offset = nt_header.OptionalHeader.DataDirectory
-                [IMAGE_DIRECTORY_ENTRY_DEBUG.0 as usize]
+                [IMAGE_DIRECTORY_ENTRY_DEBUG as usize]
                 .VirtualAddress;
             let debug_data_directory_size =
-                nt_header.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_DEBUG.0 as usize].Size;
+                nt_header.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_DEBUG as usize].Size;
             let debug_directory = (base + debug_data_directory_offset as u64
                 ..base + debug_data_directory_offset as u64 + debug_data_directory_size as u64)
                 .step_by(std::mem::size_of::<IMAGE_DEBUG_DIRECTORY>())

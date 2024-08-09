@@ -7,7 +7,7 @@ use anyhow::{anyhow, bail, Result};
 use pdb::{FallibleIterator, SymbolData};
 use simics::{debug, get_attribute, get_object, info, ConfObject};
 use vergilius::bindings::*;
-use windows::Win32::System::{
+use windows_sys::Win32::System::{
     Diagnostics::Debug::{IMAGE_DIRECTORY_ENTRY_EXPORT, IMAGE_NT_HEADERS64},
     Kernel::LIST_ENTRY,
     SystemServices::{
@@ -67,11 +67,11 @@ pub fn page_is_kernel(processor: *mut ConfObject, address: u64) -> Result<bool> 
         OPTIONAL_HEADER_SIGNATURE_PE32,
         OPTIONAL_HEADER_SIGNATURE_PE32_PLUS,
     ]
-    .contains(&nt_header.OptionalHeader.Magic.0)
+    .contains(&nt_header.OptionalHeader.Magic)
     {
         debug!(
             "Optional header magic {:#x} unrecognized",
-            nt_header.OptionalHeader.Magic.0
+            nt_header.OptionalHeader.Magic
         );
         return Ok(false);
     }
@@ -81,10 +81,10 @@ pub fn page_is_kernel(processor: *mut ConfObject, address: u64) -> Result<bool> 
     debug!(get_object("tsffs")?, "Image size is {:#x}", image_size);
 
     let export_header_offset = nt_header.OptionalHeader.DataDirectory
-        [IMAGE_DIRECTORY_ENTRY_EXPORT.0 as usize]
+        [IMAGE_DIRECTORY_ENTRY_EXPORT as usize]
         .VirtualAddress as u64;
     let export_header_size =
-        nt_header.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT.0 as usize].Size as u64;
+        nt_header.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT as usize].Size as u64;
 
     if export_header_offset == 0 || export_header_offset >= image_size {
         debug!(

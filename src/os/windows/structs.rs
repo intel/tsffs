@@ -10,7 +10,7 @@ use simics::{
     debug, get_attribute, get_interface, get_object, info, ConfObject, IntRegisterInterface,
 };
 use vergilius::bindings::*;
-use windows::Win32::{Foundation::UNICODE_STRING, System::Kernel::LIST_ENTRY};
+use windows_sys::Win32::{Foundation::UNICODE_STRING, System::Kernel::LIST_ENTRY};
 
 use crate::os::{
     windows::{debug_info::DebugInfo, util::read_virtual},
@@ -1453,7 +1453,7 @@ impl WindowsLdrDataTableEntry {
             } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_10240_16384_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(ldr_data_table_entry.InLoadOrderLinks)
             },
             WindowsLdrDataTableEntry::Windows10_0_10586_0 {
@@ -1461,7 +1461,7 @@ impl WindowsLdrDataTableEntry {
             } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_10586_0_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(ldr_data_table_entry.InLoadOrderLinks)
             },
             WindowsLdrDataTableEntry::Windows10_0_14393_0 {
@@ -1469,7 +1469,7 @@ impl WindowsLdrDataTableEntry {
             } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_14393_0_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(ldr_data_table_entry.InLoadOrderLinks)
             },
             WindowsLdrDataTableEntry::Windows10_0_15063_0 {
@@ -1477,7 +1477,7 @@ impl WindowsLdrDataTableEntry {
             } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_15063_0_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(ldr_data_table_entry.InLoadOrderLinks)
             },
             WindowsLdrDataTableEntry::Windows10_0_16299_15 {
@@ -1485,7 +1485,7 @@ impl WindowsLdrDataTableEntry {
             } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_16299_15_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(ldr_data_table_entry.InLoadOrderLinks)
             },
             WindowsLdrDataTableEntry::Windows10_0_17134_1 {
@@ -1493,7 +1493,7 @@ impl WindowsLdrDataTableEntry {
             } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_17134_1_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(ldr_data_table_entry.InLoadOrderLinks)
             },
             WindowsLdrDataTableEntry::Windows10_0_17763_107 {
@@ -1501,7 +1501,7 @@ impl WindowsLdrDataTableEntry {
             } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_17763_107_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(ldr_data_table_entry.InLoadOrderLinks)
             },
             WindowsLdrDataTableEntry::Windows10_0_18362_418 {
@@ -1509,7 +1509,7 @@ impl WindowsLdrDataTableEntry {
             } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_18362_418_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(ldr_data_table_entry.InLoadOrderLinks)
             },
             WindowsLdrDataTableEntry::Windows10_0_19041_1288 {
@@ -1517,7 +1517,7 @@ impl WindowsLdrDataTableEntry {
             } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_19041_1288_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(ldr_data_table_entry.InLoadOrderLinks)
             },
             WindowsLdrDataTableEntry::Windows10_0_19045_2965 {
@@ -1525,7 +1525,7 @@ impl WindowsLdrDataTableEntry {
             } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_19045_2965_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(ldr_data_table_entry.InLoadOrderLinks)
             },
             WindowsLdrDataTableEntry::Windows10_0_22000_194 {
@@ -1533,7 +1533,7 @@ impl WindowsLdrDataTableEntry {
             } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_22000_194_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(ldr_data_table_entry.InLoadOrderLinks)
             },
             WindowsLdrDataTableEntry::Windows10_0_22621_382 {
@@ -1541,7 +1541,7 @@ impl WindowsLdrDataTableEntry {
             } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_22621_382_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(ldr_data_table_entry.InLoadOrderLinks)
             },
             WindowsLdrDataTableEntry::Windows10_0_22631_2428 {
@@ -1549,7 +1549,7 @@ impl WindowsLdrDataTableEntry {
             } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_22631_2428_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(ldr_data_table_entry.InLoadOrderLinks)
             },
         }
@@ -1842,79 +1842,79 @@ impl WindowsPebLdrData {
             WindowsPebLdrData::Windows10_0_10240_16384 { ldr_data } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_10240_16384_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(ldr_data.InLoadOrderModuleList)
             },
             WindowsPebLdrData::Windows10_0_10586_0 { ldr_data } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_10586_0_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(ldr_data.InLoadOrderModuleList)
             },
             WindowsPebLdrData::Windows10_0_14393_0 { ldr_data } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_14393_0_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(ldr_data.InLoadOrderModuleList)
             },
             WindowsPebLdrData::Windows10_0_15063_0 { ldr_data } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_15063_0_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(ldr_data.InLoadOrderModuleList)
             },
             WindowsPebLdrData::Windows10_0_16299_15 { ldr_data } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_16299_15_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(ldr_data.InLoadOrderModuleList)
             },
             WindowsPebLdrData::Windows10_0_17134_1 { ldr_data } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_17134_1_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(ldr_data.InLoadOrderModuleList)
             },
             WindowsPebLdrData::Windows10_0_17763_107 { ldr_data } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_17763_107_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(ldr_data.InLoadOrderModuleList)
             },
             WindowsPebLdrData::Windows10_0_18362_418 { ldr_data } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_18362_418_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(ldr_data.InLoadOrderModuleList)
             },
             WindowsPebLdrData::Windows10_0_19041_1288 { ldr_data } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_19041_1288_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(ldr_data.InLoadOrderModuleList)
             },
             WindowsPebLdrData::Windows10_0_19045_2965 { ldr_data } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_19045_2965_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(ldr_data.InLoadOrderModuleList)
             },
             WindowsPebLdrData::Windows10_0_22000_194 { ldr_data } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_22000_194_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(ldr_data.InLoadOrderModuleList)
             },
             WindowsPebLdrData::Windows10_0_22621_382 { ldr_data } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_22621_382_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(ldr_data.InLoadOrderModuleList)
             },
             WindowsPebLdrData::Windows10_0_22631_2428 { ldr_data } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_22631_2428_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(ldr_data.InLoadOrderModuleList)
             },
         }
@@ -2538,79 +2538,79 @@ impl WindowsEProcess {
             WindowsEProcess::Windows10_0_10240_16384 { eprocess } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_10240_16384_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(eprocess.ActiveProcessLinks)
             },
             WindowsEProcess::Windows10_0_10586_0 { eprocess } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_10586_0_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(eprocess.ActiveProcessLinks)
             },
             WindowsEProcess::Windows10_0_14393_0 { eprocess } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_14393_0_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(eprocess.ActiveProcessLinks)
             },
             WindowsEProcess::Windows10_0_15063_0 { eprocess } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_15063_0_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(eprocess.ActiveProcessLinks)
             },
             WindowsEProcess::Windows10_0_16299_15 { eprocess } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_16299_15_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(eprocess.ActiveProcessLinks)
             },
             WindowsEProcess::Windows10_0_17134_1 { eprocess } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_17134_1_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(eprocess.ActiveProcessLinks)
             },
             WindowsEProcess::Windows10_0_17763_107 { eprocess } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_17763_107_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(eprocess.ActiveProcessLinks)
             },
             WindowsEProcess::Windows10_0_18362_418 { eprocess } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_18362_418_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(eprocess.ActiveProcessLinks)
             },
             WindowsEProcess::Windows10_0_19041_1288 { eprocess } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_19041_1288_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(eprocess.ActiveProcessLinks)
             },
             WindowsEProcess::Windows10_0_19045_2965 { eprocess } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_19045_2965_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(eprocess.ActiveProcessLinks)
             },
             WindowsEProcess::Windows10_0_22000_194 { eprocess } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_22000_194_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(eprocess.ActiveProcessLinks)
             },
             WindowsEProcess::Windows10_0_22621_382 { eprocess } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_22621_382_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(eprocess.ActiveProcessLinks)
             },
             WindowsEProcess::Windows10_0_22631_2428 { eprocess } => unsafe {
                 std::mem::transmute::<
                     vergilius::windows_10_0_22631_2428_x64::_LIST_ENTRY,
-                    windows::Win32::System::Kernel::LIST_ENTRY,
+                    windows_sys::Win32::System::Kernel::LIST_ENTRY,
                 >(eprocess.ActiveProcessLinks)
             },
         }
@@ -2690,7 +2690,7 @@ impl WindowsEProcess {
         read_unicode_string(
             processor,
             object_name_information.Length as usize,
-            object_name_information.Buffer.0,
+            object_name_information.Buffer,
         )
     }
 
