@@ -13,9 +13,6 @@ use simics::{debug, get_object};
 use typed_path::{TypedComponent, TypedPath, UnixComponent, WindowsComponent};
 use walkdir::WalkDir;
 
-pub(crate) mod html;
-pub(crate) mod lcov;
-
 #[derive(Debug, Clone, Default)]
 pub struct SourceCache {
     prefix_lookup: HashMap<Vec<String>, PathBuf>,

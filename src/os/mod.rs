@@ -2,7 +2,7 @@
 
 use std::{collections::HashMap, path::PathBuf};
 
-use crate::source_cov::lcov::Records;
+use lcov2::Records;
 
 pub mod windows;
 

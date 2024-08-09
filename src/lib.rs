@@ -36,6 +36,7 @@ use anyhow::{anyhow, Result};
 use arch::{Architecture, ArchitectureHint, ArchitectureOperations};
 use fuzzer::{messages::FuzzerMessage, ShutdownMessage, Testcase};
 use indoc::indoc;
+use lcov2::Records;
 use libafl::{inputs::HasBytesVec, prelude::ExitKind};
 use libafl_bolts::prelude::OwnedMutSlice;
 use libafl_targets::AFLppCmpLogMap;
@@ -63,7 +64,7 @@ use simics::{
 // which is necessary because this module is compatible with base versions which cross the
 // deprecation boundary
 use simics::{restore_snapshot, save_snapshot};
-use source_cov::{lcov::Records, SourceCache};
+use source_cov::SourceCache;
 use state::StopReason;
 use std::{
     alloc::{alloc_zeroed, Layout},
