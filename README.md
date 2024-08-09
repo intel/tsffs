@@ -1,3 +1,5 @@
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/9349/badge)](https://www.bestpractices.dev/projects/9349)
+
 # TSFFS: Target Software Fuzzer For SIMICS
 
 TSFFS is a snapshotting, coverage-guided fuzzer built on the
