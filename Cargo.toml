@@ -60,7 +60,7 @@ yaxpeax-x86 = { version = "2.0.0", default-features = false, features = [
 typed-builder = "0.19.1"
 raw-cstr = "0.1.4"
 goblin = "0.8.2"
-yaxpeax-riscv = { git = "https://github.com/novafacing/yaxpeax-riscv", version = "0.1.0", features = [
+yaxpeax-riscv = { git = "https://github.com/DrChat/yaxpeax-riscv", version = "0.1.0", features = [
     "serde",
 ], rev = "5973ff8" }
 crc32fast = "1.4.2"
