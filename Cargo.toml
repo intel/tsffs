@@ -48,21 +48,21 @@ libafl_bolts = { git = "https://github.com/AFLplusplus/LibAFL", rev = "0f26f6ea3
 libafl_targets = { git = "https://github.com/AFLplusplus/LibAFL", rev = "0f26f6ea32aa74ee526636558842ec06bbfb49bb", default-features = false, features = [
     "std",
 ] }
-yaxpeax-arch = { version = "0.2.8", default-features = false, features = [
+yaxpeax-arch = { version = "0.3.2", default-features = false, features = [
     "std",
     "use-serde",
 ] }
-yaxpeax-x86 = { version = "1.2.2", default-features = false, features = [
+yaxpeax-x86 = { version = "2.0.0", default-features = false, features = [
     "std",
     "use-serde",
     "fmt",
 ] }
-typed-builder = "0.18.2"
+typed-builder = "0.19.1"
 raw-cstr = "0.1.4"
 goblin = "0.8.2"
 yaxpeax-riscv = { git = "https://github.com/DrChat/yaxpeax-riscv", version = "0.1.0", features = [
     "serde",
-], rev = "0e2151b" }
+], rev = "5973ff8" }
 crc32fast = "1.4.2"
 simics = "0.1.1"
 indoc = "2.0.5"
@@ -74,7 +74,7 @@ num-traits = "0.2.19"
 num-derive = "0.4.2"
 tracing-subscriber = "0.3.18"
 tracing = { version = "0.1.40", features = ["log"] }
-yaxpeax-arm = "0.2.5"
+yaxpeax-arm = "0.3.0"
 chrono = "0.4.38"
 
 [dev-dependencies]

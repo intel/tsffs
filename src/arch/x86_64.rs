@@ -740,82 +740,70 @@ impl TryFrom<(&Operand, Option<u8>)> for CmpExpr {
         let value = value.0;
 
         let expr = match value {
-            Operand::ImmediateI8(i) => CmpExpr::I8(*i),
-            Operand::ImmediateU8(u) => CmpExpr::U8(*u),
-            Operand::ImmediateI16(i) => CmpExpr::I16(*i),
-            Operand::ImmediateU16(u) => CmpExpr::U16(*u),
-            Operand::ImmediateI32(i) => CmpExpr::I32(*i),
-            Operand::ImmediateU32(u) => CmpExpr::U32(*u),
-            Operand::ImmediateI64(i) => CmpExpr::I64(*i),
-            Operand::ImmediateU64(u) => CmpExpr::U64(*u),
-            Operand::Register(r) => CmpExpr::Reg((r.name().to_string(), r.width())),
-            Operand::DisplacementU32(d) => CmpExpr::Addr(*d as u64),
-            Operand::DisplacementU64(d) => CmpExpr::Addr(*d),
-            Operand::RegDeref(r) => CmpExpr::Deref((
-                Box::new(CmpExpr::Reg((r.name().to_string(), r.width()))),
+            Operand::ImmediateI8 { imm } => CmpExpr::I8(*imm),
+            Operand::ImmediateU8 { imm } => CmpExpr::U8(*imm),
+            Operand::ImmediateI16 { imm } => CmpExpr::I16(*imm),
+            Operand::ImmediateU16 { imm } => CmpExpr::U16(*imm),
+            Operand::ImmediateI32 { imm } => CmpExpr::I32(*imm),
+            Operand::ImmediateU32 { imm } => CmpExpr::U32(*imm),
+            Operand::ImmediateI64 { imm } => CmpExpr::I64(*imm),
+            Operand::ImmediateU64 { imm } => CmpExpr::U64(*imm),
+            Operand::Register { reg } => CmpExpr::Reg((reg.name().to_string(), reg.width())),
+            Operand::AbsoluteU32 { addr } => CmpExpr::Addr(*addr as u64),
+            Operand::AbsoluteU64 { addr } => CmpExpr::Addr(*addr),
+            Operand::MemDeref { base } => CmpExpr::Deref((
+                Box::new(CmpExpr::Reg((base.name().to_string(), base.width()))),
                 width,
             )),
-            Operand::RegDisp(r, d) => CmpExpr::Deref((
+            Operand::Disp { base, disp } => CmpExpr::Deref((
                 Box::new(CmpExpr::Add((
-                    Box::new(CmpExpr::Reg((r.name().to_string(), r.width()))),
-                    Box::new(CmpExpr::I32(*d)),
+                    Box::new(CmpExpr::Reg((base.name().to_string(), base.width()))),
+                    Box::new(CmpExpr::I32(*disp)),
                 ))),
                 width,
             )),
-            Operand::RegScale(r, s) => CmpExpr::Deref((
+            Operand::MemIndexScale { index, scale } => CmpExpr::Deref((
                 Box::new(CmpExpr::Mul((
-                    Box::new(CmpExpr::Reg((r.name().to_string(), r.width()))),
-                    Box::new(CmpExpr::U8(*s)),
+                    Box::new(CmpExpr::Reg((index.name().to_string(), index.width()))),
+                    Box::new(CmpExpr::U8(*scale)),
                 ))),
                 width,
             )),
-            Operand::RegIndexBase(r, i) => CmpExpr::Deref((
-                Box::new(CmpExpr::Add((
-                    Box::new(CmpExpr::Reg((r.name().to_string(), r.width()))),
-                    Box::new(CmpExpr::Reg((i.name().to_string(), i.width()))),
-                ))),
-                width,
-            )),
-            Operand::RegIndexBaseDisp(r, i, d) => CmpExpr::Deref((
-                Box::new(CmpExpr::Add((
-                    Box::new(CmpExpr::Add((
-                        Box::new(CmpExpr::Reg((r.name().to_string(), r.width()))),
-                        Box::new(CmpExpr::Reg((i.name().to_string(), i.width()))),
-                    ))),
-                    Box::new(CmpExpr::I32(*d)),
-                ))),
-                width,
-            )),
-            Operand::RegScaleDisp(r, s, d) => CmpExpr::Deref((
+            Operand::MemIndexScaleDisp { index, scale, disp } => CmpExpr::Deref((
                 Box::new(CmpExpr::Add((
                     Box::new(CmpExpr::Mul((
-                        Box::new(CmpExpr::Reg((r.name().to_string(), r.width()))),
-                        Box::new(CmpExpr::U8(*s)),
+                        Box::new(CmpExpr::Reg((index.name().to_string(), index.width()))),
+                        Box::new(CmpExpr::U8(*scale)),
                     ))),
-                    Box::new(CmpExpr::I32(*d)),
+                    Box::new(CmpExpr::I32(*disp)),
                 ))),
                 width,
             )),
-            Operand::RegIndexBaseScale(r, i, s) => CmpExpr::Deref((
+            Operand::MemBaseIndexScale { base, index, scale } => CmpExpr::Deref((
                 Box::new(CmpExpr::Add((
-                    Box::new(CmpExpr::Reg((r.name().to_string(), r.width()))),
+                    Box::new(CmpExpr::Reg((base.name().to_string(), base.width()))),
                     Box::new(CmpExpr::Add((
-                        Box::new(CmpExpr::Reg((i.name().to_string(), i.width()))),
-                        Box::new(CmpExpr::U8(*s)),
+                        Box::new(CmpExpr::Reg((index.name().to_string(), index.width()))),
+                        Box::new(CmpExpr::U8(*scale)),
                     ))),
                 ))),
                 width,
             )),
-            Operand::RegIndexBaseScaleDisp(r, i, s, d) => CmpExpr::Deref((
+            Operand::MemBaseIndexScaleDisp {
+                base,
+                index,
+                scale,
+                disp,
+            } => CmpExpr::Deref((
                 Box::new(CmpExpr::Add((
                     Box::new(CmpExpr::Add((
-                        Box::new(CmpExpr::Reg((r.name().to_string(), r.width()))),
+                        Box::new(CmpExpr::Reg((base.name().to_string(), base.width()))),
                         Box::new(CmpExpr::Add((
-                            Box::new(CmpExpr::Reg((i.name().to_string(), i.width()))),
-                            Box::new(CmpExpr::U8(*s)),
+                            Box::new(CmpExpr::Reg((index.name().to_string(), index.width()))),
+                            Box::new(CmpExpr::U8(*scale)),
                         ))),
                     ))),
-                    Box::new(CmpExpr::I32(*d)),
+                    Box::new(CmpExpr::I32(*disp)),
                 ))),
                 width,
             )),
