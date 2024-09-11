@@ -28,7 +28,7 @@ crate-type = ["cdylib", "rlib"]
 test = false
 
 [dependencies]
-anyhow = { version = "1.0.86" }
+anyhow = { version = "1.0.88" }
 libafl = { git = "https://github.com/AFLplusplus/LibAFL", rev = "0f26f6ea32aa74ee526636558842ec06bbfb49bb", default-features = false, features = [
     "std",
     "derive",
@@ -57,7 +57,7 @@ yaxpeax-x86 = { version = "2.0.0", default-features = false, features = [
     "use-serde",
     "fmt",
 ] }
-typed-builder = "0.19.1"
+typed-builder = "0.20.0"
 raw-cstr = "0.1.4"
 goblin = "0.8.2"
 yaxpeax-riscv = { git = "https://github.com/DrChat/yaxpeax-riscv", version = "0.1.0", features = [
@@ -66,8 +66,8 @@ yaxpeax-riscv = { git = "https://github.com/DrChat/yaxpeax-riscv", version = "0.
 crc32fast = "1.4.2"
 simics = "0.1.1"
 indoc = "2.0.5"
-serde = { version = "1.0.203", features = ["derive"] }
-serde_json = "1.0.117"
+serde = { version = "1.0.210", features = ["derive"] }
+serde_json = "1.0.128"
 versions = { version = "6.2.0", features = ["serde"] }
 ffi = "0.1.1"
 num-traits = "0.2.19"
