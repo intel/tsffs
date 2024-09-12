@@ -24,13 +24,14 @@ find out if TSSFS can fuzz your code.
 
 The fastest way to start using TSFFS is with our [dockerfile](Dockerfile). To set up
 TSFFS locally instead, read the [documentation](./docs/src/SUMMARY.md). To clone the
-repository, build the test resources (EFI applications), and start a container with the
+repository, build the test resource (EFI application), and start a container with the
 fuzzer:
 
 ```sh
 git clone https://github.com/intel/tsffs
-cd tsffs/tests/rsrc/
+cd tsffs/tests/rsrc/x86_64-uefi
 ./build.sh
+cd ../../..
 docker build -t tsffs .
 docker run -it tsffs
 ```
