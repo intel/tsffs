@@ -23,15 +23,12 @@ find out if TSSFS can fuzz your code.
 ## Quick Start
 
 The fastest way to start using TSFFS is with our [dockerfile](Dockerfile). To set up
-TSFFS locally instead, read the [documentation](./docs/src/SUMMARY.md). To clone the
-repository, build the test resource (EFI application), and start a container with the
-fuzzer:
+TSFFS locally instead, read the [documentation](https://intel.github.io/tsffs). To start
+using TSFFS right away:
 
 ```sh
 git clone https://github.com/intel/tsffs
-cd tsffs/tests/rsrc/x86_64-uefi
-./build.sh
-cd ../../..
+cd tsffs
 docker build -t tsffs .
 docker run -it tsffs
 ```
@@ -44,8 +41,8 @@ Then, run the provided example target and fuzzing configuration:
 
 ## Documentation & Setup
 
-Documentation for setup & usage of this project lives in the [docs](./docs/src/SUMMARY.md)
-directory of this repository.
+Documentation for setup & usage of this project lives online at
+[intel.github.io/tsffs](https://intel.github.io/tsffs).
 
 ## Capabilities
 
