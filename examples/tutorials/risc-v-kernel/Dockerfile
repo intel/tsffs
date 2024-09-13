@@ -4,6 +4,7 @@ FROM ubuntu:22.04 AS buildroot
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV FORCE_UNSAFE_CONFIGURE=1
 
 RUN apt-get -y update && \
     apt-get -y install \

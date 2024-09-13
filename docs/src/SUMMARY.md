@@ -79,3 +79,4 @@
   - [Refreshing Build Environment](developer/refresh.md)
   - [Building Against A Specific SIMICS Version](developer/specific-simics-version.md)
   - [Debugging TSFFS](developer/debugging.md)
+  - [Releasing](developer/release.md)
