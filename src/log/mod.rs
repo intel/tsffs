@@ -152,6 +152,10 @@ impl Tsffs {
                     if self.save_interesting_execution_traces {
                         self.save_execution_trace()?;
                     }
+
+                    if self.symbolic_coverage {
+                        self.save_symbolic_coverage()?;
+                    }
                 }
                 FuzzerMessage::Crash { indices, input } => {
                     info!(
@@ -184,6 +188,10 @@ impl Tsffs {
                     if self.save_solution_execution_traces {
                         self.save_execution_trace()?;
                     }
+
+                    if self.symbolic_coverage {
+                        self.save_symbolic_coverage()?;
+                    }
                 }
                 FuzzerMessage::Timeout { indices, input } => {
                     info!(
@@ -215,6 +223,10 @@ impl Tsffs {
 
                     if self.save_timeout_execution_traces {
                         self.save_execution_trace()?;
+                    }
+
+                    if self.symbolic_coverage {
+                        self.save_symbolic_coverage()?;
                     }
                 }
             }

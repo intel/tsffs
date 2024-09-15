@@ -8,6 +8,7 @@ use std::time::SystemTime;
 use crate::{
     arch::ArchitectureOperations,
     magic::MagicNumber,
+    os::DebugInfoConfig,
     state::{SolutionKind, StopReason},
     ManualStartInfo, Tsffs,
 };
@@ -29,6 +30,7 @@ impl Tsffs {
             let start_processor = self
                 .start_processor()
                 .ok_or_else(|| anyhow!("No start processor"))?;
+            let start_processor_raw = start_processor.cpu();
 
             let start_info = match magic_number {
                 MagicNumber::StartBufferPtrSizePtr => {
@@ -54,6 +56,20 @@ impl Tsffs {
                 .map_err(|_| anyhow!("Failed to set start time"))?;
             self.coverage_enabled = true;
             self.save_initial_snapshot()?;
+            // Collect windows coverage info if enabled
+            if self.windows && self.symbolic_coverage {
+                info!(self.as_conf_object(), "Collecting initial coverage info");
+                self.windows_os_info.collect(
+                    start_processor_raw,
+                    &self.debuginfo_download_directory,
+                    &mut DebugInfoConfig {
+                        system: self.symbolic_coverage_system,
+                        user_debug_info: &self.debug_info,
+                        coverage: &mut self.coverage,
+                    },
+                    &self.source_file_cache,
+                )?;
+            }
             self.get_and_write_testcase()?;
             self.post_timeout_event()?;
         }
@@ -157,6 +173,10 @@ impl Tsffs {
             self.save_execution_trace()?;
         }
 
+        if self.symbolic_coverage {
+            self.save_symbolic_coverage()?;
+        }
+
         debug!(self.as_conf_object(), "Resuming simulation");
 
         run_alone(|| {
@@ -204,6 +224,21 @@ impl Tsffs {
             self.coverage_enabled = true;
             self.save_initial_snapshot()?;
 
+            // Collect windows coverage info if enabled
+            if self.windows && self.symbolic_coverage {
+                info!(self.as_conf_object(), "Collecting initial coverage info");
+                self.windows_os_info.collect(
+                    processor,
+                    &self.debuginfo_download_directory,
+                    &mut DebugInfoConfig {
+                        system: self.symbolic_coverage_system,
+                        user_debug_info: &self.debug_info,
+                        coverage: &mut self.coverage,
+                    },
+                    &self.source_file_cache,
+                )?;
+            }
+
             self.get_and_write_testcase()?;
 
             self.post_timeout_event()?;
@@ -235,6 +270,21 @@ impl Tsffs {
                 .map_err(|_| anyhow!("Failed to set start time"))?;
             self.coverage_enabled = true;
             self.save_initial_snapshot()?;
+
+            // Collect windows coverage info if enabled
+            if self.windows && self.symbolic_coverage {
+                info!(self.as_conf_object(), "Collecting initial coverage info");
+                self.windows_os_info.collect(
+                    processor,
+                    &self.debuginfo_download_directory,
+                    &mut DebugInfoConfig {
+                        system: self.symbolic_coverage_system,
+                        user_debug_info: &self.debug_info,
+                        coverage: &mut self.coverage,
+                    },
+                    &self.source_file_cache,
+                )?;
+            }
 
             self.post_timeout_event()?;
         }
@@ -332,6 +382,10 @@ impl Tsffs {
 
         if self.save_all_execution_traces {
             self.save_execution_trace()?;
+        }
+
+        if self.symbolic_coverage {
+            self.save_symbolic_coverage()?;
         }
 
         debug!(self.as_conf_object(), "Resuming simulation");
@@ -433,6 +487,10 @@ impl Tsffs {
 
         if self.save_all_execution_traces {
             self.save_execution_trace()?;
+        }
+
+        if self.symbolic_coverage {
+            self.save_symbolic_coverage()?;
         }
 
         debug!(self.as_conf_object(), "Resuming simulation");
@@ -571,7 +629,7 @@ impl Tsffs {
     ) -> Result<()> {
         trace!(
             self.as_conf_object(),
-            "on_magic_instruction({magic_number})"
+            "Got magic instruction with magic #{magic_number})"
         );
 
         if object_is_processor(trigger_obj)? {
@@ -626,6 +684,17 @@ impl Tsffs {
         } else {
             bail!("Magic instruction was triggered by a non-processor object");
         }
+
+        Ok(())
+    }
+
+    pub fn on_control_register_write(
+        &mut self,
+        trigger_obj: *mut ConfObject,
+        register_nr: i64,
+        value: i64,
+    ) -> Result<()> {
+        self.on_control_register_write_windows_symcov(trigger_obj, register_nr, value)?;
 
         Ok(())
     }

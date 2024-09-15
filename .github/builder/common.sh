@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# NOTE: Do not just copy-paste scripts/build.sh!
+# NOTE: The `use-keyboxd` option in ~/.gnupg/common.conf should be disabled for this script's GPG routines to
+# work correctly!
 
 set -e
 

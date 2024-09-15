@@ -2,17 +2,19 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::{anyhow, bail, Error, Result};
+use cpp_demangle::{DemangleOptions, Symbol};
 use ffi::ffi;
 use libafl::prelude::CmpValues;
 use libafl_bolts::{AsMutSlice, AsSlice};
 use libafl_targets::{AFLppCmpLogOperands, AFL_CMP_TYPE_INS, CMPLOG_MAP_H};
+use rustc_demangle::try_demangle;
 use serde::{Deserialize, Serialize};
 use simics::{
     api::{
         get_processor_number, sys::instruction_handle_t, AsConfObject, AttrValue, AttrValueType,
         ConfObject,
     },
-    trace,
+    get_interface, trace, ProcessorInfoV2Interface,
 };
 use std::{
     collections::HashMap, ffi::c_void, fmt::Display, hash::Hash, num::Wrapping,
@@ -22,7 +24,19 @@ use typed_builder::TypedBuilder;
 
 use crate::{arch::ArchitectureOperations, Tsffs};
 
-#[derive(Deserialize, Serialize, Debug, Default)]
+#[derive(Clone, Deserialize, Serialize, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) struct ExecutionTraceSymbol {
+    /// The symbol name
+    pub symbol: String,
+    /// The demangled symbol name, if it demangles correctly
+    pub symbol_demangled: Option<String>,
+    /// The offset into the symbol
+    pub offset: u64,
+    /// The containing module's name (usually the path to the executable or dll)
+    pub module: String,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, Default)]
 pub(crate) struct ExecutionTrace(pub HashMap<i32, Vec<ExecutionTraceEntry>>);
 
 impl Hash for ExecutionTrace {
@@ -36,13 +50,17 @@ impl Hash for ExecutionTrace {
     }
 }
 
-#[derive(TypedBuilder, Deserialize, Serialize, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Clone, TypedBuilder, Deserialize, Serialize, Debug, PartialEq, Eq, PartialOrd, Ord, Hash,
+)]
 pub(crate) struct ExecutionTraceEntry {
     pc: u64,
     #[builder(default, setter(into, strip_option))]
     insn: Option<String>,
     #[builder(default, setter(into, strip_option))]
     insn_bytes: Option<Vec<u8>>,
+    #[builder(default, setter(into))]
+    symbol: Option<ExecutionTraceSymbol>,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -356,7 +374,7 @@ impl Tsffs {
     ) -> Result<()> {
         let processor_number = get_processor_number(cpu)?;
 
-        if self.cmplog && self.cmplog_enabled {
+        if self.coverage_enabled && self.cmplog && self.cmplog_enabled {
             if let Some(arch) = self.processors.get_mut(&processor_number) {
                 match arch.trace_cmp(handle) {
                     Ok(r) => {
@@ -372,6 +390,110 @@ impl Tsffs {
                 }
             }
         }
+
+        let symcov = if self.coverage_enabled
+            && self.windows
+            && self.symbolic_coverage
+            && (self.save_all_execution_traces
+                || self.save_interesting_execution_traces
+                || self.save_solution_execution_traces)
+        {
+            // Get the current instruction address
+            let mut processor_information_v2 = get_interface::<ProcessorInfoV2Interface>(cpu)?;
+            let pc = processor_information_v2.get_program_counter()?;
+            self.windows_os_info
+                .symbol_lookup_trees
+                .get(&processor_number)
+                .and_then(|lookup_tree| {
+                    lookup_tree
+                        .query(pc..pc + 1)
+                        .next()
+                        .map(|symbol_for_query| {
+                            let offset =
+                                pc - symbol_for_query.value.base + symbol_for_query.value.rva;
+                            let symbol_demangled = try_demangle(&symbol_for_query.value.name)
+                                .map(|d| d.to_string())
+                                .ok()
+                                .or_else(|| {
+                                    Symbol::new(&symbol_for_query.value.name)
+                                        .ok()
+                                        .and_then(|s| s.demangle(&DemangleOptions::new()).ok())
+                                });
+
+                            if let Some(function_start_line) = symbol_for_query.value.lines.first()
+                            {
+                                let record = self
+                                    .coverage
+                                    .get_or_insert_mut(&function_start_line.file_path);
+                                let pc_lines = symbol_for_query
+                                    .value
+                                    .lines
+                                    .iter()
+                                    .filter(|line_info| {
+                                        pc - symbol_for_query.value.base >= line_info.rva
+                                            && pc - symbol_for_query.value.base
+                                                < line_info.rva + line_info.size as u64
+                                    })
+                                    .flat_map(|l| (l.start_line..=l.end_line).map(|i| i as usize))
+                                    .collect::<Vec<_>>();
+
+                                if pc_lines.contains(&(function_start_line.start_line as usize)) {
+                                    // Increment function hit counter if we just hit the fn
+                                    record.increment_function_data(&symbol_for_query.value.name);
+                                }
+
+                                pc_lines.iter().for_each(|line| {
+                                    record.increment_line(*line);
+                                });
+                            }
+                            ExecutionTraceSymbol {
+                                symbol: symbol_for_query.value.name.clone(),
+                                symbol_demangled,
+                                offset,
+                                module: symbol_for_query.value.module.clone(),
+                            }
+                        })
+                })
+        } else if self.coverage_enabled && self.symbolic_coverage {
+            let mut processor_information_v2 = get_interface::<ProcessorInfoV2Interface>(cpu)?;
+            let pc = processor_information_v2.get_program_counter()?;
+            if let Some(lookup_tree) = self
+                .windows_os_info
+                .symbol_lookup_trees
+                .get(&processor_number)
+            {
+                if let Some(symbol_for_query) = lookup_tree.query(pc..pc + 1).next() {
+                    if let Some(function_start_line) = symbol_for_query.value.lines.first() {
+                        let record = self
+                            .coverage
+                            .get_or_insert_mut(&function_start_line.file_path);
+                        let pc_lines = symbol_for_query
+                            .value
+                            .lines
+                            .iter()
+                            .filter(|line_info| {
+                                pc - symbol_for_query.value.base >= line_info.rva
+                                    && pc - symbol_for_query.value.base
+                                        < line_info.rva + line_info.size as u64
+                            })
+                            .flat_map(|l| (l.start_line..=l.end_line).map(|i| i as usize))
+                            .collect::<Vec<_>>();
+
+                        if pc_lines.contains(&(function_start_line.start_line as usize)) {
+                            // Increment function hit counter if we just hit the fn
+                            record.increment_function_data(&symbol_for_query.value.name);
+                        }
+
+                        pc_lines.iter().for_each(|line| {
+                            record.increment_line(*line);
+                        });
+                    }
+                }
+            }
+            None
+        } else {
+            None
+        };
 
         if self.coverage_enabled
             && (self.save_all_execution_traces
@@ -401,12 +523,14 @@ impl Tsffs {
                                 .pc(arch.processor_info_v2().get_program_counter()?)
                                 .insn(disassembly_string)
                                 .insn_bytes(instruction_bytes.to_vec())
+                                .symbol(symcov)
                                 .build()
                         } else {
                             ExecutionTraceEntry::builder()
                                 .pc(arch.processor_info_v2().get_program_counter()?)
                                 .insn("(unknown)".to_string())
                                 .insn_bytes(instruction_bytes.to_vec())
+                                .symbol(symcov)
                                 .build()
                         }
                     });
