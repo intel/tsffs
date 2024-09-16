@@ -16,7 +16,12 @@ jobs:
     container: github/super-linter
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Harden Runner
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           fetch-depth: 0
           lfs: false
@@ -50,7 +55,12 @@ jobs:
   scan_x86_64_breakpoint_uefi_edk2_container:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Harden Runner
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           fetch-depth: 0
           lfs: false
@@ -62,14 +72,19 @@ jobs:
           docker buildx build -t container -f Dockerfile . > build.log 2>&1 || { tail -n 1000 build.log; exit 1; }
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@d9cd5b1c23aaf8cb31bb09141028215828364bbb # master
         with:
           image-ref: container
 
   scan_x86_64_timeout_uefi_edk2_container:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Harden Runner
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           fetch-depth: 0
           lfs: false
@@ -81,14 +96,19 @@ jobs:
           docker buildx build -t container -f Dockerfile . > build.log 2>&1 || { tail -n 1000 build.log; exit 1; }
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@d9cd5b1c23aaf8cb31bb09141028215828364bbb # master
         with:
           image-ref: container
 
   scan_x86_64_uefi_edk2_container:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Harden Runner
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           fetch-depth: 0
           lfs: false
@@ -100,7 +120,7 @@ jobs:
           docker buildx build -t container -f Dockerfile . > build.log 2>&1 || { tail -n 1000 build.log; exit 1; }
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@d9cd5b1c23aaf8cb31bb09141028215828364bbb # master
         with:
           image-ref: container
 
@@ -109,17 +129,22 @@ jobs:
     container: fedora:38
     runs-on: ubuntu-latest
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        with:
+          egress-policy: audit
+
       - name: Install Dependencies
         run: |
           dnf -y update && \
           dnf -y install \
             g++ gcc git git-lfs glibc-devel make openssl openssl-devel openssl-libs
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           lfs: false
 
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@83bdede770b06329615974cf8c786f845d824dfb # nightly
         with:
           toolchain: nightly
           components: rustfmt,clippy,miri

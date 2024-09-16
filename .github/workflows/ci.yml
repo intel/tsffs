@@ -27,6 +27,11 @@ jobs:
   cache_craff:
     runs-on: ubuntu-latest
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        with:
+          egress-policy: audit
+
       - name: Add ISPM to PATH
         run: |
           echo "${HOME}/simics/ispm/" >> "${GITHUB_PATH}"
@@ -40,7 +45,7 @@ jobs:
 
       - name: Cache SIMICS Dependencies
         id: cache-simics-packages
-        uses: actions/cache@v4
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
         with:
           path: "${HOME}/simics"
           key: simics-linux-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}-${{ env.PUBLIC_SIMICS_ISPM_VERSION }}
@@ -73,7 +78,7 @@ jobs:
           cp "${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}/linux64/bin/craff-fs" bin/craff-fs
 
       - name: Upload Test Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
         with:
           name: craff-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
           path: bin/
@@ -83,6 +88,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: cache_craff
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        with:
+          egress-policy: audit
+
       - name: Install Dependencies
         run: |
           sudo apt-get -y update && \
@@ -90,12 +100,12 @@ jobs:
             clang libclang-dev cmake curl dosfstools g++ gcc git llvm make \
             mtools ninja-build openssl libssl-dev python3 python3-pip lld
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           lfs: true
 
       - name: Download Craff
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
           name: craff-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
           path: bin/
@@ -107,7 +117,7 @@ jobs:
 
       - name: Cache Test Artifacts
         id: cache-test-artifacts-riscv-64
-        uses: actions/cache@v4
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
         with:
           path: tests/rsrc/riscv-64/
           key: cache-test-artifacts-${{ hashFiles('tests/rsrc/riscv-64/**/*') }}
@@ -119,7 +129,7 @@ jobs:
           ./build.sh
 
       - name: Upload Test Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
         with:
           name: test-artifacts-riscv-64
           path: tests/rsrc/riscv-64
@@ -128,6 +138,11 @@ jobs:
     name: Build Test Artifacts (x86_64 Breakpoints UEFI EDK2)
     runs-on: ubuntu-latest
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        with:
+          egress-policy: audit
+
       - name: Install Dependencies
         run: |
           sudo apt-get -y update && \
@@ -135,13 +150,13 @@ jobs:
             clang libclang-dev cmake curl dosfstools g++ gcc git llvm make \
             mtools ninja-build openssl libssl-dev python3 python3-pip lld
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           lfs: true
 
       - name: Cache Test Artifacts
         id: cache-test-artifacts-x86_64-breakpoint-uefi-edk2
-        uses: actions/cache@v4
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
         with:
           path: tests/rsrc/x86_64-breakpoint-uefi-edk2
           key: cache-test-artifacts-${{ hashFiles('tests/rsrc/x86_64-breakpoint-uefi-edk2/**/*') }}
@@ -153,7 +168,7 @@ jobs:
           ./build.sh
 
       - name: Upload Test Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
         with:
           name: test-artifacts-x86_64-breakpoint-uefi-edk2
           path: tests/rsrc/x86_64-breakpoint-uefi-edk2
@@ -162,6 +177,11 @@ jobs:
     name: Build Test Artifacts (x86_64 Crash UEFI)
     runs-on: ubuntu-latest
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        with:
+          egress-policy: audit
+
       - name: Install Dependencies
         run: |
           sudo apt-get -y update && \
@@ -169,13 +189,13 @@ jobs:
             clang libclang-dev cmake curl dosfstools g++ gcc git llvm make \
             mtools ninja-build openssl libssl-dev python3 python3-pip lld
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           lfs: true
 
       - name: Cache Test Artifacts
         id: cache-test-artifacts-x86_64-crash-uefi
-        uses: actions/cache@v4
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
         with:
           path: tests/rsrc/x86_64-crash-uefi
           key: cache-test-artifacts-${{ hashFiles('tests/rsrc/x86_64-crash-uefi/**/*') }}
@@ -187,7 +207,7 @@ jobs:
           ./build.sh
 
       - name: Upload Test Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
         with:
           name: test-artifacts-x86_64-crash-uefi
           path: tests/rsrc/x86_64-crash-uefi
@@ -196,6 +216,11 @@ jobs:
     name: Build Test Artifacts (x86_64 Timeout UEFI EDK2)
     runs-on: ubuntu-latest
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        with:
+          egress-policy: audit
+
       - name: Install Dependencies
         run: |
           sudo apt-get -y update && \
@@ -203,13 +228,13 @@ jobs:
             clang libclang-dev cmake curl dosfstools g++ gcc git llvm make \
             mtools ninja-build openssl libssl-dev python3 python3-pip lld
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           lfs: true
 
       - name: Cache Test Artifacts
         id: cache-test-artifacts-x86_64-timeout-uefi-edk2
-        uses: actions/cache@v4
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
         with:
           path: tests/rsrc/x86_64-timeout-uefi-edk2
           key: cache-test-artifacts-${{ hashFiles('tests/rsrc/x86_64-timeout-uefi-edk2/**/*') }}
@@ -221,7 +246,7 @@ jobs:
           ./build.sh
 
       - name: Upload Test Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
         with:
           name: test-artifacts-x86_64-timeout-uefi-edk2
           path: tests/rsrc/x86_64-timeout-uefi-edk2
@@ -230,6 +255,11 @@ jobs:
     name: Build Test Artifacts (x86_64 UEFI)
     runs-on: ubuntu-latest
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        with:
+          egress-policy: audit
+
       - name: Install Dependencies
         run: |
           sudo apt-get -y update && \
@@ -237,13 +267,13 @@ jobs:
             clang libclang-dev cmake curl dosfstools g++ gcc git llvm make \
             mtools ninja-build openssl libssl-dev python3 python3-pip lld
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           lfs: true
 
       - name: Cache Test Artifacts
         id: cache-test-artifacts-x86_64-uefi
-        uses: actions/cache@v4
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
         with:
           path: tests/rsrc/x86_64-uefi
           key: cache-test-artifacts-${{ hashFiles('tests/rsrc/x86_64-uefi/**/*') }}
@@ -255,7 +285,7 @@ jobs:
           ./build.sh
 
       - name: Upload Test Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
         with:
           name: test-artifacts-x86_64-uefi
           path: tests/rsrc/x86_64-uefi
@@ -264,6 +294,11 @@ jobs:
     name: Build Test Artifacts (x86_64 UEFI EDK2)
     runs-on: ubuntu-latest
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        with:
+          egress-policy: audit
+
       - name: Install Dependencies
         run: |
           sudo apt-get -y update && \
@@ -271,13 +306,13 @@ jobs:
             clang libclang-dev cmake curl dosfstools g++ gcc git llvm make \
             mtools ninja-build openssl libssl-dev python3 python3-pip lld
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           lfs: true
 
       - name: Cache Test Artifacts
         id: cache-test-artifacts-x86_64-uefi-edk2
-        uses: actions/cache@v4
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
         with:
           path: tests/rsrc/x86_64-uefi-edk2
           key: cache-test-artifacts-${{ hashFiles('tests/rsrc/x86_64-uefi-edk2/**/*') }}
@@ -289,7 +324,7 @@ jobs:
           ./build.sh
 
       - name: Upload Test Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
         with:
           name: test-artifacts-x86_64-uefi-edk2
           path: tests/rsrc/x86_64-uefi-edk2
@@ -299,6 +334,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: cache_craff
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        with:
+          egress-policy: audit
+
       - name: Install Dependencies
         run: |
           sudo apt-get -y update && \
@@ -307,12 +347,12 @@ jobs:
             mtools ninja-build openssl libssl-dev python3 python3-pip lld \
             build-essential gcc-multilib
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           lfs: true
 
       - name: Download Craff
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
           name: craff-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
           path: bin/
@@ -324,7 +364,7 @@ jobs:
 
       - name: Cache Test Artifacts
         id: cache-test-artifacts-x86-user
-        uses: actions/cache@v4
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
         with:
           path: tests/rsrc/x86-user/
           key: cache-test-artifacts-${{ hashFiles('tests/rsrc/x86-user/**/*') }}
@@ -336,7 +376,7 @@ jobs:
           ./build.sh
 
       - name: Upload Test Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
         with:
           name: test-artifacts-x86-user
           path: tests/rsrc/x86-user
@@ -354,6 +394,11 @@ jobs:
       - build_test_artifacts_x86_64_uefi_edk2
       - build_test_artifacts_x86_user
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        with:
+          egress-policy: audit
+
       - name: Add ISPM to PATH
         run: |
           echo "${HOME}/simics/ispm/" >> "${GITHUB_PATH}"
@@ -369,7 +414,7 @@ jobs:
             llvm-static make mesa-libgbm mtools ninja-build openssl \
             openssl-devel openssl-libs python3 python3-pip yamllint
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           lfs: true
 
@@ -378,43 +423,43 @@ jobs:
           rm -rf tests/rsrc/
 
       - name: Download Test Artifacts (RISCV-64)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
           name: test-artifacts-riscv-64
           path: tests/rsrc/riscv-64
 
       - name: Download Test Artifacts (x86_64 Breakpoints UEFI EDK2)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
           name: test-artifacts-x86_64-breakpoint-uefi-edk2
           path: tests/rsrc/x86_64-breakpoint-uefi-edk2
 
       - name: Download Test Artifacts (x86_64 Timeout UEFI EDK2)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
           name: test-artifacts-x86_64-crash-uefi
           path: tests/rsrc/x86_64-crash-uefi
 
       - name: Download Test Artifacts (x86_64 Timeout UEFI EDK2)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
           name: test-artifacts-x86_64-timeout-uefi-edk2
           path: tests/rsrc/x86_64-timeout-uefi-edk2
 
       - name: Download Test Artifacts (x86_64 UEFI)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
           name: test-artifacts-x86_64-uefi
           path: tests/rsrc/x86_64-uefi
 
       - name: Download Test Artifacts (x86_64 UEFI EDK2)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
           name: test-artifacts-x86_64-uefi-edk2
           path: tests/rsrc/x86_64-uefi-edk2
 
       - name: Download Test Artifacts (x86)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
           name: test-artifacts-x86-user
           path: tests/rsrc/x86-user
@@ -425,14 +470,14 @@ jobs:
           chown -R "${USER}:${USER}" tests/rsrc/
           chmod -R 0755 tests/rsrc/
 
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@83bdede770b06329615974cf8c786f845d824dfb # nightly
         with:
           toolchain: nightly
           components: rustfmt,clippy,miri
 
       - name: Cache SIMICS Dependencies
         id: cache-simics-packages
-        uses: actions/cache@v4
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
         with:
           path: ~/simics
           key: simics-linux-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}-${{ env.PUBLIC_SIMICS_ISPM_VERSION }}
@@ -475,7 +520,7 @@ jobs:
           echo "✅ [CT39 (1/2)] Passed clippy static analysis checks"
 
       - name: Upload Clippy Check Results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
         with:
           name: clippy-json
           path: |
@@ -496,6 +541,11 @@ jobs:
     name: Build and Test (Windows)
     runs-on: windows-latest
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        with:
+          egress-policy: audit
+
       - name: Add ISPM and MinGW to PATH
         run: |
           set PATH $env:PATH
@@ -506,7 +556,7 @@ jobs:
 
       - name: Cache MinGW
         id: cache-mingw
-        uses: actions/cache@v4
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
         with:
           path: C:\MinGW\
           key: mingw-${{ env.MINGW_VERSION }}
@@ -532,7 +582,7 @@ jobs:
 
       - name: Cache SIMICS
         id: cache-simics-packages-windows
-        uses: actions/cache@v4
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
         with:
           path: |
             C:\ISPM\
@@ -567,7 +617,7 @@ jobs:
           ispm.exe packages --install-bundle C:\simics-6-packages.ispm --non-interactive --trust-insecure-packages
           echo "Installed ISPM packages"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           lfs: true
 
@@ -577,7 +627,7 @@ jobs:
           cargo simics-build -r
 
       - name: Upload Distribution Package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
         with:
           name: simics-pkg-31337-win64
           path: target/release/simics-pkg-31337-*-win64.ispm
@@ -586,13 +636,18 @@ jobs:
     name: Build for Distribution
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Harden Runner
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           lfs: true
 
       - name: Cache Builder Dependencies
         id: cache-builder-dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
         with:
           path: .github/builder/rsrc
           key: "cache-builder-dependencies-${{ hashFiles('.github/builder/common.sh') }}"
@@ -604,7 +659,7 @@ jobs:
           ./scripts/build.sh
 
       - name: Upload Distribution Package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
         with:
           name: simics-pkg-31337-linux64
           path: packages/simics-pkg-31337-*-linux64.ispm

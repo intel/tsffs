@@ -1,5 +1,5 @@
 # hadolint global ignore=DL3008
-FROM ghcr.io/tianocore/containers/ubuntu-22-build:a0dd931
+FROM ghcr.io/tianocore/containers/ubuntu-22-build:a0dd931@sha256:bcda96cb0b9a39a881122ab7d3be86e6151f4c66968421827384c97850c790a5
 ENV DEBIAN_FRONTEND=noninteractive
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
