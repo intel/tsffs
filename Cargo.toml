@@ -64,7 +64,7 @@ yaxpeax-riscv = { git = "https://github.com/DrChat/yaxpeax-riscv", version = "0.
     "serde",
 ], rev = "5973ff8" }
 crc32fast = "1.4.2"
-simics = "0.1.1"
+simics = "0.1.2"
 indoc = "2.0.5"
 serde = { version = "1.0.210", features = ["derive"] }
 serde_json = "1.0.128"
@@ -105,16 +105,16 @@ thiserror = "1.0.63"
 lcov2 = "0.1.0"
 
 [dev-dependencies]
-simics-test = "0.1.0"
+simics-test = "0.1.1"
 anyhow = "1.0.86"
 command-ext = "0.1.2"
 indoc = "2.0.5"
-ispm-wrapper = "0.1.0"
+ispm-wrapper = "0.1.1"
 versions = { version = "6.2.0", features = ["serde"] }
 
 [build-dependencies]
-simics = "0.1.1"
-simics-build-utils = "0.1.0"
+simics = "0.1.2"
+simics-build-utils = "0.1.1"
 
 [profile.release]
 lto = true
