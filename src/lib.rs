@@ -30,7 +30,7 @@
 
 use crate::interfaces::{config::config, fuzz::fuzz};
 use crate::state::SolutionKind;
-#[cfg(simics_version_6)]
+#[cfg(simics_version = "6")]
 use crate::util::Utils;
 use anyhow::{anyhow, Result};
 use arch::{Architecture, ArchitectureHint, ArchitectureOperations};
@@ -55,11 +55,11 @@ use simics::{
     CoreSimulationStoppedHap, CpuInstrumentationSubscribeInterface, Event, EventClassFlag,
     FromConfObject, HapHandle, Interface,
 };
-#[cfg(simics_version_6)]
+#[cfg(simics_version = "6")]
 use simics::{
     discard_future, restore_micro_checkpoint, save_micro_checkpoint, MicroCheckpointFlags,
 };
-#[cfg(simics_version_7)]
+#[cfg(simics_version = "7")]
 // NOTE: save_snapshot used because it is a stable alias for both save_snapshot and take_snapshot
 // which is necessary because this module is compatible with base versions which cross the
 // deprecation boundary
@@ -735,7 +735,7 @@ impl Tsffs {
 
         self.log(LogMessage::startup())?;
 
-        #[cfg(simics_version_7)]
+        #[cfg(simics_version = "7")]
         {
             if self.pre_snapshot_checkpoint {
                 debug!(
@@ -759,7 +759,7 @@ impl Tsffs {
                 .map_err(|_| anyhow!("Snapshot name already set"))?;
         }
 
-        #[cfg(simics_version_6)]
+        #[cfg(simics_version = "6")]
         {
             if self.pre_snapshot_checkpoint {
                 debug!(
@@ -805,9 +805,9 @@ impl Tsffs {
     /// Restore the initial snapshot using the configured method (either rev-exec micro checkpoints
     /// or snapshots)
     pub fn restore_initial_snapshot(&mut self) -> Result<()> {
-        #[cfg(simics_version_7)]
+        #[cfg(simics_version = "7")]
         restore_snapshot(Self::SNAPSHOT_NAME)?;
-        #[cfg(simics_version_6)]
+        #[cfg(simics_version = "6")]
         {
             restore_micro_checkpoint(*self.micro_checkpoint_index.get().ok_or_else(|| {
                 anyhow!("Not using snapshots and no micro checkpoint index present")
@@ -821,9 +821,9 @@ impl Tsffs {
 
     /// Whether an initial snapshot has been saved
     pub fn have_initial_snapshot(&self) -> bool {
-        let have = if cfg!(simics_version_7) {
+        let have = if cfg!(simics_version = "7") {
             self.snapshot_name.get().is_some()
-        } else if cfg!(simics_version_6) {
+        } else if cfg!(simics_version = "6") {
             self.snapshot_name.get().is_some() && self.micro_checkpoint_index.get().is_some()
         } else {
             error!(self.as_conf_object(), "Unsupported SIMICS version");
