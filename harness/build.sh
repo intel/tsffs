@@ -28,3 +28,5 @@ $(cat "${SCRIPT_DIR}/tsffs-msvc-x86_64.h")
 #error "Unsupported compiler!"
 #endif
 EOF
+
+./test.sh
