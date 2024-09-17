@@ -9,8 +9,6 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 
 set -e
 
-"${SCRIPT_DIR}/build.sh"
-
 rm -f "${SCRIPT_DIR}/test_x86_64-clang.o" || exit 0
 rm -f "${SCRIPT_DIR}/test_x86-clang.o" || exit 0
 rm -f "${SCRIPT_DIR}/test_riscv32-clang.o" || exit 0
