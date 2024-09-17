@@ -58,5 +58,7 @@ echo "Testing arm (multi file)..."
 clang -target arm-unknown-linux-gnu -mfloat-abi=soft -g -c "${SCRIPT_DIR}/test.c" -o "${SCRIPT_DIR}/test_arm32-clang.o"
 echo "Testing x86_64 (multi file, gcc)..."
 gcc -g -c "${SCRIPT_DIR}/test.c" -o "${SCRIPT_DIR}/test_x86_64-gcc.o"
+gcc -g "${SCRIPT_DIR}/test.c" -o "${SCRIPT_DIR}/test_x86_64-gcc"
 echo "Testing i386(multi file, gcc)..."
 gcc -g -m32 -c "${SCRIPT_DIR}/test.c" -o "${SCRIPT_DIR}/test_x86-gcc.o"
+

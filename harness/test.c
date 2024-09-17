@@ -89,4 +89,7 @@ int test_assert_index() {
   return 0;
 }
 
+
 #endif
+
+int main() {}
