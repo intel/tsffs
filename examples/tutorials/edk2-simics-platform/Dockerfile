@@ -1,4 +1,4 @@
-FROM ghcr.io/tianocore/containers/fedora-37-build:a0dd931
+FROM ghcr.io/tianocore/containers/fedora-37-build:a0dd931@sha256:09843c8043412b49c36bd3daaa0660210b3bcd60a8417fe9f9e24f986cd345ff
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 

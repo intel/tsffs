@@ -1,0 +1,56 @@
+version: 2
+updates:
+  - package-ecosystem: docker
+    directory: /.github/builder
+    schedule:
+      interval: daily
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: daily
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: daily
+
+  - package-ecosystem: docker
+    directory: /examples/manual-example
+    schedule:
+      interval: daily
+
+  - package-ecosystem: docker
+    directory: /examples/tutorials/edk2-simics-platform
+    schedule:
+      interval: daily
+
+  - package-ecosystem: docker
+    directory: /examples/tutorials/edk2-uefi
+    schedule:
+      interval: daily
+
+  - package-ecosystem: docker
+    directory: /examples/tutorials/risc-v-kernel
+    schedule:
+      interval: daily
+
+  - package-ecosystem: docker
+    directory: /tests/rsrc/riscv-64
+    schedule:
+      interval: daily
+
+  - package-ecosystem: docker
+    directory: /tests/rsrc/x86_64-breakpoint-uefi-edk2
+    schedule:
+      interval: daily
+
+  - package-ecosystem: docker
+    directory: /tests/rsrc/x86_64-timeout-uefi-edk2
+    schedule:
+      interval: daily
+
+  - package-ecosystem: docker
+    directory: /tests/rsrc/x86_64-uefi-edk2
+    schedule:
+      interval: daily
