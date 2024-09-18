@@ -1,5 +1,5 @@
 # hadolint global ignore=DL3033,SC3044
-FROM fedora:20@sha256:5d5a02b873d298da9bca4b84440c5cd698b0832560c850d92cf389cef58bc549
+FROM fedora:40@sha256:d0207dbb078ee261852590b9a8f1ab1f8320547be79a2f39af9f3d23db33735e
 
 ENV PATH="${PATH}:/root/.cargo/bin/"
 
