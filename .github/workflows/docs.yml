@@ -59,7 +59,7 @@ jobs:
 
       - name: Cache SIMICS Dependencies
         id: cache-simics-packages
-        uses: actions/cache@e12d46a63a90f2fae62d114769bbf2a179198b5c # v3.3.3
+        uses: actions/cache@2cdf405574d6ef1f33a1d12acccd3ae82f47b3f2 # v4.1.0
         with:
           path: ~/simics
           key: simics-linux-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
