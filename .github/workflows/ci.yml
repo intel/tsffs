@@ -45,7 +45,7 @@ jobs:
 
       - name: Cache SIMICS Dependencies
         id: cache-simics-packages
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
         with:
           path: "${HOME}/simics"
           key: simics-linux-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}-${{ env.PUBLIC_SIMICS_ISPM_VERSION }}
@@ -117,7 +117,7 @@ jobs:
 
       - name: Cache Test Artifacts
         id: cache-test-artifacts-riscv-64
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
         with:
           path: tests/rsrc/riscv-64/
           key: cache-test-artifacts-${{ hashFiles('tests/rsrc/riscv-64/**/*') }}
@@ -156,7 +156,7 @@ jobs:
 
       - name: Cache Test Artifacts
         id: cache-test-artifacts-x86_64-breakpoint-uefi-edk2
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
         with:
           path: tests/rsrc/x86_64-breakpoint-uefi-edk2
           key: cache-test-artifacts-${{ hashFiles('tests/rsrc/x86_64-breakpoint-uefi-edk2/**/*') }}
@@ -195,7 +195,7 @@ jobs:
 
       - name: Cache Test Artifacts
         id: cache-test-artifacts-x86_64-crash-uefi
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
         with:
           path: tests/rsrc/x86_64-crash-uefi
           key: cache-test-artifacts-${{ hashFiles('tests/rsrc/x86_64-crash-uefi/**/*') }}
@@ -234,7 +234,7 @@ jobs:
 
       - name: Cache Test Artifacts
         id: cache-test-artifacts-x86_64-timeout-uefi-edk2
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
         with:
           path: tests/rsrc/x86_64-timeout-uefi-edk2
           key: cache-test-artifacts-${{ hashFiles('tests/rsrc/x86_64-timeout-uefi-edk2/**/*') }}
@@ -273,7 +273,7 @@ jobs:
 
       - name: Cache Test Artifacts
         id: cache-test-artifacts-x86_64-uefi
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
         with:
           path: tests/rsrc/x86_64-uefi
           key: cache-test-artifacts-${{ hashFiles('tests/rsrc/x86_64-uefi/**/*') }}
@@ -312,7 +312,7 @@ jobs:
 
       - name: Cache Test Artifacts
         id: cache-test-artifacts-x86_64-uefi-edk2
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
         with:
           path: tests/rsrc/x86_64-uefi-edk2
           key: cache-test-artifacts-${{ hashFiles('tests/rsrc/x86_64-uefi-edk2/**/*') }}
@@ -364,7 +364,7 @@ jobs:
 
       - name: Cache Test Artifacts
         id: cache-test-artifacts-x86-user
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
         with:
           path: tests/rsrc/x86-user/
           key: cache-test-artifacts-${{ hashFiles('tests/rsrc/x86-user/**/*') }}
@@ -477,7 +477,7 @@ jobs:
 
       - name: Cache SIMICS Dependencies
         id: cache-simics-packages
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
         with:
           path: ~/simics
           key: simics-linux-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}-${{ env.PUBLIC_SIMICS_ISPM_VERSION }}
@@ -556,7 +556,7 @@ jobs:
 
       - name: Cache MinGW
         id: cache-mingw
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
         with:
           path: C:\MinGW\
           key: mingw-${{ env.MINGW_VERSION }}
@@ -582,7 +582,7 @@ jobs:
 
       - name: Cache SIMICS
         id: cache-simics-packages-windows
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
         with:
           path: |
             C:\ISPM\
@@ -647,7 +647,7 @@ jobs:
 
       - name: Cache Builder Dependencies
         id: cache-builder-dependencies
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
         with:
           path: .github/builder/rsrc
           key: "cache-builder-dependencies-${{ hashFiles('.github/builder/common.sh') }}"
