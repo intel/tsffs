@@ -1,5 +1,5 @@
 # hadolint global ignore=DL3033,SC3044
-FROM fedora:20
+FROM fedora:41
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
