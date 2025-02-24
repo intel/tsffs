@@ -1,9 +1,12 @@
 #!/bin/bash
 
+set -e
+
 # NOTE: The `use-keyboxd` option in ~/.gnupg/common.conf should be disabled for this script's GPG routines to
 # work correctly!
+mkdir -p $HOME/.gnupg
+echo "use-keyboxd no" > $HOME/.gnupg/common.conf
 
-set -e
 
 download_and_verify_llvm() {
     LLVM_PGP_KEY_URL="https://releases.llvm.org/5.0.2/tstellar-gpg-key.asc"
