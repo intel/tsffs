@@ -223,7 +223,7 @@ download_and_verify_builder_rpms() {
         # packages with the expectation that we will provide them separately if they are no longer
         # available.
         docker run -v "${BUILDER_DIR}/rsrc/rpms:/rpms" fedora:21 bash -c \
-            'yum -y update && yum install --downloadonly --downloaddir=/rpms coreutils gcc gcc-c++ make which && chmod -R 755 /rpms/'
+            'yum -y update && yum install --downloadonly --downloaddir=/rpms coreutils gcc gcc-c++ make which tar && chmod -R 755 /rpms/'
     fi
 }
 
