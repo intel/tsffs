@@ -219,10 +219,10 @@ download_and_verify_builder_rpms() {
 
     if [ ! -d "${BUILDER_DIR}/rsrc/rpms" ]; then
         echo "RPM dependencies not found. Downloading..."
-        # NOTE: This may stop working at some point, as Fedora 20 is EOL. Therefore, we download the
+        # NOTE: This may stop working at some point, as Fedora 21 is EOL. Therefore, we download the
         # packages with the expectation that we will provide them separately if they are no longer
         # available.
-        docker run -v "${BUILDER_DIR}/rsrc/rpms:/rpms" fedora:20 bash -c \
+        docker run -v "${BUILDER_DIR}/rsrc/rpms:/rpms" fedora:21 bash -c \
             'yum -y update && yum install --downloadonly --downloaddir=/rpms coreutils gcc gcc-c++ make which && chmod -R 755 /rpms/'
     fi
 }
