@@ -2850,7 +2850,7 @@ impl WindowsEProcess {
                 let base_name = ldr_data_entry.base_name_dtb(processor, directory_table_base)?;
                 let debug_info = full_name
                     .split('\\')
-                    .last()
+                    .next_back()
                     .ok_or_else(|| anyhow!("Failed to get file name"))
                     .and_then(|fname| {
                         // No need for DTB version because kernel is always mapped

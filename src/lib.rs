@@ -100,7 +100,6 @@ pub(crate) mod traits;
 pub(crate) mod util;
 
 /// The class name used for all operations interfacing with SIMICS
-
 pub const CLASS_NAME: &str = env!("CARGO_PKG_NAME");
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -625,7 +624,7 @@ impl ClassObjectsFinalize for Tsffs {
             .map_err(|e| anyhow!("Error getting version string: {}", e))
             .and_then(|v| {
                 v.split(' ')
-                    .last()
+                    .next_back()
                     .ok_or_else(|| anyhow!("Error parsing version string '{}'", v))
                     .map(|s| s.to_string())
             })

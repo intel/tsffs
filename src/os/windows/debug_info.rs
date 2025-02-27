@@ -40,7 +40,7 @@ pub struct DebugInfo<'a> {
     pub pdb: PDB<'a, File>,
 }
 
-impl<'a> DebugInfo<'a> {
+impl DebugInfo<'_> {
     /// Instantiate a new debug info for an object
     pub fn new<P>(
         processor: *mut ConfObject,
