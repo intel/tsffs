@@ -19,6 +19,7 @@ env:
   PUBLIC_SIMICS_ISPM_VERSION: "1.8.3"
   MINGW_URL: "https://github.com/brechtsanders/winlibs_mingw/releases/download/13.2.0-16.0.6-11.0.0-ucrt-r1/winlibs-x86_64-posix-seh-gcc-13.2.0-llvm-16.0.6-mingw-w64ucrt-11.0.0-r1.7z"
   MINGW_VERSION: "13.2.0-16.0.6-11.0.0-ucrt-r1"
+  RUST_NIGHTLY_VERSION: "2025-02-28"
 
 permissions:
   contents: read
@@ -472,7 +473,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@83bdede770b06329615974cf8c786f845d824dfb # nightly
         with:
-          toolchain: nightly
+          toolchain: nightly-${{ env.RUST_NIGHTLY_VERSION }}
           components: rustfmt,clippy,miri
 
       - name: Cache SIMICS Dependencies
@@ -578,7 +579,7 @@ jobs:
           echo "Downloading Rustup"
           Invoke-WebRequest -URI https://win.rustup.rs/x86_64 -OutFile C:\rustup-init.exe
           echo "Installing Rust"
-          C:\rustup-init.exe --default-toolchain nightly --default-host x86_64-pc-windows-gnu -y
+          C:\rustup-init.exe --default-toolchain nightly-${{ env.RUST_NIGHTLY_VERSION }} --default-host x86_64-pc-windows-gnu -y
 
       - name: Cache SIMICS
         id: cache-simics-packages-windows
