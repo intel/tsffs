@@ -19,6 +19,7 @@ env:
   PUBLIC_SIMICS_ISPM_VERSION: "1.8.3"
   MINGW_URL: "https://github.com/brechtsanders/winlibs_mingw/releases/download/13.2.0-16.0.6-11.0.0-ucrt-r1/winlibs-x86_64-posix-seh-gcc-13.2.0-llvm-16.0.6-mingw-w64ucrt-11.0.0-r1.7z"
   MINGW_VERSION: "13.2.0-16.0.6-11.0.0-ucrt-r1"
+  RUST_NIGHTLY_VERSION: "2025-02-28"
 
 permissions:
   contents: read
@@ -45,7 +46,7 @@ jobs:
 
       - name: Cache SIMICS Dependencies
         id: cache-simics-packages
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
         with:
           path: "${HOME}/simics"
           key: simics-linux-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}-${{ env.PUBLIC_SIMICS_ISPM_VERSION }}
@@ -117,7 +118,7 @@ jobs:
 
       - name: Cache Test Artifacts
         id: cache-test-artifacts-riscv-64
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
         with:
           path: tests/rsrc/riscv-64/
           key: cache-test-artifacts-${{ hashFiles('tests/rsrc/riscv-64/**/*') }}
@@ -156,7 +157,7 @@ jobs:
 
       - name: Cache Test Artifacts
         id: cache-test-artifacts-x86_64-breakpoint-uefi-edk2
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
         with:
           path: tests/rsrc/x86_64-breakpoint-uefi-edk2
           key: cache-test-artifacts-${{ hashFiles('tests/rsrc/x86_64-breakpoint-uefi-edk2/**/*') }}
@@ -195,7 +196,7 @@ jobs:
 
       - name: Cache Test Artifacts
         id: cache-test-artifacts-x86_64-crash-uefi
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
         with:
           path: tests/rsrc/x86_64-crash-uefi
           key: cache-test-artifacts-${{ hashFiles('tests/rsrc/x86_64-crash-uefi/**/*') }}
@@ -234,7 +235,7 @@ jobs:
 
       - name: Cache Test Artifacts
         id: cache-test-artifacts-x86_64-timeout-uefi-edk2
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
         with:
           path: tests/rsrc/x86_64-timeout-uefi-edk2
           key: cache-test-artifacts-${{ hashFiles('tests/rsrc/x86_64-timeout-uefi-edk2/**/*') }}
@@ -273,7 +274,7 @@ jobs:
 
       - name: Cache Test Artifacts
         id: cache-test-artifacts-x86_64-uefi
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
         with:
           path: tests/rsrc/x86_64-uefi
           key: cache-test-artifacts-${{ hashFiles('tests/rsrc/x86_64-uefi/**/*') }}
@@ -312,7 +313,7 @@ jobs:
 
       - name: Cache Test Artifacts
         id: cache-test-artifacts-x86_64-uefi-edk2
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
         with:
           path: tests/rsrc/x86_64-uefi-edk2
           key: cache-test-artifacts-${{ hashFiles('tests/rsrc/x86_64-uefi-edk2/**/*') }}
@@ -364,7 +365,7 @@ jobs:
 
       - name: Cache Test Artifacts
         id: cache-test-artifacts-x86-user
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
         with:
           path: tests/rsrc/x86-user/
           key: cache-test-artifacts-${{ hashFiles('tests/rsrc/x86-user/**/*') }}
@@ -472,12 +473,12 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@83bdede770b06329615974cf8c786f845d824dfb # nightly
         with:
-          toolchain: nightly
+          toolchain: nightly-${{ env.RUST_NIGHTLY_VERSION }}
           components: rustfmt,clippy,miri
 
       - name: Cache SIMICS Dependencies
         id: cache-simics-packages
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
         with:
           path: ~/simics
           key: simics-linux-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}-${{ env.PUBLIC_SIMICS_ISPM_VERSION }}
@@ -556,7 +557,7 @@ jobs:
 
       - name: Cache MinGW
         id: cache-mingw
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
         with:
           path: C:\MinGW\
           key: mingw-${{ env.MINGW_VERSION }}
@@ -578,11 +579,11 @@ jobs:
           echo "Downloading Rustup"
           Invoke-WebRequest -URI https://win.rustup.rs/x86_64 -OutFile C:\rustup-init.exe
           echo "Installing Rust"
-          C:\rustup-init.exe --default-toolchain nightly --default-host x86_64-pc-windows-gnu -y
+          C:\rustup-init.exe --default-toolchain nightly-${{ env.RUST_NIGHTLY_VERSION }} --default-host x86_64-pc-windows-gnu -y
 
       - name: Cache SIMICS
         id: cache-simics-packages-windows
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
         with:
           path: |
             C:\ISPM\
@@ -634,7 +635,7 @@ jobs:
 
   build_dist:
     name: Build for Distribution
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
@@ -647,7 +648,7 @@ jobs:
 
       - name: Cache Builder Dependencies
         id: cache-builder-dependencies
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
         with:
           path: .github/builder/rsrc
           key: "cache-builder-dependencies-${{ hashFiles('.github/builder/common.sh') }}"

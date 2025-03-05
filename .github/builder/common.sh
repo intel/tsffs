@@ -5,6 +5,11 @@
 
 set -e
 
+if [ -z "${RUST_NIGHTLY_VERSION}"  ]; then
+    echo "RUST_NIGHTLY_VERSION not set. It should be defined by ci.yml workflow."
+    exit 1
+fi
+
 download_and_verify_llvm() {
     LLVM_PGP_KEY_URL="https://releases.llvm.org/5.0.2/tstellar-gpg-key.asc"
     LLD_URL="https://releases.llvm.org/5.0.2/lld-5.0.2.src.tar.xz"
@@ -107,8 +112,8 @@ download_and_verify_make() {
 
 download_and_verify_rust() {
     RUST_GPG_KEY_URL="https://static.rust-lang.org/rust-key.gpg.ascii"
-    RUST_URL="https://static.rust-lang.org/dist/rust-nightly-x86_64-unknown-linux-gnu.tar.xz"
-    RUST_SIG_URL="https://static.rust-lang.org/dist/rust-nightly-x86_64-unknown-linux-gnu.tar.xz.asc"
+    RUST_URL="https://static.rust-lang.org/dist/${RUST_NIGHTLY_VERSION}/rust-nightly-x86_64-unknown-linux-gnu.tar.xz"
+    RUST_SIG_URL="https://static.rust-lang.org/dist/${RUST_NIGHTLY_VERSION}/rust-nightly-x86_64-unknown-linux-gnu.tar.xz.asc"
 
     if [ -z "${BUILDER_DIR}" ]; then
         echo "BUILDER_DIR not set. Exiting..."
@@ -219,11 +224,11 @@ download_and_verify_builder_rpms() {
 
     if [ ! -d "${BUILDER_DIR}/rsrc/rpms" ]; then
         echo "RPM dependencies not found. Downloading..."
-        # NOTE: This may stop working at some point, as Fedora 20 is EOL. Therefore, we download the
+        # NOTE: This may stop working at some point, as Fedora 21 is EOL. Therefore, we download the
         # packages with the expectation that we will provide them separately if they are no longer
         # available.
-        docker run -v "${BUILDER_DIR}/rsrc/rpms:/rpms" fedora:20 bash -c \
-            'yum -y update && yum install --downloadonly --downloaddir=/rpms coreutils gcc gcc-c++ make which && chmod -R 755 /rpms/'
+        docker run --rm -v "${BUILDER_DIR}/rsrc/rpms:/rpms" fedora:21 bash -c \
+            'yum -y update && yum install --downloadonly --downloaddir=/rpms coreutils gcc gcc-c++ make which tar && chmod -R 755 /rpms/'
     fi
 }
 

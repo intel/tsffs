@@ -243,7 +243,7 @@ impl KernelInfo {
                                 public_symbol
                                     .offset
                                     .to_rva(&pdb_address_map)
-                                    .ok_or_else(|| pdb::Error::AddressMapNotFound)?
+                                    .ok_or(pdb::Error::AddressMapNotFound)?
                                     .0 as u64
                                     + self.base,
                             ))
@@ -324,7 +324,7 @@ impl KernelInfo {
             )?;
             let debug_info = full_name
                 .split('\\')
-                .last()
+                .next_back()
                 .ok_or_else(|| anyhow!("Failed to get file name"))
                 .and_then(|fname| {
                     // No need for DTB version because kernel is always mapped
@@ -369,7 +369,7 @@ impl KernelInfo {
                                 public_symbol
                                     .offset
                                     .to_rva(&pdb_address_map)
-                                    .ok_or_else(|| pdb::Error::AddressMapNotFound)?
+                                    .ok_or(pdb::Error::AddressMapNotFound)?
                                     .0 as u64
                                     + self.base,
                             ))
