@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # hadolint global ignore=DL3041,DL3040
 
-FROM fedora:42@sha256:ee88ab8a5c8bf78687ddcecadf824767e845adc19d8cdedb56f48521eb162b43
+FROM fedora:42@sha256:ee88ab8a5c8bf78687ddcecadf824767e845adc19d8cdedb56f48521eb162b43 AS tsffs-base
 
 # Download links can be obtained from:
 # https://lemcenter.intel.com/productDownload/?Product=256660e5-a404-4390-b436-f64324d94959
@@ -124,3 +124,34 @@ RUN ispm projects /workspace/projects/example/ --create \
     ninja
 
 RUN echo 'echo "To run the demo, run ./simics -no-gui --no-win fuzz.simics"' >> /root/.bashrc
+
+FROM tsffs-base AS tsffs-dev
+ARG USER_UID=1000
+ARG USERNAME=vscode
+
+# To build and run the dev image:
+#   docker build --build-arg USER_UID=$(id -u) --target tsffs-dev -t tsffs:dev .
+#   docker run --rm -ti -v .:/workspace/tsffs tsffs:dev
+
+RUN <<EOF
+set -e
+echo "%wheel ALL=(ALL:ALL) NOPASSWD:ALL" > /etc/sudoers.d/sudogrp
+# create group for developers
+groupadd dev
+# set /workspace/simics permissions to root:dev
+chown -R root:dev /workspace/{simics,projects} && chmod -R g+w /workspace/{simics,projects}
+
+# create user with matching host UID/GID
+groupadd -g $USER_GID $USERNAME || groupmod -n $USERNAME $(getent group $USER_GID | cut -d: -f1)
+useradd --create-home -u $USER_UID -g $USER_GID $USERNAME --groups dev,wheel
+
+# install Rust nightly for the user
+sudo -E -u $USERNAME bash -c 'curl https://sh.rustup.rs -sSf | bash -s -- -y --default-toolchain none'
+
+# copy Simics ISPM config  
+mkdir -p /home/$USERNAME/.config
+cp -r "/root/.config/Intel Simics Package Manager/" "/home/$USERNAME/.config/"
+chown -R $USERNAME:$USERNAME "/home/$USERNAME/.config/"
+EOF
+
+WORKDIR /workspace/tsffs
