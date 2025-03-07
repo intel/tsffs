@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # hadolint global ignore=DL3041,DL3040
 
-FROM fedora:38@sha256:b9ff6f23cceb5bde20bb1f79b492b98d71ef7a7ae518ca1b15b26661a11e6a94
+FROM fedora:38@sha256:b9ff6f23cceb5bde20bb1f79b492b98d71ef7a7ae518ca1b15b26661a11e6a94 AS tsffs-base
 
 # Download links can be obtained from:
 # https://lemcenter.intel.com/productDownload/?Product=256660e5-a404-4390-b436-f64324d94959
@@ -124,5 +124,23 @@ RUN ispm projects /workspace/projects/example/ --create \
 
 RUN echo 'echo "To run the demo, run ./simics -no-gui --no-win fuzz.simics"' >> /root/.bashrc
 
+FROM tsffs-base AS tsffs-dev
+# build:
+#   docker build -t tsffs:dev --target tsffs-dev .
+# run:
+#   docker run --rm -ti -u $(id -u) -v .:/workspace/tsffs tsffs:dev
 
+RUN <<EOF
+set -e
+echo "%wheel ALL=(ALL:ALL) NOPASSWD:ALL" > /etc/sudoers.d/sudogrp
+# create group for developers
+groupadd dev
+# create first 5 users
+for i in $(seq 5); do
+    useradd --create-home "docker${i}" --groups dev,wheel
+    # install Rust nightly
+    sudo -E -u "docker${i}" bash -c 'curl https://sh.rustup.rs -sSf | bash -s -- -y --default-toolchain nightly-2025-02-28'
+done
+EOF
 
+WORKDIR /workspace/tsffs
