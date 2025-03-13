@@ -101,7 +101,7 @@ jobs:
             clang libclang-dev cmake curl dosfstools g++ gcc git llvm make \
             mtools ninja-build openssl libssl-dev python3 python3-pip lld
 
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           lfs: true
 
@@ -151,7 +151,7 @@ jobs:
             clang libclang-dev cmake curl dosfstools g++ gcc git llvm make \
             mtools ninja-build openssl libssl-dev python3 python3-pip lld
 
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           lfs: true
 
@@ -190,7 +190,7 @@ jobs:
             clang libclang-dev cmake curl dosfstools g++ gcc git llvm make \
             mtools ninja-build openssl libssl-dev python3 python3-pip lld
 
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           lfs: true
 
@@ -229,7 +229,7 @@ jobs:
             clang libclang-dev cmake curl dosfstools g++ gcc git llvm make \
             mtools ninja-build openssl libssl-dev python3 python3-pip lld
 
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           lfs: true
 
@@ -268,7 +268,7 @@ jobs:
             clang libclang-dev cmake curl dosfstools g++ gcc git llvm make \
             mtools ninja-build openssl libssl-dev python3 python3-pip lld
 
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           lfs: true
 
@@ -307,7 +307,7 @@ jobs:
             clang libclang-dev cmake curl dosfstools g++ gcc git llvm make \
             mtools ninja-build openssl libssl-dev python3 python3-pip lld
 
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           lfs: true
 
@@ -348,7 +348,7 @@ jobs:
             mtools ninja-build openssl libssl-dev python3 python3-pip lld \
             build-essential gcc-multilib
 
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           lfs: true
 
@@ -415,7 +415,7 @@ jobs:
             llvm-static make mesa-libgbm mtools ninja-build openssl \
             openssl-devel openssl-libs python3 python3-pip yamllint
 
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           lfs: true
 
@@ -618,7 +618,7 @@ jobs:
           ispm.exe packages --install-bundle C:\simics-6-packages.ispm --non-interactive --trust-insecure-packages
           echo "Installed ISPM packages"
 
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           lfs: true
 
@@ -642,7 +642,7 @@ jobs:
         with:
           egress-policy: audit
 
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           lfs: true
 
