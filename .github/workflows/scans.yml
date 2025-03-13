@@ -72,7 +72,7 @@ jobs:
           docker buildx build -t container -f Dockerfile . > build.log 2>&1 || { tail -n 1000 build.log; exit 1; }
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@d9cd5b1c23aaf8cb31bb09141028215828364bbb # master
+        uses: aquasecurity/trivy-action@53e8848d3e517db48b0e70ae4f648a12ae04fe02 # master
         with:
           image-ref: container
 
@@ -96,7 +96,7 @@ jobs:
           docker buildx build -t container -f Dockerfile . > build.log 2>&1 || { tail -n 1000 build.log; exit 1; }
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@d9cd5b1c23aaf8cb31bb09141028215828364bbb # master
+        uses: aquasecurity/trivy-action@53e8848d3e517db48b0e70ae4f648a12ae04fe02 # master
         with:
           image-ref: container
 
@@ -120,7 +120,7 @@ jobs:
           docker buildx build -t container -f Dockerfile . > build.log 2>&1 || { tail -n 1000 build.log; exit 1; }
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@d9cd5b1c23aaf8cb31bb09141028215828364bbb # master
+        uses: aquasecurity/trivy-action@53e8848d3e517db48b0e70ae4f648a12ae04fe02 # master
         with:
           image-ref: container
 
