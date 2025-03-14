@@ -106,7 +106,7 @@ jobs:
           lfs: true
 
       - name: Download Craff
-        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
         with:
           name: craff-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
           path: bin/
@@ -353,7 +353,7 @@ jobs:
           lfs: true
 
       - name: Download Craff
-        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
         with:
           name: craff-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
           path: bin/
@@ -424,43 +424,43 @@ jobs:
           rm -rf tests/rsrc/
 
       - name: Download Test Artifacts (RISCV-64)
-        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
         with:
           name: test-artifacts-riscv-64
           path: tests/rsrc/riscv-64
 
       - name: Download Test Artifacts (x86_64 Breakpoints UEFI EDK2)
-        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
         with:
           name: test-artifacts-x86_64-breakpoint-uefi-edk2
           path: tests/rsrc/x86_64-breakpoint-uefi-edk2
 
       - name: Download Test Artifacts (x86_64 Timeout UEFI EDK2)
-        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
         with:
           name: test-artifacts-x86_64-crash-uefi
           path: tests/rsrc/x86_64-crash-uefi
 
       - name: Download Test Artifacts (x86_64 Timeout UEFI EDK2)
-        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
         with:
           name: test-artifacts-x86_64-timeout-uefi-edk2
           path: tests/rsrc/x86_64-timeout-uefi-edk2
 
       - name: Download Test Artifacts (x86_64 UEFI)
-        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
         with:
           name: test-artifacts-x86_64-uefi
           path: tests/rsrc/x86_64-uefi
 
       - name: Download Test Artifacts (x86_64 UEFI EDK2)
-        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
         with:
           name: test-artifacts-x86_64-uefi-edk2
           path: tests/rsrc/x86_64-uefi-edk2
 
       - name: Download Test Artifacts (x86)
-        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
         with:
           name: test-artifacts-x86-user
           path: tests/rsrc/x86-user
