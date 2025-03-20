@@ -79,7 +79,7 @@ jobs:
           cp "${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}/linux64/bin/craff-fs" bin/craff-fs
 
       - name: Upload Test Artifacts
-        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: craff-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
           path: bin/
@@ -130,7 +130,7 @@ jobs:
           ./build.sh
 
       - name: Upload Test Artifacts
-        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: test-artifacts-riscv-64
           path: tests/rsrc/riscv-64
@@ -169,7 +169,7 @@ jobs:
           ./build.sh
 
       - name: Upload Test Artifacts
-        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: test-artifacts-x86_64-breakpoint-uefi-edk2
           path: tests/rsrc/x86_64-breakpoint-uefi-edk2
@@ -208,7 +208,7 @@ jobs:
           ./build.sh
 
       - name: Upload Test Artifacts
-        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: test-artifacts-x86_64-crash-uefi
           path: tests/rsrc/x86_64-crash-uefi
@@ -247,7 +247,7 @@ jobs:
           ./build.sh
 
       - name: Upload Test Artifacts
-        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: test-artifacts-x86_64-timeout-uefi-edk2
           path: tests/rsrc/x86_64-timeout-uefi-edk2
@@ -286,7 +286,7 @@ jobs:
           ./build.sh
 
       - name: Upload Test Artifacts
-        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: test-artifacts-x86_64-uefi
           path: tests/rsrc/x86_64-uefi
@@ -325,7 +325,7 @@ jobs:
           ./build.sh
 
       - name: Upload Test Artifacts
-        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: test-artifacts-x86_64-uefi-edk2
           path: tests/rsrc/x86_64-uefi-edk2
@@ -377,7 +377,7 @@ jobs:
           ./build.sh
 
       - name: Upload Test Artifacts
-        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: test-artifacts-x86-user
           path: tests/rsrc/x86-user
@@ -521,7 +521,7 @@ jobs:
           echo "✅ [CT39 (1/2)] Passed clippy static analysis checks"
 
       - name: Upload Clippy Check Results
-        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: clippy-json
           path: |
@@ -628,7 +628,7 @@ jobs:
           cargo simics-build -r
 
       - name: Upload Distribution Package
-        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: simics-pkg-31337-win64
           path: target/release/simics-pkg-31337-*-win64.ispm
@@ -660,7 +660,7 @@ jobs:
           ./scripts/build.sh
 
       - name: Upload Distribution Package
-        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: simics-pkg-31337-linux64
           path: packages/simics-pkg-31337-*-linux64.ispm
