@@ -5,7 +5,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 ENV EDK2_REPO_URL "https://github.com/tianocore/edk2.git"
-ENV EDK2_REPO_HASH "d189de3b0a2f44f4c9b87ed120be16569ea19b51"
+ENV EDK2_REPO_HASH "edk2-stable202505"
 ENV EDK2_PATH "/edk2"
 
 

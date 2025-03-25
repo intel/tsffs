@@ -11,8 +11,8 @@ RUN git clone https://github.com/tianocore/edk2.git && \
     git clone https://github.com/tianocore/edk2-non-osi.git && \
     git clone https://github.com/IntelFsp/FSP.git
 
-ARG EDK2_HASH="eccdab6"
-ARG EDK2_PLATFORMS_HASH="f446fff"
+ARG EDK2_HASH="edk2-stable202505"
+ARG EDK2_PLATFORMS_HASH="51c7f2948adeb8b6dc4db6a8f1ada8a1b4e5528e"
 ARG EDK2_NON_OSI_HASH="1f4d784"
 ARG INTEL_FSP_HASH="8beacd5"
 
