@@ -17,17 +17,17 @@ if [ ! -d "${SCRIPT_DIR}/workspace" ]; then
     mkdir -p "${SCRIPT_DIR}/workspace"
     git clone https://github.com/tianocore/edk2.git "${SCRIPT_DIR}/workspace/edk2"
     git -C "${SCRIPT_DIR}/workspace/edk2" checkout "${EDK2_HASH}"
-    git -C "${SCRIPT_DIR}/workspace/edk2" submodule update --init
+    git -C "${SCRIPT_DIR}/workspace/edk2" submodule update --init --depth 1
     git clone https://github.com/tianocore/edk2-platforms.git "${SCRIPT_DIR}/workspace/edk2-platforms"
     git -C "${SCRIPT_DIR}/workspace/edk2-platforms" checkout "${EDK2_PLATFORMS_HASH}"
-    git -C "${SCRIPT_DIR}/workspace/edk2-platforms" submodule update --init
+    git -C "${SCRIPT_DIR}/workspace/edk2-platforms" submodule update --init --depth 1
     cp "${SCRIPT_DIR}/../../../harness/tsffs.h" "${SCRIPT_DIR}/workspace/edk2-platforms/Platform/Intel/SimicsOpenBoardPkg/Library/DxeLogoLib/tsffs.h"
     git clone https://github.com/tianocore/edk2-non-osi.git "${SCRIPT_DIR}/workspace/edk2-non-osi"
     git -C "${SCRIPT_DIR}/workspace/edk2-non-osi" checkout "${EDK2_NON_OSI_HASH}"
-    git -C "${SCRIPT_DIR}/workspace/edk2-non-osi" submodule update --init
+    git -C "${SCRIPT_DIR}/workspace/edk2-non-osi" submodule update --init --depth 1
     git clone https://github.com/IntelFsp/FSP.git "${SCRIPT_DIR}/workspace/FSP"
     git -C "${SCRIPT_DIR}/workspace/FSP" checkout "${INTEL_FSP_HASH}"
-    git -C "${SCRIPT_DIR}/workspace/FSP" submodule update --init
+    git -C "${SCRIPT_DIR}/workspace/FSP" submodule update --init --depth 1
 fi
 
 docker build -t "${IMAGE_NAME}" -f "${DOCKERFILE}" "${SCRIPT_DIR}"

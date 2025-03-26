@@ -17,13 +17,13 @@ ARG EDK2_NON_OSI_HASH="1f4d784"
 ARG INTEL_FSP_HASH="8beacd5"
 
 RUN git -C edk2 checkout "${EDK2_HASH}" && \
-    git -C edk2 submodule update --init && \
+    git -C edk2 submodule update --init --depth 1 && \
     git -C edk2-platforms checkout "${EDK2_PLATFORMS_HASH}" && \
-    git -C edk2-platforms submodule update --init && \
+    git -C edk2-platforms submodule update --init --depth 1 && \
     git -C edk2-non-osi checkout "${EDK2_NON_OSI_HASH}" && \
-    git -C edk2-non-osi submodule update --init && \
+    git -C edk2-non-osi submodule update --init --depth 1 && \
     git -C FSP checkout "${INTEL_FSP_HASH}" && \
-    git -C FSP submodule update --init
+    git -C FSP submodule update --init --depth 1
 
 ENV EDK_TOOLS_PATH="${PROJECT}/edk2/BaseTools/"
 ENV PACKAGES_PATH="${PROJECT}/edk2:${PROJECT}/edk2-platforms:${PROJECT}/edk2-non-osi"
