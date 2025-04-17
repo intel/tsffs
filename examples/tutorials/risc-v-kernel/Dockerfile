@@ -1,5 +1,5 @@
 # hadolint global ignore=DL3008
-FROM ubuntu:22.04@sha256:adbb90115a21969d2fe6fa7f9af4253e16d45f8d4c1e930182610c4731962658 AS buildroot
+FROM ubuntu:24.04@sha256:1e622c5f073b4f6bfad6632f2616c7f59ef256e96fe78bf6a595d1dc4376ac02 AS buildroot
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
