@@ -116,8 +116,22 @@ versions = { version = "6.2.0", features = ["serde"] }
 simics = "0.1.2"
 simics-build-utils = "0.1.1"
 
+
 [profile.release]
 lto = true
 codegen-units = 1
 opt-level = 3
 debug = true
+
+# Temporary patch to pin darling to v0.20.10
+[patch.crates-io]
+ffi = { git = "https://github.com/Wenzel/ffi", rev = "496832d73717bb8e1ec82ea6603bbf393f451167" }
+cargo-simics-build = { git = "https://github.com/Wenzel/simulator-bindings.git", rev = "174943b23558f9365690d75212baa84d3b84e036" }
+ispm-wrapper = { git = "https://github.com/Wenzel/simulator-bindings.git", rev = "174943b23558f9365690d75212baa84d3b84e036" }
+simics = { git = "https://github.com/Wenzel/simulator-bindings.git", rev = "174943b23558f9365690d75212baa84d3b84e036" }
+simics-api-sys = { git = "https://github.com/Wenzel/simulator-bindings.git", rev = "174943b23558f9365690d75212baa84d3b84e036" }
+simics-macro = { git = "https://github.com/Wenzel/simulator-bindings.git", rev = "174943b23558f9365690d75212baa84d3b84e036" }
+simics-package = { git = "https://github.com/Wenzel/simulator-bindings.git", rev = "174943b23558f9365690d75212baa84d3b84e036" }
+simics-sign = { git = "https://github.com/Wenzel/simulator-bindings.git", rev = "174943b23558f9365690d75212baa84d3b84e036" }
+simics-test = { git = "https://github.com/Wenzel/simulator-bindings.git", rev = "174943b23558f9365690d75212baa84d3b84e036" }
+simics-build-utils = { git = "https://github.com/Wenzel/simulator-bindings.git", rev = "174943b23558f9365690d75212baa84d3b84e036" }
