@@ -471,7 +471,7 @@ jobs:
           chown -R "${USER}:${USER}" tests/rsrc/
           chmod -R 0755 tests/rsrc/
 
-      - uses: dtolnay/rust-toolchain@83bdede770b06329615974cf8c786f845d824dfb # nightly
+      - uses: dtolnay/rust-toolchain@56f84321dbccf38fb67ce29ab63e4754056677e0 # nightly
         with:
           toolchain: nightly-${{ env.RUST_NIGHTLY_VERSION }}
           components: rustfmt,clippy,miri
