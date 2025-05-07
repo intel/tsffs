@@ -66,7 +66,7 @@ RUN dnf -y update && \
     isort==5.12.0 \
     mypy==1.6.1 \
     pylint==3.0.2 && \
-    curl https://sh.rustup.rs -sSf | bash -s -- -y
+    curl https://sh.rustup.rs -sSf | bash -s -- --default-toolchain none -y
 
 
 WORKDIR /workspace
