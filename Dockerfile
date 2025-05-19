@@ -23,50 +23,50 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # - Rust (will be on the PATH due to the ENV command above)
 RUN dnf -y update && \
     dnf -y install \
-        alsa-lib \
-        atk \
-        bash \
-        clang \
-        clang-libs \
-        clang-resource-filesystem \
-        clang-tools-extra \
-        cmake \
-        cups \
-        curl \
-        dosfstools \
-        g++ \
-        gcc \
-        git \
-        git-lfs \
-        glibc-devel \
-        glibc-devel.i686 \
-        glibc-static \
-        glibc-static.i686 \
-        gtk3 \
-        lld \
-        lld-devel \
-        lld-libs \
-        llvm \
-        llvm-libs \
-        llvm-static \
-        make \
-        mesa-libgbm \
-        mtools \
-        ninja-build \
-        openssl \
-        openssl-devel \
-        openssl-libs \
-        python3 \
-        python3-pip \
-        vim \
-        yamllint && \
+    alsa-lib \
+    atk \
+    bash \
+    clang \
+    clang-libs \
+    clang-resource-filesystem \
+    clang-tools-extra \
+    cmake \
+    cups \
+    curl \
+    dosfstools \
+    g++ \
+    gcc \
+    git \
+    git-lfs \
+    glibc-devel \
+    glibc-devel.i686 \
+    glibc-static \
+    glibc-static.i686 \
+    gtk3 \
+    lld \
+    lld-devel \
+    lld-libs \
+    llvm \
+    llvm-libs \
+    llvm-static \
+    make \
+    mesa-libgbm \
+    mtools \
+    ninja-build \
+    openssl \
+    openssl-devel \
+    openssl-libs \
+    python3 \
+    python3-pip \
+    vim \
+    yamllint && \
     python3 -m pip install --no-cache-dir \
-        black==23.10.1 \
-        flake8==6.1.0 \
-        isort==5.12.0 \
-        mypy==1.6.1 \
-        pylint==3.0.2 && \
-    curl https://sh.rustup.rs -sSf | bash -s -- -y --default-toolchain nightly
+    black==23.10.1 \
+    flake8==6.1.0 \
+    isort==5.12.0 \
+    mypy==1.6.1 \
+    pylint==3.0.2 && \
+    curl https://sh.rustup.rs -sSf | bash -s -- --default-toolchain none -y
 
 
 WORKDIR /workspace
@@ -78,10 +78,10 @@ RUN mkdir -p /workspace/simics/ispm/ && \
     curl --noproxy '*.intel.com' -L -o /workspace/simics/ispm.tar.gz "${PUBLIC_SIMICS_ISPM_URL}" && \
     curl --noproxy '*.intel.com' -L -o /workspace/simics/simics.ispm "${PUBLIC_SIMICS_PKGS_URL}" && \
     tar -C /workspace/simics/ispm --strip-components=1 \
-        -xf /workspace/simics/ispm.tar.gz && \
+    -xf /workspace/simics/ispm.tar.gz && \
     ispm settings install-dir /workspace/simics && \
     ispm packages --install-bundle /workspace/simics/simics.ispm --non-interactive \
-        --trust-insecure-packages && \
+    --trust-insecure-packages && \
     rm /workspace/simics/ispm.tar.gz /workspace/simics/simics.ispm && \
     rm -rf /workspace/simics-6-packages/
 
@@ -96,8 +96,8 @@ WORKDIR /workspace/tsffs/
 RUN cargo install cargo-simics-build && \
     cargo simics-build -r && \
     ispm packages \
-        -i target/release/*-linux64.ispm \
-        --non-interactive --trust-insecure-packages
+    -i target/release/*-linux64.ispm \
+    --non-interactive --trust-insecure-packages
 
 WORKDIR /workspace/projects/example/
 
@@ -123,6 +123,3 @@ RUN ispm projects /workspace/projects/example/ --create \
     ninja
 
 RUN echo 'echo "To run the demo, run ./simics -no-gui --no-win fuzz.simics"' >> /root/.bashrc
-
-
-
