@@ -204,7 +204,7 @@ UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable) {
   Print(L"CA Certificate:\n");
   hexdump(CACert, CACertSize);
 
-  BOOLEAN Status = X509VerifyCert(Cert, CertSize, CACert, CACertSize);
+  X509VerifyCert(Cert, CertSize, CACert, CACertSize);
 
   if (Input) {
     FreePages(Input, EFI_SIZE_TO_PAGES(MaxInputSize));
