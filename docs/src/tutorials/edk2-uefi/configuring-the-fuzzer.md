@@ -136,6 +136,12 @@ you want to change the defaults.
 @tsffs.solutions_directory = SIM_lookup_file("%simics%/solutions")
 ```
 
+Note: the `solutions` directory need to be created as well.
+
+```sh
+mkdir solutions
+```
+
 We'll also *delete* the following code from the `run.simics` script:
 
 ```simics
