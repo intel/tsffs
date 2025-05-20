@@ -1,0 +1,23 @@
+{
+    "build": {
+        "dockerfile": "Dockerfile",
+        "target": "tsffs-dev"
+    },
+    "remoteUser": "vscode",
+    "updateRemoteUserUID": true,
+    "runArgs": [
+        "--group-add",
+        "dev"
+    ],
+    "workspaceMount": "source=${localWorkspaceFolder},target=/workspace/tsffs,type=bind",
+    "workspaceFolder": "/workspace/tsffs",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "rust-lang.rust-analyzer",
+                "tamasfe.even-better-toml",
+                "ms-azuretools.vscode-containers"
+            ]
+        }
+    }
+}

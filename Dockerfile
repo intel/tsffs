@@ -135,20 +135,25 @@ ARG USERNAME=vscode
 
 RUN <<EOF
 set -e
-echo "%wheel ALL=(ALL:ALL) NOPASSWD:ALL" > /etc/sudoers.d/sudogrp
 # create group for developers
 groupadd dev
+# Create group and user with a home at /home/vscode
+useradd \
+      --create-home    \
+      --uid $USER_UID \
+      --user-group     \
+      --groups dev \
+      --shell /bin/bash \
+      $USERNAME        \
+ && echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME
+
 # set /workspace/simics permissions to root:dev
 chown -R root:dev /workspace/{simics,projects} && chmod -R g+w /workspace/{simics,projects}
-
-# create user with matching host UID/GID
-groupadd -g $USER_GID $USERNAME || groupmod -n $USERNAME $(getent group $USER_GID | cut -d: -f1)
-useradd --create-home -u $USER_UID -g $USER_GID $USERNAME --groups dev,wheel
 
 # install Rust nightly for the user
 sudo -E -u $USERNAME bash -c 'curl https://sh.rustup.rs -sSf | bash -s -- -y --default-toolchain none'
 
-# copy Simics ISPM config  
+# copy Simics ISPM config
 mkdir -p /home/$USERNAME/.config
 cp -r "/root/.config/Intel Simics Package Manager/" "/home/$USERNAME/.config/"
 chown -R $USERNAME:$USERNAME "/home/$USERNAME/.config/"
