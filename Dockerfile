@@ -25,6 +25,7 @@ RUN dnf -y update && \
     dnf -y install \
     alsa-lib \
     atk \
+    awk \
     bash \
     clang \
     clang-libs \
