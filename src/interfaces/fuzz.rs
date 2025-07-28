@@ -16,6 +16,8 @@ use std::{
     fs::read,
 };
 
+extern crate ffi2 as ffi;
+
 #[interface(name = "fuzz")]
 impl Tsffs {
     /// Reproduce a test case execution. This will set the fuzzer's next input through

@@ -3,7 +3,7 @@
 
 use anyhow::{anyhow, bail, Error, Result};
 use cpp_demangle::{DemangleOptions, Symbol};
-use ffi::ffi;
+use ffi2::ffi;
 use libafl::prelude::CmpValues;
 use libafl_bolts::{AsMutSlice, AsSlice};
 use libafl_targets::{AFLppCmpLogOperands, AFL_CMP_TYPE_INS, CMPLOG_MAP_H};

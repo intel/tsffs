@@ -1,6 +1,6 @@
 use anyhow::{anyhow, ensure, Result};
 use debug_info::{Module, Process, SymbolInfo};
-use ffi::ffi;
+use ffi2::ffi;
 use intervaltree::IntervalTree;
 use kernel::{find_kernel_with_idt, KernelInfo};
 use raw_cstr::AsRawCstr;

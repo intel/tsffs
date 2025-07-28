@@ -8,6 +8,8 @@ use std::{
     str::FromStr,
 };
 
+extern crate ffi2 as ffi;
+
 #[interface(name = "config")]
 impl Tsffs {
     /// Add a processor to be traced. By default, only the processor the start event occurs on
