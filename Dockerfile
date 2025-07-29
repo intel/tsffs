@@ -133,6 +133,7 @@ ARG USERNAME=vscode
 #   docker build --build-arg USER_UID=$(id -u) --target tsffs-dev -t tsffs:dev .
 #   docker run --rm -ti -v .:/workspace/tsffs tsffs:dev
 
+# hadolint ignore=DL3004,SC3009
 RUN <<EOF
 set -e
 # create group for developers
