@@ -160,3 +160,12 @@ chown -R $USERNAME:$USERNAME "/home/$USERNAME/.config/"
 EOF
 
 WORKDIR /workspace/tsffs
+
+FROM fedora:42@sha256:ee88ab8a5c8bf78687ddcecadf824767e845adc19d8cdedb56f48521eb162b43 AS tsffs-prod
+
+COPY --from=tsffs-base /workspace/projects /workspace/projects
+COPY --from=tsffs-base /workspace/simics /workspace/simics
+COPY --from=tsffs-base /root/.bashrc /root/.bashrc
+COPY --from=tsffs-base /root/.cargo /root/.cargo
+
+WORKDIR /workspace/projects/example
