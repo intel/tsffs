@@ -131,7 +131,7 @@ ARG USERNAME=vscode
 
 # To build and run the dev image:
 #   docker build --build-arg USER_UID=$(id -u) --target tsffs-dev -t tsffs:dev .
-#   docker run --rm -ti -v .:/workspace/tsffs tsffs:dev
+#   docker run --rm -ti --user vscode -v .:/workspace/tsffs tsffs:dev
 
 # hadolint ignore=DL3004,SC3009
 RUN <<EOF
