@@ -3,6 +3,8 @@
 # Copyright (C) 2024 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 
+set -e
+
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 IMAGE_NAME="tsffs-tutorial-riscv64-kernel-module"
 CONTAINER_UID=$(echo "${RANDOM}" | sha256sum | head -c 8)
