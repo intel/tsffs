@@ -112,7 +112,7 @@ WORKDIR /workspace/projects/example/
 #   password "fuzzing!"
 # - A SIMICS script that configures the fuzzer for the example and starts fuzzing it
 RUN ispm projects /workspace/projects/example/ --create \
-    1000-latest \
+    1000-${PUBLIC_SIMICS_PACKAGE_VERSION_1000} \
     2096-latest \
     8112-latest \
     1030-latest \
