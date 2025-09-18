@@ -167,6 +167,5 @@ FROM fedora:42@sha256:469a32aab897bfd91f6fde78bd8f0b07507879fc63fe19d69b5298a70f
 COPY --from=tsffs-base /workspace/projects /workspace/projects
 COPY --from=tsffs-base /workspace/simics /workspace/simics
 COPY --from=tsffs-base /root/.bashrc /root/.bashrc
-COPY --from=tsffs-base /root/.cargo /root/.cargo
 
 WORKDIR /workspace/projects/example
