@@ -148,8 +148,8 @@ useradd \
       $USERNAME        \
  && echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME
 
-# set /workspace/simics permissions to root:dev
-chown -R root:dev /workspace/{simics,projects} && chmod -R g+w /workspace/{simics,projects}
+# set /workspace/simics permissions to vscode:dev
+chown -R vscode:dev /workspace/{simics,projects}
 
 # install Rust nightly for the user
 sudo -E -u $USERNAME bash -c 'curl https://sh.rustup.rs -sSf | bash -s -- -y --default-toolchain none'
