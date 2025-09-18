@@ -5,7 +5,7 @@
 
 set -e
 
-if [ -z "${RUST_NIGHTLY_DATE}"  ]; then
+if [ -z "${RUST_VERSION}"  ]; then
     echo "RUST_NIGHTLY_DATE not set. It should be defined by ci.yml workflow."
     exit 1
 fi
@@ -112,8 +112,8 @@ download_and_verify_make() {
 
 download_and_verify_rust() {
     RUST_GPG_KEY_URL="https://static.rust-lang.org/rust-key.gpg.ascii"
-    RUST_URL="https://static.rust-lang.org/dist/${RUST_NIGHTLY_DATE}/rust-nightly-x86_64-unknown-linux-gnu.tar.xz"
-    RUST_SIG_URL="https://static.rust-lang.org/dist/${RUST_NIGHTLY_DATE}/rust-nightly-x86_64-unknown-linux-gnu.tar.xz.asc"
+    RUST_URL="https://static.rust-lang.org/dist/rust-${RUST_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+    RUST_SIG_URL="https://static.rust-lang.org/dist/rust-${RUST_VERSION}-x86_64-unknown-linux-gnu.tar.gz.asc"
 
     if [ -z "${BUILDER_DIR}" ]; then
         echo "BUILDER_DIR not set. Exiting..."

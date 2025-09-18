@@ -665,17 +665,16 @@ jobs:
           with open('rust-toolchain.toml', 'rb') as f:
               data = tomllib.load(f)
               channel = data['toolchain']['channel']
-              date = channel.split("nightly-")[1]
 
           with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
-              out.write(f'nightly_date={date}\n')
+              out.write(f'rust_version={channel}\n')
 
       # NOTE: This script only downloads the builder dependencies if they do not already exist,
       # but it always verifies them.
       - name: Build Distribution Package
         run: |
-          RUST_NIGHTLY_DATE="${{ steps.rust-channel.outputs.nightly_date }}"
-          export RUST_NIGHTLY_DATE
+          RUST_VERSION="${{ steps.rust-channel.outputs.rust_version }}"
+          export RUST_VERSION
           ./scripts/build.sh
 
       - name: Upload Distribution Package
