@@ -81,6 +81,7 @@ jobs:
         with:
           image-ref: tsffs:latest
           output: main_container_trivy_report.txt
+          skip-dirs: /workspace/simics
 
       - name: Upload Trivy Report
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
