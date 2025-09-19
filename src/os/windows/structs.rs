@@ -22,6 +22,7 @@ use super::{
     util::{read_unicode_string, read_unicode_string_dtb, read_virtual_dtb},
 };
 
+#[allow(clippy::large_enum_variant)]
 pub enum WindowsKpcr {
     Windows10_0_10240_16384 {
         kpcr: windows_10_0_10240_16384_x64::_KPCR,
@@ -81,12 +82,14 @@ impl WindowsKpcr {
                 let kpcr =
                     read_virtual::<windows_10_0_10240_16384_x64::_KPCR>(processor, kpcr_address)?;
                 ensure!(
-                    unsafe { kpcr.__bindgen_anon_1.__bindgen_anon_1 }.Self_
-                        == kpcr_address as *mut _,
+                    std::ptr::eq(
+                        unsafe { kpcr.__bindgen_anon_1.__bindgen_anon_1 }.Self_,
+                        kpcr_address as *mut _
+                    ),
                     "Invalid KPCR: Self != KPCR address"
                 );
                 ensure!(
-                    kpcr.IdtBase == sim_idtr_base as *mut _,
+                    std::ptr::eq(kpcr.IdtBase, sim_idtr_base as *mut _),
                     "Invalid KPCR: IdtBase != IDTR base"
                 );
 
@@ -96,12 +99,14 @@ impl WindowsKpcr {
                 let kpcr =
                     read_virtual::<windows_10_0_10586_0_x64::_KPCR>(processor, kpcr_address)?;
                 ensure!(
-                    unsafe { kpcr.__bindgen_anon_1.__bindgen_anon_1 }.Self_
-                        == kpcr_address as *mut _,
+                    std::ptr::eq(
+                        unsafe { kpcr.__bindgen_anon_1.__bindgen_anon_1 }.Self_,
+                        kpcr_address as *mut _
+                    ),
                     "Invalid KPCR: Self != KPCR address"
                 );
                 ensure!(
-                    kpcr.IdtBase == sim_idtr_base as *mut _,
+                    std::ptr::eq(kpcr.IdtBase, sim_idtr_base as *mut _),
                     "Invalid KPCR: IdtBase != IDTR base"
                 );
 
@@ -111,12 +116,14 @@ impl WindowsKpcr {
                 let kpcr =
                     read_virtual::<windows_10_0_14393_0_x64::_KPCR>(processor, kpcr_address)?;
                 ensure!(
-                    unsafe { kpcr.__bindgen_anon_1.__bindgen_anon_1 }.Self_
-                        == kpcr_address as *mut _,
+                    std::ptr::eq(
+                        unsafe { kpcr.__bindgen_anon_1.__bindgen_anon_1 }.Self_,
+                        kpcr_address as *mut _
+                    ),
                     "Invalid KPCR: Self != KPCR address"
                 );
                 ensure!(
-                    kpcr.IdtBase == sim_idtr_base as *mut _,
+                    std::ptr::eq(kpcr.IdtBase, sim_idtr_base as *mut _),
                     "Invalid KPCR: IdtBase != IDTR base"
                 );
 
@@ -126,12 +133,14 @@ impl WindowsKpcr {
                 let kpcr =
                     read_virtual::<windows_10_0_15063_0_x64::_KPCR>(processor, kpcr_address)?;
                 ensure!(
-                    unsafe { kpcr.__bindgen_anon_1.__bindgen_anon_1 }.Self_
-                        == kpcr_address as *mut _,
+                    std::ptr::eq(
+                        unsafe { kpcr.__bindgen_anon_1.__bindgen_anon_1 }.Self_,
+                        kpcr_address as *mut _
+                    ),
                     "Invalid KPCR: Self != KPCR address"
                 );
                 ensure!(
-                    kpcr.IdtBase == sim_idtr_base as *mut _,
+                    std::ptr::eq(kpcr.IdtBase, sim_idtr_base as *mut _),
                     "Invalid KPCR: IdtBase != IDTR base"
                 );
 
@@ -141,12 +150,14 @@ impl WindowsKpcr {
                 let kpcr =
                     read_virtual::<windows_10_0_16299_15_x64::_KPCR>(processor, kpcr_address)?;
                 ensure!(
-                    unsafe { kpcr.__bindgen_anon_1.__bindgen_anon_1 }.Self_
-                        == kpcr_address as *mut _,
+                    std::ptr::eq(
+                        unsafe { kpcr.__bindgen_anon_1.__bindgen_anon_1 }.Self_,
+                        kpcr_address as *mut _
+                    ),
                     "Invalid KPCR: Self != KPCR address"
                 );
                 ensure!(
-                    kpcr.IdtBase == sim_idtr_base as *mut _,
+                    std::ptr::eq(kpcr.IdtBase, sim_idtr_base as *mut _),
                     "Invalid KPCR: IdtBase != IDTR base"
                 );
 
@@ -156,12 +167,14 @@ impl WindowsKpcr {
                 let kpcr =
                     read_virtual::<windows_10_0_17134_1_x64::_KPCR>(processor, kpcr_address)?;
                 ensure!(
-                    unsafe { kpcr.__bindgen_anon_1.__bindgen_anon_1 }.Self_
-                        == kpcr_address as *mut _,
+                    std::ptr::eq(
+                        unsafe { kpcr.__bindgen_anon_1.__bindgen_anon_1 }.Self_,
+                        kpcr_address as *mut _
+                    ),
                     "Invalid KPCR: Self != KPCR address"
                 );
                 ensure!(
-                    kpcr.IdtBase == sim_idtr_base as *mut _,
+                    std::ptr::eq(kpcr.IdtBase, sim_idtr_base as *mut _),
                     "Invalid KPCR: IdtBase != IDTR base"
                 );
 
@@ -171,12 +184,14 @@ impl WindowsKpcr {
                 let kpcr =
                     read_virtual::<windows_10_0_17763_107_x64::_KPCR>(processor, kpcr_address)?;
                 ensure!(
-                    unsafe { kpcr.__bindgen_anon_1.__bindgen_anon_1 }.Self_
-                        == kpcr_address as *mut _,
+                    std::ptr::eq(
+                        unsafe { kpcr.__bindgen_anon_1.__bindgen_anon_1 }.Self_,
+                        kpcr_address as *mut _
+                    ),
                     "Invalid KPCR: Self != KPCR address"
                 );
                 ensure!(
-                    kpcr.IdtBase == sim_idtr_base as *mut _,
+                    std::ptr::eq(kpcr.IdtBase, sim_idtr_base as *mut _),
                     "Invalid KPCR: IdtBase != IDTR base"
                 );
 
@@ -186,12 +201,14 @@ impl WindowsKpcr {
                 let kpcr =
                     read_virtual::<windows_10_0_18362_418_x64::_KPCR>(processor, kpcr_address)?;
                 ensure!(
-                    unsafe { kpcr.__bindgen_anon_1.__bindgen_anon_1 }.Self_
-                        == kpcr_address as *mut _,
+                    std::ptr::eq(
+                        unsafe { kpcr.__bindgen_anon_1.__bindgen_anon_1 }.Self_,
+                        kpcr_address as *mut _
+                    ),
                     "Invalid KPCR: Self != KPCR address"
                 );
                 ensure!(
-                    kpcr.IdtBase == sim_idtr_base as *mut _,
+                    std::ptr::eq(kpcr.IdtBase, sim_idtr_base as *mut _),
                     "Invalid KPCR: IdtBase != IDTR base"
                 );
 
@@ -201,12 +218,14 @@ impl WindowsKpcr {
                 let kpcr =
                     read_virtual::<windows_10_0_19041_1288_x64::_KPCR>(processor, kpcr_address)?;
                 ensure!(
-                    unsafe { kpcr.__bindgen_anon_1.__bindgen_anon_1 }.Self_
-                        == kpcr_address as *mut _,
+                    std::ptr::eq(
+                        unsafe { kpcr.__bindgen_anon_1.__bindgen_anon_1 }.Self_,
+                        kpcr_address as *mut _
+                    ),
                     "Invalid KPCR: Self != KPCR address"
                 );
                 ensure!(
-                    kpcr.IdtBase == sim_idtr_base as *mut _,
+                    std::ptr::eq(kpcr.IdtBase, sim_idtr_base as *mut _),
                     "Invalid KPCR: IdtBase != IDTR base"
                 );
 
@@ -216,12 +235,14 @@ impl WindowsKpcr {
                 let kpcr =
                     read_virtual::<windows_10_0_19045_2965_x64::_KPCR>(processor, kpcr_address)?;
                 ensure!(
-                    unsafe { kpcr.__bindgen_anon_1.__bindgen_anon_1 }.Self_
-                        == kpcr_address as *mut _,
+                    std::ptr::eq(
+                        unsafe { kpcr.__bindgen_anon_1.__bindgen_anon_1 }.Self_,
+                        kpcr_address as *mut _
+                    ),
                     "Invalid KPCR: Self != KPCR address"
                 );
                 ensure!(
-                    kpcr.IdtBase == sim_idtr_base as *mut _,
+                    std::ptr::eq(kpcr.IdtBase, sim_idtr_base as *mut _),
                     "Invalid KPCR: IdtBase != IDTR base"
                 );
 
@@ -231,12 +252,14 @@ impl WindowsKpcr {
                 let kpcr =
                     read_virtual::<windows_10_0_22000_194_x64::_KPCR>(processor, kpcr_address)?;
                 ensure!(
-                    unsafe { kpcr.__bindgen_anon_1.__bindgen_anon_1 }.Self_
-                        == kpcr_address as *mut _,
+                    std::ptr::eq(
+                        unsafe { kpcr.__bindgen_anon_1.__bindgen_anon_1 }.Self_,
+                        kpcr_address as *mut _
+                    ),
                     "Invalid KPCR: Self != KPCR address"
                 );
                 ensure!(
-                    kpcr.IdtBase == sim_idtr_base as *mut _,
+                    std::ptr::eq(kpcr.IdtBase, sim_idtr_base as *mut _),
                     "Invalid KPCR: IdtBase != IDTR base"
                 );
 
@@ -246,12 +269,14 @@ impl WindowsKpcr {
                 let kpcr =
                     read_virtual::<windows_10_0_22621_382_x64::_KPCR>(processor, kpcr_address)?;
                 ensure!(
-                    unsafe { kpcr.__bindgen_anon_1.__bindgen_anon_1 }.Self_
-                        == kpcr_address as *mut _,
+                    std::ptr::eq(
+                        unsafe { kpcr.__bindgen_anon_1.__bindgen_anon_1 }.Self_,
+                        kpcr_address as *mut _
+                    ),
                     "Invalid KPCR: Self != KPCR address"
                 );
                 ensure!(
-                    kpcr.IdtBase == sim_idtr_base as *mut _,
+                    std::ptr::eq(kpcr.IdtBase, sim_idtr_base as *mut _),
                     "Invalid KPCR: IdtBase != IDTR base"
                 );
 
@@ -261,12 +286,14 @@ impl WindowsKpcr {
                 let kpcr =
                     read_virtual::<windows_10_0_22631_2428_x64::_KPCR>(processor, kpcr_address)?;
                 ensure!(
-                    unsafe { kpcr.__bindgen_anon_1.__bindgen_anon_1 }.Self_
-                        == kpcr_address as *mut _,
+                    std::ptr::eq(
+                        unsafe { kpcr.__bindgen_anon_1.__bindgen_anon_1 }.Self_,
+                        kpcr_address as *mut _
+                    ),
                     "Invalid KPCR: Self != KPCR address"
                 );
                 ensure!(
-                    kpcr.IdtBase == sim_idtr_base as *mut _,
+                    std::ptr::eq(kpcr.IdtBase, sim_idtr_base as *mut _),
                     "Invalid KPCR: IdtBase != IDTR base"
                 );
 
@@ -321,6 +348,7 @@ impl WindowsKpcr {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 pub enum WindowsKprcb {
     Windows10_0_10240_16384 {
         kprcb: windows_10_0_10240_16384_x64::_KPRCB,
@@ -2878,7 +2906,7 @@ impl WindowsEProcess {
 
                 list_entry = ldr_data_entry.in_load_order_links();
 
-                if list_entry.Flink == last_entry {
+                if std::ptr::eq(list_entry.Flink, last_entry) {
                     break;
                 }
             }

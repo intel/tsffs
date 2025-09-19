@@ -294,7 +294,7 @@ impl KernelInfo {
 
         let mut current = list.Flink;
 
-        while current != list_address as *mut _ {
+        while !std::ptr::eq(current, list_address as *mut LIST_ENTRY) {
             // NOTE: _KLDR_DATA_TABLE_ENTRY struct is stable for all versions of 10, *except* for the following fields:
             // union
             // {
@@ -517,7 +517,7 @@ impl KernelInfo {
 
             list_entry = eprocess.active_process_links();
 
-            if list_entry.Flink == last_entry {
+            if std::ptr::eq(list_entry.Flink, last_entry) {
                 break;
             }
         }
