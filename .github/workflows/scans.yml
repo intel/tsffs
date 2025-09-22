@@ -53,7 +53,7 @@ jobs:
           echo "✅ [CT222] Hadolint Dockerfile check passed"
 
       - name: Run Trivy vulnerability scanner on repo
-        uses: aquasecurity/trivy-action@f9424c10c36e288d5fa79bd3dfd1aeb2d6eae808 # master
+        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # master
         with:
           scan-type: config
           scan-ref: .
@@ -90,7 +90,7 @@ jobs:
           cache-from: type=gha
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@f9424c10c36e288d5fa79bd3dfd1aeb2d6eae808 # master
+        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # master
         with:
           image-ref: tsffs:latest
           output: main_container_trivy_report.txt
