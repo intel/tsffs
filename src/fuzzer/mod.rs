@@ -436,7 +436,7 @@ impl Tsffs {
                             &mut fuzzer,
                             &mut executor,
                             &mut manager,
-                            &[corpus_directory.clone()],
+                            std::slice::from_ref(&corpus_directory),
                         )
                         .map_err(|e| {
                             eprintln!(
