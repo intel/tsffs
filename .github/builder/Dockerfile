@@ -13,8 +13,8 @@ COPY .github/builder/rsrc/rpms /install/rpms
 
 RUN yum -y install /install/rpms/*.rpm && yum clean all
 
-RUN tar -C /install -xvf /install/rust-nightly-x86_64-unknown-linux-gnu.tar.xz && \
-    /install/rust-nightly-x86_64-unknown-linux-gnu/install.sh && \
+RUN tar -C /install --strip-components=1 -xvf /install/rust-nightly-x86_64-unknown-linux-gnu.tar.xz && \
+    /install/install.sh && \
     mkdir -p /make && \
     tar -C /make --strip-components=1 -xf /install/make-4.4.1.tar.gz && \
     pushd /make && \
