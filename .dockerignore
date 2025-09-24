@@ -1,10 +1,24 @@
-# Ignore dockerfile so re-runs with dockerfile-only fixes don't rebuild
-**/Dockerfile
-**/target/
+# Ignore everything
+*
 **/*.img
 **/*.diff.craff
-.devcontainer.json
-# Don't add scripts so that builds dont have to rerun on script changes to those builds
-scripts
-target
-packages
+
+!examples/docker-example
+!examples/manual-example
+!examples/rsrc
+!examples/tutorials
+!harness
+!src
+!tests
+!.clang-format
+!.gitignore
+!.gitleaksignore
+!.pre-commit-config.yaml
+!build.rs
+!Cargo.toml
+!Cargo.lock
+!config-user.mk
+!rust-toolchain.toml
+
+# needed by .github/builder/Dockerfile
+!.github/builder
