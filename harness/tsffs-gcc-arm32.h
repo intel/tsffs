@@ -43,7 +43,8 @@
       "mov r10, %0; orr r" __tostring(value) ", r" __tostring( \
           value) ", r" __tostring(value)                       \
       :                                                        \
-      : "r"(arg0));
+      : "r"(arg0)                                              \
+      : "r10");
 
 /// __orr_extended2
 ///
@@ -61,7 +62,8 @@
       "mov r10, %0; mov r9, %1; orr r" __tostring(value) ", r" __tostring( \
           value) ", r" __tostring(value)                                   \
       :                                                                    \
-      : "r"(arg0), "r"(arg1));
+      : "r"(arg0), "r"(arg1)                                               \
+      : "r10", "r9");
 
 /// __orr_extended3
 ///
@@ -80,7 +82,8 @@
       "mov r10, %0; mov r9, %1; mov r8, %2; orr r" __tostring(   \
           value) ", r" __tostring(value) ", r" __tostring(value) \
       :                                                          \
-      : "r"(arg0), "r"(arg1), "r"(arg2));
+      : "r"(arg0), "r"(arg1), "r"(arg2)                          \
+      : "r10", "r9", "r8");
 
 /// __orr_extended4
 ///
@@ -101,7 +104,8 @@
       "orr r" __tostring(value) ", r" __tostring(value) ", r" __tostring( \
           value)                                                          \
       :                                                                   \
-      : "r"(arg0), "r"(arg1), "r"(arg2), "r"(arg3));
+      : "r"(arg0), "r"(arg1), "r"(arg2), "r"(arg3)                        \
+      : "r10", "r9", "r8", "r7");
 
 /// Magic value defined by SIMICS as the "leaf" value of a CPUID instruction
 /// that is treated as a magic instruction.

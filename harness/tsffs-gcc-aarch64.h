@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /// Definitions and macros for compiled-in harnessing of C and C++ target
-/// software for the RISC-V (32-bit) architecture
+/// software for the aarch64 architecture
 
 #ifndef TSFFS_H
 #define TSFFS_H
@@ -40,10 +40,11 @@
 /// * `arg0` - The value to place in register `r10`
 #define __orr_extended1(value, arg0)                           \
   __asm__ __volatile__(                                        \
-      "mov x28, %0; orr x" __tostring(value) ", x" __tostring( \
+      "mov x10, %0; orr x" __tostring(value) ", x" __tostring( \
           value) ", x" __tostring(value)                       \
       :                                                        \
-      : "g"(arg0));
+      : "g"((unsigned long long)arg0)                          \
+      : "x10");
 
 /// __orr_extended2
 ///
@@ -58,10 +59,11 @@
 /// * `arg1` - The value to place in register `r9`
 #define __orr_extended2(value, arg0, arg1)                                  \
   __asm__ __volatile__(                                                     \
-      "mov x28, %0; mov x27, %1; orr x" __tostring(value) ", x" __tostring( \
+      "mov x10, %0; mov x9, %1; orr x" __tostring(value) ", x" __tostring(  \
           value) ", x" __tostring(value)                                    \
       :                                                                     \
-      : "r"(arg0), "r"(arg1));
+      : "r"((unsigned long long)arg0), "r"((unsigned long long)arg1)        \
+      : "x10", "x9");
 
 /// __orr_extended3
 ///
@@ -75,12 +77,14 @@
 /// * `arg0` - The value to place in register `r10`
 /// * `arg1` - The value to place in register `r9`
 /// * `arg2` - The value to place in register `r8`
-#define __orr_extended3(value, arg0, arg1, arg2)                 \
-  __asm__ __volatile__(                                          \
-      "mov x28, %0; mov x27, %1; mov x26, %2; orr x" __tostring( \
-          value) ", x" __tostring(value) ", x" __tostring(value) \
-      :                                                          \
-      : "r"(arg0), "r"(arg1), "r"(arg2));
+#define __orr_extended3(value, arg0, arg1, arg2)                      \
+  __asm__ __volatile__(                                               \
+      "mov x10, %0; mov x9, %1; mov x8, %2; orr x" __tostring(        \
+          value) ", x" __tostring(value) ", x" __tostring(value)      \
+      :                                                               \
+      : "r"((unsigned long long)arg0), "r"((unsigned long long)arg1), \
+        "r"((unsigned long long)arg2)                                 \
+      : "x10", "x9");
 
 /// __orr_extended4
 ///
@@ -97,16 +101,18 @@
 /// * `arg3` - The value to place in register `r7`
 #define __orr_extended4(value, arg0, arg1, arg2, arg3)                    \
   __asm__ __volatile__(                                                   \
-      "mov x28, %0; mov x27, %1; mov x26, %2; mov x25, %3; "              \
+      "mov x10, %0; mov x9, %1; mov x8, %2; mov x7, %3; "                 \
       "orr x" __tostring(value) ", x" __tostring(value) ", x" __tostring( \
           value)                                                          \
       :                                                                   \
-      : "r"(arg0), "r"(arg1), "r"(arg2), "r"(arg3));
+      : "r"((unsigned long long)arg0), "r"((unsigned long long)arg1),     \
+        "r"((unsigned long long)arg2), "r"((unsigned long long)arg3)      \
+      : "x10", "x9");
 
 /// The default index number used for magic instructions. All magic instructions
 /// support multiple start and stop indices, which defaults to 0 if not
 /// specified.
-#define DEFAULT_INDEX (0x0000U)
+#define DEFAULT_INDEX (0x0000)
 
 /// Pseudo-hypercall number to signal the fuzzer to use the first argument to
 /// the magic instruction as the pointer to the testcase buffer and the second
@@ -178,7 +184,7 @@
 /// ```
 /// unsigned char buffer[1024];
 /// size_t size;
-/// HARNESS_START_INDEX(0x0001U, buffer, &size);
+/// HARNESS_START_INDEX(0x0001, buffer, &size);
 /// ```
 #define HARNESS_START_INDEX(start_index, buffer, size_ptr)            \
   do {                                                                \
@@ -254,7 +260,7 @@
 ///
 /// ```
 /// unsigned char buffer[1024];
-/// HARNESS_START_WITH_MAXIMUM_SIZE_INDEX(0x0001U, buffer, 1024);
+/// HARNESS_START_WITH_MAXIMUM_SIZE_INDEX(0x0001, buffer, 1024);
 /// ```
 #define HARNESS_START_WITH_MAXIMUM_SIZE_INDEX(start_index, buffer, max_size) \
   do {                                                                       \
@@ -388,7 +394,7 @@
 /// # Example
 ///
 /// ```
-/// HARNESS_STOP_INDEX(0x0001U);
+/// HARNESS_STOP_INDEX(0x0001);
 /// ```
 #define HARNESS_STOP_INDEX(stop_index)          \
   do {                                          \
@@ -437,7 +443,7 @@
 /// # Example
 ///
 /// ```
-/// HARNESS_ASSERT_INDEX(0x0001U);
+/// HARNESS_ASSERT_INDEX(0x0001);
 /// ```
 #define HARNESS_ASSERT_INDEX(assert_index)        \
   do {                                            \
