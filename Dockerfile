@@ -131,6 +131,9 @@ cargo simics-build -r
 
 # Install the built package
 ispm packages -i target/release/*-linux64.ispm --non-interactive --trust-insecure-packages
+
+# Cleanup
+cargo clean
 EOF
 
 WORKDIR /workspace/projects/example/
