@@ -97,8 +97,8 @@ set -e
 mkdir -p /workspace/simics/ispm/
 
 # Download SIMICS components
-curl --noproxy '*.intel.com' -L -o /workspace/simics/ispm.tar.gz "${PUBLIC_SIMICS_ISPM_URL}"
-curl --noproxy '*.intel.com' -L -o /workspace/simics/simics.ispm "${PUBLIC_SIMICS_PKGS_URL}"
+curl -L -o /workspace/simics/ispm.tar.gz "${PUBLIC_SIMICS_ISPM_URL}"
+curl -L -o /workspace/simics/simics.ispm "${PUBLIC_SIMICS_PKGS_URL}"
 
 # Extract and install
 tar -C /workspace/simics/ispm --strip-components=1 -xf /workspace/simics/ispm.tar.gz
