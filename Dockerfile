@@ -2,16 +2,49 @@
 # SPDX-License-Identifier: Apache-2.0
 # hadolint global ignore=DL3041,DL3040
 
-FROM fedora:42@sha256:f357623dc40edf7803f21b2b954f92417f274a7370f82384ef13c73e08ce1727 AS tsffs-base
-
 # Download links can be obtained from:
 # https://lemcenter.intel.com/productDownload/?Product=256660e5-a404-4390-b436-f64324d94959
 ARG PUBLIC_SIMICS_PKGS_URL="https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/simics-6-packages-2024-05-linux64.ispm"
 ARG PUBLIC_SIMICS_ISPM_URL="https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/intel-simics-package-manager-1.8.3-linux64.tar.gz"
 ARG PUBLIC_SIMICS_PACKAGE_VERSION_1000="6.0.185"
+ARG USER_UID=1000
+ARG USERNAME=vscode
+
+FROM fedora:42@sha256:f357623dc40edf7803f21b2b954f92417f274a7370f82384ef13c73e08ce1727 AS create-user
+# redeclare ARGs
+ARG USER_UID
+ARG USERNAME
+
+# hadolint ignore=DL3004,SC3009
+RUN <<EOF
+set -e
+# Update system packages
+dnf -y update
+
+# create group for developers
+groupadd dev
+# Create group and user with a home at /home/vscode
+useradd \
+      --create-home    \
+      --uid $USER_UID \
+      --user-group     \
+      --groups dev \
+      --shell /bin/bash \
+      $USERNAME
+echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME
+sudo -E -u $USERNAME bash -c 'curl https://sh.rustup.rs -sSf | bash -s -- -y --default-toolchain none'
+EOF
+
+FROM create-user AS tsffs-dev
+# redeclare ARGs
+ARG PUBLIC_SIMICS_PKGS_URL
+ARG PUBLIC_SIMICS_ISPM_URL
+ARG PUBLIC_SIMICS_PACKAGE_VERSION_1000
+ARG USER_UID
+ARG USERNAME
 ENV SIMICS_BASE="/workspace/simics/simics-${PUBLIC_SIMICS_PACKAGE_VERSION_1000}/"
 # Add cargo and ispm to the path
-ENV PATH="/root/.cargo/bin:/workspace/simics/ispm:${PATH}"
+ENV PATH="/home/${USERNAME}/.cargo/bin:/workspace/simics/ispm:${PATH}"
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
@@ -24,8 +57,6 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # hadolint ignore=DL3004,SC3009
 RUN <<EOF
 set -e
-# Update system packages
-dnf -y update
 
 # Install system dependencies
 dnf -y install \
@@ -76,9 +107,6 @@ python3 -m pip install --no-cache-dir \
     mypy==1.6.1 \
     pylint==3.0.2
 
-# Install Rust
-curl https://sh.rustup.rs -sSf | bash -s -- --default-toolchain none -y
-
 # Clean up package manager cache
 dnf clean all
 rm -rf /var/cache/dnf/* /tmp/* /var/tmp/*
@@ -87,13 +115,19 @@ EOF
 
 WORKDIR /workspace
 
+# install Rust
+RUN curl https://sh.rustup.rs -sSf | bash -s -- -y --default-toolchain none
+
 # Download and install public SIMICS. This installs all the public packages as well as the
 # ispm SIMICS package and project manager. ISPM will be on the path due to the ENV command
 # above
 # hadolint ignore=DL3004,SC3009
 RUN <<EOF
 set -e
-# Create directories
+# set setgid on /workspace to inherit dev group
+chown root:dev /workspace
+chmod g+ws /workspace
+umask 002
 mkdir -p /workspace/simics/ispm/
 
 # Download SIMICS components
@@ -114,7 +148,7 @@ rm -rf /tmp/* /var/tmp/*
 EOF
 
 # Copy the local repository into the workspace
-COPY . /workspace/tsffs/
+COPY --chown=vscode:dev . /workspace/tsffs/
 
 WORKDIR /workspace/tsffs/
 
@@ -129,6 +163,7 @@ cargo install cargo-simics-build
 # Build the project
 cargo simics-build -r
 
+umask 002
 # Install the built package
 ispm packages -i target/release/*-linux64.ispm --non-interactive --trust-insecure-packages
 
@@ -150,6 +185,7 @@ WORKDIR /workspace/projects/example/
 # hadolint ignore=DL3004,SC3009
 RUN <<EOF
 set -e
+umask 002
 # Create the example project
 ispm projects /workspace/projects/example/ --create \
     1000-${PUBLIC_SIMICS_PACKAGE_VERSION_1000} \
@@ -168,53 +204,24 @@ cp /workspace/tsffs/harness/tsffs.h /workspace/projects/example/
 ninja
 EOF
 
-RUN echo 'echo "To run the demo, run ./simics -no-gui --no-win fuzz.simics"' >> /root/.bashrc
-
-FROM tsffs-base AS tsffs-dev
-ARG USER_UID=1000
-ARG USERNAME=vscode
-
-# To build and run the dev image:
-#   docker build --build-arg USER_UID=$(id -u) --target tsffs-dev -t tsffs:dev .
-#   docker run --rm -ti --user vscode -v .:/workspace/tsffs tsffs:dev
-
-# hadolint ignore=DL3004,SC3009
-RUN <<EOF
-set -e
-# create group for developers
-groupadd dev
-# Create group and user with a home at /home/vscode
-useradd \
-      --create-home    \
-      --uid $USER_UID \
-      --user-group     \
-      --groups dev \
-      --shell /bin/bash \
-      $USERNAME        \
- && echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME
-
-# set /workspace/simics permissions to vscode:dev
-chown -R vscode:dev /workspace/{simics,projects,tsffs}
-
-# install Rust nightly for the user
-sudo -E -u $USERNAME bash -c 'curl https://sh.rustup.rs -sSf | bash -s -- -y --default-toolchain none'
-
-# copy Simics ISPM config
-mkdir -p /home/$USERNAME/.config
-cp -r "/root/.config/Intel Simics Package Manager/" "/home/$USERNAME/.config/"
-chown -R $USERNAME:$USERNAME "/home/$USERNAME/.config/"
-EOF
+USER vscode
+RUN echo 'echo "To run the demo, run ./simics -no-gui --no-win fuzz.simics"' >> ~/.bashrc
 
 WORKDIR /workspace/tsffs
 
-FROM fedora:42@sha256:f357623dc40edf7803f21b2b954f92417f274a7370f82384ef13c73e08ce1727 AS tsffs-prod
+FROM create-user AS tsffs-prod
+# redeclare ARGs
+ARG PUBLIC_SIMICS_PKGS_URL
+ARG PUBLIC_SIMICS_ISPM_URL
+ARG PUBLIC_SIMICS_PACKAGE_VERSION_1000
+ENV SIMICS_BASE="/workspace/simics/simics-${PUBLIC_SIMICS_PACKAGE_VERSION_1000}/"
+# Add cargo and ispm to the path
+ENV PATH="/home/${USERNAME}/.cargo/bin:/workspace/simics/ispm:${PATH}"
 
 # Install minimal runtime dependencies only
 # hadolint ignore=DL3004,SC3009
 RUN <<EOF
 set -e
-# Update system packages
-dnf -y update
 
 # Install minimal runtime dependencies
 dnf -y install \
@@ -233,8 +240,13 @@ dnf clean all
 rm -rf /var/cache/dnf/* /tmp/* /var/tmp/*
 EOF
 
-COPY --from=tsffs-base /workspace/projects /workspace/projects
-COPY --from=tsffs-base /workspace/simics /workspace/simics
-COPY --from=tsffs-base /root/.bashrc /root/.bashrc
+COPY --from=tsffs-dev /home/vscode/.bashrc /home/vscode/.bashrc
+COPY --from=tsffs-dev --chown=root:dev --chmod=775 /workspace /workspace
+COPY --from=tsffs-dev --chown=vscode:vscode ["/root/.config/Intel Simics Package Manager/", "/home/vscode/.config/Intel Simics Package Manager/"]
+# remove tsffs
+RUN rm -r /workspace/tsffs
+# fix perms
+RUN chmod 775 /workspace
 
+USER vscode
 WORKDIR /workspace/projects/example
