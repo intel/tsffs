@@ -35,7 +35,7 @@ The build script for our application created a `project` directory for us if it 
 exist, so we'll instantiate that directory as our project with `ispm`:
 
 ```sh
-ispm projects project --create 1000-latest 2096-latest 8112-latest 31337-latest \
+ispm projects project --create 1000-6.0.185 2096-6.0.70 8112-6.0.17 31337-latest \
   --ignore-existing-files
 cd project
 ```
@@ -58,7 +58,8 @@ directory, create `run.simics`:
 load-module tsffs
 
 # Load the UEFI shell target with out boot disk
-load-target "qsp-x86/uefi-shell" namespace = qsp machine:hardware:storage:disk0:image = "minimal_boot_disk.craff"
+# also provide a fake value for lan_bios, which has no default
+load-target "qsp-x86/uefi-shell" namespace = qsp machine:hardware:storage:disk0:image = "minimal_boot_disk.craff" machine:hardware:firmware:lan_bios = "minimal_boot_disk.craff" machine:software:firmware:lan_bios = "minimal_boot_disk.craff"
 
 script-branch {
     # Wait for boot
