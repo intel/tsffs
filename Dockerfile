@@ -204,8 +204,15 @@ cp /workspace/tsffs/harness/tsffs.h /workspace/projects/example/
 ninja
 EOF
 
+
+RUN <<EOF
+set -e
+# copy ISPM config to vscode user
+cp -r "/root/.config" "/home/${USERNAME}/.config"
+chown -R "${USERNAME}:dev" "/home/${USERNAME}/.config"
+EOF
+
 USER vscode
-RUN echo 'echo "To run the demo, run ./simics -no-gui --no-win fuzz.simics"' >> ~/.bashrc
 
 WORKDIR /workspace/tsffs
 
@@ -214,6 +221,7 @@ FROM create-user AS tsffs-prod
 ARG PUBLIC_SIMICS_PKGS_URL
 ARG PUBLIC_SIMICS_ISPM_URL
 ARG PUBLIC_SIMICS_PACKAGE_VERSION_1000
+ARG USERNAME
 ENV SIMICS_BASE="/workspace/simics/simics-${PUBLIC_SIMICS_PACKAGE_VERSION_1000}/"
 # Add cargo and ispm to the path
 ENV PATH="/home/${USERNAME}/.cargo/bin:/workspace/simics/ispm:${PATH}"
@@ -249,4 +257,5 @@ RUN rm -r /workspace/tsffs
 RUN chmod 775 /workspace
 
 USER vscode
+RUN echo 'echo "To run the demo, run ./simics -no-gui --no-win fuzz.simics"' >> "/home/${USERNAME}/.bashrc"
 WORKDIR /workspace/projects/example
