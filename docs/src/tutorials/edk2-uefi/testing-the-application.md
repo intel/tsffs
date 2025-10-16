@@ -18,13 +18,13 @@ You should see (at least, but likely more packages):
 ```txt
 Installed Base Packages
  Package Number  Name         Version  Installed Paths
- 1000            Simics-Base  6.0.169  /home/rhart/simics/simics-6.0.169
+ 1000            Simics-Base  6.0.185  /home/rhart/simics/simics-6.0.185
 
 Installed Addon Packages
  Package Number  Name             Version    Installed Paths
- 2096            QSP-x86          6.0.70     /home/rhart/simics/simics-qsp-x86-6.0.70
- 8112            QSP-CPU          6.0.17     /home/rhart/simics/simics-qsp-cpu-6.0.17
- 31337           TSFFS            6.0.1      /home/rhart/simics/simics-tsffs-6.0.1
+ 2096            QSP-x86          6.0.73     /home/rhart/simics/simics-qsp-x86-6.0.73
+ 8112            QSP-CPU          6.0.21     /home/rhart/simics/simics-qsp-cpu-6.0.21
+ 31337           TSFFS            6.1.6      /home/rhart/simics/simics-tsffs-6.1.6
 ```
 
 in the list!
@@ -35,7 +35,7 @@ The build script for our application created a `project` directory for us if it 
 exist, so we'll instantiate that directory as our project with `ispm`:
 
 ```sh
-ispm projects project --create 1000-6.0.185 2096-6.0.70 8112-6.0.17 31337-latest \
+ispm projects project --create 1000-6.0.185 2096-6.0.73 8112-6.0.21 31337-latest \
   --ignore-existing-files
 cd project
 ```
