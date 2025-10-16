@@ -55,7 +55,7 @@ Our initial script will load (but not use *yet*) the TSFFS module, then configur
 start our simple x86-64 platform and run our UEFI application. In the `project`
 directory, create `run.simics`:
 
-```simics
+```python
 # Load the TSFFS module (to make sure we can load it)
 load-module tsffs
 
