@@ -75,17 +75,14 @@ Re-compile the application by running the build script.
 
 ## Obtain a Corpus
 
-The fuzzer will take input from the `corpus` directory in the project directory, so
-we'll create that directory and add some sample certificate files in DER format as
-our input corpus.
+The fuzzer will take input from the `corpus` directory located under `edk2-uefi`:
 
-```sh
-mkdir corpus
-curl -L -o corpus/0 https://github.com/dvyukov/go-fuzz-corpus/raw/master/x509/certificate/corpus/0
-curl -L -o corpus/1 https://github.com/dvyukov/go-fuzz-corpus/raw/master/x509/certificate/corpus/1
-curl -L -o corpus/2 https://github.com/dvyukov/go-fuzz-corpus/raw/master/x509/certificate/corpus/2
-curl -L -o corpus/3 https://github.com/dvyukov/go-fuzz-corpus/raw/master/x509/certificate/corpus/3
+```python
+@tsffs.corpus_directory = SIM_lookup_file("%simics%/../corpus")
 ```
+
+In `build.sh` we have already created that directory and added some sample
+certificate files in DER format as our input corpus.
 
 ## Configuring the Fuzzer
 
@@ -126,13 +123,17 @@ hangs, and CPU exceptions. we'll enable exceptions 13 for general protection fau
 @tsffs.exceptions = [13, 14]
 ```
 
-We'll tell the fuzzer where to take its corpus and save its solutions. The fuzzer will
-take its corpus from the `corpus` directory and save solutions to the `solutions`
-directory in the project by default, so this call can be skipped in real usage unless
-you want to change the defaults.
+By default, TSFFS expects the `corpus` and `solutions` directories to be located within
+the Simics project directory.
+
+However, Since our fuzzer is configured to read its corpus from the `../corpus`
+directory (relative to the `project` directory), we must explicitly specify the
+correct path using the following configuration:
 
 ```python
-@tsffs.corpus_directory = SIM_lookup_file("%simics%/corpus")
+# project/../corpus
+@tsffs.corpus_directory = SIM_lookup_file("%simics%/../corpus")
+# set solutions directory (default location, explicitly defined for clarity)
 @tsffs.solutions_directory = SIM_lookup_file("%simics%/solutions")
 ```
 

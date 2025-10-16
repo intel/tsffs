@@ -38,7 +38,10 @@ This Dockerfile will obtain the EDK2 source and compile the BaseTools, then copy
 
 We will want to get our built UEFI application from the container, which we can
 do using the `docker cp` command. There are a few files we want to copy, so we'll
-use this script `build.sh` to automate the process:
+use this script `build.sh` to automate the process.
+
+It will also copy the `tsffs.h` header into the harness sources, copy the minimal boot disk
+and create a initial fuzzing corpus to prepare the project.
 
 ```sh
 #!/bin/bash
@@ -64,6 +67,15 @@ for file_ext in efi map debug; do
 done
 
 docker rm -f "${CONTAINER_NAME}"
+
+# ensure corpus
+if [ ! -d "${SCRIPT_DIR}/corpus" ]; then
+    mkdir "${SCRIPT_DIR}/corpus"
+    curl -L -o "${SCRIPT_DIR}/corpus/0" https://github.com/dvyukov/go-fuzz-corpus/raw/master/x509/certificate/corpus/0
+    curl -L -o "${SCRIPT_DIR}/corpus/1" https://github.com/dvyukov/go-fuzz-corpus/raw/master/x509/certificate/corpus/1
+    curl -L -o "${SCRIPT_DIR}/corpus/2" https://github.com/dvyukov/go-fuzz-corpus/raw/master/x509/certificate/corpus/2
+    curl -L -o "${SCRIPT_DIR}/corpus/3" https://github.com/dvyukov/go-fuzz-corpus/raw/master/x509/certificate/corpus/3
+fi
 ```
 
 The script will build the image, create a container using it, copy the relevant files
