@@ -11,6 +11,9 @@ CONTAINER_UID=$(echo "${RANDOM}" | sha256sum | head -c 8)
 CONTAINER_NAME="${IMAGE_NAME}-tmp-${CONTAINER_UID}"
 
 mkdir -p "${SCRIPT_DIR}/project/"
+# copy minimal boot disk
+cp "${SCRIPT_DIR}/../../rsrc/minimal_boot_disk.craff" "${SCRIPT_DIR}/project/"
+
 # copy tsffs.h header into src
 cp "${SCRIPT_DIR}/../../../harness/tsffs.h" "${SCRIPT_DIR}/src/"
 docker build -t "${IMAGE_NAME}" -f "Dockerfile" "${SCRIPT_DIR}"

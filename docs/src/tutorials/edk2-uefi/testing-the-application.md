@@ -40,12 +40,14 @@ ispm projects project --create 1000-6.0.185 2096-6.0.73 8112-6.0.21 31337-latest
 cd project
 ```
 
-## Get the Minimal Boot Disk
+## Minimal Boot Disk
 
 The TSFFS repository provides a boot disk called `minimal_boot_disk.craff` which
 provides a filesystem and the *Simics Agent* to allow us to easily download our UEFI
-application to the filesystem so we can run it. Copy the file
-`examples/rsrc/minimal_boot_disk.craff` into your `project` directory.
+application to the filesystem so we can run it.
+
+Note: this boot disk has already been copied by `build.sh` into the `project` directory
+in the previous step.
 
 ## Create a Script
 
