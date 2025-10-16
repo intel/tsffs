@@ -49,26 +49,25 @@ CONTAINER_UID=$(echo "${RANDOM}" | sha256sum | head -c 8)
 CONTAINER_NAME="${IMAGE_NAME}-tmp-${CONTAINER_UID}"
 
 mkdir -p "${SCRIPT_DIR}/project/"
+
+# copy tsffs.h header into src
+cp "${SCRIPT_DIR}/../../../harness/tsffs.h" "${SCRIPT_DIR}/src/"
 docker build -t "${IMAGE_NAME}" -f "Dockerfile" "${SCRIPT_DIR}"
 docker create --name "${CONTAINER_NAME}" "${IMAGE_NAME}"
-docker cp \
-    "${CONTAINER_NAME}:/edk2/Tutorial/Build/CryptoPkg/All/DEBUG_GCC/X64/Tutorial/Tutorial/DEBUG/Tutorial.efi" \
-    "${SCRIPT_DIR}/project/Tutorial.efi"
-docker cp \
-    "${CONTAINER_NAME}:/edk2/Tutorial/Build/CryptoPkg/All/DEBUG_GCC/X64/Tutorial/Tutorial/DEBUG/Tutorial.map" \
-    "${SCRIPT_DIR}/project/Tutorial.map"
-docker cp \
-    "${CONTAINER_NAME}:/edk2/Tutorial/Build/CryptoPkg/All/DEBUG_GCC/X64/Tutorial/Tutorial/DEBUG/Tutorial.debug" \
-    "${SCRIPT_DIR}/project/Tutorial.debug"
+
+for file_ext in efi map debug; do
+    docker cp \
+        "${CONTAINER_NAME}:/edk2/Tutorial/Build/CryptoPkg/All/DEBUG_GCC/X64/Tutorial/Tutorial/DEBUG/Tutorial.efi" \
+        "${SCRIPT_DIR}/project/Tutorial.${file_ext}"
+done
+
 docker rm -f "${CONTAINER_NAME}"
 ```
 
 The script will build the image, create a container using it, copy the relevant files
 to our host machine (in a `project` directory), then delete the container.
 
-Mark the script executable and then we'll go ahead and run it with:
-
+Let's go ahead and run it:
 ```sh
-chmod +x build.sh
 ./build.sh
 ```

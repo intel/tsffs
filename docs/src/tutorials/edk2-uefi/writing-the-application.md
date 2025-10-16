@@ -82,7 +82,7 @@ The exact meaning of all the entries in the `Tutorial.inf` file is out of scope 
 tutorial, but in general this file declares the packages and libraries our application
 needs.
 
-```txt
+```ini
 [Defines]
   INF_VERSION                    = 0x00010005
   BASE_NAME                      = Tutorial
@@ -112,7 +112,7 @@ needs.
 The descriptor file also declares classes and libraries that are needed to build the
 whole platform including our application and requisite additional libraries.
 
-```txt
+```ini
 [Defines]
   PLATFORM_NAME                  = Tutorial
   PLATFORM_GUID                  = 0458dade-8b6e-4e45-b773-1b27cbda3e06
@@ -204,7 +204,7 @@ UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable) {
   Print(L"CA Certificate:\n");
   hexdump(CACert, CACertSize);
 
-  BOOLEAN Status = X509VerifyCert(Cert, CertSize, CACert, CACertSize);
+  X509VerifyCert(Cert, CertSize, CACert, CACertSize);
 
   if (Input) {
     FreePages(Input, EFI_SIZE_TO_PAGES(MaxInputSize));
@@ -212,7 +212,6 @@ UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable) {
 
   return EFI_SUCCESS;
 }
-
 ```
 
 Now that we have some code, we'll move on to building.
