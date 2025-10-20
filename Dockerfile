@@ -124,10 +124,6 @@ RUN curl https://sh.rustup.rs -sSf | bash -s -- -y --default-toolchain none
 # hadolint ignore=DL3004,SC3009
 RUN <<EOF
 set -e
-# set setgid on /workspace to inherit dev group
-chown root:dev /workspace
-chmod g+ws /workspace
-umask 002
 mkdir -p /workspace/simics/ispm/
 
 # Download SIMICS components
@@ -163,7 +159,6 @@ cargo install cargo-simics-build
 # Build the project
 cargo simics-build -r
 
-umask 002
 # Install the built package
 ispm packages -i target/release/*-linux64.ispm --non-interactive --trust-insecure-packages
 
@@ -185,7 +180,6 @@ WORKDIR /workspace/projects/example/
 # hadolint ignore=DL3004,SC3009
 RUN <<EOF
 set -e
-umask 002
 # Create the example project
 ispm projects /workspace/projects/example/ --create \
     1000-${PUBLIC_SIMICS_PACKAGE_VERSION_1000} \
@@ -207,6 +201,9 @@ EOF
 
 RUN <<EOF
 set -e
+# set perms root:dev and set permissions for dev group members
+chown -R root:dev /workspace
+chmod -R 775 /workspace
 # copy ISPM config to vscode user
 cp -r "/root/.config" "/home/${USERNAME}/.config"
 chown -R "${USERNAME}:dev" "/home/${USERNAME}/.config"
