@@ -223,28 +223,6 @@ ENV SIMICS_BASE="/workspace/simics/simics-${PUBLIC_SIMICS_PACKAGE_VERSION_1000}/
 # Add cargo and ispm to the path
 ENV PATH="/home/${USERNAME}/.cargo/bin:/workspace/simics/ispm:${PATH}"
 
-# Install minimal runtime dependencies only
-# hadolint ignore=DL3004,SC3009
-RUN <<EOF
-set -e
-
-# Install minimal runtime dependencies
-dnf -y install \
-    alsa-lib \
-    atk \
-    bash \
-    cups \
-    gtk3 \
-    mesa-libgbm \
-    openssl \
-    openssl-libs \
-    python3
-
-# Clean up package manager cache
-dnf clean all
-rm -rf /var/cache/dnf/* /tmp/* /var/tmp/*
-EOF
-
 COPY --from=tsffs-dev /home/vscode/.bashrc /home/vscode/.bashrc
 COPY --from=tsffs-dev --chown=root:dev --chmod=775 /workspace /workspace
 COPY --from=tsffs-dev --chown=vscode:vscode ["/root/.config/Intel Simics Package Manager/", "/home/vscode/.config/Intel Simics Package Manager/"]
