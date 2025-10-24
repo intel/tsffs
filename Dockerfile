@@ -2,6 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # hadolint global ignore=DL3041,DL3040
 
+# allow to override Docker client proxies if necessary
+ARG http_proxy
+ARG https_proxy
+ARG no_proxy
 # Download links can be obtained from:
 # https://lemcenter.intel.com/productDownload/?Product=256660e5-a404-4390-b436-f64324d94959
 ARG PUBLIC_SIMICS_PKGS_URL="https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/simics-6-packages-2024-05-linux64.ispm"
@@ -12,6 +16,9 @@ ARG USERNAME=vscode
 
 FROM fedora:42@sha256:0c5ab5380e63cb322552d624d2c78b835f11b526cfd32e1d6f687d0c245f38ce AS create-user
 # redeclare ARGs
+ARG http_proxy
+ARG https_proxy
+ARG no_proxy
 ARG USER_UID
 ARG USERNAME
 
@@ -37,6 +44,9 @@ EOF
 
 FROM create-user AS tsffs-dev
 # redeclare ARGs
+ARG http_proxy
+ARG https_proxy
+ARG no_proxy
 ARG PUBLIC_SIMICS_PKGS_URL
 ARG PUBLIC_SIMICS_ISPM_URL
 ARG PUBLIC_SIMICS_PACKAGE_VERSION_1000
