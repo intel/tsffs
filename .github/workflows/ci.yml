@@ -674,10 +674,11 @@ jobs:
         with:
           lfs: true
 
+      # enforce the gnu target here, since cargo-simics-build isn't compatible with x86_64-pc-windows-msvc
       - name: Setup, Build, and Install TSFFS
         run: |
           cargo install cargo-simics-build
-          cargo simics-build -r
+          cargo simics-build -r --target x86_64-pc-windows-gnu
 
       - name: Upload Distribution Package
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
