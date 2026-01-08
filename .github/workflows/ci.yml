@@ -460,6 +460,8 @@ jobs:
             glibc-static.i686 gtk3 jq lld lld-devel lld-libs llvm llvm-libs \
             llvm-static make mesa-libgbm mtools ninja-build openssl \
             openssl-devel openssl-libs python3 python3-pip yamllint
+          dnf clean all
+          rm -rf /var/cache/dnf
 
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
