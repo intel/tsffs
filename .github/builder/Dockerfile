@@ -11,7 +11,7 @@ COPY .github/builder/rsrc/cfe-5.0.2.src.tar.xz /install/cfe-5.0.2.src.tar.xz
 COPY .github/builder/rsrc/llvm-5.0.2.src.tar.xz /install/llvm-5.0.2.src.tar.xz
 COPY .github/builder/rsrc/rpms /install/rpms
 
-RUN yum -y install /install/rpms/*.rpm && yum clean all
+RUN yum -y install /install/rpms/*.rpm && yum -y install ca-certificates && yum clean all
 
 RUN tar -C /install --strip-components=1 -xvf /install/rust-nightly-x86_64-unknown-linux-gnu.tar.xz && \
     /install/install.sh && \
