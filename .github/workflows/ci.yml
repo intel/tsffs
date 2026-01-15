@@ -538,6 +538,7 @@ jobs:
               "${{ env.PUBLIC_SIMICS_PKGS_URL }}" && \
           tar -C "${HOME}/simics/ispm" --strip-components=1 \
               -xvf "${HOME}/simics/ispm.tar.gz"
+          rm -f "${HOME}/simics/ispm.tar.gz"
 
       - name: Set up SIMICS Install Directory
         run: |
@@ -548,6 +549,7 @@ jobs:
         run: |
           ispm packages --install-bundle "${HOME}/simics/simics.ispm" \
               --non-interactive --trust-insecure-packages
+          rm "${HOME}/simics/simics.ispm"
 
       - name: Install SIMICS Build
         run: |
@@ -560,6 +562,7 @@ jobs:
         env:
           CARGO_INCREMENTAL: 0 # Disable incremental compilation to save disk space
           RUSTFLAGS: "-C debuginfo=0" # Disable debug info to reduces intermediate file sizes
+          CARGO_PROFILE_RELEASE_DEBUG: 0
 
       - name: CT39 - Clippy Check Project
         run: |
@@ -585,6 +588,7 @@ jobs:
         env:
           CARGO_INCREMENTAL: 0 # Disable incremental compilation to save disk space
           RUSTFLAGS: "-C debuginfo=0" # Disable debug info to reduces intermediate file sizes
+          CARGO_PROFILE_TEST_DEBUG: 0
 
       - name: Build Docs
         run: |
