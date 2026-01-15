@@ -103,6 +103,7 @@ jobs:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           lfs: true
+          persist-credentials: false
 
       - name: Download Craff
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
@@ -153,6 +154,7 @@ jobs:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           lfs: true
+          persist-credentials: false
 
       - name: Cache Test Artifacts
         id: cache-test-artifacts-x86_64-breakpoint-uefi-edk2
@@ -192,6 +194,7 @@ jobs:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           lfs: true
+          persist-credentials: false
 
       - name: Cache Test Artifacts
         id: cache-test-artifacts-x86_64-crash-uefi
@@ -231,6 +234,7 @@ jobs:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           lfs: true
+          persist-credentials: false
 
       - name: Cache Test Artifacts
         id: cache-test-artifacts-x86_64-timeout-uefi-edk2
@@ -270,6 +274,7 @@ jobs:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           lfs: true
+          persist-credentials: false
 
       - name: Cache Test Artifacts
         id: cache-test-artifacts-x86_64-uefi
@@ -309,6 +314,7 @@ jobs:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           lfs: true
+          persist-credentials: false
 
       - name: Cache Test Artifacts
         id: cache-test-artifacts-x86_64-uefi-edk2
@@ -350,6 +356,7 @@ jobs:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           lfs: true
+          persist-credentials: false
 
       - name: Download Craff
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
@@ -466,6 +473,7 @@ jobs:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           lfs: true
+          persist-credentials: false
 
       - name: Delete Un-Built Test Dependencies
         run: |
@@ -677,6 +685,7 @@ jobs:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           lfs: true
+          persist-credentials: false
 
       # enforce the gnu target here, since cargo-simics-build isn't compatible with x86_64-pc-windows-msvc
       - name: Setup, Build, and Install TSFFS
@@ -734,6 +743,7 @@ jobs:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           lfs: true
+          persist-credentials: false
 
       - name: Cache Builder Dependencies
         id: cache-builder-dependencies
@@ -824,6 +834,7 @@ jobs:
         with:
           fetch-depth: 0
           lfs: false
+          persist-credentials: false
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3
