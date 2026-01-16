@@ -49,7 +49,7 @@ jobs:
 
       - name: Install mdBook
         run: |
-          cargo install mdbook mdbook-linkcheck
+          cargo install mdbook mdbook-linkcheck2
 
       - name: Build mdBook
         run: |
