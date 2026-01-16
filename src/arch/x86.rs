@@ -30,6 +30,7 @@ pub(crate) struct X86ArchitectureOperations {
     int_register: IntRegisterInterface,
     processor_info_v2: ProcessorInfoV2Interface,
     cpu_instruction_query: CpuInstructionQueryInterface,
+    #[allow(dead_code)]
     cpu_instrumentation_subscribe: CpuInstrumentationSubscribeInterface,
     cycle: CycleInterface,
 }

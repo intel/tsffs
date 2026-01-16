@@ -162,6 +162,7 @@ pub trait ArchitectureOperations {
     fn cpu_instruction_query(&mut self) -> &mut CpuInstructionQueryInterface;
 
     /// Return a mutable reference to the interface for subscribing to CPU instrumentation events
+    #[allow(dead_code)]
     fn cpu_instrumentation_subscribe(&mut self) -> &mut CpuInstrumentationSubscribeInterface;
 
     /// Return a mutable reference to the interface for querying CPU cycles and timing
