@@ -78,7 +78,7 @@ jobs:
           cp "${HOME}/simics/simics-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}/linux64/bin/craff-fs" bin/craff-fs
 
       - name: Upload Test Artifacts
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: craff-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}
           path: bin/
@@ -130,7 +130,7 @@ jobs:
           ./build.sh
 
       - name: Upload Test Artifacts
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: test-artifacts-riscv-64
           path: tests/rsrc/riscv-64
@@ -170,7 +170,7 @@ jobs:
           ./build.sh
 
       - name: Upload Test Artifacts
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: test-artifacts-x86_64-breakpoint-uefi-edk2
           path: tests/rsrc/x86_64-breakpoint-uefi-edk2
@@ -210,7 +210,7 @@ jobs:
           ./build.sh
 
       - name: Upload Test Artifacts
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: test-artifacts-x86_64-crash-uefi
           path: tests/rsrc/x86_64-crash-uefi
@@ -250,7 +250,7 @@ jobs:
           ./build.sh
 
       - name: Upload Test Artifacts
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: test-artifacts-x86_64-timeout-uefi-edk2
           path: tests/rsrc/x86_64-timeout-uefi-edk2
@@ -290,7 +290,7 @@ jobs:
           ./build.sh
 
       - name: Upload Test Artifacts
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: test-artifacts-x86_64-uefi
           path: tests/rsrc/x86_64-uefi
@@ -330,7 +330,7 @@ jobs:
           ./build.sh
 
       - name: Upload Test Artifacts
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: test-artifacts-x86_64-uefi-edk2
           path: tests/rsrc/x86_64-uefi-edk2
@@ -383,7 +383,7 @@ jobs:
           ./build.sh
 
       - name: Upload Test Artifacts
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: test-artifacts-x86-user
           path: tests/rsrc/x86-user
@@ -581,7 +581,7 @@ jobs:
           echo "✅ [CT39 (1/2)] Passed clippy static analysis checks"
 
       - name: Upload Clippy Check Results
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: clippy-json
           path: |
@@ -694,7 +694,7 @@ jobs:
           cargo simics-build -r --target x86_64-pc-windows-gnu
 
       - name: Upload Distribution Package
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: simics-pkg-31337-win64
           path: target/release/simics-pkg-31337-*-win64.ispm
@@ -781,7 +781,7 @@ jobs:
           ./scripts/build.sh
 
       - name: Upload Distribution Package
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: simics-pkg-31337-linux64
           path: packages/simics-pkg-31337-*-linux64.ispm

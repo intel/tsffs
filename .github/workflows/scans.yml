@@ -61,7 +61,7 @@ jobs:
           output: repo_scan_trivy_report.txt
 
       - name: Upload Trivy Report
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           path: repo_scan_trivy_report.txt
           name: trivy_repo_report
@@ -131,7 +131,7 @@ jobs:
           skip-dirs: /workspace/simics
 
       - name: Upload Trivy Report
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           path: main_container_trivy_report.txt
           name: trivy_container_report
