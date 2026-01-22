@@ -64,9 +64,9 @@ tarball you downloaded, and likewise with `simics-6-packages`.
 
 ```sh
 curl --noproxy '*.intel.com' -L -o $HOME/Downloads/ispm.tar.gz \
-    "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/881ee76a-c24d-41c0-af13-5d89b2a857ff/intel-simics-package-manager-1.7.5-linux64.tar.gz"
+    "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/intel-simics-package-manager-1.8.3-linux64.tar.gz"
 curl --noproxy '*.intel.com' -L -o $HOME/Downloads/simics-6-packages.ispm \
-    "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/881ee76a-c24d-41c0-af13-5d89b2a857ff/simics-6-packages-2023-31-linux64.ispm"
+    "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/simics-6-packages-2024-05-linux64.ispm"
 ```
 
 Next, we will install SIMICS. Here, we install to `$HOME/simics/` .  We will extract
