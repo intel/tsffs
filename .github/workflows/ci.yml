@@ -100,7 +100,7 @@ jobs:
             clang libclang-dev cmake curl dosfstools g++ gcc git llvm make \
             mtools ninja-build openssl libssl-dev python3 python3-pip lld
 
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           lfs: true
           persist-credentials: false
@@ -151,7 +151,7 @@ jobs:
             clang libclang-dev cmake curl dosfstools g++ gcc git llvm make \
             mtools ninja-build openssl libssl-dev python3 python3-pip lld
 
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           lfs: true
           persist-credentials: false
@@ -191,7 +191,7 @@ jobs:
             clang libclang-dev cmake curl dosfstools g++ gcc git llvm make \
             mtools ninja-build openssl libssl-dev python3 python3-pip lld
 
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           lfs: true
           persist-credentials: false
@@ -231,7 +231,7 @@ jobs:
             clang libclang-dev cmake curl dosfstools g++ gcc git llvm make \
             mtools ninja-build openssl libssl-dev python3 python3-pip lld
 
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           lfs: true
           persist-credentials: false
@@ -271,7 +271,7 @@ jobs:
             clang libclang-dev cmake curl dosfstools g++ gcc git llvm make \
             mtools ninja-build openssl libssl-dev python3 python3-pip lld
 
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           lfs: true
           persist-credentials: false
@@ -311,7 +311,7 @@ jobs:
             clang libclang-dev cmake curl dosfstools g++ gcc git llvm make \
             mtools ninja-build openssl libssl-dev python3 python3-pip lld
 
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           lfs: true
           persist-credentials: false
@@ -353,7 +353,7 @@ jobs:
             mtools ninja-build openssl libssl-dev python3 python3-pip lld \
             build-essential gcc-multilib
 
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           lfs: true
           persist-credentials: false
@@ -470,7 +470,7 @@ jobs:
           dnf clean all
           rm -rf /var/cache/dnf
 
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           lfs: true
           persist-credentials: false
@@ -682,7 +682,7 @@ jobs:
           ispm.exe packages --install-bundle C:\simics-6-packages.ispm --non-interactive --trust-insecure-packages
           echo "Installed ISPM packages"
 
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           lfs: true
           persist-credentials: false
@@ -740,7 +740,7 @@ jobs:
         with:
           egress-policy: audit
 
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           lfs: true
           persist-credentials: false
@@ -830,7 +830,7 @@ jobs:
           # Remove PowerShell
           sudo rm -rf /usr/local/share/powershell
 
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           lfs: false
