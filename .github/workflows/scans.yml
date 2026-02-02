@@ -239,7 +239,7 @@ jobs:
 
       - name: Install Cargo Plugins
         run: |
-          cargo install cargo-audit cargo-outdated
+          cargo install --locked cargo-audit cargo-outdated
 
       - name: (CT247/CT200) (N/C) - Scan 3rd-Party Components for Vulnerabilities
         run: |
