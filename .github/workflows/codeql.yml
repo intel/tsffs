@@ -59,12 +59,17 @@ jobs:
           # By default, queries listed here will override any specified in a config file.
           # Prefix the list here with "+" to use these queries and those in the config file.
 
-      # Autobuild attempts to build any compiled languages  (C/C++, C#, or Java).
-      # If this step fails, then you should remove it and run the build manually (see below)
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@cdefb33c0f6224e58673d9004f47f7cb3e328b89 # v3.29.5
-        with:
-          working-directory: harness
+      - name: Install build dependencies
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install \
+            clang gcc g++ make \
+            gcc-multilib libc6-dev-i386
+
+      - name: Build harness (manual for CodeQL)
+        run: |
+          ./build.sh
+        working-directory: harness
 
       # ℹ️ Command-line programs to run using the OS shell.
 
