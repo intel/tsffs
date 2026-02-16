@@ -29,7 +29,7 @@
 #![warn(missing_docs)]
 
 use crate::interfaces::{config::config, fuzz::fuzz};
-use crate::state::SolutionKind;
+use crate::state::{SnapshotRestorePolicy, SolutionKind, StopReason};
 #[cfg(simics_version = "6")]
 use crate::util::Utils;
 use anyhow::{anyhow, Result};
@@ -65,7 +65,6 @@ use simics::{
 // deprecation boundary
 use simics::{restore_snapshot, save_snapshot};
 use source_cov::SourceCache;
-use state::StopReason;
 use std::{
     alloc::{alloc_zeroed, Layout},
     cell::OnceCell,
@@ -251,13 +250,14 @@ pub(crate) struct Tsffs {
     /// time timeout is exceeded for a single iteration, the iteration is stopped and the testcase
     /// is saved as a solution.
     pub timeout: f64,
-    #[class(attribute(optional, default = 1))]
-    /// How frequently to restore the initial snapshot.
+    #[class(attribute(optional, default = SnapshotRestorePolicy::Always))]
+    /// Snapshot restore policy between iterations.
     ///
-    /// - `1` restores on every iteration (default, fully deterministic snapshot fuzzing)
-    /// - `N > 1` restores every N iterations (semi-persistent execution)
-    /// - `0` disables restores entirely after startup (full persistent execution)
-    pub snapshot_restore_interval: usize,
+    /// Accepted values:
+    /// - `always` (or `1`) restores on every iteration (default)
+    /// - `every:N` (or integer `N > 1`) restores every N iterations
+    /// - `never` (or `0`) disables restores after startup
+    pub snapshot_restore_interval: SnapshotRestorePolicy,
     #[class(attribute(optional, default = true))]
     /// Whether the fuzzer should start on compiled-in harnesses. If set to `True`, the fuzzer
     /// will start fuzzing when a harness macro is executed.
@@ -830,9 +830,9 @@ impl Tsffs {
     /// This is evaluated after `self.iterations` has been incremented.
     pub fn should_restore_snapshot_this_iteration(&self) -> bool {
         match self.snapshot_restore_interval {
-            0 => false,
-            1 => true,
-            n => self.iterations.is_multiple_of(n),
+            SnapshotRestorePolicy::Never => false,
+            SnapshotRestorePolicy::Always => true,
+            SnapshotRestorePolicy::Every(n) => self.iterations.is_multiple_of(n),
         }
     }
 

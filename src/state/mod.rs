@@ -15,6 +15,9 @@ use std::{
 
 use crate::{magic::MagicNumber, ManualStartInfo};
 
+pub(crate) mod policy;
+pub(crate) use policy::SnapshotRestorePolicy;
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) enum SolutionKind {
     Timeout,
