@@ -154,7 +154,9 @@ impl Tsffs {
 
             fuzzer_tx.send(ExitKind::Ok)?;
 
-            self.restore_initial_snapshot()?;
+            if self.should_restore_snapshot_this_iteration() {
+                self.restore_initial_snapshot()?;
+            }
             self.coverage_prev_loc = 0;
 
             if self.start_info.get().is_some() {
@@ -365,7 +367,9 @@ impl Tsffs {
 
             fuzzer_tx.send(ExitKind::Ok)?;
 
-            self.restore_initial_snapshot()?;
+            if self.should_restore_snapshot_this_iteration() {
+                self.restore_initial_snapshot()?;
+            }
             self.coverage_prev_loc = 0;
 
             if self.start_info.get().is_some() {
@@ -470,7 +474,9 @@ impl Tsffs {
                 }
             }
 
-            self.restore_initial_snapshot()?;
+            if self.should_restore_snapshot_this_iteration() {
+                self.restore_initial_snapshot()?;
+            }
             self.coverage_prev_loc = 0;
 
             if self.start_info.get().is_some() {
