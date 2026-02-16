@@ -14,6 +14,7 @@ is desired.
     - [Enable and Set the Checkpoint Path](#enable-and-set-the-checkpoint-path)
     - [Enable Random Corpus Generation](#enable-random-corpus-generation)
     - [Set an Iteration Limit](#set-an-iteration-limit)
+    - [Set Snapshot Restore Interval](#set-snapshot-restore-interval)
     - [Adding Tokens From Target Software](#adding-tokens-from-target-software)
     - [Setting an Architecture Hint](#setting-an-architecture-hint)
     - [Adding a Trace Processor](#adding-a-trace-processor)
@@ -203,6 +204,24 @@ This is useful for CI fuzzing or for testing. The limit can be set with:
 ```python
 @tsffs.iteration_limit = 1000
 ```
+
+### Set Snapshot Restore Interval
+
+By default, TSFFS restores the initial snapshot at every iteration boundary.
+This can be changed to support semi-persistent or fully persistent execution:
+
+```python
+# Default behavior: restore every iteration
+@tsffs.snapshot_restore_interval = 1
+
+# Semi-persistent: restore every 100 iterations
+@tsffs.snapshot_restore_interval = 100
+
+# Fully persistent: never restore after startup
+@tsffs.snapshot_restore_interval = 0
+```
+
+Values greater than 1 restore every N iterations, where N is the configured value.
 
 ### Adding Tokens From Target Software
 
