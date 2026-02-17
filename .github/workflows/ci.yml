@@ -9,7 +9,6 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  PUBLIC_SIMICS_PKGS_URL_WINDOWS: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/simics-6-packages-2024-05-win64.ispm"
   # NOTE: We use the old ISPM because there is something wrong with 1.8.3 with unattended installation
   # PUBLIC_SIMICS_ISPM_URL_WINDOWS: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/881ee76a-c24d-41c0-af13-5d89b2a857ff/intel-simics-package-manager-1.7.5-win64.exe"
   PUBLIC_SIMICS_ISPM_URL_WINDOWS: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/intel-simics-package-manager-1.8.3-win64.exe"
@@ -389,9 +388,18 @@ jobs:
           path: tests/rsrc/x86-user
 
   build_and_test:
-    name: Build and Test (Linux)
+    name: Build and Test (Linux, Simics ${{ matrix.simics_version }})
     container: fedora:38
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - simics_version: "6"
+            package_version: "6.0.185"
+            pkgs_url: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/simics-6-packages-2024-05-linux64.ispm"
+          - simics_version: "7"
+            package_version: "7.70.0"
+            pkgs_url: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/b9edaa91-4c18-4758-b8e2-b6e709270a4c/simics-7-packages-2025-51-linux64.ispm"
     needs:
       - build_test_artifacts_riscv_64
       - build_test_artifacts_x86_64_breakpoint_uefi_edk2
@@ -466,7 +474,7 @@ jobs:
             git-lfs glibc-devel glibc-devel.i686 glibc-static \
             glibc-static.i686 gtk3 jq lld lld-devel lld-libs llvm llvm-libs \
             llvm-static make mesa-libgbm mtools ninja-build openssl \
-            openssl-devel openssl-libs python3 python3-pip yamllint
+            openssl-devel openssl-libs python3 python3-pip which yamllint
           dnf clean all
           rm -rf /var/cache/dnf
 
@@ -534,7 +542,7 @@ jobs:
         uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
         with:
           path: ~/simics
-          key: simics-linux-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}-${{ env.PUBLIC_SIMICS_ISPM_VERSION }}
+          key: simics-linux-${{ matrix.package_version }}-${{ env.PUBLIC_SIMICS_ISPM_VERSION }}
 
       - name: Install SIMICS (External)
         if: ${{ steps.cache-simics-packages.outputs.cache-hit != 'true' }}
@@ -543,7 +551,7 @@ jobs:
           curl -L -o "${HOME}/simics/ispm.tar.gz" \
               "${{ env.PUBLIC_SIMICS_ISPM_URL }}" && \
           curl -L -o "${HOME}/simics/simics.ispm" \
-              "${{ env.PUBLIC_SIMICS_PKGS_URL }}" && \
+              "${{ matrix.pkgs_url }}" && \
           tar -C "${HOME}/simics/ispm" --strip-components=1 \
               -xvf "${HOME}/simics/ispm.tar.gz"
           rm -f "${HOME}/simics/ispm.tar.gz"
@@ -583,7 +591,7 @@ jobs:
       - name: Upload Clippy Check Results
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
-          name: clippy-json
+          name: clippy-json-simics${{ matrix.simics_version }}
           path: |
             clippy.json
             clippy-full.json
@@ -603,8 +611,17 @@ jobs:
           cargo doc --workspace --no-deps
 
   build_windows:
-    name: Build and Test (Windows)
+    name: Build and Test (Windows, Simics ${{ matrix.simics_version }})
     runs-on: windows-2022
+    strategy:
+      matrix:
+        include:
+          - simics_version: "6"
+            package_version: "6.0.185"
+            pkgs_url: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/simics-6-packages-2024-05-win64.ispm"
+          - simics_version: "7"
+            package_version: "7.70.0"
+            pkgs_url: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/b9edaa91-4c18-4758-b8e2-b6e709270a4c/simics-7-packages-2025-51-win64.ispm"
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@e3f713f2d8f53843e71c69a996d56f51aa9adfb9 # v2.14.1
@@ -652,7 +669,7 @@ jobs:
           path: |
             C:\ISPM\
             C:\SIMICS\
-          key: simics-windows-${{ env.PUBLIC_SIMICS_PACKAGE_VERSION_1000 }}-${{ env.PUBLIC_SIMICS_ISPM_VERSION }}
+          key: simics-windows-${{ matrix.package_version }}-${{ env.PUBLIC_SIMICS_ISPM_VERSION }}
 
       # ispm-installer.exe is a NSIS installer for the elctron build. We want the
       # default options, so we pass /S to install silently and /D to change directory.
@@ -676,10 +693,10 @@ jobs:
         if: ${{ steps.cache-simics-packages-windows.outputs.cache-hit != 'true' }}
         run: |
           $ProgressPreference = 'SilentlyContinue'
-          echo "Downloading Simics 6 Packages"
-          Invoke-WebRequest -URI ${{ env.PUBLIC_SIMICS_PKGS_URL_WINDOWS }} -OutFile C:\simics-6-packages.ispm
+          echo "Downloading Simics ${{ matrix.simics_version }} Packages"
+          Invoke-WebRequest -URI ${{ matrix.pkgs_url }} -OutFile C:\simics-${{ matrix.simics_version }}-packages.ispm
           echo "Installing ISPM packages"
-          ispm.exe packages --install-bundle C:\simics-6-packages.ispm --non-interactive --trust-insecure-packages
+          ispm.exe packages --install-bundle C:\simics-${{ matrix.simics_version }}-packages.ispm --non-interactive --trust-insecure-packages
           echo "Installed ISPM packages"
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -696,7 +713,7 @@ jobs:
       - name: Upload Distribution Package
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
-          name: simics-pkg-31337-win64
+          name: simics-pkg-31337-win64-simics${{ matrix.simics_version }}
           path: target/release/simics-pkg-31337-*-win64.ispm
 
   build_dist:
