@@ -19,6 +19,10 @@ fn test_x86_64_magic_crash_latest() -> Result<()> {
                 .version("latest")
                 .build(),
             ProjectPackage::builder()
+                .package_number(1030)
+                .version("latest")
+                .build(),
+            ProjectPackage::builder()
                 .package_number(2096)
                 .version("latest")
                 .build(),
