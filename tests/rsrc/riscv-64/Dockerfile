@@ -41,7 +41,7 @@ COPY tsffs.h /test/usr/tsffs.h
 RUN make BR2_EXTERNAL=/test/test-kernel-modules/ simics_simple_riscv_defconfig && \
     make && \
     echo "Compressing images" && \
-    tar -C output/images -czvf images.tar.gz Image fw_jump.elf rootfs.ext2 && \
+    tar -C output/images -czvf images.tar.gz Image fw_dynamic.elf fw_jump.elf rootfs.ext2 && \
     echo "Copying images" && \
     cp images.tar.gz /test/ && \
     echo "Building test" && \
@@ -53,4 +53,3 @@ RUN make BR2_EXTERNAL=/test/test-kernel-modules/ simics_simple_riscv_defconfig &
     echo "Copying test mod" && \
     cp /buildroot/output/build/test-mod*/test-mod.ko /test/usr/test-mod.ko && \
     echo "Copied all build artifacts"
-
