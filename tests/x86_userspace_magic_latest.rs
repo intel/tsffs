@@ -3,13 +3,42 @@
 
 use anyhow::Result;
 use indoc::indoc;
-use ispm_wrapper::data::ProjectPackage;
+use ispm_wrapper::{
+    data::ProjectPackage,
+    ispm::{self, GlobalOptions},
+};
 use simics_test::TestEnvSpec;
 use std::path::PathBuf;
+use versions::Versioning;
+
+fn has_installed_simics7_base() -> Result<bool> {
+    let packages = ispm::packages::list(&GlobalOptions::default())?;
+    let latest_base = packages
+        .installed_packages
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|p| p.package_number == 1000)
+        .max_by(|a, b| {
+            Versioning::new(&a.version)
+                .unwrap_or_default()
+                .cmp(&Versioning::new(&b.version).unwrap_or_default())
+        });
+
+    Ok(latest_base
+        .and_then(|p| p.version.split('.').next()?.parse::<u32>().ok())
+        .is_some_and(|major| major == 7))
+}
 
 #[test]
 #[cfg_attr(miri, ignore)]
 fn test_x86_userspace_latest() -> Result<()> {
+    if has_installed_simics7_base()? {
+        println!(
+            "Skipping test_x86_userspace_latest: qsp-x86/clear-linux is not available for Simics 7."
+        );
+        return Ok(());
+    }
+
     let output = TestEnvSpec::builder()
         .name("test_x86_userspace_latest")
         .package_crates([PathBuf::from(env!("CARGO_MANIFEST_DIR"))])
