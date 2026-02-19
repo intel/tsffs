@@ -88,12 +88,19 @@ impl Tsffs {
         self.execution_trace.0.clear();
         self.save_repro_bookmark_if_needed()?;
 
-        debug!(self.as_conf_object(), "Resuming simulation");
+        if self.should_auto_continue_repro() {
+            debug!(self.as_conf_object(), "Resuming simulation");
 
-        run_alone(|| {
-            continue_simulation(0)?;
-            Ok(())
-        })?;
+            run_alone(|| {
+                continue_simulation(0)?;
+                Ok(())
+            })?;
+        } else {
+            info!(
+                self.as_conf_object(),
+                "Repro testcase prepared; waiting for external resume."
+            );
+        }
 
         Ok(())
     }
@@ -220,12 +227,19 @@ impl Tsffs {
             self.save_symbolic_coverage()?;
         }
 
-        debug!(self.as_conf_object(), "Resuming simulation");
+        if self.should_auto_continue_repro() {
+            debug!(self.as_conf_object(), "Resuming simulation");
 
-        run_alone(|| {
-            continue_simulation(0)?;
-            Ok(())
-        })?;
+            run_alone(|| {
+                continue_simulation(0)?;
+                Ok(())
+            })?;
+        } else {
+            info!(
+                self.as_conf_object(),
+                "Repro testcase prepared; waiting for external resume."
+            );
+        }
 
         Ok(())
     }
@@ -290,12 +304,19 @@ impl Tsffs {
         self.execution_trace.0.clear();
         self.save_repro_bookmark_if_needed()?;
 
-        debug!(self.as_conf_object(), "Resuming simulation");
+        if self.should_auto_continue_repro() {
+            debug!(self.as_conf_object(), "Resuming simulation");
 
-        run_alone(|| {
-            continue_simulation(0)?;
-            Ok(())
-        })?;
+            run_alone(|| {
+                continue_simulation(0)?;
+                Ok(())
+            })?;
+        } else {
+            info!(
+                self.as_conf_object(),
+                "Repro testcase prepared; waiting for external resume."
+            );
+        }
 
         Ok(())
     }

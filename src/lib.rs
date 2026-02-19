@@ -266,6 +266,13 @@ pub(crate) struct Tsffs {
     /// Whether the fuzzer should stop on compiled-in harnesses. If set to `True`, the fuzzer
     /// will start fuzzing when a harness macro is executed.
     pub stop_on_harness: bool,
+    #[class(attribute(optional, default = true))]
+    /// Whether TSFFS should automatically resume simulation after preparing a repro testcase.
+    ///
+    /// When set to `False`, TSFFS will prepare repro execution state (snapshot restore,
+    /// testcase write, timeout event, bookmark) but not call continue. This is useful when
+    /// an external debugger (for example a GDB stub) should control resume.
+    pub repro_auto_continue: bool,
     #[class(attribute(optional, default = 0))]
     /// The index number which is passed to the platform-specific magic instruction HAP
     /// by a compiled-in harness to signal that the fuzzer should start the fuzzing loop.
@@ -857,6 +864,11 @@ impl Tsffs {
         }
 
         Ok(())
+    }
+
+    /// Return true if TSFFS should continue simulation after preparing repro state.
+    pub fn should_auto_continue_repro(&self) -> bool {
+        self.repro_testcase.is_none() || self.repro_auto_continue
     }
 }
 

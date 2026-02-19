@@ -8,7 +8,7 @@ use crate::{
 use anyhow::{anyhow, Result};
 use libafl::inputs::HasBytesVec;
 use simics::{
-    continue_simulation, debug, interface, lookup_file, run_alone, AsConfObject, AttrValue,
+    continue_simulation, debug, info, interface, lookup_file, run_alone, AsConfObject, AttrValue,
     ConfObject, GenericAddress,
 };
 use std::{
@@ -50,10 +50,17 @@ impl Tsffs {
             self.get_and_write_testcase()?;
             self.post_timeout_event()?;
 
-            run_alone(|| {
-                continue_simulation(0)?;
-                Ok(())
-            })?;
+            if self.should_auto_continue_repro() {
+                run_alone(|| {
+                    continue_simulation(0)?;
+                    Ok(())
+                })?;
+            } else {
+                info!(
+                    self.as_conf_object(),
+                    "Repro testcase prepared; waiting for external resume."
+                );
+            }
         }
 
         Ok(())
