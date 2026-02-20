@@ -54,7 +54,7 @@ jobs:
           echo "✅ [CT222] Hadolint Dockerfile check passed"
 
       - name: Run Trivy vulnerability scanner on repo
-        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # master
+        uses: aquasecurity/trivy-action@c1824fd6edce30d7ab345a9989de00bbd46ef284 # master
         with:
           scan-type: config
           scan-ref: .
@@ -124,7 +124,7 @@ jobs:
           cache-from: type=gha
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # master
+        uses: aquasecurity/trivy-action@c1824fd6edce30d7ab345a9989de00bbd46ef284 # master
         with:
           image-ref: tsffs:latest
           output: main_container_trivy_report.txt
@@ -157,7 +157,7 @@ jobs:
           docker buildx build -t container -f Dockerfile . > build.log 2>&1 || { tail -n 1000 build.log; exit 1; }
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # master
+        uses: aquasecurity/trivy-action@c1824fd6edce30d7ab345a9989de00bbd46ef284 # master
         with:
           image-ref: container
 
@@ -182,7 +182,7 @@ jobs:
           docker buildx build -t container -f Dockerfile . > build.log 2>&1 || { tail -n 1000 build.log; exit 1; }
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # master
+        uses: aquasecurity/trivy-action@c1824fd6edce30d7ab345a9989de00bbd46ef284 # master
         with:
           image-ref: container
 
@@ -207,7 +207,7 @@ jobs:
           docker buildx build -t container -f Dockerfile . > build.log 2>&1 || { tail -n 1000 build.log; exit 1; }
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # master
+        uses: aquasecurity/trivy-action@c1824fd6edce30d7ab345a9989de00bbd46ef284 # master
         with:
           image-ref: container
 
