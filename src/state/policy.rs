@@ -3,7 +3,6 @@
 
 use anyhow::{anyhow, Error, Result};
 use simics::{AttrValue, AttrValueType};
-use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub(crate) enum SnapshotRestorePolicy {
@@ -20,6 +19,14 @@ impl SnapshotRestorePolicy {
             n => Self::Every(n),
         }
     }
+
+    fn as_interval(self) -> i64 {
+        match self {
+            Self::Never => 0,
+            Self::Always => 1,
+            Self::Every(n) => n as i64,
+        }
+    }
 }
 
 impl Default for SnapshotRestorePolicy {
@@ -28,76 +35,27 @@ impl Default for SnapshotRestorePolicy {
     }
 }
 
-impl FromStr for SnapshotRestorePolicy {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self> {
-        let normalized = s.trim().to_ascii_lowercase();
-
-        if let Ok(interval) = normalized.parse::<usize>() {
-            return Ok(Self::from_interval(interval));
-        }
-
-        match normalized.as_str() {
-            "always" => Ok(Self::Always),
-            "never" => Ok(Self::Never),
-            _ => {
-                if let Some(raw_n) = normalized.strip_prefix("every:") {
-                    let n = raw_n.parse::<usize>().map_err(|e| {
-                        anyhow!(
-                            "Invalid snapshot restore policy {s}. Failed to parse interval in \
-                            'every:N': {e}"
-                        )
-                    })?;
-
-                    if n < 2 {
-                        return Err(anyhow!(
-                            "Invalid snapshot restore policy {s}. 'every:N' requires N >= 2."
-                        ));
-                    }
-
-                    Ok(Self::Every(n))
-                } else {
-                    Err(anyhow!(
-                        "Invalid snapshot restore policy {s}. Expected one of: always, never, \
-                        every:N, or an integer interval (0, 1, N)."
-                    ))
-                }
-            }
-        }
-    }
-}
-
-impl std::fmt::Display for SnapshotRestorePolicy {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Always => write!(f, "always"),
-            Self::Every(n) => write!(f, "every:{n}"),
-            Self::Never => write!(f, "never"),
-        }
-    }
-}
-
 impl TryFrom<AttrValue> for SnapshotRestorePolicy {
     type Error = Error;
 
     fn try_from(value: AttrValue) -> Result<Self> {
-        if let Ok(interval) = i64::try_from(value) {
-            if interval < 0 {
-                return Err(anyhow!(
-                    "Invalid snapshot restore interval {interval}. Interval must be >= 0."
-                ));
-            }
-            return Ok(Self::from_interval(interval as usize));
+        let interval = i64::try_from(value).map_err(|_| {
+            anyhow!("Invalid snapshot restore interval type. Expected a non-negative integer.")
+        })?;
+
+        if interval < 0 {
+            return Err(anyhow!(
+                "Invalid snapshot restore interval {interval}. Interval must be >= 0."
+            ));
         }
 
-        String::try_from(value)?.parse()
+        Ok(Self::from_interval(interval as usize))
     }
 }
 
 impl From<SnapshotRestorePolicy> for AttrValueType {
     fn from(value: SnapshotRestorePolicy) -> Self {
-        value.to_string().into()
+        value.as_interval().into()
     }
 }
 

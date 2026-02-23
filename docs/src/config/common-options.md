@@ -222,6 +222,7 @@ This can be changed to support semi-persistent or fully persistent execution:
 ```
 
 Values greater than 1 restore every N iterations, where N is the configured value.
+This option only accepts integer values (`0`, `1`, or `N > 1`).
 
 ### Adding Tokens From Target Software
 

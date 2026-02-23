@@ -254,9 +254,9 @@ pub(crate) struct Tsffs {
     /// Snapshot restore policy between iterations.
     ///
     /// Accepted values:
-    /// - `always` (or `1`) restores on every iteration (default)
-    /// - `every:N` (or integer `N > 1`) restores every N iterations
-    /// - `never` (or `0`) disables restores after startup
+    /// - `1` restores on every iteration (default)
+    /// - `N > 1` restores every N iterations
+    /// - `0` disables restores after startup
     pub snapshot_restore_interval: SnapshotRestorePolicy,
     #[class(attribute(optional, default = true))]
     /// Whether the fuzzer should start on compiled-in harnesses. If set to `True`, the fuzzer
