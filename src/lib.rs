@@ -46,12 +46,13 @@ use num_traits::FromPrimitive as _;
 use os::windows::WindowsOsInfo;
 use serde::{Deserialize, Serialize};
 use serde_json::to_writer;
+use simics::continue_simulation;
 use simics::{
     break_simulation, class, debug, error, free_attribute, get_class, get_interface,
-    get_processor_number, info, lookup_file, object_clock, run_command, run_python, simics_init,
-    sys::save_flags_t, trace, version_base, warn, write_configuration_to_file, AsConfObject,
-    BreakpointId, ClassCreate, ClassObjectsFinalize, ConfObject, CoreBreakpointMemopHap,
-    CoreControlRegisterWriteHap, CoreExceptionHap, CoreMagicInstructionHap,
+    get_processor_number, info, lookup_file, object_clock, run_alone, run_command, run_python,
+    simics_init, sys::save_flags_t, trace, version_base, warn, write_configuration_to_file,
+    AsConfObject, BreakpointId, ClassCreate, ClassObjectsFinalize, ConfObject,
+    CoreBreakpointMemopHap, CoreControlRegisterWriteHap, CoreExceptionHap, CoreMagicInstructionHap,
     CoreSimulationStoppedHap, CpuInstrumentationSubscribeInterface, Event, EventClassFlag,
     FromConfObject, HapHandle, Interface,
 };
@@ -869,6 +870,25 @@ impl Tsffs {
     /// Return true if TSFFS should continue simulation after preparing repro state.
     pub fn should_auto_continue_repro(&self) -> bool {
         self.repro_testcase.is_none() || self.repro_auto_continue
+    }
+
+    /// Resume immediately after preparing repro state, or log that external resume is required.
+    pub fn continue_after_repro_prepared(&self) -> Result<()> {
+        if self.should_auto_continue_repro() {
+            debug!(self.as_conf_object(), "Resuming simulation");
+
+            run_alone(|| {
+                continue_simulation(0)?;
+                Ok(())
+            })?;
+        } else {
+            info!(
+                self.as_conf_object(),
+                "Repro testcase prepared; waiting for external resume."
+            );
+        }
+
+        Ok(())
     }
 }
 

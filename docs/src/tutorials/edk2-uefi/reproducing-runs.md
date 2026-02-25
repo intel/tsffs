@@ -44,3 +44,9 @@ capabilities that SIMICS offers. When you're done exploring, run `c` to continue
 You can change the testcase you are examining by choosing a different one with
 `tsffs.iface.fuzz.repro`, but you cannot resume fuzzing after entering repro mode due
 to inconsistencies with the simulated system clock.
+
+> **Tip:** If you want to attach a debugger (such as a GDB stub) before the
+> testcase executes, set `@tsffs.repro_auto_continue = False`. When the harness
+> is triggered, TSFFS will prepare the testcase but wait for you to resume
+> simulation manually. See [Disable Auto-Continue in Repro Mode](../../config/common-options.md#disable-auto-continue-in-repro-mode)
+> for details.

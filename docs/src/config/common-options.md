@@ -22,6 +22,7 @@ is desired.
     - [Enable Logging and Set Log path](#enable-logging-and-set-log-path)
     - [Keep All Corpus Entries](#keep-all-corpus-entries)
     - [Use Initial Buffer Contents As Corpus](#use-initial-buffer-contents-as-corpus)
+    - [Disable Auto-Continue in Repro Mode](#disable-auto-continue-in-repro-mode)
 
 ## Solution Configuration
 
@@ -341,4 +342,14 @@ buffer can be used as a seed corpus entry. This can be enabled with:
 
 ```python
 @tsffs.use_initial_as_corpus = True
+```
+
+### Disable Auto-Continue in Repro Mode
+
+By default, when running in [repro mode](../fuzzing/analyzing-results.md), TSFFS
+automatically resumes simulation after preparing the testcase. To instead pause
+and let an external debugger (for example a GDB stub) control resume, set:
+
+```python
+@tsffs.repro_auto_continue = False
 ```

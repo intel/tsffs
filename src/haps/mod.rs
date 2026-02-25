@@ -88,19 +88,7 @@ impl Tsffs {
         self.execution_trace.0.clear();
         self.save_repro_bookmark_if_needed()?;
 
-        if self.should_auto_continue_repro() {
-            debug!(self.as_conf_object(), "Resuming simulation");
-
-            run_alone(|| {
-                continue_simulation(0)?;
-                Ok(())
-            })?;
-        } else {
-            info!(
-                self.as_conf_object(),
-                "Repro testcase prepared; waiting for external resume."
-            );
-        }
+        self.continue_after_repro_prepared()?;
 
         Ok(())
     }
@@ -227,19 +215,7 @@ impl Tsffs {
             self.save_symbolic_coverage()?;
         }
 
-        if self.should_auto_continue_repro() {
-            debug!(self.as_conf_object(), "Resuming simulation");
-
-            run_alone(|| {
-                continue_simulation(0)?;
-                Ok(())
-            })?;
-        } else {
-            info!(
-                self.as_conf_object(),
-                "Repro testcase prepared; waiting for external resume."
-            );
-        }
+        self.continue_after_repro_prepared()?;
 
         Ok(())
     }
@@ -304,19 +280,7 @@ impl Tsffs {
         self.execution_trace.0.clear();
         self.save_repro_bookmark_if_needed()?;
 
-        if self.should_auto_continue_repro() {
-            debug!(self.as_conf_object(), "Resuming simulation");
-
-            run_alone(|| {
-                continue_simulation(0)?;
-                Ok(())
-            })?;
-        } else {
-            info!(
-                self.as_conf_object(),
-                "Repro testcase prepared; waiting for external resume."
-            );
-        }
+        self.continue_after_repro_prepared()?;
 
         Ok(())
     }
