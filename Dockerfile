@@ -193,9 +193,9 @@ set -e
 # Create the example project
 ispm projects /workspace/projects/example/ --create \
     1000-${PUBLIC_SIMICS_PACKAGE_VERSION_1000} \
-    2096-6.0.73 \
-    8112-6.0.21 \
-    1030-6.0.7 \
+    2096-latest \
+    8112-latest \
+    1030-latest \
     31337-latest --ignore-existing-files --non-interactive
 
 # Copy required files
