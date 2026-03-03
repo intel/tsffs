@@ -427,9 +427,9 @@ impl Tsffs {
 
             let (exit_kind, iteration_count) = match kind {
                 SolutionKind::Timeout => (ExitKind::Timeout, IterationCount::Timeout),
-                SolutionKind::Exception | SolutionKind::Breakpoint | SolutionKind::Manual => {
-                    (ExitKind::Crash, IterationCount::Solution)
-                }
+                SolutionKind::Exception { .. }
+                | SolutionKind::Breakpoint
+                | SolutionKind::Manual => (ExitKind::Crash, IterationCount::Solution),
             };
 
             // Solution/timeout path: classify exit kind and increment corresponding counters.
@@ -547,7 +547,7 @@ impl Tsffs {
     pub fn on_exception(&mut self, _obj: *mut ConfObject, exception: i64) -> Result<()> {
         if self.all_exceptions_are_solutions || self.exceptions.contains(&exception) {
             self.stop_simulation(StopReason::Solution {
-                kind: SolutionKind::Exception,
+                kind: SolutionKind::Exception { number: exception },
             })?;
         }
         Ok(())
