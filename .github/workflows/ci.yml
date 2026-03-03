@@ -53,9 +53,9 @@ jobs:
         if: ${{ steps.cache-simics-packages.outputs.cache-hit != 'true' }}
         run: |
           mkdir -p "${HOME}/simics/ispm/" && \
-          curl --noproxy -L -o "${HOME}/simics/ispm.tar.gz" \
+          curl --fail --noproxy '*' -L -o "${HOME}/simics/ispm.tar.gz" \
               "${{ env.PUBLIC_SIMICS_ISPM_URL }}" && \
-          curl --noproxy -L -o "${HOME}/simics/simics.ispm" \
+          curl --fail --noproxy '*' -L -o "${HOME}/simics/simics.ispm" \
               "${{ env.PUBLIC_SIMICS_PKGS_URL }}" && \
           tar -C "${HOME}/simics/ispm" --strip-components=1 \
               -xvf "${HOME}/simics/ispm.tar.gz"
@@ -548,13 +548,13 @@ jobs:
         if: ${{ steps.cache-simics-packages.outputs.cache-hit != 'true' }}
         run: |
           mkdir -p "${HOME}/simics/ispm/" && \
-          curl -L -o "${HOME}/simics/ispm.tar.gz" \
+          curl --fail --noproxy '*' -L -o "${HOME}/simics/ispm.tar.gz" \
               "${{ env.PUBLIC_SIMICS_ISPM_URL }}" && \
-          curl -L -o "${HOME}/simics/simics.ispm" \
+          curl --fail --noproxy '*' -L -o "${HOME}/simics/simics.ispm" \
               "${{ matrix.pkgs_url }}" && \
           tar -C "${HOME}/simics/ispm" --strip-components=1 \
               -xvf "${HOME}/simics/ispm.tar.gz"
-          rm -f "${HOME}/simics/ispm.tar.gz"
+          rm "${HOME}/simics/ispm.tar.gz"
 
       - name: Set up SIMICS Install Directory
         run: |
