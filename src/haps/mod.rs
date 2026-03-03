@@ -428,7 +428,7 @@ impl Tsffs {
             let (exit_kind, iteration_count) = match kind {
                 SolutionKind::Timeout => (ExitKind::Timeout, IterationCount::Timeout),
                 SolutionKind::Exception { .. }
-                | SolutionKind::Breakpoint
+                | SolutionKind::Breakpoint { .. }
                 | SolutionKind::Manual => (ExitKind::Crash, IterationCount::Solution),
             };
 
@@ -571,7 +571,7 @@ impl Tsffs {
             );
 
             self.stop_simulation(StopReason::Solution {
-                kind: SolutionKind::Breakpoint,
+                kind: SolutionKind::Breakpoint { number: breakpoint },
             })?;
         }
         Ok(())

@@ -22,7 +22,7 @@ pub(crate) use policy::SnapshotRestorePolicy;
 pub(crate) enum SolutionKind {
     Timeout,
     Exception { number: i64 },
-    Breakpoint,
+    Breakpoint { number: i64 },
     Manual,
 }
 
