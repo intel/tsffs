@@ -581,7 +581,17 @@ impl ClassObjectsFinalize for Tsffs {
                 // legitimate CPUID (in the UEFI loader, with number 0xc aka
                 // eax=0xc4711) that registers as a magic number. We therefore permit
                 // non-valid magic numbers to be executed, but we do nothing for them.
-                if let Some(magic_number) = MagicNumber::from_i64(magic_number) {
+                
+                // Normalize SBE magic numbers (8010-8019 range) to standard range (1-6)
+                // SBE uses magic numbers in range 8000-8190, TSFFS uses 8010-8019
+                // 8011-8015 map to 1-5 (start/stop), 8016 maps to 6 (coverage)
+                let normalized_magic = if magic_number >= 8010 && magic_number <= 8019 {
+                    magic_number - 8010
+                } else {
+                    magic_number
+                };
+                
+                if let Some(magic_number) = MagicNumber::from_i64(normalized_magic) {
                     tsffs
                         .on_magic_instruction(trigger_obj, magic_number)
                         .expect("Failed to execute on_magic_instruction callback")
@@ -683,24 +693,34 @@ impl Tsffs {
             cpu_number
         );
 
+        let conf_obj = self.as_conf_object();
         if let Entry::Vacant(e) = self.processors.entry(cpu_number) {
             let architecture = if let Some(hint) = self.architecture_hints.get(&cpu_number) {
                 hint.architecture(cpu)?
             } else {
-                Architecture::new(cpu)?
+                Architecture::new(cpu).map_err(|err| {
+                    error!(conf_obj, "Failed to create architecture for CPU {}: {}", cpu_number, err);
+                    err
+                })?
             };
             e.insert(architecture);
-            let mut cpu_interface: CpuInstrumentationSubscribeInterface = get_interface(cpu)?;
-            cpu_interface.register_instruction_after_cb(
-                null_mut(),
-                Some(on_instruction_after),
-                self as *mut Self as *mut _,
-            )?;
-            cpu_interface.register_instruction_before_cb(
-                null_mut(),
-                Some(on_instruction_before),
-                self as *mut Self as *mut _,
-            )?;
+            
+            // Try to register instruction callbacks if the interface is available
+            // Some architectures (like PPE42) may not support this interface
+            if let Ok(mut cpu_interface) = get_interface::<CpuInstrumentationSubscribeInterface>(cpu) {
+                cpu_interface.register_instruction_after_cb(
+                    null_mut(),
+                    Some(on_instruction_after),
+                    self as *mut Self as *mut _,
+                )?;
+                cpu_interface.register_instruction_before_cb(
+                    null_mut(),
+                    Some(on_instruction_before),
+                    self as *mut Self as *mut _,
+                )?;
+            } else {
+                info!(conf_obj, "CpuInstrumentationSubscribeInterface not available for CPU {}, instruction callbacks will not be registered", cpu_number);
+            }
         }
 
         if is_start {

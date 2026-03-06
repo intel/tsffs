@@ -55,6 +55,7 @@ impl Tsffs {
                 }
                 MagicNumber::StopNormal => unreachable!("StopNormal is not handled here"),
                 MagicNumber::StopAssert => unreachable!("StopAssert is not handled here"),
+                MagicNumber::Coverage => unreachable!("Coverage is not handled here"),
             };
 
             debug!(self.as_conf_object(), "Start info: {start_info:?}");
@@ -239,6 +240,10 @@ impl Tsffs {
             }
             MagicNumber::StopNormal => self.on_simulation_stopped_magic_stop()?,
             MagicNumber::StopAssert => self.on_simulation_stopped_magic_assert()?,
+            MagicNumber::Coverage => {
+                // Coverage magic doesn't stop simulation, so this shouldn't be reached
+                unreachable!("Coverage magic should not stop simulation")
+            }
         }
 
         Ok(())
@@ -603,6 +608,24 @@ impl Tsffs {
 
             let index_selector = processor.get_magic_index_selector()?;
 
+            // Handle Coverage magic number separately - it doesn't stop simulation
+            if magic_number == MagicNumber::Coverage {
+                // Log coverage point with the index_selector as the coverage ID
+                if self.coverage_enabled {
+                    let pc = processor.get_program_counter()?;
+                    // Use index_selector as a unique coverage ID
+                    let coverage_id = index_selector;
+                    // Create a synthetic PC by combining actual PC with coverage ID
+                    let synthetic_pc = (pc & 0xFFFFFFFF00000000) | (coverage_id & 0xFFFFFFFF);
+                    self.log_pc(synthetic_pc)?;
+                    trace!(
+                        self.as_conf_object(),
+                        "Coverage point {coverage_id} hit at PC {pc:#x}"
+                    );
+                }
+                return Ok(());
+            }
+
             if match magic_number {
                 MagicNumber::StartBufferPtrSizePtr
                 | MagicNumber::StartBufferPtrSizeVal
@@ -626,6 +649,10 @@ impl Tsffs {
                 }
                 MagicNumber::StopAssert => {
                     self.stop_on_harness && self.magic_assert_indices.contains(&index_selector)
+                }
+                MagicNumber::Coverage => {
+                    // Already handled above
+                    false
                 }
             } {
                 self.stop_simulation(StopReason::Magic { magic_number })?;
