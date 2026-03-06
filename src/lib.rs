@@ -614,7 +614,17 @@ impl ClassObjectsFinalize for Tsffs {
                 // legitimate CPUID (in the UEFI loader, with number 0xc aka
                 // eax=0xc4711) that registers as a magic number. We therefore permit
                 // non-valid magic numbers to be executed, but we do nothing for them.
-                if let Some(magic_number) = MagicNumber::from_i64(magic_number) {
+                
+                // Normalize SBE magic numbers (8010-8015 range) to standard range (1-5)
+                // SBE uses magic numbers in range 8000-8190, TSFFS uses 8010-8015
+                // 8011-8015 map to 1-5 (start/stop)
+                let normalized_magic = if magic_number >= 8010 && magic_number <= 8015 {
+                    magic_number - 8010
+                } else {
+                    magic_number
+                };
+                
+                if let Some(magic_number) = MagicNumber::from_i64(normalized_magic) {
                     tsffs
                         .on_magic_instruction(trigger_obj, magic_number)
                         .expect("Failed to execute on_magic_instruction callback")
