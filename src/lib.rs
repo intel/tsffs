@@ -251,12 +251,14 @@ pub(crate) struct Tsffs {
     /// is saved as a solution.
     pub timeout: f64,
     #[class(attribute(optional, default = SnapshotRestorePolicy::Always))]
-    /// Snapshot restore policy between iterations.
+    /// Snapshot restore policy for normal iteration boundaries.
     ///
     /// Accepted values:
-    /// - `1` restores on every iteration (default)
-    /// - `N > 1` restores every N iterations
+    /// - `1` restores on every normal iteration (default)
+    /// - `N > 1` restores every N iterations based on the global iteration count
     /// - `0` disables restores after startup
+    ///
+    /// Solution iterations always restore the initial snapshot before resuming if one exists.
     pub snapshot_restore_interval: SnapshotRestorePolicy,
     #[class(attribute(optional, default = true))]
     /// Whether the fuzzer should start on compiled-in harnesses. If set to `True`, the fuzzer

@@ -237,9 +237,8 @@ impl Tsffs {
 
     /// Interface method to manually signal to stop execution with a solution condition.
     /// When this method is called, the current testcase execution will be stopped as if
-    /// it had finished executing with an exception or timeout, and the state will be
-    /// restored according to `snapshot_restore_interval` (restoring every iteration by
-    /// default).
+    /// it had finished executing with an exception or timeout, and, if an initial
+    /// snapshot exists, it will be restored before the next iteration resumes.
     pub fn solution(&mut self, id: u64, message: *mut c_char) -> Result<()> {
         let message = unsafe { CStr::from_ptr(message) }.to_str()?;
 

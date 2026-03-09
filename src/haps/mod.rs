@@ -33,6 +33,11 @@ enum IterationCount {
     Solution,
 }
 
+enum SnapshotRestoreMode {
+    PolicyControlled,
+    Always,
+}
+
 impl Tsffs {
     fn on_simulation_stopped_magic_start(&mut self, magic_number: MagicNumber) -> Result<()> {
         if !self.have_initial_snapshot() {
@@ -106,6 +111,7 @@ impl Tsffs {
         &mut self,
         exit_kind: ExitKind,
         iteration_count: IterationCount,
+        snapshot_restore_mode: SnapshotRestoreMode,
         missing_start_info_message: &str,
     ) -> Result<IterationControl> {
         // 1) Count this iteration as complete.
@@ -155,8 +161,11 @@ impl Tsffs {
         // 4) Publish this iteration result back to the fuzzer loop.
         fuzzer_tx.send(exit_kind)?;
 
-        // 5) Restore to initial snapshot according to the configured restore interval.
-        if self.should_restore_snapshot_this_iteration() {
+        // 5) Restore to initial snapshot according to the stop-specific restore policy.
+        if match snapshot_restore_mode {
+            SnapshotRestoreMode::PolicyControlled => self.should_restore_snapshot_this_iteration(),
+            SnapshotRestoreMode::Always => true,
+        } {
             self.restore_initial_snapshot()?;
         }
 
@@ -206,6 +215,7 @@ impl Tsffs {
             if let IterationControl::StopRequested = self.finish_iteration(
                 ExitKind::Ok,
                 IterationCount::NoCount,
+                SnapshotRestoreMode::PolicyControlled,
                 "Missing start buffer or size, not writing testcase.",
             )? {
                 return Ok(());
@@ -375,6 +385,7 @@ impl Tsffs {
             if let IterationControl::StopRequested = self.finish_iteration(
                 ExitKind::Ok,
                 IterationCount::NoCount,
+                SnapshotRestoreMode::PolicyControlled,
                 "Missing start buffer or size, not writing testcase. This may be due to using manual no-buffer harnessing.",
             )? {
                 return Ok(());
@@ -436,6 +447,7 @@ impl Tsffs {
             if let IterationControl::StopRequested = self.finish_iteration(
                 exit_kind,
                 iteration_count,
+                SnapshotRestoreMode::Always,
                 "Missing start buffer or size, not writing testcase.",
             )? {
                 return Ok(());

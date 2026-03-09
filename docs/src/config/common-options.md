@@ -207,7 +207,7 @@ This is useful for CI fuzzing or for testing. The limit can be set with:
 
 ### Set Snapshot Restore Interval
 
-By default, TSFFS restores the initial snapshot at every iteration boundary.
+By default, TSFFS restores the initial snapshot at every normal iteration boundary.
 This can be changed to support semi-persistent or fully persistent execution:
 
 ```python
@@ -221,8 +221,14 @@ This can be changed to support semi-persistent or fully persistent execution:
 @tsffs.snapshot_restore_interval = 0
 ```
 
-Values greater than 1 restore every N iterations, where N is the configured value.
+Values greater than 1 restore every N iterations, where N is the configured
+value. This cadence is based on the global iteration count.
 This option only accepts integer values (`0`, `1`, or `N > 1`).
+
+Discovered solutions, including timeouts, exceptions, and
+breakpoint-triggered solutions, always restore the initial snapshot before
+the next iteration resumes if one exists. `snapshot_restore_interval`
+controls only the restore behavior for normal iteration boundaries.
 
 ### Adding Tokens From Target Software
 
