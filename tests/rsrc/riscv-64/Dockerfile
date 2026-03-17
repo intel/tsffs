@@ -1,5 +1,5 @@
 # hadolint global ignore=DL3008
-FROM ubuntu:22.04@sha256:3ba65aa20f86a0fad9df2b2c259c613df006b2e6d0bfcc8a146afb8c525a9751 AS buildroot
+FROM ubuntu:22.04@sha256:445586e41c1de7dfda82d2637f5ff688deea9eb5f5812f8c145afacc35b9f0db AS buildroot
 
 ARG BUILDROOT_REV="2023.11.x"
 
