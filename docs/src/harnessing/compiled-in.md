@@ -148,6 +148,42 @@ different target software to be used with as little modification as possible.
   not initially have `*size_ptr` set to the maximum size, but still needs to
   read the actual buffer size.
 
+## Semi-Persistent and Fully Persistent Execution
+
+When `snapshot_restore_interval` is set to a value other than `1`, TSFFS does not restore
+the initial snapshot at every iteration boundary. Instead, after `HARNESS_STOP` the target
+continues executing — TSFFS writes the next testcase into the buffer and resumes from
+immediately after `HARNESS_STOP`. The target harness must therefore be structured as a
+loop:
+
+```c
+#include "tsffs.h"
+
+int main() {
+    char buffer[20];
+    size_t size = sizeof(buffer);
+
+    // Snapshot is taken here. TSFFS writes the first testcase into buffer and size.
+    HARNESS_START(buffer, &size);
+
+    while (1) {
+        function_under_test(buffer, size);
+
+        // Signals end of iteration. TSFFS writes the next testcase into buffer
+        // and size, then resumes execution here (unless a snapshot restore occurs).
+        HARNESS_STOP();
+    }
+
+    return 0;
+}
+```
+
+For `snapshot_restore_interval = N` (semi-persistent), the snapshot is restored every N
+iterations, which resets the loop back to `HARNESS_START`. For
+`snapshot_restore_interval = 0` (fully persistent), the snapshot is never restored and
+the loop runs indefinitely — any per-iteration state (allocated memory, open handles,
+etc.) must be cleaned up manually inside the loop.
+
 ## Troubleshooting
 
 ### Compile Errors About Temporaries
