@@ -231,6 +231,9 @@ breakpoint-triggered solutions, always restore the initial snapshot before
 the next iteration resumes if one exists. `snapshot_restore_interval`
 controls only the restore behavior for normal iteration boundaries.
 
+When using values other than `1`, the harness must be structured as a loop. See
+[Semi-Persistent and Fully Persistent Execution](../harnessing/compiled-in.md#semi-persistent-and-fully-persistent-execution).
+
 ### Adding Tokens From Target Software
 
 The fuzzer has a mutator which will insert, remove, and mutate tokens in testcases. This

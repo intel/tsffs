@@ -4,6 +4,7 @@
   - [Using Provided Headers](#using-provided-headers)
   - [Multiple Harnesses in One Binary](#multiple-harnesses-in-one-binary)
   - [Alternative Start Harnesses](#alternative-start-harnesses)
+  - [Semi-Persistent and Fully Persistent Execution](#semi-persistent-and-fully-persistent-execution)
   - [Troubleshooting](#troubleshooting)
     - [Compile Errors About Temporaries](#compile-errors-about-temporaries)
 
@@ -150,11 +151,9 @@ different target software to be used with as little modification as possible.
 
 ## Semi-Persistent and Fully Persistent Execution
 
-When `snapshot_restore_interval` is set to a value other than `1`, TSFFS does not restore
-the initial snapshot at every iteration boundary. Instead, after `HARNESS_STOP` the target
-continues executing — TSFFS writes the next testcase into the buffer and resumes from
-immediately after `HARNESS_STOP`. The target harness must therefore be structured as a
-loop:
+When `snapshot_restore_interval` is set to a value other than `1`, the snapshot is not
+restored at every iteration boundary. The target harness must therefore be structured as
+a loop, with `HARNESS_START` and `HARNESS_STOP` inside it:
 
 ```c
 #include "tsffs.h"
@@ -163,26 +162,21 @@ int main() {
     char buffer[20];
     size_t size = sizeof(buffer);
 
-    // Snapshot is taken here. TSFFS writes the first testcase into buffer and size.
-    HARNESS_START(buffer, &size);
-
     while (1) {
+        // Snapshot is taken here. TSFFS writes the testcase into buffer and size.
+        HARNESS_START(buffer, &size);
+
         function_under_test(buffer, size);
 
-        // Signals end of iteration. TSFFS writes the next testcase into buffer
-        // and size, then resumes execution here (unless a snapshot restore occurs).
         HARNESS_STOP();
     }
-
-    return 0;
 }
 ```
 
 For `snapshot_restore_interval = N` (semi-persistent), the snapshot is restored every N
-iterations, which resets the loop back to `HARNESS_START`. For
-`snapshot_restore_interval = 0` (fully persistent), the snapshot is never restored and
-the loop runs indefinitely — any per-iteration state (allocated memory, open handles,
-etc.) must be cleaned up manually inside the loop.
+iterations. For `snapshot_restore_interval = 0` (fully persistent), the snapshot is
+never restored; any per-iteration state (allocated memory, open handles, etc.) must be
+cleaned up manually inside the loop.
 
 ## Troubleshooting
 
