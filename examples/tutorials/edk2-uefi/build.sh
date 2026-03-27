@@ -25,6 +25,11 @@ for file_ext in efi map debug; do
         "${SCRIPT_DIR}/project/Tutorial.${file_ext}"
 done
 
+# copy edk2 sources for source-level GDB debugging
+# rm -rf first to work around a docker cp bug where existing directories are not updated
+rm -rf "${SCRIPT_DIR}/edk2"
+docker cp "${CONTAINER_NAME}:/edk2" "${SCRIPT_DIR}/edk2"
+
 docker rm -f "${CONTAINER_NAME}"
 
 # ensure corpus

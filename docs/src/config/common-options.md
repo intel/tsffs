@@ -359,3 +359,6 @@ and let an external debugger (for example a GDB stub) control resume, set:
 ```python
 @tsffs.repro_auto_continue = False
 ```
+
+See [Debugging Live with a GDB Stub](../tutorials/edk2-uefi/reproducing-runs.md#debugging-live-with-a-gdb-stub)
+for a full walkthrough.
