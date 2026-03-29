@@ -152,8 +152,11 @@ different target software to be used with as little modification as possible.
 ## Semi-Persistent and Fully Persistent Execution
 
 When `snapshot_restore_interval` is set to a value other than `1`, the snapshot is not
-restored at every iteration boundary. The target harness must therefore be structured as
-a loop, with `HARNESS_START` and `HARNESS_STOP` inside it:
+restored at every iteration boundary. Execution continues normally after `HARNESS_STOP`,
+so the harness must use a loop so that control flow reaches the next `HARNESS_STOP`
+without relying on a snapshot restore. `HARNESS_START` only needs to be called once
+(the snapshot is taken on the first call); it does not need to be repeated each
+iteration:
 
 ```c
 #include "tsffs.h"
@@ -162,10 +165,12 @@ int main() {
     char buffer[20];
     size_t size = sizeof(buffer);
 
-    while (1) {
-        // Snapshot is taken here. TSFFS writes the testcase into buffer and size.
-        HARNESS_START(buffer, &size);
+    // Snapshot is taken here (once). TSFFS writes the first testcase into buffer
+    // and size.
+    HARNESS_START(buffer, &size);
 
+    while (1) {
+        // TSFFS injects new testcase data into buffer before each iteration.
         function_under_test(buffer, size);
 
         HARNESS_STOP();
