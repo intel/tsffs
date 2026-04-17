@@ -148,6 +148,9 @@ rm /workspace/simics/ispm.tar.gz
 ispm settings install-dir /workspace/simics
 ispm packages --install-bundle /workspace/simics/simics.ispm --non-interactive --trust-insecure-packages
 
+# Force base package install to ensure compat with internal releases
+ispm packages --install 1000-${PUBLIC_SIMICS_PACKAGE_VERSION_1000} --non-interactive --trust-insecure-packages
+
 # Clean up
 rm /workspace/simics/simics.ispm
 rm -rf /tmp/* /var/tmp/*
