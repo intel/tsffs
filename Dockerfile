@@ -14,7 +14,7 @@ ARG PUBLIC_SIMICS_PACKAGE_VERSION_1000="6.0.185"
 ARG USER_UID=1000
 ARG USERNAME=vscode
 
-FROM fedora:42@sha256:7e09f4db0ebdd29667156230ccb7e0f3791e50e28ce04ab6e6825f00d2a63b95 AS create-user
+FROM fedora:44@sha256:498c452f32a739b61f0ef215bce9924ebc4866cbe44710f58157d77723b7a6d2 AS create-user
 # redeclare ARGs
 ARG http_proxy
 ARG https_proxy
