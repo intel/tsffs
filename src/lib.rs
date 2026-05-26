@@ -48,14 +48,16 @@ use serde::{Deserialize, Serialize};
 use serde_json::to_writer;
 use simics::continue_simulation;
 use simics::{
-    break_simulation, class, debug, error, free_attribute, get_class, get_interface,
-    get_processor_number, info, lookup_file, object_clock, run_alone, run_command, run_python,
-    simics_init, sys::save_flags_t, trace, version_base, warn, write_configuration_to_file,
-    AsConfObject, BreakpointId, ClassCreate, ClassObjectsFinalize, ConfObject,
-    CoreBreakpointMemopHap, CoreControlRegisterWriteHap, CoreExceptionHap, CoreMagicInstructionHap,
+    break_simulation, class, debug, error, get_class, get_interface, get_processor_number, info,
+    lookup_file, object_clock, run_alone, run_command, run_python, simics_init, sys::save_flags_t,
+    trace, version_base, warn, write_configuration_to_file, AsConfObject, BreakpointId,
+    ClassCreate, ClassObjectsFinalize, ConfObject, CoreBreakpointMemopHap,
+    CoreControlRegisterWriteHap, CoreExceptionHap, CoreMagicInstructionHap,
     CoreSimulationStoppedHap, CpuInstrumentationSubscribeInterface, Event, EventClassFlag,
     FromConfObject, HapHandle, Interface,
 };
+#[cfg(simics_version = "6")]
+use simics::free_attribute;
 #[cfg(simics_version = "6")]
 use simics::{
     discard_future, restore_micro_checkpoint, save_micro_checkpoint, MicroCheckpointFlags,
@@ -664,6 +666,13 @@ impl Tsffs {
     pub const TIMEOUT_EVENT_NAME: &'static str = "detector_timeout_event";
     /// The name of the initial snapshot
     pub const SNAPSHOT_NAME: &'static str = "tsffs-origin-snapshot";
+    /// CLI command shown to the user to restore the origin state when stopped for repro.
+    /// Simics 6 used reverse-execution bookmarks; Simics 7 uses snapshots and dropped
+    /// `set-bookmark`/`reverse-to`.
+    #[cfg(simics_version = "6")]
+    pub const REPRO_RESTORE_COMMAND: &'static str = "reverse-to start";
+    #[cfg(simics_version = "7")]
+    pub const REPRO_RESTORE_COMMAND: &'static str = "restore-snapshot tsffs-origin-snapshot";
 }
 
 /// Implementations for controlling the simulation
@@ -862,6 +871,9 @@ impl Tsffs {
     /// Save a repro bookmark if one is needed
     pub fn save_repro_bookmark_if_needed(&mut self) -> Result<()> {
         if self.repro_testcase.is_some() && !self.repro_bookmark_set {
+            // On Simics 7 the reverse-execution `set-bookmark` CLI command is gone;
+            // the existing `Self::SNAPSHOT_NAME` snapshot is what gets restored for repro.
+            #[cfg(simics_version = "6")]
             free_attribute(run_command("set-bookmark start")?)?;
             self.repro_bookmark_set = true;
         }
