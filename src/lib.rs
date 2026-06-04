@@ -666,13 +666,17 @@ impl Tsffs {
     pub const TIMEOUT_EVENT_NAME: &'static str = "detector_timeout_event";
     /// The name of the initial snapshot
     pub const SNAPSHOT_NAME: &'static str = "tsffs-origin-snapshot";
+}
+
+impl Tsffs {
     /// CLI command shown to the user to restore the origin state when stopped for repro.
-    /// Simics 6 used reverse-execution bookmarks; Simics 7 uses snapshots and dropped
-    /// `set-bookmark`/`reverse-to`.
-    #[cfg(simics_version = "6")]
-    pub const REPRO_RESTORE_COMMAND: &'static str = "reverse-to start";
-    #[cfg(simics_version = "7")]
-    pub const REPRO_RESTORE_COMMAND: &'static str = "restore-snapshot tsffs-origin-snapshot";
+    /// Simics 6 uses reverse-execution bookmarks; Simics 7 uses snapshots.
+    pub fn repro_restore_command() -> String {
+        #[cfg(simics_version = "6")]
+        return "reverse-to start".to_string();
+        #[cfg(simics_version = "7")]
+        return format!("restore-snapshot {}", Self::SNAPSHOT_NAME);
+    }
 }
 
 /// Implementations for controlling the simulation

@@ -200,7 +200,7 @@ impl Tsffs {
                 info!(
                     self.as_conf_object(),
                     "Stopped for repro. Restore origin state with '{}'",
-                    Tsffs::REPRO_RESTORE_COMMAND
+                    Tsffs::repro_restore_command()
                 );
 
                 // Skip the shutdown and continue, we are finished here
@@ -361,7 +361,7 @@ impl Tsffs {
                 info!(
                     self.as_conf_object(),
                     "Stopped for repro. Restore origin state with '{}'",
-                    Tsffs::REPRO_RESTORE_COMMAND
+                    Tsffs::repro_restore_command()
                 );
 
                 // Skip the shutdown and continue, we are finished here
@@ -417,7 +417,7 @@ impl Tsffs {
                 info!(
                     self.as_conf_object(),
                     "Stopped for repro. Restore origin state with '{}'",
-                    Tsffs::REPRO_RESTORE_COMMAND
+                    Tsffs::repro_restore_command()
                 );
 
                 // Skip the shutdown and continue, we are finished here

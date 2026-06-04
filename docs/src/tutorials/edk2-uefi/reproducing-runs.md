@@ -110,7 +110,7 @@ Or add it at the end of your script directly, after the `run` line:
 new-gdb-remote
 ```
 
-SIMICS output:
+SIMICS output (Simics 7; Simics 6 shows `reverse-to start` instead):
 
 ```txt
 [tsffs info] Stopped for repro. Restore origin state with 'restore-snapshot tsffs-origin-snapshot'
