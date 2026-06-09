@@ -2,7 +2,8 @@
 
 Once a solution is found, the fuzzer can be run in *repro* mode which will:
 
-* Save a bookmark when the testcase is written
+* Mark a restore point at the moment the testcase is written (a bookmark on SIMICS 6,
+  the initial snapshot on SIMICS 7)
 * Write only one testcase, the bytes from the specified file
 * Stop without resetting to the initial snapshot
 

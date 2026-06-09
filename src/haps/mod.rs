@@ -199,7 +199,8 @@ impl Tsffs {
 
                 info!(
                     self.as_conf_object(),
-                    "Stopped for repro. Restore to start bookmark with 'reverse-to start'"
+                    "Stopped for repro. Restore origin state with '{}'",
+                    Tsffs::repro_restore_command()
                 );
 
                 // Skip the shutdown and continue, we are finished here
@@ -359,7 +360,8 @@ impl Tsffs {
 
                 info!(
                     self.as_conf_object(),
-                    "Stopped for repro. Restore to start bookmark with 'reverse-to start'"
+                    "Stopped for repro. Restore origin state with '{}'",
+                    Tsffs::repro_restore_command()
                 );
 
                 // Skip the shutdown and continue, we are finished here
@@ -414,7 +416,8 @@ impl Tsffs {
 
                 info!(
                     self.as_conf_object(),
-                    "Stopped for repro. Restore to start bookmark with 'reverse-to start'"
+                    "Stopped for repro. Restore origin state with '{}'",
+                    Tsffs::repro_restore_command()
                 );
 
                 // Skip the shutdown and continue, we are finished here

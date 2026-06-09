@@ -40,12 +40,25 @@ simics> @tsffs.iface.fuzz.repro("%simics%/corpus/4385dc33f608888d")
 
 ## Inspecting State with SIMICS Reverse Debugging
 
-By default, the simulation runs the testcase through to completion and saves a bookmark
-at the point the harness was triggered. You can then replay the execution by running:
+By default, the simulation runs the testcase through to completion and preserves the
+state at the point the harness was triggered. How you replay it depends on which SIMICS
+version you are running:
 
-```txt
-simics> reverse-to start
-```
+- On **SIMICS 6**, TSFFS uses reverse-execution bookmarks. Restore the start state with:
+
+  ```txt
+  simics> reverse-to start
+  ```
+
+- On **SIMICS 7**, the `set-bookmark` / `reverse-to` commands have been removed. TSFFS
+  uses a snapshot named `tsffs-origin-snapshot` instead. Restore it with:
+
+  ```txt
+  simics> restore-snapshot tsffs-origin-snapshot
+  ```
+
+TSFFS prints the exact command to use in the `Stopped for repro.` log line, so you can
+just copy it from there.
 
 From here, you can examine memory and registers (with `x`), single step execution (`si`)
 and more! Check out the SIMICS documentation and explore all the deep debugging
@@ -97,10 +110,10 @@ Or add it at the end of your script directly, after the `run` line:
 new-gdb-remote
 ```
 
-SIMICS output:
+SIMICS output (Simics 7; Simics 6 shows `reverse-to start` instead):
 
 ```txt
-[tsffs info] Stopped for repro. Restore to start bookmark with 'reverse-to start'
+[tsffs info] Stopped for repro. Restore origin state with 'restore-snapshot tsffs-origin-snapshot'
 No CPU is specified; using current processor.
 [gdb0 info] Attached to CPU: qsp.mb.cpu0.core[0][0]
 Warning: This can expose the target system on the host local network.
