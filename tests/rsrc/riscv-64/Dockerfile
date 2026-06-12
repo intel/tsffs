@@ -38,6 +38,7 @@ COPY tsffs.h /test/usr/tsffs.h
 
 # Build Linux, Linux Kernel Modules & RootFS
 # Build size: 7.9G
+ENV FORCE_UNSAFE_CONFIGURE=1
 RUN make BR2_EXTERNAL=/test/test-kernel-modules/ simics_simple_riscv_defconfig && \
     make && \
     echo "Compressing images" && \
