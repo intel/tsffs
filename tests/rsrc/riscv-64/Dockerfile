@@ -1,5 +1,5 @@
 # hadolint global ignore=DL3008
-FROM ubuntu:22.04@sha256:445586e41c1de7dfda82d2637f5ff688deea9eb5f5812f8c145afacc35b9f0db AS buildroot
+FROM ubuntu:26.04@sha256:f3d28607ddd78734bb7f71f117f3c6706c666b8b76cbff7c9ff6e5718d46ff64 AS buildroot
 
 ARG BUILDROOT_REV="2023.11.x"
 
@@ -17,6 +17,8 @@ RUN apt-get -y update && \
     git \
     gcc \
     g++ \
+    gcc-13 \
+    g++-13 \
     rsync \
     unzip \
     wget
@@ -38,6 +40,9 @@ COPY tsffs.h /test/usr/tsffs.h
 
 # Build Linux, Linux Kernel Modules & RootFS
 # Build size: 7.9G
+ENV FORCE_UNSAFE_CONFIGURE=1
+ENV HOSTCC=/usr/bin/gcc-13
+ENV HOSTCXX=/usr/bin/g++-13
 RUN make BR2_EXTERNAL=/test/test-kernel-modules/ simics_simple_riscv_defconfig && \
     make && \
     echo "Compressing images" && \
