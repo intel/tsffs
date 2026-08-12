@@ -14,6 +14,7 @@
   - [Common Options](config/common-options.md)
 - [Harnessing Fuzzing Targets](harnessing/README.md)
   - [Using a Compiled-in Harness](harnessing/compiled-in.md)
+  - [Bare-Metal and Non-x86 Harnessing](harnessing/bare-metal.md)
   - [Using Closed-Box Testcase Injection](harnessing/closed-box.md)
   - [Using Testcase Data Manually](harnessing/manual.md)
 - [Running A Fuzzing Campaign](fuzzing/README.md)
