@@ -32,7 +32,7 @@ use crate::interfaces::{config::config, fuzz::fuzz};
 use crate::state::{SnapshotRestorePolicy, SolutionKind, StopReason};
 #[cfg(simics_version = "6")]
 use crate::util::Utils;
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, ensure, Result};
 use arch::{Architecture, ArchitectureHint, ArchitectureOperations};
 use fuzzer::{messages::FuzzerMessage, ShutdownMessage, Testcase};
 use indoc::indoc;
@@ -372,6 +372,11 @@ pub(crate) struct Tsffs {
     pub checkpoint_path: PathBuf,
     #[class(attribute(optional, default = true))]
     pub pre_snapshot_checkpoint: bool,
+    #[class(attribute(optional, default = false))]
+    /// Whether to replace Simics's `restore_snapshot` with a kAFL/Nyx VM-level reset
+    /// (`HYPERCALL_KAFL_RELEASE`) on the Simics 7 snapshot path. Ideation flag for the
+    /// kAFL fast snapshot restore benchmark; has no effect on Simics 6 (micro checkpoints).
+    pub kafl_snapshots: bool,
     #[class(attribute(optional, default = lookup_file("%simics%")?.join("log.json")))]
     /// The path to the log file which will be used to log the fuzzer's output statistics
     pub log_path: PathBuf,
@@ -744,6 +749,47 @@ impl Tsffs {
     }
 }
 
+/// Allocate a page-aligned, `mlock`'d buffer for the kAFL/Nyx coverage bitmap.
+///
+/// The buffer is never written to (see "Why no coverage" in the kAFL fast snapshot
+/// restore spec: `agent_tracing = 1` with no `--trace` means PT is never armed, so the
+/// host only ever reads an all-zero bitmap here). `mmap` anonymous mappings are always
+/// page-aligned, which is required by `apply_capabilities()` on the host side.
+#[cfg(simics_version = "7")]
+fn mmap_page_aligned(size: usize) -> Result<*mut u8> {
+    use std::io::Error as IoError;
+    use std::ptr::null_mut;
+
+    ensure!(size > 0, "Cannot mmap a zero-sized kAFL coverage bitmap");
+
+    let ptr = unsafe {
+        libc::mmap(
+            null_mut(),
+            size,
+            libc::PROT_READ | libc::PROT_WRITE,
+            libc::MAP_PRIVATE | libc::MAP_ANONYMOUS,
+            -1,
+            0,
+        )
+    };
+
+    if ptr == libc::MAP_FAILED {
+        bail!(
+            "mmap failed for kAFL coverage bitmap: {}",
+            IoError::last_os_error()
+        );
+    }
+
+    if unsafe { libc::mlock(ptr, size) } != 0 {
+        bail!(
+            "mlock failed for kAFL coverage bitmap: {}",
+            IoError::last_os_error()
+        );
+    }
+
+    Ok(ptr as *mut u8)
+}
+
 impl Tsffs {
     /// Save the initial snapshot using the configured method (either rev-exec micro checkpoints
     /// or snapshots)
@@ -766,26 +812,94 @@ impl Tsffs {
 
         #[cfg(simics_version = "7")]
         {
-            if self.pre_snapshot_checkpoint {
+            if self.kafl_snapshots {
                 debug!(
                     self.as_conf_object(),
-                    "Saving checkpoint to {}",
-                    self.checkpoint_path.display()
+                    "Establishing kAFL/Nyx snapshot point via hypercalls"
                 );
 
-                if self.checkpoint_path.exists() {
-                    remove_dir_all(&self.checkpoint_path)?;
+                // Handshake
+                unsafe {
+                    kafl_sys::hypercall(kafl_sys::HYPERCALL_KAFL_ACQUIRE, 0);
+                    kafl_sys::hypercall(kafl_sys::HYPERCALL_KAFL_RELEASE, 0);
                 }
 
-                write_configuration_to_file(&self.checkpoint_path, save_flags_t(0))?;
+                // Host config
+                let mut hcfg = kafl_sys::host_config_t::default();
+                unsafe {
+                    kafl_sys::hypercall(
+                        kafl_sys::HYPERCALL_KAFL_GET_HOST_CONFIG,
+                        &mut hcfg as *mut _ as u64,
+                    );
+                }
+                // host_config_t is #[repr(packed)] (mirroring the C ABI), so its fields
+                // must be copied to locals before use: a reference to a packed field is
+                // unaligned and thus UB to create, even transiently.
+                let host_magic = hcfg.host_magic;
+                let host_version = hcfg.host_version;
+                let bitmap_size = hcfg.bitmap_size;
+                ensure!(
+                    host_magic == kafl_sys::NYX_HOST_MAGIC,
+                    "Unexpected NYX host magic: {:#x}",
+                    host_magic
+                );
+                ensure!(
+                    host_version == kafl_sys::NYX_HOST_VERSION,
+                    "Unexpected NYX host version: {}",
+                    host_version
+                );
+
+                // A page-aligned, mlock'd bitmap we will never write to
+                let bitmap = mmap_page_aligned(bitmap_size as usize)?;
+
+                let acfg = kafl_sys::agent_config_t {
+                    agent_magic: kafl_sys::NYX_AGENT_MAGIC,
+                    agent_version: kafl_sys::NYX_AGENT_VERSION,
+                    agent_tracing: 1, // PT never armed
+                    agent_timeout_detection: 1, // TSFFS owns timeouts, not the host
+                    agent_non_reload_mode: 0, // reload every iteration == SnapshotRestorePolicy::Always
+                    trace_buffer_vaddr: bitmap as u64,
+                    coverage_bitmap_size: bitmap_size,
+                    ..Default::default() // input_buffer_size MUST remain 0
+                };
+                unsafe {
+                    kafl_sys::hypercall(
+                        kafl_sys::HYPERCALL_KAFL_SET_AGENT_CONFIG,
+                        &acfg as *const _ as u64,
+                    );
+                }
+
+                // THE SNAPSHOT POINT. First NEXT_PAYLOAD creates the snapshot.
+                unsafe {
+                    kafl_sys::hypercall(kafl_sys::HYPERCALL_KAFL_NEXT_PAYLOAD, 0);
+                    kafl_sys::hypercall(kafl_sys::HYPERCALL_KAFL_ACQUIRE, 0);
+                }
+
+                self.snapshot_name
+                    .set(Self::SNAPSHOT_NAME.to_string())
+                    .map_err(|_| anyhow!("Snapshot name already set"))?;
+            } else {
+                if self.pre_snapshot_checkpoint {
+                    debug!(
+                        self.as_conf_object(),
+                        "Saving checkpoint to {}",
+                        self.checkpoint_path.display()
+                    );
+
+                    if self.checkpoint_path.exists() {
+                        remove_dir_all(&self.checkpoint_path)?;
+                    }
+
+                    write_configuration_to_file(&self.checkpoint_path, save_flags_t(0))?;
+                }
+
+                debug!(self.as_conf_object(), "Saving initial snapshot");
+
+                save_snapshot(Self::SNAPSHOT_NAME)?;
+                self.snapshot_name
+                    .set(Self::SNAPSHOT_NAME.to_string())
+                    .map_err(|_| anyhow!("Snapshot name already set"))?;
             }
-
-            debug!(self.as_conf_object(), "Saving initial snapshot");
-
-            save_snapshot(Self::SNAPSHOT_NAME)?;
-            self.snapshot_name
-                .set(Self::SNAPSHOT_NAME.to_string())
-                .map_err(|_| anyhow!("Snapshot name already set"))?;
         }
 
         #[cfg(simics_version = "6")]
@@ -835,7 +949,14 @@ impl Tsffs {
     /// or snapshots)
     pub fn restore_initial_snapshot(&mut self) -> Result<()> {
         #[cfg(simics_version = "7")]
-        restore_snapshot(Self::SNAPSHOT_NAME)?;
+        if self.kafl_snapshots {
+            unsafe {
+                kafl_sys::hypercall(kafl_sys::HYPERCALL_KAFL_RELEASE, 0);
+            }
+            unreachable!("host resets the VM; execution resumes after NEXT_PAYLOAD");
+        } else {
+            restore_snapshot(Self::SNAPSHOT_NAME)?;
+        }
         #[cfg(simics_version = "6")]
         {
             restore_micro_checkpoint(*self.micro_checkpoint_index.get().ok_or_else(|| {

@@ -10,6 +10,9 @@ tsffs.log-level 2
 @tsffs.stop_on_harness = True
 @tsffs.timeout = 3.0
 @tsffs.exceptions = [13, 14]
+@tsffs.pre_snapshot_checkpoint = True
+@tsffs.corpus_directory = SIM_lookup_file("%simics%/../corpus")
+@tsffs.solutions_directory = SIM_lookup_file("%simics%/solutions")
 
 load-target "qsp-x86/uefi-shell" namespace = qsp machine:hardware:storage:disk0:image = "minimal_boot_disk.craff"
 

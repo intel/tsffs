@@ -29,6 +29,8 @@ test = false
 
 [dependencies]
 anyhow = { version = "1.0.88" }
+kafl-sys = { path = "../kafl-sys" }
+libc = "0.2"
 libafl = { git = "https://github.com/AFLplusplus/LibAFL", rev = "0f26f6ea32aa74ee526636558842ec06bbfb49bb", default-features = false, features = [
     "std",
     "derive",
