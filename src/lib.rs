@@ -1064,8 +1064,14 @@ fn init() {
             print("TSFFS initialized. Configure and use it as @tsffs.")
     "#})
     .expect("Failed to run python");
+    // NOTE: The result of `new_command` is bound to a variable so that this snippet is a
+    // statement rather than an expression. `SIM_run_python` converts the value of a trailing
+    // expression to an `attr_value_t`, and newer Simics Base versions return a `CliCommand`
+    // object from `new_command` rather than `None`. That object has no `attr_value_t`
+    // representation, so the conversion raises `SimExc_Type` even though the command itself
+    // was registered successfully. Binding the result avoids the conversion entirely.
     run_python(indoc! {r#"
-        new_command(
+        _tsffs_init_command = new_command(
             "init-tsffs",
             init_tsffs_cmd,
             [],
@@ -1075,9 +1081,5 @@ fn init() {
             doc = "Initialize the TSFFS fuzzer"
         )
     "#})
-    .map_err(|e| {
-        error!(tsffs, "{e}");
-        e
-    })
     .expect("Failed to run python");
 }
