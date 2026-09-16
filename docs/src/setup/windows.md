@@ -17,6 +17,7 @@ should be run in PowerShell (the default shell on recent Windows versions).
   - [Set Up For Local Development](#set-up-for-local-development)
   - [Troubleshooting](#troubleshooting)
     - [I Already Have A MinGW Installation](#i-already-have-a-mingw-installation)
+    - [I Already Have A Rust Installation](#i-already-have-a-rust-installation)
     - [Command is Unrecognized](#command-is-unrecognized)
 
 ## Install System Dependencies
@@ -321,6 +322,30 @@ If you already have a MinGW-w64 installation elsewhere, and you do not want to r
 it to `C:\MinGW`, edit `compiler.mk` and point `CC=` and `CXX=` at your MinGW `gcc.exe`
 and `g++.exe` binaries, respectively, or change the location passed with the
 `--mingw-dir` option in [the build step](#build-tsffs).
+
+### I Already Have A Rust Installation
+
+`rustup`'s default host on Windows is the `x86_64-pc-windows-msvc` toolchain, not the
+`x86_64-pc-windows-gnu` one this guide installs. If you already had Rust installed before
+following this guide, your default host is likely still MSVC. Building/testing TSFFS
+with the MSVC host fails at the link step (`LNK1107: invalid or corrupt file`) because
+MSVC's `link.exe` can't consume the raw Windows link directives TSFFS's SIMICS build
+dependencies emit -- only `x86_64-pc-windows-gnu`'s linker can. `cargo check`/`cargo
+clippy` will still succeed either way (they don't link), which can hide the problem until
+a real `cargo build`/`cargo test`.
+
+Check your default host with `rustup show`. If it says `x86_64-pc-windows-msvc`, either
+install the `x86_64-pc-windows-gnu` toolchain and set a repo-local override:
+
+```powershell
+rustup toolchain install stable-x86_64-pc-windows-gnu
+rustup override set stable-x86_64-pc-windows-gnu
+```
+
+or pass `--target x86_64-pc-windows-gnu` explicitly on each `cargo`/`cargo simics-build`
+invocation. See the `build_windows` job in
+[`ci.yml`](https://github.com/intel/tsffs/blob/main/.github/workflows/ci.yml) for the
+exact setup CI uses.
 
 ### Command is Unrecognized
 

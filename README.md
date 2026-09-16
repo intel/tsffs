@@ -44,13 +44,6 @@ Then, run the provided example target and fuzzing configuration:
 Documentation for setup & usage of this project lives online at
 [intel.github.io/tsffs](https://intel.github.io/tsffs).
 
-**Windows:** building and testing requires the `x86_64-pc-windows-gnu` Rust target, not
-the MSVC host `rustup` defaults to -- MSVC's `link.exe` can't consume the Windows link
-directives this crate's SIMICS build dependencies emit, so a default build/test silently
-targets MSVC and fails to link. Install with `rustup target add x86_64-pc-windows-gnu`
-plus MinGW-w64, then build/test with `--target x86_64-pc-windows-gnu` (see the
-`build_windows` job in [`ci.yml`](.github/workflows/ci.yml) for the exact setup CI uses).
-
 ## Capabilities
 
 This fuzzer is built using [LibAFL](https://github.com/AFLplusplus/LibAFL) and SIMICS
