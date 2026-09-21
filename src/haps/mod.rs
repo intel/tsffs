@@ -3,7 +3,7 @@
 
 //! Handlers for HAPs in the simulator
 
-use std::time::SystemTime;
+use std::{collections::HashSet, time::SystemTime};
 
 use crate::{
     arch::ArchitectureOperations,
@@ -13,6 +13,7 @@ use crate::{
     ManualStartInfo, Tsffs,
 };
 use anyhow::{anyhow, bail, Result};
+use intervaltree::IntervalTree;
 use libafl::prelude::ExitKind;
 use simics::{
     api::{
@@ -39,6 +40,73 @@ enum SnapshotRestoreMode {
 }
 
 impl Tsffs {
+    /// Collect UEFI/SMM source coverage info, if `uefi` and `symbolic_coverage` are
+    /// both set. Called once, at `HARNESS_START` (the same three call sites Windows
+    /// uses for its own initial collection), rather than on a recurring trigger --
+    /// see `crate::uefi::collect_symbols`'s doc comment for why UEFI/SMM has no
+    /// CR3-write-equivalent refresh signal the way Windows does.
+    ///
+    /// The resulting interval tree is stored in `self.windows_os_info`, alongside
+    /// Windows's own per-processor symbol lookup trees, keyed the same way (by
+    /// processor number). `self.uefi` and `self.windows` are mutually exclusive in
+    /// practice (a target is either a Windows kernel or a UEFI/SMM BIOS, not both),
+    /// so this reuses the exact same storage and the tracer's existing OS-agnostic
+    /// coverage lookup (`src/tracer/mod.rs`, the `self.coverage_enabled &&
+    /// self.symbolic_coverage` branch, which does not itself check `self.windows`)
+    /// rather than duplicating a second lookup path just for `uefi`.
+    fn collect_uefi_symbolic_coverage(&mut self, processor: *mut ConfObject) -> Result<()> {
+        if !(self.uefi && self.symbolic_coverage) {
+            return Ok(());
+        }
+
+        info!(
+            self.as_conf_object(),
+            "Collecting initial UEFI/SMM source coverage info"
+        );
+
+        let elements = crate::uefi::collect_symbols(
+            &self.uefi_tracker_object,
+            &self.uefi_debug_info_directory,
+            &self.source_file_cache,
+        )?;
+
+        let mut filtered_ranges = HashSet::new();
+
+        // Deduplicate elements by their range, mirroring
+        // `WindowsOsInfo::collect`'s own deduplication.
+        let elements = elements
+            .into_iter()
+            .filter(|e| filtered_ranges.insert(e.range.clone()))
+            .collect::<Vec<_>>();
+
+        // Populate elements into the coverage record set, mirroring
+        // `WindowsOsInfo::collect`'s own population of `user_debug_info.coverage`.
+        elements.iter().map(|e| &e.value).for_each(|si| {
+            if let Some(first) = si.lines.first() {
+                let record = self.coverage.get_or_insert_mut(&first.file_path);
+                record.add_function_if_not_exists(
+                    first.start_line as usize,
+                    si.lines.last().map(|l| l.end_line as usize),
+                    &si.name,
+                );
+                si.lines.iter().for_each(|l| {
+                    (l.start_line..=l.end_line).for_each(|line| {
+                        record.add_line_if_not_exists(line as usize);
+                    });
+                });
+            }
+        });
+
+        let processor_nr = get_processor_number(processor)?;
+
+        self.windows_os_info.symbol_lookup_trees.insert(
+            processor_nr,
+            elements.into_iter().collect::<IntervalTree<_, _>>(),
+        );
+
+        Ok(())
+    }
+
     fn on_simulation_stopped_magic_start(&mut self, magic_number: MagicNumber) -> Result<()> {
         if !self.have_initial_snapshot() {
             self.start_fuzzer_thread()?;
@@ -86,6 +154,7 @@ impl Tsffs {
                     &self.source_file_cache,
                 )?;
             }
+            self.collect_uefi_symbolic_coverage(start_processor_raw)?;
             self.get_and_write_testcase()?;
             self.post_timeout_event()?;
         }
@@ -283,6 +352,8 @@ impl Tsffs {
                 )?;
             }
 
+            self.collect_uefi_symbolic_coverage(processor)?;
+
             self.get_and_write_testcase()?;
 
             self.post_timeout_event()?;
@@ -324,6 +395,8 @@ impl Tsffs {
                     &self.source_file_cache,
                 )?;
             }
+
+            self.collect_uefi_symbolic_coverage(processor)?;
 
             self.post_timeout_event()?;
         }

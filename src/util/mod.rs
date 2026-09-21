@@ -5,6 +5,8 @@ use anyhow::Result;
 use simics::api::{get_attribute, get_object};
 use simics::FromAttrValueList;
 
+pub mod path_suffix_index;
+
 #[derive(Debug, Clone, FromAttrValueList)]
 pub(crate) struct MicroCheckpointInfo {
     #[allow(unused)]

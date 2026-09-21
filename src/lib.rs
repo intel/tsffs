@@ -89,16 +89,36 @@ use typed_builder::TypedBuilder;
 use versions::{Requirement, Versioning};
 
 pub(crate) mod arch;
+// `pub` (not `pub(crate)`): needed so the offline DWARF fixture test in
+// `tests/dwarf_fixture.rs` (a separate cargo target/crate, since `[lib] test = false`
+// means unit tests can't live inside this crate -- see that file's module doc) can
+// reach `DwarfModule`/`DebugInfoModule`/`SourceCache` at all. `os` and `traits`
+// stay `pub(crate)`; `dwarf::mod.rs` re-exports just the debug-info types
+// (`SymbolInfo`/`LineInfo`) and the `DebugInfoModule` trait the test needs,
+// instead of widening all of `os` (Windows kernel/PDB internals) or `traits`
+// (which also holds the unrelated, and itself not-fully-public,
+// `TracerDisassembler` trait).
+pub mod dwarf;
 pub(crate) mod fuzzer;
 pub(crate) mod haps;
 pub(crate) mod interfaces;
 pub(crate) mod log;
 pub(crate) mod magic;
 pub(crate) mod os;
-pub(crate) mod source_cov;
+pub mod source_cov;
 pub(crate) mod state;
 pub(crate) mod tracer;
 pub(crate) mod traits;
+// `pub` (not `pub(crate)`): needed so the offline UEFI module discovery fixture
+// test in `tests/uefi_module_discovery_fixture.rs` (UCOV-M2, milestone-scope steps
+// 1-2 -- see that file's module doc) can reach `uefi::{parse_module_list,
+// UefiOsInfo}` at all. This is a separate cargo target/crate (this crate's `[lib]`
+// section sets `test = false`, so `#[cfg(test)]` code inside `src/` is never
+// compiled by `cargo test`), so it only sees this crate's `pub` API -- the same
+// reason the sibling DWARF milestone widened `dwarf`/`source_cov` similarly.
+// `util` (which `uefi` itself depends on for `PathSuffixIndex`) stays
+// `pub(crate)`, since the test doesn't need to reach it directly.
+pub mod uefi;
 pub(crate) mod util;
 
 /// The class name used for all operations interfacing with SIMICS
@@ -445,6 +465,30 @@ pub(crate) struct Tsffs {
     /// Directory in which source files are located. Source files do not need to be arranged in
     /// the same directory structure as the compiled source, and are looked up by hash.
     pub symbolic_coverage_directory: PathBuf,
+    #[class(attribute(optional, default = false))]
+    /// Whether UEFI/SMM is being run in the simulation. When set with
+    /// `symbolic_coverage`, TSFFS collects source coverage for UEFI/SMM modules at
+    /// `HARNESS_START` by querying `uefi_tracker_object`'s loaded module list and
+    /// resolving each module's DWARF debug info under `uefi_debug_info_directory`.
+    /// `debuginfo_source_directory` must also point at the real local source tree
+    /// (e.g. the EDK2 checkout) for any source *lines* to be resolved -- symbols
+    /// resolve independently of it, but every one of them will have zero lines
+    /// (and thus never contribute to the coverage report) without it, since DWARF
+    /// line entries are resolved against `debuginfo_source_directory`, not
+    /// `uefi_debug_info_directory` (which only locates each module's own `.debug`
+    /// file, not its original source).
+    pub uefi: bool,
+    #[class(attribute(optional, default = String::new()))]
+    /// The Simics object path of the UEFI/SMM module tracker to query for the loaded
+    /// module list (e.g. `board.software.tracker.tracker_obj`, queried via its
+    /// `->maps` attribute), used when `uefi` is set. Board-specific; there is no
+    /// default.
+    pub uefi_tracker_object: String,
+    #[class(attribute(optional, default = lookup_file("%simics%")?.join("uefi-debug-info")))]
+    /// Local build-output directory that UEFI/SMM modules' embedded build-machine
+    /// paths (reported by `uefi_tracker_object`) are resolved against, to locate
+    /// each module's local `.debug` DWARF sidecar file, used when `uefi` is set.
+    pub uefi_debug_info_directory: PathBuf,
 
     /// Handle for the core simulation stopped hap
     stop_hap_handle: HapHandle,
@@ -1004,7 +1048,7 @@ impl Tsffs {
     }
 
     pub fn save_symbolic_coverage(&mut self) -> Result<()> {
-        if self.symbolic_coverage_directory.is_dir() {
+        if !self.symbolic_coverage_directory.is_dir() {
             create_dir_all(&self.symbolic_coverage_directory)?;
         }
 
@@ -1014,13 +1058,32 @@ impl Tsffs {
             self.symbolic_coverage_directory.display()
         );
 
-        self.coverage.to_html(&self.symbolic_coverage_directory)?;
-
-        debug!(
-            self.as_conf_object(),
-            "Symbolic coverage saved to {}",
-            self.symbolic_coverage_directory.display()
-        );
+        // `Records::to_html` seeds its output tree from the records themselves, so
+        // if no source line was ever recorded (e.g. a short run whose covered code
+        // never lands inside a symbolicated module -- has been observed for real
+        // with UEFI/SMM coverage, whose HARNESS_START may fire before every module
+        // is loaded), it never creates a graph node for `output_directory` at all,
+        // and its own root-node lookup fails with `NodeNotFound` on that exact
+        // path. That's an empty-coverage outcome, not a real error, so it's
+        // reported and skipped rather than propagated as one.
+        match self.coverage.to_html(&self.symbolic_coverage_directory) {
+            Ok(()) => {
+                debug!(
+                    self.as_conf_object(),
+                    "Symbolic coverage saved to {}",
+                    self.symbolic_coverage_directory.display()
+                );
+            }
+            Err(lcov2::error::Error::NodeNotFound { ref path })
+                if *path == self.symbolic_coverage_directory =>
+            {
+                debug!(
+                    self.as_conf_object(),
+                    "No symbolic coverage was recorded this run; skipping HTML report generation"
+                );
+            }
+            Err(e) => return Err(e.into()),
+        }
 
         Ok(())
     }
