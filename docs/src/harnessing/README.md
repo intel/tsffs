@@ -8,5 +8,6 @@ not, try injecting testcases into its memory directly, and if this is still not 
 or not appropriate for your use case, the fully-manual approach can be used.
 
 - [Using Compiled-In Harnesses](compiled-in.md)
+- [Bare-Metal and Non-x86 Harnessing](bare-metal.md)
 - [Closed-Box Testcase Injection](closed-box.md)
 - [Manual Testcase Injection](manual.md)

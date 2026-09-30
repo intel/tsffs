@@ -151,9 +151,10 @@
 /// size_t size;
 /// HARNESS_START(buffer, &size);
 /// ```
-#define HARNESS_START(buffer, size_ptr)                             \
-  do {                                                              \
-    __orr_extended2(N_START_BUFFER_PTR_SIZE_PTR, buffer, size_ptr); \
+#define HARNESS_START(buffer, size_ptr)                                 \
+  do {                                                                  \
+    __orr_extended3(N_START_BUFFER_PTR_SIZE_PTR, DEFAULT_INDEX, buffer, \
+                    size_ptr);                                          \
   } while (0);
 
 /// Pseudo-hypercall number to signal the fuzzer to use the first argument to
@@ -190,9 +191,10 @@
 /// unsigned char buffer[1024];
 /// HARNESS_START_WITH_MAXIMUM_SIZE(buffer, 1024);
 /// ```
-#define HARNESS_START_WITH_MAXIMUM_SIZE(buffer, max_size)           \
-  do {                                                              \
-    __orr_extended2(N_START_BUFFER_PTR_SIZE_VAL, buffer, max_size); \
+#define HARNESS_START_WITH_MAXIMUM_SIZE(buffer, max_size)               \
+  do {                                                                  \
+    __orr_extended3(N_START_BUFFER_PTR_SIZE_VAL, DEFAULT_INDEX, buffer, \
+                    max_size);                                          \
   } while (0);
 
 /// Pseudo-hypercall number to signal the fuzzer to use the first argument to
@@ -236,8 +238,8 @@
 /// ```
 #define HARNESS_START_WITH_MAXIMUM_SIZE_AND_PTR(buffer, size_ptr, max_size) \
   do {                                                                      \
-    __orr_extended3(N_START_BUFFER_PTR_SIZE_PTR_VAL, buffer, size_ptr,      \
-                    max_size);                                              \
+    __orr_extended4(N_START_BUFFER_PTR_SIZE_PTR_VAL, DEFAULT_INDEX, buffer, \
+                    size_ptr, max_size);                                    \
   } while (0);
 
 /// Pseudo-hypercall number to signal the fuzzer to stop the current fuzzing
