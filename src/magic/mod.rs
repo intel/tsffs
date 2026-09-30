@@ -15,6 +15,7 @@ pub enum MagicNumber {
     StartBufferPtrSizePtrVal = 3,
     StopNormal = 4,
     StopAssert = 5,
+    Coverage = 6,
 }
 
 impl Display for MagicNumber {

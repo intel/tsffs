@@ -260,7 +260,7 @@ impl From<CoverageMode> for AttrValueType {
 }
 
 impl Tsffs {
-    fn log_pc(&mut self, pc: u64) -> Result<()> {
+    pub(crate) fn log_pc(&mut self, pc: u64) -> Result<()> {
         let coverage_map = self.coverage_map.get_mut().ok_or_else(|| {
             anyhow!("Coverage map not initialized. This is a bug in the fuzzer or the target")
         })?;
