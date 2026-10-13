@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # hadolint global ignore=DL3041,DL3040
 
-FROM fedora:44@sha256:6c75d5bf57cb0fa5aa4b92c6a83c86c791644496d9ac230de7711f5b8ec3b898
+FROM fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80
 
 # Download links can be obtained from:
 # https://lemcenter.intel.com/productDownload/?Product=256660e5-a404-4390-b436-f64324d94959
