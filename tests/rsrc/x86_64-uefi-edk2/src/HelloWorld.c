@@ -14,9 +14,21 @@
 #include <Library/UefiApplicationEntryPoint.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiLib.h>
+#include <Pi/PiMultiPhase.h>
+#include <Protocol/MpService.h>
 #include <Uefi.h>
 
 #include "tsffs.h"
+
+/**
+  Procedure run on an AP (a non-BSP logical processor) to cause a page fault
+  on that specific processor, so a consumer of the fault can confirm which
+  processor it was attributed to.
+**/
+VOID EFIAPI PageFaultApProcedure(IN OUT VOID *Buffer) {
+  UINT8 *ptr = (UINT8 *)0xffffffffffffffff;
+  *ptr = 0x00;
+}
 
 /**
   The user Entry Point for Application. The user code starts with this function
@@ -56,6 +68,34 @@ UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable) {
       // This will page fault
       UINT8 *ptr = (UINT8 *)0xffffffffffffffff;
       *ptr = 0x00;
+    }
+    case 'D': {
+      // This will page fault on an AP (a non-BSP processor), to exercise
+      // multi-processor fault attribution.
+      EFI_MP_SERVICES_PROTOCOL *mp_services;
+
+      if (!EFI_ERROR(gBS->LocateProtocol(&gEfiMpServiceProtocolGuid, NULL,
+                                          (VOID **)&mp_services))) {
+        UINTN number_of_processors;
+        UINTN number_of_enabled_processors;
+        UINTN bsp_number;
+
+        if (!EFI_ERROR(mp_services->GetNumberOfProcessors(
+                mp_services, &number_of_processors,
+                &number_of_enabled_processors)) &&
+            !EFI_ERROR(mp_services->WhoAmI(mp_services, &bsp_number)) &&
+            number_of_processors > 1) {
+          UINTN ap_number = (bsp_number + 1) % number_of_processors;
+
+          Print(L"AP_FAULT_PROCESSOR %d\n", (UINT32)ap_number);
+          mp_services->StartupThisAP(mp_services, PageFaultApProcedure,
+                                      ap_number, NULL, 0, NULL, NULL);
+        } else {
+          Print(L"AP_FAULT_SKIPPED insufficient processors\n");
+        }
+      } else {
+        Print(L"AP_FAULT_SKIPPED no mp services\n");
+      }
     }
     default: {
       // Nothing, this is a "success"
