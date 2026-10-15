@@ -264,7 +264,11 @@ jobs:
         run: |
           cargo generate-lockfile
 
-          cargo audit
+          # RUSTSEC-2026-0344: decompression bomb in `ruzstd`, pulled in transitively via
+          # `object` <- `simics-sign` (used only at build time to sign Simics packages, not
+          # exposed to fuzzer-controlled input). No fixed `object`/`simics-sign` release is
+          # available yet; re-evaluate and drop this ignore once one is.
+          cargo audit --ignore RUSTSEC-2026-0344
 
           # if ! cargo outdated -R --exit-code 1; then
           #     echo "❗ [T186] Out of date third party dependencies found"
