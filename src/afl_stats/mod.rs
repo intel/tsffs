@@ -27,6 +27,16 @@ use std::{
 pub(crate) const FUZZER_STATS_NAME: &str = "fuzzer_stats";
 /// Name of the lock file inside an Instance
 const LOCK_NAME: &str = ".lock";
+/// Name of the time series file inside an Instance
+pub(crate) const PLOT_DATA_NAME: &str = "plot_data";
+/// Name of the file that makes `afl-whatsup` discover an Instance
+pub(crate) const FUZZER_SETUP_NAME: &str = "fuzzer_setup";
+
+/// The `plot_data` header, with the 15 columns `afl-plot` selects by position. This is the
+/// header AFL++ itself writes; column 7 (`map_size`) holds a coverage percentage there too.
+const PLOT_DATA_HEADER: &str = "# relative_time, cycles_done, cur_item, corpus_count, \
+pending_total, pending_favs, map_size, saved_crashes, saved_hangs, max_depth, execs_per_sec, \
+total_execs, edges_found, total_crashes, servers_count";
 
 /// Check that an Instance name is a single safe path component: letters, digits, `.`, `_` and
 /// `-`, and not made only of dots (which would be `.` or `..`).
@@ -71,6 +81,8 @@ pub(crate) struct InstanceConfig {
     pub command_line: String,
     /// The configured per-iteration timeout, in milliseconds
     pub exec_timeout_ms: u64,
+    /// Configuration attribute names and values, recorded once in `fuzzer_setup`
+    pub setup_attributes: Vec<(String, String)>,
 }
 
 /// The live counters known to the Simics side at one stats tick
@@ -164,13 +176,39 @@ impl InstanceWriter {
             }
         }
 
-        Ok(Self {
+        // Only now that this session owns the Instance is it safe to touch its files
+        rotate_plot_data(&dir, config.start_time)?;
+
+        let writer = Self {
             previous: (config.start_time, 0),
             config,
             dir,
             failing: false,
             _lock: lock,
-        })
+        };
+
+        writer.write_fuzzer_setup()?;
+        writer.start_plot_data()?;
+
+        Ok(writer)
+    }
+
+    /// Record the session configuration once, in the layout AFL++ uses for `fuzzer_setup`
+    fn write_fuzzer_setup(&self) -> Result<()> {
+        let mut contents = String::from("# environment variables:\n");
+        for (name, value) in &self.config.setup_attributes {
+            contents.push_str(&format!("{name}={value}\n"));
+        }
+        contents.push_str(&format!("# command line:\n{}\n", self.config.command_line));
+
+        write_atomically(&self.dir, FUZZER_SETUP_NAME, contents.as_bytes())
+    }
+
+    /// Start a fresh `plot_data` containing only the header
+    fn start_plot_data(&self) -> Result<()> {
+        let mut file = File::create(self.dir.join(PLOT_DATA_NAME))?;
+        writeln!(file, "{PLOT_DATA_HEADER}")?;
+        Ok(())
     }
 
     /// The Instance directory
@@ -181,7 +219,10 @@ impl InstanceWriter {
 
     /// Write all files for one stats tick. Never fails; see [`WriteNotice`].
     pub(crate) fn write(&mut self, sample: &StatsSample) -> WriteNotice {
-        let result = self.write_fuzzer_stats(sample);
+        let derived = self.derive(sample);
+        let result = self
+            .write_fuzzer_stats(sample, &derived)
+            .and_then(|()| self.append_plot_data(sample, &derived));
 
         // Advance the baseline even on failure so the next speed is over the right interval
         self.previous = (sample.now, sample.execs_done);
@@ -200,22 +241,46 @@ impl InstanceWriter {
         }
     }
 
-    fn write_fuzzer_stats(&self, sample: &StatsSample) -> Result<()> {
-        let contents = self.render_fuzzer_stats(sample);
-        let temporary = self.dir.join(format!("{FUZZER_STATS_NAME}.tmp"));
-        let target = self.dir.join(FUZZER_STATS_NAME);
+    fn write_fuzzer_stats(&self, sample: &StatsSample, derived: &Derived) -> Result<()> {
+        let contents = self.render_fuzzer_stats(sample, derived);
+        write_atomically(&self.dir, FUZZER_STATS_NAME, contents.as_bytes())
+    }
 
-        let mut file = File::create(&temporary)?;
-        file.write_all(contents.as_bytes())?;
-        file.sync_all()?;
-        drop(file);
+    /// Append one row to `plot_data`. The file is opened per row so a reader holding it open
+    /// never blocks the session.
+    fn append_plot_data(&self, sample: &StatsSample, derived: &Derived) -> Result<()> {
+        let fuzzer = sample.fuzzer.as_ref().cloned().unwrap_or_default();
+        let row = format!(
+            "{}, {}, {}, {}, {}, {}, {:.2}%, {}, {}, {}, {:.2}, {}, {}, {}, {}\n",
+            derived.run_time.as_secs(),
+            fuzzer.cycles_done,
+            fuzzer.cur_item,
+            sample.corpus_count,
+            fuzzer.pending_total,
+            fuzzer.pending_favs,
+            derived.bitmap_cvg,
+            sample.crashes,
+            sample.hangs,
+            fuzzer.max_depth,
+            derived.execs_ps_last_min,
+            sample.execs_done,
+            sample.edges_found,
+            sample.crashes,
+            // Sanitizer binaries, which TSFFS does not use
+            0,
+        );
 
-        rename(&temporary, &target)?;
+        OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(self.dir.join(PLOT_DATA_NAME))?
+            .write_all(row.as_bytes())?;
 
         Ok(())
     }
 
-    fn render_fuzzer_stats(&self, sample: &StatsSample) -> String {
+    /// The figures that both `fuzzer_stats` and `plot_data` report
+    fn derive(&self, sample: &StatsSample) -> Derived {
         let start = self.config.start_time;
         let run_time = sample.now.duration_since(start).unwrap_or(Duration::ZERO);
         let since_previous = sample
@@ -223,11 +288,25 @@ impl InstanceWriter {
             .duration_since(self.previous.0)
             .unwrap_or(Duration::ZERO);
 
-        let execs_per_sec = rate(sample.execs_done, run_time);
-        let execs_ps_last_min = rate(
-            sample.execs_done.saturating_sub(self.previous.1),
-            since_previous,
-        );
+        Derived {
+            run_time,
+            execs_per_sec: rate(sample.execs_done, run_time),
+            execs_ps_last_min: rate(
+                sample.execs_done.saturating_sub(self.previous.1),
+                since_previous,
+            ),
+            bitmap_cvg: coverage_pct(sample.edges_found as usize, sample.total_edges as usize),
+        }
+    }
+
+    fn render_fuzzer_stats(&self, sample: &StatsSample, derived: &Derived) -> String {
+        let start = self.config.start_time;
+        let Derived {
+            run_time,
+            execs_per_sec,
+            execs_ps_last_min,
+            bitmap_cvg,
+        } = *derived;
 
         // AFL++ measures time without finds from the start of the campaign until a find happens
         let time_wo_finds = sample
@@ -238,7 +317,6 @@ impl InstanceWriter {
         let execs_since_crash = sample.execs_done.saturating_sub(sample.execs_at_last_crash);
 
         let fuzzer = sample.fuzzer.as_ref();
-        let bitmap_cvg = coverage_pct(sample.edges_found as usize, sample.total_edges as usize);
 
         // Key order follows AFL++. A key whose value TSFFS cannot know is `None` and omitted.
         let lines: Vec<(&str, Option<String>)> = vec![
@@ -310,6 +388,56 @@ impl InstanceWriter {
             .filter_map(|(key, value)| value.map(|v| format!("{key:<18}: {v}\n")))
             .collect()
     }
+}
+
+/// Figures shared by `fuzzer_stats` and `plot_data`
+#[derive(Debug, Clone, Copy)]
+struct Derived {
+    run_time: Duration,
+    execs_per_sec: f64,
+    execs_ps_last_min: f64,
+    bitmap_cvg: f64,
+}
+
+/// Write `name` in `dir` by writing a temporary file and renaming it over the target, so a
+/// reader never sees an empty or partial file
+fn write_atomically(dir: &Path, name: &str, contents: &[u8]) -> Result<()> {
+    let temporary = dir.join(format!("{name}.tmp"));
+
+    let mut file = File::create(&temporary)?;
+    file.write_all(contents)?;
+    file.sync_all()?;
+    drop(file);
+
+    rename(&temporary, dir.join(name))?;
+
+    Ok(())
+}
+
+/// Move a `plot_data` left by an earlier session to `plot_data.<unix_timestamp>`, so two
+/// sessions are never mixed into one graph and no history is lost. The timestamp is this
+/// session's start time; if that name is taken a counter is appended.
+fn rotate_plot_data(dir: &Path, start_time: SystemTime) -> Result<()> {
+    let current = dir.join(PLOT_DATA_NAME);
+    if !current.exists() {
+        return Ok(());
+    }
+
+    let stamp = unix_seconds(start_time);
+    let mut target = dir.join(format!("{PLOT_DATA_NAME}.{stamp}"));
+    let mut counter = 1;
+    while target.exists() {
+        target = dir.join(format!("{PLOT_DATA_NAME}.{stamp}.{counter}"));
+        counter += 1;
+    }
+
+    rename(&current, &target).map_err(|e| {
+        anyhow!(
+            "Failed to rotate {} to {}: {e}",
+            current.display(),
+            target.display()
+        )
+    })
 }
 
 /// The one-line summary printed to the Simics console at every stats tick
@@ -395,6 +523,10 @@ mod tests {
             fuzzer_pid: 4242,
             command_line: "simics -e run".to_string(),
             exec_timeout_ms: 3000,
+            setup_attributes: vec![
+                ("timeout".to_string(), "3.0".to_string()),
+                ("cmplog".to_string(), "true".to_string()),
+            ],
         }
     }
 
@@ -652,6 +784,153 @@ mod tests {
         cfg.instance_name = "../escape".to_string();
         assert!(InstanceWriter::open(cfg).is_err());
         assert!(!dir.0.join("..").join("escape").exists());
+    }
+
+    fn plot_rows(writer: &InstanceWriter) -> Vec<String> {
+        read_to_string(writer.dir().join(PLOT_DATA_NAME))
+            .expect("read plot_data")
+            .lines()
+            .map(str::to_string)
+            .collect()
+    }
+
+    #[test]
+    fn plot_data_has_the_afl_header_and_fifteen_columns_per_row() {
+        let dir = TempDir::new("plot");
+        let mut writer = InstanceWriter::open(config(&dir)).expect("open");
+
+        let mut s = sample(100, 5000);
+        s.corpus_count = 12;
+        s.edges_found = 1310;
+        s.crashes = 2;
+        s.hangs = 1;
+        s.fuzzer = Some(fuzzer_snapshot());
+        writer.write(&s);
+        writer.write(&sample(200, 9000));
+
+        let rows = plot_rows(&writer);
+        assert_eq!(rows.len(), 3, "header and one row per write: {rows:?}");
+        assert!(rows[0].starts_with("# relative_time, cycles_done, cur_item, corpus_count"));
+        assert_eq!(rows[0].split(',').count(), 15);
+        for row in &rows[1..] {
+            assert_eq!(row.split(',').count(), 15, "{row}");
+        }
+        // relative_time, cycles_done, cur_item, corpus_count, pending_total, pending_favs,
+        // map_size, saved_crashes, saved_hangs, max_depth, execs_per_sec, total_execs,
+        // edges_found, total_crashes, servers_count
+        assert_eq!(
+            rows[1],
+            "100, 3, 7, 12, 4, 1, 1.00%, 2, 1, 6, 50.00, 5000, 1310, 2, 0"
+        );
+    }
+
+    #[test]
+    fn fuzzer_setup_is_written_once_per_session() {
+        let dir = TempDir::new("setup");
+        let mut writer = InstanceWriter::open(config(&dir)).expect("open");
+
+        let path = writer.dir().join(FUZZER_SETUP_NAME);
+        let setup = read_to_string(&path).expect("read fuzzer_setup");
+        assert_eq!(
+            setup,
+            "# environment variables:\ntimeout=3.0\ncmplog=true\n# command line:\nsimics -e run\n"
+        );
+
+        // Later ticks leave it alone
+        std::fs::write(&path, "sentinel").expect("overwrite");
+        writer.write(&sample(10, 10));
+        writer.write(&sample(20, 20));
+        assert_eq!(read_to_string(&path).expect("read"), "sentinel");
+    }
+
+    #[test]
+    fn a_new_session_rotates_the_previous_plot_data() {
+        let dir = TempDir::new("rotate");
+
+        let mut first = InstanceWriter::open(config(&dir)).expect("first session");
+        first.write(&sample(10, 10));
+        first.write(&sample(20, 20));
+        let old_rows = plot_rows(&first);
+        let old_dir = first.dir().to_path_buf();
+        drop(first);
+
+        // A stale fuzzer_stats from the previous session is simply replaced
+        let stale = read_to_string(old_dir.join(FUZZER_STATS_NAME)).expect("stale stats");
+
+        let mut restart = config(&dir);
+        restart.start_time = at(1000);
+        let mut second = InstanceWriter::open(restart).expect("second session");
+
+        let rotated = old_dir.join(format!("plot_data.{}", START + 1000));
+        assert_eq!(
+            read_to_string(&rotated)
+                .expect("rotated plot_data")
+                .lines()
+                .collect::<Vec<_>>(),
+            old_rows
+        );
+        assert_eq!(
+            plot_rows(&second).len(),
+            1,
+            "fresh plot_data has only the header"
+        );
+
+        second.write(&sample(1010, 5));
+        let fresh = read_to_string(old_dir.join(FUZZER_STATS_NAME)).expect("fresh stats");
+        assert_ne!(fresh, stale);
+        assert_eq!(parse(&fresh)["execs_done"], "5");
+    }
+
+    #[test]
+    fn a_refused_session_does_not_rotate_the_live_sessions_plot_data() {
+        let dir = TempDir::new("rotate-locked");
+        let mut live = InstanceWriter::open(config(&dir)).expect("live session");
+        live.write(&sample(10, 10));
+        let before = plot_rows(&live);
+
+        let mut intruder = config(&dir);
+        intruder.start_time = at(500);
+        InstanceWriter::open(intruder).expect_err("instance is in use");
+
+        assert_eq!(plot_rows(&live), before);
+        let leftovers = std::fs::read_dir(live.dir())
+            .expect("list")
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_name().to_string_lossy().starts_with("plot_data."))
+            .count();
+        assert_eq!(leftovers, 0);
+    }
+
+    /// Writes a realistic Instance for pointing `afl-whatsup` and `afl-plot` at by hand:
+    /// `TSFFS_SAMPLE_OUT=/some/dir cargo test --lib emit_sample_instance -- --ignored`
+    #[test]
+    #[ignore = "writes to TSFFS_SAMPLE_OUT for manual checks with AFL++ tooling"]
+    fn emit_sample_instance() {
+        let out = PathBuf::from(
+            std::env::var("TSFFS_SAMPLE_OUT").expect("set TSFFS_SAMPLE_OUT to an output directory"),
+        );
+        let mut cfg = config(&TempDir::new("unused"));
+        cfg.output_directory = out;
+        cfg.start_time = SystemTime::now() - Duration::from_secs(600);
+
+        let mut writer = InstanceWriter::open(cfg.clone()).expect("open");
+        for step in 1..=6u64 {
+            let mut s = sample(0, step * 3000);
+            s.now = cfg.start_time + Duration::from_secs(step * 100);
+            s.corpus_count = 4 + step;
+            s.edges_found = 400 + step * 80;
+            s.last_find = Some(s.now - Duration::from_secs(20));
+            s.fuzzer = Some(FuzzerSnapshot {
+                cycles_done: step / 2,
+                cur_item: step,
+                pending_total: 8 - step,
+                pending_favs: 2,
+                max_depth: step,
+                stability: 98.5,
+                ..fuzzer_snapshot()
+            });
+            writer.write(&s);
+        }
     }
 
     #[test]

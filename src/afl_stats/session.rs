@@ -31,11 +31,42 @@ impl Tsffs {
             fuzzer_pid: std::process::id(),
             command_line: std::env::args().collect::<Vec<_>>().join(" "),
             exec_timeout_ms: (self.timeout * 1000.0) as u64,
+            setup_attributes: self.setup_attributes(),
         })?);
 
-        self.afl_stats_tick(true);
+        // The first write waits a full interval, by which time the campaign has executions to
+        // report; `afl-whatsup` divides by `execs_done`. A very short session still gets its
+        // final write at shutdown.
+        self.last_afl_stats_time = Some(SystemTime::now());
 
         Ok(())
+    }
+
+    /// The configuration recorded once in `fuzzer_setup`
+    fn setup_attributes(&self) -> Vec<(String, String)> {
+        let path = |p: &std::path::Path| p.display().to_string();
+
+        vec![
+            ("timeout", self.timeout.to_string()),
+            ("start_on_harness", self.start_on_harness.to_string()),
+            ("stop_on_harness", self.stop_on_harness.to_string()),
+            ("iteration_limit", self.iteration_limit.to_string()),
+            ("cmplog", self.cmplog.to_string()),
+            ("coverage_reporting", self.coverage_reporting.to_string()),
+            ("corpus_directory", path(&self.corpus_directory)),
+            ("solutions_directory", path(&self.solutions_directory)),
+            (
+                "generate_random_corpus",
+                self.generate_random_corpus.to_string(),
+            ),
+            ("keep_all_corpus", self.keep_all_corpus.to_string()),
+            ("afl_stats_interval", self.afl_stats_interval.to_string()),
+            ("output_directory", path(&self.output_directory)),
+            ("instance_name", self.instance_name.clone()),
+        ]
+        .into_iter()
+        .map(|(name, value)| (name.to_string(), value))
+        .collect()
     }
 
     /// Take the newest snapshot the fuzzer thread has published, if any. Its corpus and Edge
