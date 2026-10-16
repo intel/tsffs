@@ -325,6 +325,16 @@ default that is `output/default/` in the Simics project, and it contains:
 
 - `fuzzer_stats`: the current state of the campaign as `key : value` lines, replaced
   atomically on every write so a reader never sees a partial file.
+- `plot_data`: a time series with one row appended on every write, in the AFL++
+  15-column layout (`relative_time`, `cycles_done`, `cur_item`, `corpus_count`,
+  `pending_total`, `pending_favs`, `map_size`, `saved_crashes`, `saved_hangs`,
+  `max_depth`, `execs_per_sec`, `total_execs`, `edges_found`, `total_crashes`,
+  `servers_count`). Existing AFL++ plotting scripts and notebooks work unmodified, and
+  `afl-plot` renders it. `map_size` holds the coverage percentage, as in AFL++.
+- `fuzzer_setup`: written once per session. It lists the session's configuration as
+  `name=value` lines, followed by a `# command line:` line with the Simics command line.
+  `afl-whatsup` discovers an Instance by finding this file.
+- `.lock`: the Instance lock, described below.
 
 `fuzzer_stats` is rewritten every `afl_stats_interval` seconds of wall-clock time
 (checked each time the simulation stops, so a very long iteration delays the next
@@ -352,6 +362,12 @@ The following attributes control this behavior:
 An `instance_name` may contain only letters, digits, `.`, `_` and `-`, and may not
 consist only of dots. Anything else fails the session at startup with an error naming
 the allowed characters.
+
+When a session starts on an Instance that already holds a `plot_data` from an earlier
+session, that file is renamed to `plot_data.<unix_timestamp>` and a fresh `plot_data` is
+started, so two sessions are never mixed into one graph and no history is lost. A stale
+`fuzzer_stats` is simply replaced. Rotation only happens after the session holds the
+Instance lock, so a refused second session can never rotate a live session's files.
 
 The Instance is named `default` unless you name it, as AFL++ does, so repeated repro and
 debugging sessions reuse one directory instead of littering the output directory.

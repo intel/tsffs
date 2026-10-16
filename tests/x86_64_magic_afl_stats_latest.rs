@@ -130,6 +130,31 @@ fn test_x86_64_magic_afl_stats_latest() -> Result<()> {
     );
     assert_eq!(stats["total_edges"], "131072");
 
+    // plot_data has a header and at least one row of 15 columns
+    let plot = read_to_string(instance.join("plot_data")).context("Failed to read plot_data")?;
+    let plot_lines = plot.lines().collect::<Vec<_>>();
+    assert!(
+        plot_lines.len() >= 2,
+        "plot_data needs a header and a row: {plot_lines:?}"
+    );
+    assert!(
+        plot_lines[0].starts_with("# relative_time"),
+        "{}",
+        plot_lines[0]
+    );
+    for line in &plot_lines {
+        assert_eq!(line.split(',').count(), 15, "{line}");
+    }
+
+    // fuzzer_setup lets afl-whatsup discover the Instance
+    let setup =
+        read_to_string(instance.join("fuzzer_setup")).context("Failed to read fuzzer_setup")?;
+    assert!(setup.contains("# command line:"), "{setup}");
+    assert!(
+        setup.contains(&format!("instance_name={INSTANCE_NAME}")),
+        "{setup}"
+    );
+
     // Coverage reporting is on, so Branch targets are reported, separately from Edges
     assert!(
         stats["tsffs_branch_targets"].parse::<u64>()? > 0,
