@@ -243,6 +243,11 @@ impl InstanceWriter {
             ("last_update", Some(unix_seconds(sample.now).to_string())),
             ("run_time", Some(run_time.as_secs().to_string())),
             ("fuzzer_pid", Some(self.config.fuzzer_pid.to_string())),
+            ("cycles_done", fuzzer.map(|f| f.cycles_done.to_string())),
+            (
+                "cycles_wo_finds",
+                fuzzer.map(|f| f.cycles_wo_finds.to_string()),
+            ),
             ("time_wo_finds", Some(time_wo_finds.to_string())),
             ("execs_done", Some(sample.execs_done.to_string())),
             ("execs_per_sec", Some(format!("{execs_per_sec:.2}"))),
@@ -253,6 +258,10 @@ impl InstanceWriter {
                 fuzzer.map(|f| f.corpus_favored.to_string()),
             ),
             ("corpus_found", fuzzer.map(|f| f.corpus_found.to_string())),
+            ("max_depth", fuzzer.map(|f| f.max_depth.to_string())),
+            ("cur_item", fuzzer.map(|f| f.cur_item.to_string())),
+            ("pending_favs", fuzzer.map(|f| f.pending_favs.to_string())),
+            ("pending_total", fuzzer.map(|f| f.pending_total.to_string())),
             ("stability", fuzzer.map(|f| format!("{:.2}%", f.stability))),
             ("bitmap_cvg", Some(format!("{bitmap_cvg:.2}%"))),
             ("saved_crashes", Some(sample.crashes.to_string())),
@@ -466,6 +475,12 @@ mod tests {
             edges_found: 1310,
             var_byte_count: 131,
             stability: 90.0,
+            cycles_done: 3,
+            cycles_wo_finds: 2,
+            pending_total: 4,
+            pending_favs: 1,
+            cur_item: 7,
+            max_depth: 6,
         }
     }
 
@@ -490,6 +505,12 @@ mod tests {
             ("bitmap_cvg", "1.00%"),
             ("stability", "90.00%"),
             ("var_byte_count", "131"),
+            ("cycles_done", "3"),
+            ("cycles_wo_finds", "2"),
+            ("pending_total", "4"),
+            ("pending_favs", "1"),
+            ("cur_item", "7"),
+            ("max_depth", "6"),
         ];
         for (key, value) in expected {
             assert_eq!(stats.get(key).map(String::as_str), Some(value), "{key}");
@@ -513,6 +534,12 @@ mod tests {
             "corpus_found",
             "stability",
             "var_byte_count",
+            "cycles_done",
+            "cycles_wo_finds",
+            "pending_total",
+            "pending_favs",
+            "cur_item",
+            "max_depth",
         ] {
             assert!(!stats.contains_key(key), "{key} must be omitted");
         }

@@ -372,6 +372,13 @@ occupied slots that calibration found stable, and reads 100% until calibration h
 kept current between fuzzing rounds, which can be minutes apart, and are replaced by the
 fuzzer's exact values after every round.
 
+The queue keys describe how far the fuzzer has worked through its corpus: `cycles_done`
+is the number of completed passes over the corpus, `cycles_wo_finds` the passes since the
+corpus last grew, `pending_total` the entries not yet fuzzed, `pending_favs` the favored
+entries not yet fuzzed, `cur_item` the index of the entry being fuzzed, and `max_depth`
+the longest lineage of mutations. The corpus is scanned for these at most once per
+`afl_stats_interval`, so very large corpora do not slow every round.
+
 Each console status line (executions, executions per second, Edges, corpus size,
 crashes, hangs, and time since the last find) is printed at every statistics write, so the Simics console keeps
 reporting progress even when no new testcase or solution is found.

@@ -10,13 +10,16 @@
 //! pinned revision's upstream stage only fires a JSON user stat and writes no files.
 
 use crate::afl_stats::{
-    derive::{stability_pct, unstable_filled_count},
+    derive::{
+        cycles_without_finds, scan_queue, stability_pct, unstable_filled_count, EntryFacts,
+        QueueScan,
+    },
     snapshot::{FuzzerSnapshot, SharedSnapshot},
 };
 use libafl::{
-    corpus::Corpus,
+    corpus::{testcase::SchedulerTestcaseMetadata, Corpus, HasCurrentCorpusIdx},
     feedbacks::MapFeedbackMetadata,
-    schedulers::minimizer::IsFavoredMetadata,
+    schedulers::{minimizer::IsFavoredMetadata, powersched::SchedulerMetadata},
     stages::{calibrate::UnstableEntriesMetadata, Stage},
     state::{HasCorpus, HasMetadata, HasNamedMetadata, UsesState},
     Error,
@@ -36,7 +39,12 @@ pub(crate) struct TsffsAflStatsStage<E, EM, Z> {
     /// The scan over every corpus entry runs at most this often
     scan_interval: Duration,
     last_scan: Option<Instant>,
-    corpus_favored: u64,
+    /// The result of the latest scan, reused until the next one is due
+    queue: QueueScan,
+    /// The corpus size at the previous round, to notice growth
+    last_corpus_count: usize,
+    /// The queue cycle count when the corpus last grew
+    cycles_at_last_find: u64,
     phantom: PhantomData<(E, EM, Z)>,
 }
 
@@ -53,7 +61,9 @@ impl<E, EM, Z> TsffsAflStatsStage<E, EM, Z> {
             initial_corpus_count,
             scan_interval,
             last_scan: None,
-            corpus_favored: 0,
+            queue: QueueScan::default(),
+            last_corpus_count: initial_corpus_count as usize,
+            cycles_at_last_find: 0,
             phantom: PhantomData,
         }
     }
@@ -71,7 +81,7 @@ where
     E: UsesState,
     EM: UsesState<State = E::State>,
     Z: UsesState<State = E::State>,
-    E::State: HasCorpus + HasMetadata + HasNamedMetadata,
+    E::State: HasCorpus + HasMetadata + HasNamedMetadata + HasCurrentCorpusIdx,
 {
     fn perform(
         &mut self,
@@ -103,22 +113,50 @@ where
             .last_scan
             .is_none_or(|last| last.elapsed() >= self.scan_interval)
         {
-            self.corpus_favored = state
-                .corpus()
-                .ids()
-                .filter_map(|id| state.corpus().get(id).ok())
-                .filter(|testcase| testcase.borrow().has_metadata::<IsFavoredMetadata>())
-                .count() as u64;
+            self.queue = scan_queue(state.corpus().ids().filter_map(|id| {
+                let testcase = state.corpus().get(id).ok()?.borrow();
+                Some(EntryFacts {
+                    scheduled: testcase.scheduled_count() > 0,
+                    favored: testcase.has_metadata::<IsFavoredMetadata>(),
+                    depth: testcase
+                        .metadata_map()
+                        .get::<SchedulerTestcaseMetadata>()
+                        .map_or(0, |m| m.depth()),
+                })
+            }));
             self.last_scan = Some(Instant::now());
         }
 
+        let cycles_done = state
+            .metadata_map()
+            .get::<SchedulerMetadata>()
+            .map_or(0, |m| m.queue_cycles());
+
+        if corpus_count > self.last_corpus_count {
+            self.cycles_at_last_find = cycles_done;
+        }
+        self.last_corpus_count = corpus_count;
+
+        // A missing current index is normal between rounds and is not an error
+        let cur_item = state
+            .current_corpus_idx()
+            .ok()
+            .flatten()
+            .map_or(0, |id| usize::from(id) as u64);
+
         self.shared.publish(FuzzerSnapshot {
             corpus_count: corpus_count as u64,
-            corpus_favored: self.corpus_favored,
+            corpus_favored: self.queue.corpus_favored,
             corpus_found: (corpus_count as u64).saturating_sub(self.initial_corpus_count),
             edges_found: filled as u64,
             var_byte_count: unstable_filled.unwrap_or(0) as u64,
             stability: stability_pct(filled, unstable_filled),
+            cycles_done,
+            cycles_wo_finds: cycles_without_finds(cycles_done, self.cycles_at_last_find),
+            pending_total: self.queue.pending_total,
+            pending_favs: self.queue.pending_favs,
+            cur_item,
+            max_depth: self.queue.max_depth,
         });
 
         Ok(())
