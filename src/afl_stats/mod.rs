@@ -12,7 +12,7 @@ mod session;
 
 use anyhow::{anyhow, bail, Result};
 use std::{
-    fs::{create_dir_all, rename, File},
+    fs::{create_dir_all, rename, File, OpenOptions, TryLockError},
     io::Write,
     path::{Path, PathBuf},
     time::{Duration, SystemTime, UNIX_EPOCH},
@@ -20,6 +20,8 @@ use std::{
 
 /// Name of the stats file inside an Instance
 pub(crate) const FUZZER_STATS_NAME: &str = "fuzzer_stats";
+/// Name of the lock file inside an Instance
+const LOCK_NAME: &str = ".lock";
 
 /// Check that an Instance name is a single safe path component: letters, digits, `.`, `_` and
 /// `-`, and not made only of dots (which would be `.` or `..`).
@@ -109,10 +111,15 @@ pub(crate) struct InstanceWriter {
     /// Time and execution count at the previous write, for `execs_ps_last_min`
     previous: (SystemTime, u64),
     failing: bool,
+    /// Exclusive lock on `<instance>/.lock`, held for the lifetime of the session. The OS
+    /// releases it when this is dropped or the process exits, so a crashed session never blocks
+    /// the next one.
+    _lock: File,
 }
 
 impl InstanceWriter {
-    /// Create the Instance directory for a session. Fails on an invalid Instance name.
+    /// Create the Instance directory for a session and lock it. Fails on an invalid Instance
+    /// name, or if another live session already holds the Instance.
     pub(crate) fn open(config: InstanceConfig) -> Result<Self> {
         validate_instance_name(&config.instance_name)?;
 
@@ -120,11 +127,33 @@ impl InstanceWriter {
         create_dir_all(&dir)
             .map_err(|e| anyhow!("Failed to create instance directory {}: {e}", dir.display()))?;
 
+        // The lock is taken before anything else in the Instance changes
+        let lock = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(false)
+            .open(dir.join(LOCK_NAME))
+            .map_err(|e| anyhow!("Failed to open lock in {}: {e}", dir.display()))?;
+
+        match lock.try_lock() {
+            Ok(()) => {}
+            Err(TryLockError::WouldBlock) => bail!(
+                "Instance {:?} ({}) is in use by another running session. Parallel sessions \
+                need distinct instance_name values.",
+                config.instance_name,
+                dir.display()
+            ),
+            Err(TryLockError::Error(e)) => {
+                bail!("Failed to lock instance {}: {e}", dir.display())
+            }
+        }
+
         Ok(Self {
             previous: (config.start_time, 0),
             config,
             dir,
             failing: false,
+            _lock: lock,
         })
     }
 
@@ -231,6 +260,34 @@ impl InstanceWriter {
             .map(|(key, value)| format!("{key:<18}: {value}\n"))
             .collect()
     }
+}
+
+/// The one-line summary printed to the Simics console at every stats tick
+pub(crate) fn status_line(start_time: SystemTime, sample: &StatsSample) -> String {
+    let run_time = sample
+        .now
+        .duration_since(start_time)
+        .unwrap_or(Duration::ZERO);
+    let last_find = match sample.last_find {
+        Some(t) => format!(
+            "{}s ago",
+            sample
+                .now
+                .duration_since(t)
+                .unwrap_or(Duration::ZERO)
+                .as_secs()
+        ),
+        None => "none yet".to_string(),
+    };
+
+    format!(
+        "execs: {} ({:.2}/sec), crashes: {}, hangs: {}, last find: {}",
+        sample.execs_done,
+        rate(sample.execs_done, run_time),
+        sample.crashes,
+        sample.hangs,
+        last_find
+    )
 }
 
 fn rate(count: u64, over: Duration) -> f64 {
@@ -438,6 +495,41 @@ mod tests {
         cfg.instance_name = "../escape".to_string();
         assert!(InstanceWriter::open(cfg).is_err());
         assert!(!dir.0.join("..").join("escape").exists());
+    }
+
+    #[test]
+    fn status_line_summarizes_the_campaign() {
+        let mut s = sample(100, 5000);
+        s.crashes = 2;
+        s.hangs = 1;
+        s.last_find = Some(at(40));
+        assert_eq!(
+            status_line(at(0), &s),
+            "execs: 5000 (50.00/sec), crashes: 2, hangs: 1, last find: 60s ago"
+        );
+
+        s.last_find = None;
+        assert!(status_line(at(0), &s).ends_with("last find: none yet"));
+    }
+
+    #[test]
+    fn second_session_on_a_locked_instance_is_refused() {
+        let dir = TempDir::new("lock");
+        let first = InstanceWriter::open(config(&dir)).expect("first session");
+
+        let err = InstanceWriter::open(config(&dir)).expect_err("instance is in use");
+        let message = err.to_string();
+        assert!(message.contains("in use"), "{message}");
+        assert!(message.contains("instance_name"), "{message}");
+
+        // A differently named Instance is independent
+        let mut other = config(&dir);
+        other.instance_name = "other".to_string();
+        InstanceWriter::open(other).expect("distinct instance");
+
+        // Dropping the first session releases the lock
+        drop(first);
+        InstanceWriter::open(config(&dir)).expect("lock released");
     }
 
     #[test]

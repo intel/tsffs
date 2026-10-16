@@ -4,7 +4,7 @@
 //! Simics-side glue: owns the live counters and drives the [`InstanceWriter`] on a wall-clock
 //! cadence.
 
-use super::{InstanceConfig, InstanceWriter, StatsSample, WriteNotice};
+use super::{status_line, InstanceConfig, InstanceWriter, StatsSample, WriteNotice};
 use crate::Tsffs;
 use anyhow::Result;
 use simics::{debug, info, warn, AsConfObject};
@@ -73,6 +73,14 @@ impl Tsffs {
         let Some(notice) = self.afl_writer.as_mut().map(|w| w.write(&sample)) else {
             return;
         };
+
+        // The console line does not depend on the files being writable
+        let start_time = self.start_time.get().copied().unwrap_or(now);
+        info!(
+            self.as_conf_object(),
+            "{}",
+            status_line(start_time, &sample)
+        );
 
         match notice {
             WriteNotice::Quiet => {}
