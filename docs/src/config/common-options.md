@@ -383,10 +383,30 @@ Each console status line (executions, executions per second, Edges, corpus size,
 crashes, hangs, and time since the last find) is printed at every statistics write, so the Simics console keeps
 reporting progress even when no new testcase or solution is found.
 
+When `coverage_reporting` is enabled, `fuzzer_stats` also carries
+`tsffs_branch_targets`: the number of distinct program counters reached by taken
+branches. This is the firmware reachability measure that `log.json` heartbeats used to
+report. It is a **Branch target** count, not an Edge count: several Branch targets can
+hash into one Edge and one Branch target can contribute to several Edges, so the two are
+not comparable. The key is absent when coverage reporting is disabled.
+
 ### Enable Logging and Set Log path
 
-By default, the fuzzer will log useful informational messages in JSON format to
-a log in the project directory (`log.json`).
+> **Deprecated.** `log.json`, and the `log_to_file`, `log_path`, `heartbeat` and
+> `heartbeat_interval` attributes that configure it, are being replaced by
+> AFL++-compatible outputs (see
+> [ADR 0001](https://github.com/Wenzel/tsffs/blob/ecov-m1-stage/docs/adr/0001-replace-log-json-with-afl-compatible-outputs.md)).
+> Heartbeat and message records are **no longer written** to `log.json`: use
+> `fuzzer_stats` and `plot_data` in the [Instance directory](#afl-statistics-and-the-instance-directory)
+> instead, with `afl_stats_interval` replacing `heartbeat_interval`. The `heartbeat`
+> and `heartbeat_interval` attributes are still accepted so existing scripts keep
+> working, but they no longer have any effect. Heartbeat Branch target counts moved to
+> `tsffs_branch_targets` in `fuzzer_stats`. `log_to_file` and `log_path` still control
+> the startup, interesting, solution and timeout records, which stay until their
+> replacements land.
+
+By default, the fuzzer will log startup, interesting input, solution and timeout
+records in JSON format to a log in the project directory (`log.json`).
 
 The path for this log can be set by setting:
 
