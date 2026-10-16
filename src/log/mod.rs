@@ -31,10 +31,6 @@ pub(crate) enum LogMessage {
     Startup {
         timestamp: String,
     },
-    Message {
-        timestamp: String,
-        message: String,
-    },
     Interesting {
         timestamp: String,
         message: LogMessageInteresting,
@@ -47,26 +43,12 @@ pub(crate) enum LogMessage {
         timestamp: String,
         message: LogMessageTimeout,
     },
-    Heartbeat {
-        iterations: usize,
-        solutions: usize,
-        timeouts: usize,
-        edges: usize,
-        timestamp: String,
-    },
 }
 
 impl LogMessage {
     pub(crate) fn startup() -> Self {
         Self::Startup {
             timestamp: Utc::now().to_rfc3339(),
-        }
-    }
-
-    pub(crate) fn message(message: String) -> Self {
-        Self::Message {
-            timestamp: Utc::now().to_rfc3339(),
-            message,
         }
     }
 
@@ -84,21 +66,6 @@ impl LogMessage {
             },
         }
     }
-
-    pub(crate) fn heartbeat(
-        iterations: usize,
-        solutions: usize,
-        timeouts: usize,
-        edges: usize,
-    ) -> Self {
-        Self::Heartbeat {
-            iterations,
-            solutions,
-            timeouts,
-            edges,
-            timestamp: Utc::now().to_rfc3339(),
-        }
-    }
 }
 
 impl Tsffs {
@@ -113,7 +80,6 @@ impl Tsffs {
             match m {
                 FuzzerMessage::String(s) => {
                     info!(self.as_conf_object(), "Fuzzer message: {s}");
-                    self.log(LogMessage::message(s.clone()))?;
                 }
                 FuzzerMessage::Interesting {
                     indices,
@@ -240,22 +206,6 @@ impl Tsffs {
 
             Ok::<(), anyhow::Error>(())
         })?;
-
-        if self.heartbeat {
-            let last = self.last_heartbeat_time.get_or_insert_with(SystemTime::now);
-
-            if last.elapsed()?.as_secs() >= self.heartbeat_interval {
-                self.log(LogMessage::heartbeat(
-                    self.iterations,
-                    self.solutions,
-                    self.timeouts,
-                    self.edges_seen.len(),
-                ))?;
-
-                // Set the last heartbeat time
-                self.last_heartbeat_time = Some(SystemTime::now());
-            }
-        }
 
         Ok(())
     }

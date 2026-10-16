@@ -374,7 +374,8 @@ pub(crate) struct Tsffs {
     #[class(attribute(optional, default = true))]
     pub pre_snapshot_checkpoint: bool,
     #[class(attribute(optional, default = lookup_file("%simics%")?.join("log.json")))]
-    /// The path to the log file which will be used to log the fuzzer's output statistics
+    /// The path to the log file which will be used to log the fuzzer's output statistics.
+    /// Deprecated: `log.json` is being replaced by AFL++-compatible outputs.
     pub log_path: PathBuf,
     #[class(attribute(optional, default = true))]
     pub log_to_file: bool,
@@ -414,10 +415,11 @@ pub(crate) struct Tsffs {
     /// Whether execution traces should include just PC (vs instruction text and bytes)
     pub execution_trace_pc_only: bool,
     #[class(attribute(optional, default = true))]
-    /// Whether a heartbeat message should be emitted every `heartbeat_interval` seconds
+    /// Deprecated and ignored: heartbeat records are no longer written to `log.json`. Statistics
+    /// are written to `fuzzer_stats` and `plot_data` every `afl_stats_interval` seconds.
     pub heartbeat: bool,
     #[class(attribute(optional, default = 60))]
-    /// The interval in seconds between heartbeat messages
+    /// Deprecated and ignored: use `afl_stats_interval` instead.
     pub heartbeat_interval: u64,
     #[class(attribute(optional, default = true))]
     /// Whether AFL++-compatible statistics (`fuzzer_stats`) are maintained in the Instance
@@ -555,9 +557,6 @@ pub(crate) struct Tsffs {
     // #[builder(default = SystemTime::now())]
     /// The time the fuzzer was started at
     start_time: OnceCell<SystemTime>,
-    // #[builder(default = SystemTime::now())]
-    /// The time the fuzzer was started at
-    last_heartbeat_time: Option<SystemTime>,
 
     log: OnceCell<File>,
 
