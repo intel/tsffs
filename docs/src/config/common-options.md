@@ -353,6 +353,20 @@ An `instance_name` may contain only letters, digits, `.`, `_` and `-`, and may n
 consist only of dots. Anything else fails the session at startup with an error naming
 the allowed characters.
 
+The Instance is named `default` unless you name it, as AFL++ does, so repeated repro and
+debugging sessions reuse one directory instead of littering the output directory.
+
+At startup TSFFS takes an exclusive lock on `<instance>/.lock` and holds it for the
+session. A second live session that targets the same Instance fails at startup with an
+error saying the Instance is in use. **Sessions running in parallel need distinct
+`instance_name` values.** The operating system releases the lock when the process exits,
+so a session that crashed never blocks the next one and there is nothing to clean up by
+hand.
+
+Each console status line (executions, executions per second, crashes, hangs, and time
+since the last find) is printed at every statistics write, so the Simics console keeps
+reporting progress even when no new testcase or solution is found.
+
 ### Enable Logging and Set Log path
 
 By default, the fuzzer will log useful informational messages in JSON format to
