@@ -363,8 +363,17 @@ error saying the Instance is in use. **Sessions running in parallel need distinc
 so a session that crashed never blocks the next one and there is nothing to clean up by
 hand.
 
-Each console status line (executions, executions per second, crashes, hangs, and time
-since the last find) is printed at every statistics write, so the Simics console keeps
+`fuzzer_stats` reports **Edges**: occupied slots of the fuzzer's coverage map, which is
+what `edges_found` means for AFL++. `bitmap_cvg` is the share of the map they occupy and
+never exceeds 100%, and `total_edges` is the map size. These keys are reported whether or
+not `coverage_reporting` is enabled. `stability` is computed as AFL++ does, the share of
+occupied slots that calibration found stable, and reads 100% until calibration has run;
+`var_byte_count` is the number of unstable slots. `corpus_count` and `edges_found` are
+kept current between fuzzing rounds, which can be minutes apart, and are replaced by the
+fuzzer's exact values after every round.
+
+Each console status line (executions, executions per second, Edges, corpus size,
+crashes, hangs, and time since the last find) is printed at every statistics write, so the Simics console keeps
 reporting progress even when no new testcase or solution is found.
 
 ### Enable Logging and Set Log path

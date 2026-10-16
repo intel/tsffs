@@ -37,13 +37,14 @@ use libafl_bolts::{
     prelude::{OwnedMutSlice, OwnedRefMut},
     rands::StdRand,
     tuples::{tuple_list, Merge},
-    AsMutSlice, AsSlice,
+    AsMutSlice, AsSlice, Named,
 };
 use libafl_targets::{AFLppCmpLogObserver, AFLppCmplogTracingStage};
 use simics::{api::AsConfObject, debug, trace, warn};
+use stats_stage::TsffsAflStatsStage;
 use std::{
     cell::RefCell, fmt::Debug, fs::write, io::stderr, slice::from_raw_parts_mut,
-    sync::mpsc::channel, thread::spawn,
+    sync::mpsc::channel, thread::spawn, time::Duration,
 };
 use tokenize::{tokenize_executable_file, tokenize_src_file};
 use tracing::{level_filters::LevelFilter, Level};
@@ -54,6 +55,7 @@ use tracing_subscriber::{
 pub mod executors;
 pub mod feedbacks;
 pub mod messages;
+pub mod stats_stage;
 pub mod tokenize;
 
 #[derive(Clone, PartialEq, Eq)]
@@ -157,6 +159,8 @@ impl Tsffs {
         });
 
         let cmplog_enabled = self.cmplog;
+        let afl_snapshot = self.afl_snapshot.clone();
+        let afl_stats_interval = Duration::from_secs(self.afl_stats_interval);
         let corpus_directory = self.corpus_directory.clone();
         let solutions_directory = self.solutions_directory.clone();
         let executable_tokens = self
@@ -306,6 +310,7 @@ impl Tsffs {
                 })?;
 
                 // NOTE: Initialize these here before we move the feedbacks
+                let map_name = map_feedback.name().to_string();
                 let calibration_stage = CalibrationStage::new(&map_feedback);
                 let colorization_stage = ColorizationStage::new(&edges_observer);
                 let generalization_stage = GeneralizationStage::new(&edges_observer);
@@ -470,6 +475,13 @@ impl Tsffs {
                     );
                 }
 
+                let afl_stats_stage = TsffsAflStatsStage::new(
+                    map_name,
+                    afl_snapshot,
+                    state.corpus().count() as u64,
+                    afl_stats_interval,
+                );
+
                 let mut stages = tuple_list!(
                     calibration_stage,
                     generalization_stage,
@@ -528,6 +540,7 @@ impl Tsffs {
                     mopt_mutational_stage,
                     dump_corpus_stage,
                     synchronize_corpus_stage,
+                    afl_stats_stage,
                 );
 
                 loop {

@@ -117,5 +117,16 @@ fn test_x86_64_magic_afl_stats_latest() -> Result<()> {
     assert!(stats["afl_version"].starts_with("tsffs-"));
     assert_eq!(stats["fuzzer_pid"].parse::<u32>().map(|p| p > 0), Ok(true));
 
+    // Edges are occupied coverage-map slots, whether or not coverage reporting is enabled
+    let edges_found = stats["edges_found"].parse::<u64>()?;
+    assert!(edges_found > 0, "edges_found must be positive: {stats:?}");
+    assert!(
+        stats["corpus_count"].parse::<u64>()? >= 1,
+        "corpus_count must be at least 1: {stats:?}"
+    );
+    assert_eq!(stats["total_edges"], "131072");
+    let bitmap_cvg = stats["bitmap_cvg"].trim_end_matches('%').parse::<f64>()?;
+    assert!(bitmap_cvg > 0.0 && bitmap_cvg <= 100.0, "{bitmap_cvg}");
+
     Ok(())
 }

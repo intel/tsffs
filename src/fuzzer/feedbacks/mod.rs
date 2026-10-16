@@ -55,6 +55,8 @@ where
         EM: EventFirer<State = S>,
         OT: ObserversTuple<S>,
     {
+        let covered_before = self.covered_map_indexes(state);
+
         let is_interesting = self
             .base
             .is_interesting(state, manager, input, observers, exit_kind)?;
@@ -81,6 +83,10 @@ where
 
             let initial = observer.initial();
 
+            let new_edges = map_state
+                .num_covered_map_indexes
+                .saturating_sub(covered_before);
+
             let mut interesting_indices = vec![];
 
             for (i, item) in observer
@@ -103,6 +109,7 @@ where
                         .send(FuzzerMessage::Interesting {
                             indices: interesting_indices,
                             input: input.target_bytes().as_slice().to_vec(),
+                            new_edges,
                         })
                         .ok()
                 })
@@ -267,6 +274,17 @@ where
     N: IsNovel<T>,
     S: UsesInput + HasNamedMetadata,
 {
+    /// The number of occupied slots in the history map. The base feedback fills the history map
+    /// as it decides interestingness, so the difference across that call is the number of new
+    /// Edges.
+    fn covered_map_indexes(&self, state: &S) -> usize {
+        state
+            .named_metadata_map()
+            .get::<MapFeedbackMetadata<T>>(self.name())
+            .map(|m| m.num_covered_map_indexes)
+            .unwrap_or(0)
+    }
+
     #[must_use]
     pub fn new(base: MapFeedback<N, O, R, S, T>, sender: Sender<FuzzerMessage>) -> Self {
         let sender = {
