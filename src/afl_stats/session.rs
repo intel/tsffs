@@ -38,6 +38,19 @@ impl Tsffs {
         Ok(())
     }
 
+    /// Take the newest snapshot the fuzzer thread has published, if any. Its corpus and Edge
+    /// counts are authoritative and overwrite the live counts bumped from `Interesting` messages.
+    fn refresh_from_fuzzer_snapshot(&mut self) {
+        if let Some((generation, snapshot)) =
+            self.afl_snapshot.newer_than(self.afl_snapshot_generation)
+        {
+            self.afl_snapshot_generation = generation;
+            self.afl_corpus_count = snapshot.corpus_count;
+            self.afl_edges_found = snapshot.edges_found;
+            self.afl_fuzzer_snapshot = Some(snapshot);
+        }
+    }
+
     /// Write AFL statistics if `afl_stats_interval` seconds have passed since the last write,
     /// or unconditionally when `force` is set. Never fails: problems are reported as log
     /// messages so that monitoring cannot stop fuzzing.
@@ -59,6 +72,8 @@ impl Tsffs {
 
         self.last_afl_stats_time = Some(now);
 
+        self.refresh_from_fuzzer_snapshot();
+
         let sample = StatsSample {
             now,
             execs_done: self.iterations as u64,
@@ -68,6 +83,10 @@ impl Tsffs {
             last_crash: self.last_crash_time,
             last_hang: self.last_hang_time,
             execs_at_last_crash: self.iterations_at_last_crash as u64,
+            corpus_count: self.afl_corpus_count,
+            edges_found: self.afl_edges_found,
+            total_edges: Tsffs::COVERAGE_MAP_SIZE as u64,
+            fuzzer: self.afl_fuzzer_snapshot.clone(),
         };
 
         let Some(notice) = self.afl_writer.as_mut().map(|w| w.write(&sample)) else {

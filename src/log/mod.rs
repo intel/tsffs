@@ -115,8 +115,14 @@ impl Tsffs {
                     info!(self.as_conf_object(), "Fuzzer message: {s}");
                     self.log(LogMessage::message(s.clone()))?;
                 }
-                FuzzerMessage::Interesting { indices, input } => {
+                FuzzerMessage::Interesting {
+                    indices,
+                    input,
+                    new_edges,
+                } => {
                     self.last_find_time = Some(SystemTime::now());
+                    self.afl_corpus_count += 1;
+                    self.afl_edges_found += *new_edges as u64;
                     info!(
                         self.as_conf_object(),
                         "Interesting input for AFL indices {indices:?} with input {input:?}"
