@@ -554,6 +554,9 @@ impl Tsffs {
     }
 
     pub fn send_shutdown(&mut self) -> Result<()> {
+        // The last numbers on disk should match the end of the campaign
+        self.afl_stats_tick(true);
+
         if let Some(stx) = self.fuzzer_shutdown.get_mut() {
             stx.send(ShutdownMessage::default())?;
         }

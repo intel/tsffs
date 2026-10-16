@@ -116,6 +116,7 @@ impl Tsffs {
                     self.log(LogMessage::message(s.clone()))?;
                 }
                 FuzzerMessage::Interesting { indices, input } => {
+                    self.last_find_time = Some(SystemTime::now());
                     info!(
                         self.as_conf_object(),
                         "Interesting input for AFL indices {indices:?} with input {input:?}"
