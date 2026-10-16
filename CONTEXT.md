@@ -9,11 +9,11 @@ An occupied slot in the fuzzer's coverage map, as tracked by the map feedback's 
 _Avoid_: using "edge" for a branch target address
 
 **Branch target**:
-A distinct program counter reached by a taken branch, recorded by the tracer when coverage reporting is enabled. Reported in `log.json` heartbeats, never in AFL stat files.
+A distinct program counter reached by a taken branch, recorded by the tracer when coverage reporting is enabled. Reported in `fuzzer_stats` as `tsffs_branch_targets`, never as `edges_found`.
 _Avoid_: edge
 
 **Instance**:
-One fuzzing session's AFL-compatible stats view, a directory named by `instance_name` under the output directory. Unique per session unless the user names it.
+One fuzzing session's AFL-compatible output directory, named by `instance_name` (default `default`) under the output directory. At most one live session holds an Instance at a time; parallel sessions need distinct names.
 _Avoid_: run, job
 
 ## Relationships
