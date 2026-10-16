@@ -20,6 +20,7 @@
   - [Checking Target Software Compatibility](fuzzing/compatibility.md)
   - [Choosing A Harnessing Method](fuzzing/choose-harnessing-method.md)
   - [Running the Fuzzer](fuzzing/running-fuzzer.md)
+  - [Monitoring a Campaign](fuzzing/monitoring-a-campaign.md)
   - [Optimizing For Fuzzing](fuzzing/optimizing-for-fuzzing.md)
   - [Analyzing Results](fuzzing/analyzing-results.md)
 

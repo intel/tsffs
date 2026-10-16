@@ -47,6 +47,8 @@ use os::windows::WindowsOsInfo;
 use serde::{Deserialize, Serialize};
 use serde_json::to_writer;
 use simics::continue_simulation;
+#[cfg(simics_version = "6")]
+use simics::free_attribute;
 use simics::{
     break_simulation, class, debug, error, get_class, get_interface, get_processor_number, info,
     lookup_file, object_clock, run_alone, run_command, run_python, simics_init, sys::save_flags_t,
@@ -56,8 +58,6 @@ use simics::{
     CoreSimulationStoppedHap, CpuInstrumentationSubscribeInterface, Event, EventClassFlag,
     FromConfObject, HapHandle, Interface,
 };
-#[cfg(simics_version = "6")]
-use simics::free_attribute;
 #[cfg(simics_version = "6")]
 use simics::{
     discard_future, restore_micro_checkpoint, save_micro_checkpoint, MicroCheckpointFlags,
@@ -88,6 +88,7 @@ use tracer::{
 use typed_builder::TypedBuilder;
 use versions::{Requirement, Versioning};
 
+pub(crate) mod afl_stats;
 pub(crate) mod arch;
 pub(crate) mod fuzzer;
 pub(crate) mod haps;
@@ -373,7 +374,8 @@ pub(crate) struct Tsffs {
     #[class(attribute(optional, default = true))]
     pub pre_snapshot_checkpoint: bool,
     #[class(attribute(optional, default = lookup_file("%simics%")?.join("log.json")))]
-    /// The path to the log file which will be used to log the fuzzer's output statistics
+    /// The path to the log file which will be used to log the fuzzer's output statistics.
+    /// Deprecated: `log.json` is being replaced by AFL++-compatible outputs.
     pub log_path: PathBuf,
     #[class(attribute(optional, default = true))]
     pub log_to_file: bool,
@@ -413,11 +415,28 @@ pub(crate) struct Tsffs {
     /// Whether execution traces should include just PC (vs instruction text and bytes)
     pub execution_trace_pc_only: bool,
     #[class(attribute(optional, default = true))]
-    /// Whether a heartbeat message should be emitted every `heartbeat_interval` seconds
+    /// Deprecated and ignored: heartbeat records are no longer written to `log.json`. Statistics
+    /// are written to `fuzzer_stats` and `plot_data` every `afl_stats_interval` seconds.
     pub heartbeat: bool,
     #[class(attribute(optional, default = 60))]
-    /// The interval in seconds between heartbeat messages
+    /// Deprecated and ignored: use `afl_stats_interval` instead.
     pub heartbeat_interval: u64,
+    #[class(attribute(optional, default = true))]
+    /// Whether AFL++-compatible statistics (`fuzzer_stats`) are maintained in the Instance
+    /// directory `<output_directory>/<instance_name>/` while fuzzing.
+    pub afl_stats: bool,
+    #[class(attribute(optional, default = 10))]
+    /// The wall-clock interval in seconds between AFL statistics writes. The interval is
+    /// checked each time the simulation stops, so a long iteration delays the next write.
+    pub afl_stats_interval: u64,
+    #[class(attribute(optional, default = lookup_file("%simics%")?.join("output")))]
+    /// The directory containing one Instance directory per fuzzing session. If not provided,
+    /// "%simics%/output" will be used by default.
+    pub output_directory: PathBuf,
+    #[class(attribute(optional, default = "default".to_string()))]
+    /// The name of this session's Instance directory under `output_directory`. It may contain
+    /// only letters, digits, '.', '_' and '-', and may not consist only of dots.
+    pub instance_name: String,
 
     #[class(attribute(optional, default = false))]
     /// Whether symbolic coverage should be used during fuzzing
@@ -517,11 +536,32 @@ pub(crate) struct Tsffs {
     // #[builder(default = SystemTime::now())]
     /// The time the fuzzer was started at
     start_time: OnceCell<SystemTime>,
-    // #[builder(default = SystemTime::now())]
-    /// The time the fuzzer was started at
-    last_heartbeat_time: Option<SystemTime>,
 
     log: OnceCell<File>,
+
+    /// The writer for this session's AFL Instance, once the session has started
+    afl_writer: Option<afl_stats::InstanceWriter>,
+    /// When AFL statistics were last written
+    last_afl_stats_time: Option<SystemTime>,
+    /// When the last interesting input was found
+    last_find_time: Option<SystemTime>,
+    /// When the last crash happened
+    last_crash_time: Option<SystemTime>,
+    /// When the last timeout happened
+    last_hang_time: Option<SystemTime>,
+    /// The iteration count at the last crash
+    iterations_at_last_crash: usize,
+    /// The latest counts published by the fuzzer thread's `TsffsAflStatsStage`
+    afl_snapshot: afl_stats::snapshot::SharedSnapshot,
+    /// The generation of the newest snapshot taken from `afl_snapshot`
+    afl_snapshot_generation: u64,
+    /// The newest snapshot taken from `afl_snapshot`
+    afl_fuzzer_snapshot: Option<afl_stats::snapshot::FuzzerSnapshot>,
+    /// Live corpus size: bumped for each `Interesting` message, overwritten by snapshots
+    afl_corpus_count: u64,
+    /// Live Edge count: bumped by the Edges each `Interesting` message adds, overwritten by
+    /// snapshots
+    afl_edges_found: u64,
 
     /// Whether cmplog is currently enabled
     coverage_enabled: bool,

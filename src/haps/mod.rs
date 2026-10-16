@@ -70,6 +70,7 @@ impl Tsffs {
             self.start_time
                 .set(SystemTime::now())
                 .map_err(|_| anyhow!("Failed to set start time"))?;
+            self.start_afl_stats()?;
             self.coverage_enabled = true;
             self.save_initial_snapshot()?;
             // Collect windows coverage info if enabled
@@ -112,7 +113,22 @@ impl Tsffs {
         // 1) Count this iteration as complete.
         self.iterations += 1;
 
-        // 2) Enforce iteration cap before scheduling/resuming work for next iteration.
+        // 2) Update outcome counters where this stop reason contributes to stats. This happens
+        // before the iteration cap check so the final stats include the last iteration.
+        match iteration_count {
+            IterationCount::NoCount => {}
+            IterationCount::Timeout => {
+                self.timeouts += 1;
+                self.last_hang_time = Some(SystemTime::now());
+            }
+            IterationCount::Solution => {
+                self.solutions += 1;
+                self.last_crash_time = Some(SystemTime::now());
+                self.iterations_at_last_crash = self.iterations;
+            }
+        }
+
+        // 3) Enforce iteration cap before scheduling/resuming work for next iteration.
         if self.iteration_limit != 0 && self.iterations >= self.iteration_limit {
             let duration = SystemTime::now().duration_since(
                 *self
@@ -139,13 +155,6 @@ impl Tsffs {
             } else {
                 return Ok(IterationControl::StopRequested);
             }
-        }
-
-        // 3) Update outcome counters where this stop reason contributes to stats.
-        match iteration_count {
-            IterationCount::NoCount => {}
-            IterationCount::Timeout => self.timeouts += 1,
-            IterationCount::Solution => self.solutions += 1,
         }
 
         let fuzzer_tx = self
@@ -265,6 +274,7 @@ impl Tsffs {
             self.start_time
                 .set(SystemTime::now())
                 .map_err(|_| anyhow!("Failed to set start time"))?;
+            self.start_afl_stats()?;
             self.coverage_enabled = true;
             self.save_initial_snapshot()?;
 
@@ -307,6 +317,7 @@ impl Tsffs {
             self.start_time
                 .set(SystemTime::now())
                 .map_err(|_| anyhow!("Failed to set start time"))?;
+            self.start_afl_stats()?;
             self.coverage_enabled = true;
             self.save_initial_snapshot()?;
 
@@ -534,6 +545,7 @@ impl Tsffs {
 
         //  Log information from the fuzzer
         self.log_messages()?;
+        self.afl_stats_tick(false);
 
         if let Some(reason) = self.stop_reason.take() {
             self.on_simulation_stopped_with_reason(reason)
