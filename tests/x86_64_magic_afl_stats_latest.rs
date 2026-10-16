@@ -125,6 +125,16 @@ fn test_x86_64_magic_afl_stats_latest() -> Result<()> {
         "corpus_count must be at least 1: {stats:?}"
     );
     assert_eq!(stats["total_edges"], "131072");
+    for key in [
+        "cycles_done",
+        "cycles_wo_finds",
+        "pending_total",
+        "pending_favs",
+        "cur_item",
+        "max_depth",
+    ] {
+        assert!(stats.contains_key(key), "missing {key}: {stats:?}");
+    }
     let bitmap_cvg = stats["bitmap_cvg"].trim_end_matches('%').parse::<f64>()?;
     assert!(bitmap_cvg > 0.0 && bitmap_cvg <= 100.0, "{bitmap_cvg}");
 
