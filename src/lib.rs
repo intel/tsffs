@@ -47,6 +47,8 @@ use os::windows::WindowsOsInfo;
 use serde::{Deserialize, Serialize};
 use serde_json::to_writer;
 use simics::continue_simulation;
+#[cfg(simics_version = "6")]
+use simics::free_attribute;
 use simics::{
     break_simulation, class, debug, error, get_class, get_interface, get_processor_number, info,
     lookup_file, object_clock, run_alone, run_command, run_python, simics_init, sys::save_flags_t,
@@ -56,8 +58,6 @@ use simics::{
     CoreSimulationStoppedHap, CpuInstrumentationSubscribeInterface, Event, EventClassFlag,
     FromConfObject, HapHandle, Interface,
 };
-#[cfg(simics_version = "6")]
-use simics::free_attribute;
 #[cfg(simics_version = "6")]
 use simics::{
     discard_future, restore_micro_checkpoint, save_micro_checkpoint, MicroCheckpointFlags,
@@ -88,6 +88,7 @@ use tracer::{
 use typed_builder::TypedBuilder;
 use versions::{Requirement, Versioning};
 
+pub(crate) mod afl_stats;
 pub(crate) mod arch;
 pub(crate) mod fuzzer;
 pub(crate) mod haps;
@@ -418,6 +419,22 @@ pub(crate) struct Tsffs {
     #[class(attribute(optional, default = 60))]
     /// The interval in seconds between heartbeat messages
     pub heartbeat_interval: u64,
+    #[class(attribute(optional, default = true))]
+    /// Whether AFL++-compatible statistics (`fuzzer_stats`) are maintained in the Instance
+    /// directory `<output_directory>/<instance_name>/` while fuzzing.
+    pub afl_stats: bool,
+    #[class(attribute(optional, default = 10))]
+    /// The wall-clock interval in seconds between AFL statistics writes. The interval is
+    /// checked each time the simulation stops, so a long iteration delays the next write.
+    pub afl_stats_interval: u64,
+    #[class(attribute(optional, default = lookup_file("%simics%")?.join("output")))]
+    /// The directory containing one Instance directory per fuzzing session. If not provided,
+    /// "%simics%/output" will be used by default.
+    pub output_directory: PathBuf,
+    #[class(attribute(optional, default = "default".to_string()))]
+    /// The name of this session's Instance directory under `output_directory`. It may contain
+    /// only letters, digits, '.', '_' and '-', and may not consist only of dots.
+    pub instance_name: String,
 
     #[class(attribute(optional, default = false))]
     /// Whether symbolic coverage should be used during fuzzing
@@ -522,6 +539,19 @@ pub(crate) struct Tsffs {
     last_heartbeat_time: Option<SystemTime>,
 
     log: OnceCell<File>,
+
+    /// The writer for this session's AFL Instance, once the session has started
+    afl_writer: Option<afl_stats::InstanceWriter>,
+    /// When AFL statistics were last written
+    last_afl_stats_time: Option<SystemTime>,
+    /// When the last interesting input was found
+    last_find_time: Option<SystemTime>,
+    /// When the last crash happened
+    last_crash_time: Option<SystemTime>,
+    /// When the last timeout happened
+    last_hang_time: Option<SystemTime>,
+    /// The iteration count at the last crash
+    iterations_at_last_crash: usize,
 
     /// Whether cmplog is currently enabled
     coverage_enabled: bool,
