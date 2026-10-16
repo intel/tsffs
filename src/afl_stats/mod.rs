@@ -212,7 +212,7 @@ impl InstanceWriter {
     }
 
     /// The Instance directory
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub(crate) fn dir(&self) -> &Path {
         &self.dir
     }
