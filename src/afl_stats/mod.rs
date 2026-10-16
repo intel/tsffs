@@ -8,7 +8,12 @@
 //! the Simics side feeds it a [`StatsSample`] on a wall-clock cadence and the [`InstanceWriter`]
 //! turns that into files. See `docs/specs/afl-stats.md`.
 
+pub(crate) mod derive;
 mod session;
+pub(crate) mod snapshot;
+
+use derive::coverage_pct;
+use snapshot::FuzzerSnapshot;
 
 use anyhow::{anyhow, bail, Result};
 use std::{
@@ -87,6 +92,14 @@ pub(crate) struct StatsSample {
     pub last_hang: Option<SystemTime>,
     /// The value of `execs_done` at the moment of the last crash
     pub execs_at_last_crash: u64,
+    /// Entries in the corpus. Live: bumped between fuzzer snapshots, then overwritten by them.
+    pub corpus_count: u64,
+    /// Edges found. Live: bumped between fuzzer snapshots, then overwritten by them.
+    pub edges_found: u64,
+    /// The size of the coverage map
+    pub total_edges: u64,
+    /// The latest values derived from the fuzzer `State`, if the fuzzer has published any yet
+    pub fuzzer: Option<FuzzerSnapshot>,
 }
 
 /// What the caller should tell the user after a write attempt
@@ -221,43 +234,64 @@ impl InstanceWriter {
             .as_secs();
         let execs_since_crash = sample.execs_done.saturating_sub(sample.execs_at_last_crash);
 
-        let lines: Vec<(&str, String)> = vec![
-            ("start_time", unix_seconds(start).to_string()),
-            ("last_update", unix_seconds(sample.now).to_string()),
-            ("run_time", run_time.as_secs().to_string()),
-            ("fuzzer_pid", self.config.fuzzer_pid.to_string()),
-            ("time_wo_finds", time_wo_finds.to_string()),
-            ("execs_done", sample.execs_done.to_string()),
-            ("execs_per_sec", format!("{execs_per_sec:.2}")),
-            ("execs_ps_last_min", format!("{execs_ps_last_min:.2}")),
-            ("saved_crashes", sample.crashes.to_string()),
-            ("saved_hangs", sample.hangs.to_string()),
+        let fuzzer = sample.fuzzer.as_ref();
+        let bitmap_cvg = coverage_pct(sample.edges_found as usize, sample.total_edges as usize);
+
+        // Key order follows AFL++. A key whose value TSFFS cannot know is `None` and omitted.
+        let lines: Vec<(&str, Option<String>)> = vec![
+            ("start_time", Some(unix_seconds(start).to_string())),
+            ("last_update", Some(unix_seconds(sample.now).to_string())),
+            ("run_time", Some(run_time.as_secs().to_string())),
+            ("fuzzer_pid", Some(self.config.fuzzer_pid.to_string())),
+            ("time_wo_finds", Some(time_wo_finds.to_string())),
+            ("execs_done", Some(sample.execs_done.to_string())),
+            ("execs_per_sec", Some(format!("{execs_per_sec:.2}"))),
+            ("execs_ps_last_min", Some(format!("{execs_ps_last_min:.2}"))),
+            ("corpus_count", Some(sample.corpus_count.to_string())),
+            (
+                "corpus_favored",
+                fuzzer.map(|f| f.corpus_favored.to_string()),
+            ),
+            ("corpus_found", fuzzer.map(|f| f.corpus_found.to_string())),
+            ("stability", fuzzer.map(|f| format!("{:.2}%", f.stability))),
+            ("bitmap_cvg", Some(format!("{bitmap_cvg:.2}%"))),
+            ("saved_crashes", Some(sample.crashes.to_string())),
+            ("saved_hangs", Some(sample.hangs.to_string())),
             (
                 "last_find",
-                unix_seconds_or_zero(sample.last_find).to_string(),
+                Some(unix_seconds_or_zero(sample.last_find).to_string()),
             ),
             (
                 "last_crash",
-                unix_seconds_or_zero(sample.last_crash).to_string(),
+                Some(unix_seconds_or_zero(sample.last_crash).to_string()),
             ),
             (
                 "last_hang",
-                unix_seconds_or_zero(sample.last_hang).to_string(),
+                Some(unix_seconds_or_zero(sample.last_hang).to_string()),
             ),
-            ("execs_since_crash", execs_since_crash.to_string()),
-            ("exec_timeout", self.config.exec_timeout_ms.to_string()),
-            ("afl_banner", self.config.instance_name.clone()),
+            ("execs_since_crash", Some(execs_since_crash.to_string())),
+            (
+                "exec_timeout",
+                Some(self.config.exec_timeout_ms.to_string()),
+            ),
+            ("edges_found", Some(sample.edges_found.to_string())),
+            ("total_edges", Some(sample.total_edges.to_string())),
+            (
+                "var_byte_count",
+                fuzzer.map(|f| f.var_byte_count.to_string()),
+            ),
+            ("afl_banner", Some(self.config.instance_name.clone())),
             (
                 "afl_version",
-                format!("tsffs-{}", env!("CARGO_PKG_VERSION")),
+                Some(format!("tsffs-{}", env!("CARGO_PKG_VERSION"))),
             ),
-            ("target_mode", "tsffs".to_string()),
-            ("command_line", self.config.command_line.clone()),
+            ("target_mode", Some("tsffs".to_string())),
+            ("command_line", Some(self.config.command_line.clone())),
         ];
 
         lines
             .into_iter()
-            .map(|(key, value)| format!("{key:<18}: {value}\n"))
+            .filter_map(|(key, value)| value.map(|v| format!("{key:<18}: {v}\n")))
             .collect()
     }
 }
@@ -281,9 +315,11 @@ pub(crate) fn status_line(start_time: SystemTime, sample: &StatsSample) -> Strin
     };
 
     format!(
-        "execs: {} ({:.2}/sec), crashes: {}, hangs: {}, last find: {}",
+        "execs: {} ({:.2}/sec), edges: {}, corpus: {}, crashes: {}, hangs: {}, last find: {}",
         sample.execs_done,
         rate(sample.execs_done, run_time),
+        sample.edges_found,
+        sample.corpus_count,
         sample.crashes,
         sample.hangs,
         last_find
@@ -356,6 +392,10 @@ mod tests {
             last_crash: None,
             last_hang: None,
             execs_at_last_crash: 0,
+            corpus_count: 0,
+            edges_found: 0,
+            total_edges: 131072,
+            fuzzer: None,
         }
     }
 
@@ -416,6 +456,70 @@ mod tests {
             stats.get("afl_version"),
             Some(&format!("tsffs-{}", env!("CARGO_PKG_VERSION")))
         );
+    }
+
+    fn fuzzer_snapshot() -> FuzzerSnapshot {
+        FuzzerSnapshot {
+            corpus_count: 12,
+            corpus_favored: 5,
+            corpus_found: 9,
+            edges_found: 1310,
+            var_byte_count: 131,
+            stability: 90.0,
+        }
+    }
+
+    #[test]
+    fn coverage_keys_report_edges_and_are_capped() {
+        let dir = TempDir::new("coverage");
+        let mut writer = InstanceWriter::open(config(&dir)).expect("open");
+
+        let mut s = sample(10, 10);
+        s.corpus_count = 12;
+        s.edges_found = 1310;
+        s.fuzzer = Some(fuzzer_snapshot());
+        writer.write(&s);
+
+        let stats = read_stats(&writer);
+        let expected = [
+            ("corpus_count", "12"),
+            ("corpus_favored", "5"),
+            ("corpus_found", "9"),
+            ("edges_found", "1310"),
+            ("total_edges", "131072"),
+            ("bitmap_cvg", "1.00%"),
+            ("stability", "90.00%"),
+            ("var_byte_count", "131"),
+        ];
+        for (key, value) in expected {
+            assert_eq!(stats.get(key).map(String::as_str), Some(value), "{key}");
+        }
+
+        // More Edges than map slots can only be a counting error; never report above 100%
+        s.edges_found = 500_000;
+        writer.write(&s);
+        assert_eq!(read_stats(&writer)["bitmap_cvg"], "100.00%");
+    }
+
+    #[test]
+    fn state_derived_keys_are_omitted_until_the_fuzzer_has_published() {
+        let dir = TempDir::new("nosnapshot");
+        let mut writer = InstanceWriter::open(config(&dir)).expect("open");
+        writer.write(&sample(10, 10));
+
+        let stats = read_stats(&writer);
+        for key in [
+            "corpus_favored",
+            "corpus_found",
+            "stability",
+            "var_byte_count",
+        ] {
+            assert!(!stats.contains_key(key), "{key} must be omitted");
+        }
+        // The live counters are always real
+        for key in ["corpus_count", "edges_found", "total_edges", "bitmap_cvg"] {
+            assert!(stats.contains_key(key), "{key} must be present");
+        }
     }
 
     #[test]
@@ -503,9 +607,11 @@ mod tests {
         s.crashes = 2;
         s.hangs = 1;
         s.last_find = Some(at(40));
+        s.edges_found = 700;
+        s.corpus_count = 12;
         assert_eq!(
             status_line(at(0), &s),
-            "execs: 5000 (50.00/sec), crashes: 2, hangs: 1, last find: 60s ago"
+            "execs: 5000 (50.00/sec), edges: 700, corpus: 12, crashes: 2, hangs: 1, last find: 60s ago"
         );
 
         s.last_find = None;

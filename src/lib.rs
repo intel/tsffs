@@ -552,6 +552,17 @@ pub(crate) struct Tsffs {
     last_hang_time: Option<SystemTime>,
     /// The iteration count at the last crash
     iterations_at_last_crash: usize,
+    /// The latest counts published by the fuzzer thread's `TsffsAflStatsStage`
+    afl_snapshot: afl_stats::snapshot::SharedSnapshot,
+    /// The generation of the newest snapshot taken from `afl_snapshot`
+    afl_snapshot_generation: u64,
+    /// The newest snapshot taken from `afl_snapshot`
+    afl_fuzzer_snapshot: Option<afl_stats::snapshot::FuzzerSnapshot>,
+    /// Live corpus size: bumped for each `Interesting` message, overwritten by snapshots
+    afl_corpus_count: u64,
+    /// Live Edge count: bumped by the Edges each `Interesting` message adds, overwritten by
+    /// snapshots
+    afl_edges_found: u64,
 
     /// Whether cmplog is currently enabled
     coverage_enabled: bool,
