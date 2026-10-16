@@ -87,6 +87,9 @@ impl Tsffs {
             edges_found: self.afl_edges_found,
             total_edges: Tsffs::COVERAGE_MAP_SIZE as u64,
             fuzzer: self.afl_fuzzer_snapshot.clone(),
+            branch_targets: self
+                .coverage_reporting
+                .then_some(self.edges_seen.len() as u64),
         };
 
         let Some(notice) = self.afl_writer.as_mut().map(|w| w.write(&sample)) else {
