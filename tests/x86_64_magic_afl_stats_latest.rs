@@ -9,7 +9,7 @@ use ispm_wrapper::data::ProjectPackage;
 use simics_test::TestEnvSpec;
 use std::{collections::HashMap, fs::read_to_string, path::PathBuf};
 
-const ITERATION_LIMIT: u64 = 100;
+const ITERATION_LIMIT: u64 = 1000;
 const INSTANCE_NAME: &str = "afl-stats-test";
 
 fn parse_fuzzer_stats(contents: &str) -> Result<HashMap<String, String>> {
