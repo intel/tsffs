@@ -35,6 +35,9 @@
   UefiLib
   PcdLib
 
+[Protocols]
+  gEfiMpServiceProtocolGuid                                 ## SOMETIMES_CONSUMES
+
 [FeaturePcd]
   gEfiMdeModulePkgTokenSpaceGuid.PcdHelloWorldPrintEnable   ## CONSUMES
 

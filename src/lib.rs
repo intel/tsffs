@@ -446,6 +446,27 @@ pub(crate) struct Tsffs {
     /// the same directory structure as the compiled source, and are looked up by hash.
     pub symbolic_coverage_directory: PathBuf,
 
+    #[class(attribute(pseudo))]
+    /// The processor number of the processor which raised the most recently detected
+    /// exception-based solution. `Nil` if no exception-based solution has been detected
+    /// since the start of the current iteration.
+    ///
+    /// This attribute is informational and transient: it reflects internal fuzzer state,
+    /// is cleared at the start of each iteration, and is not saved across checkpoints.
+    /// Setting it has no effect on fuzzing behavior; it will be overwritten at the next
+    /// exception-based solution or clear point.
+    pub last_exception_processor_number: Option<i32>,
+    #[class(attribute(pseudo))]
+    /// The reason the simulation most recently stopped, in the same serialized form
+    /// used internally by the fuzzer. `Nil` if the simulation has not stopped since the
+    /// start of the current iteration.
+    ///
+    /// This attribute is informational and transient: it reflects internal fuzzer state,
+    /// is cleared at the start of each iteration, and is not saved across checkpoints.
+    /// Setting it has no effect on fuzzing behavior; it will be overwritten at the next
+    /// exception-based solution or clear point.
+    pub last_stop_reason: Option<String>,
+
     /// Handle for the core simulation stopped hap
     stop_hap_handle: HapHandle,
     /// Handle for the core breakpoint memop hap
@@ -685,6 +706,7 @@ impl Tsffs {
     pub fn stop_simulation(&mut self, reason: StopReason) -> Result<()> {
         let break_string = reason.to_string();
 
+        self.last_stop_reason = Some(break_string.clone());
         self.stop_reason = Some(reason);
 
         break_simulation(break_string)?;

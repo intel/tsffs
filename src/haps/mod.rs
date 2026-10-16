@@ -137,11 +137,20 @@ impl Tsffs {
             if self.quit_on_iteration_limit {
                 quit(0)?;
             } else {
+                // Stopping here too: the simulation stays paused rather than resuming into
+                // a next iteration, so last_exception_processor_number/last_stop_reason must
+                // NOT be cleared below in this case either.
                 return Ok(IterationControl::StopRequested);
             }
         }
 
-        // 3) Update outcome counters where this stop reason contributes to stats.
+        // 3) Clear transient per-iteration solution metadata now that we are
+        //    committed to setting up and resuming into the next iteration, so a
+        //    stale value from this iteration cannot be read during the next one.
+        self.last_exception_processor_number = None;
+        self.last_stop_reason = None;
+
+        // 4) Update outcome counters where this stop reason contributes to stats.
         match iteration_count {
             IterationCount::NoCount => {}
             IterationCount::Timeout => self.timeouts += 1,
@@ -153,10 +162,10 @@ impl Tsffs {
             .get()
             .ok_or_else(|| anyhow!("No fuzzer tx channel"))?;
 
-        // 4) Publish this iteration result back to the fuzzer loop.
+        // 5) Publish this iteration result back to the fuzzer loop.
         fuzzer_tx.send(exit_kind)?;
 
-        // 5) Restore to initial snapshot according to the stop-specific restore policy.
+        // 6) Restore to initial snapshot according to the stop-specific restore policy.
         if match snapshot_restore_mode {
             SnapshotRestoreMode::PolicyControlled => self.should_restore_snapshot_this_iteration(),
             SnapshotRestoreMode::Always => true,
@@ -164,17 +173,17 @@ impl Tsffs {
             self.restore_initial_snapshot()?;
         }
 
-        // 6) Reset AFL edge chaining state for the next execution.
+        // 7) Reset AFL edge chaining state for the next execution.
         self.coverage_prev_loc = 0;
 
-        // 7) Persist testcase bytes when start metadata is available.
+        // 8) Persist testcase bytes when start metadata is available.
         if self.start_info.get().is_some() {
             self.get_and_write_testcase()?;
         } else {
             debug!(self.as_conf_object(), "{missing_start_info_message}");
         }
 
-        // 8) Arm timeout for the next iteration run.
+        // 9) Arm timeout for the next iteration run.
         self.post_timeout_event()?;
 
         Ok(IterationControl::Continue)
@@ -544,8 +553,11 @@ impl Tsffs {
 
     /// Called on core exception HAP. Check to see if this exception is configured as a solution
     /// or all exceptions are solutions and trigger a stop if so
-    pub fn on_exception(&mut self, _obj: *mut ConfObject, exception: i64) -> Result<()> {
+    pub fn on_exception(&mut self, obj: *mut ConfObject, exception: i64) -> Result<()> {
         if self.all_exceptions_are_solutions || self.exceptions.contains(&exception) {
+            // Best-effort: failing to resolve the processor number must not prevent this
+            // exception from being correctly classified and reported as a solution.
+            self.last_exception_processor_number = get_processor_number(obj).ok();
             self.stop_simulation(StopReason::Solution {
                 kind: SolutionKind::Exception { number: exception },
             })?;
