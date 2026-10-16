@@ -100,6 +100,9 @@ pub(crate) struct StatsSample {
     pub total_edges: u64,
     /// The latest values derived from the fuzzer `State`, if the fuzzer has published any yet
     pub fuzzer: Option<FuzzerSnapshot>,
+    /// Distinct program counters reached by taken branches. Only tracked when coverage
+    /// reporting is enabled, so `None` otherwise. These are not Edges.
+    pub branch_targets: Option<u64>,
 }
 
 /// What the caller should tell the user after a write attempt
@@ -296,6 +299,10 @@ impl InstanceWriter {
             ),
             ("target_mode", Some("tsffs".to_string())),
             ("command_line", Some(self.config.command_line.clone())),
+            (
+                "tsffs_branch_targets",
+                sample.branch_targets.map(|b| b.to_string()),
+            ),
         ];
 
         lines
@@ -405,6 +412,7 @@ mod tests {
             edges_found: 0,
             total_edges: 131072,
             fuzzer: None,
+            branch_targets: None,
         }
     }
 
@@ -520,6 +528,24 @@ mod tests {
         s.edges_found = 500_000;
         writer.write(&s);
         assert_eq!(read_stats(&writer)["bitmap_cvg"], "100.00%");
+    }
+
+    #[test]
+    fn branch_targets_are_reported_only_when_tracked() {
+        let dir = TempDir::new("branch");
+        let mut writer = InstanceWriter::open(config(&dir)).expect("open");
+
+        let mut s = sample(10, 10);
+        s.branch_targets = Some(42);
+        writer.write(&s);
+        let stats = read_stats(&writer);
+        assert_eq!(stats["tsffs_branch_targets"], "42");
+        // Branch targets never feed the Edge keys
+        assert_eq!(stats["edges_found"], "0");
+
+        s.branch_targets = None;
+        writer.write(&s);
+        assert!(!read_stats(&writer).contains_key("tsffs_branch_targets"));
     }
 
     #[test]
