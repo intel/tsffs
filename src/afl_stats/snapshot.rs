@@ -22,6 +22,18 @@ pub(crate) struct FuzzerSnapshot {
     pub var_byte_count: u64,
     /// Percentage of occupied slots that are stable
     pub stability: f64,
+    /// Completed passes over the corpus
+    pub cycles_done: u64,
+    /// Passes over the corpus since the corpus last grew
+    pub cycles_wo_finds: u64,
+    /// Corpus entries the scheduler has not picked yet
+    pub pending_total: u64,
+    /// Favored corpus entries the scheduler has not picked yet
+    pub pending_favs: u64,
+    /// Index of the corpus entry being fuzzed, or 0 if there is none
+    pub cur_item: u64,
+    /// The largest lineage depth of any corpus entry
+    pub max_depth: u64,
 }
 
 /// The latest [`FuzzerSnapshot`], shared between the fuzzer thread (which publishes) and the
