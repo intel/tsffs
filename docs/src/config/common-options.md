@@ -317,6 +317,42 @@ can be disabled with:
 @tsffs.coverage_reporting = False
 ```
 
+### AFL++ Statistics and the Instance Directory
+
+Each fuzzing session keeps AFL++-format statistics current while the campaign runs.
+They live in an *Instance* directory, `<output_directory>/<instance_name>/`. By
+default that is `output/default/` in the Simics project, and it contains:
+
+- `fuzzer_stats`: the current state of the campaign as `key : value` lines, replaced
+  atomically on every write so a reader never sees a partial file.
+
+`fuzzer_stats` is rewritten every `afl_stats_interval` seconds of wall-clock time
+(checked each time the simulation stops, so a very long iteration delays the next
+write) and once more when the session shuts down. Writing statistics can never stop
+fuzzing: if a write fails, TSFFS logs a warning once, keeps fuzzing, and logs once more
+when writing recovers. Keys TSFFS cannot know, such as `slowest_exec_ms`, are omitted
+rather than reported as zero.
+
+The following attributes control this behavior:
+
+```python
+# Turn statistics off entirely. No Instance directory is created.
+@tsffs.afl_stats = False
+
+# Write statistics every 30 seconds instead of every 10
+@tsffs.afl_stats_interval = 30
+
+# Put Instances somewhere other than %simics%/output
+@tsffs.output_directory = SIM_lookup_file("%simics%") + "/my-output"
+
+# Name the Instance (default: "default")
+@tsffs.instance_name = "nightly-1"
+```
+
+An `instance_name` may contain only letters, digits, `.`, `_` and `-`, and may not
+consist only of dots. Anything else fails the session at startup with an error naming
+the allowed characters.
+
 ### Enable Logging and Set Log path
 
 By default, the fuzzer will log useful informational messages in JSON format to
