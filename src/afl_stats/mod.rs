@@ -23,6 +23,19 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
+/// A mistake the user must fix (an invalid `instance_name`, or an Instance held by another
+/// session). Any other failure to start is environmental and must not stop fuzzing.
+#[derive(Debug)]
+pub(crate) struct ConfigError(pub(crate) String);
+
+impl std::fmt::Display for ConfigError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl std::error::Error for ConfigError {}
+
 /// Name of the stats file inside an Instance
 pub(crate) const FUZZER_STATS_NAME: &str = "fuzzer_stats";
 /// Name of the lock file inside an Instance
@@ -51,10 +64,11 @@ pub(crate) fn validate_instance_name(name: &str) -> Result<()> {
             .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'));
 
     if !allowed || name.chars().all(|c| c == '.') {
-        bail!(
+        return Err(ConfigError(format!(
             "Invalid instance_name {name:?}: it must be non-empty, contain only letters, digits, \
             '.', '_' and '-', and not consist only of dots"
-        );
+        ))
+        .into());
     }
 
     Ok(())
@@ -169,12 +183,15 @@ impl InstanceWriter {
 
         match lock.try_lock() {
             Ok(()) => {}
-            Err(TryLockError::WouldBlock) => bail!(
-                "Instance {:?} ({}) is in use by another running session. Parallel sessions \
-                need distinct instance_name values.",
-                config.instance_name,
-                dir.display()
-            ),
+            Err(TryLockError::WouldBlock) => {
+                return Err(ConfigError(format!(
+                    "Instance {:?} ({}) is in use by another running session. Parallel \
+                    sessions need distinct instance_name values.",
+                    config.instance_name,
+                    dir.display()
+                ))
+                .into())
+            }
             Err(TryLockError::Error(e)) => {
                 bail!("Failed to lock instance {}: {e}", dir.display())
             }
@@ -987,6 +1004,28 @@ mod tests {
 
         s.last_find = None;
         assert!(status_line(at(0), &s).ends_with("last find: none yet"));
+    }
+
+    #[test]
+    fn only_configuration_mistakes_are_fatal_to_startup() {
+        let dir = TempDir::new("fatal");
+
+        let mut bad_name = config(&dir);
+        bad_name.instance_name = "../escape".to_string();
+        let err = InstanceWriter::open(bad_name).expect_err("invalid name");
+        assert!(err.downcast_ref::<ConfigError>().is_some());
+
+        let _first = InstanceWriter::open(config(&dir)).expect("first session");
+        let err = InstanceWriter::open(config(&dir)).expect_err("in use");
+        assert!(err.downcast_ref::<ConfigError>().is_some());
+
+        // An output directory that is really a file is an environmental problem
+        let file = dir.0.join("not-a-directory");
+        std::fs::write(&file, b"").expect("file");
+        let mut unwritable = config(&dir);
+        unwritable.output_directory = file;
+        let err = InstanceWriter::open(unwritable).expect_err("unwritable");
+        assert!(err.downcast_ref::<ConfigError>().is_none(), "{err}");
     }
 
     #[test]
