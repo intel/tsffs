@@ -32,12 +32,12 @@ pub(crate) const PLOT_DATA_NAME: &str = "plot_data";
 /// Name of the file that makes `afl-whatsup` discover an Instance
 pub(crate) const FUZZER_SETUP_NAME: &str = "fuzzer_setup";
 
-/// The `plot_data` header, with the 15 columns `afl-plot` selects by position. This is the
-/// header AFL++ itself writes; column 7 (`map_size`) holds a coverage percentage there too.
 /// Extra attempts at rotating `plot_data` if the first rename fails
 const ROTATE_RETRIES: u32 = 5;
 const ROTATE_RETRY_DELAY: Duration = Duration::from_millis(200);
 
+/// The `plot_data` header, with the 15 columns `afl-plot` selects by position. This is the
+/// header AFL++ itself writes; column 7 (`map_size`) holds a coverage percentage there too.
 const PLOT_DATA_HEADER: &str = "# relative_time, cycles_done, cur_item, corpus_count, \
 pending_total, pending_favs, map_size, saved_crashes, saved_hangs, max_depth, execs_per_sec, \
 total_execs, edges_found, total_crashes, servers_count";
