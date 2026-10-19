@@ -299,8 +299,8 @@ An architecture hint can be set with:
 ### Adding a Trace Processor
 
 By default, only the processor core that either executes the start harness or is passed
-to the [manual start API](../harnessing/closed-box.md) is traced during execution. When fuzzing
-code running on multiple cores, the additional cores can be added with:
+to the [manual start API](../harnessing/closed-box.md) is traced during execution.
+When fuzzing code running on multiple cores, the additional cores can be added with:
 
 ```python
 @tsffs.iface.config.add_trace_processor(qsp.mb.cpu0.core[0][1])
@@ -396,8 +396,8 @@ the longest lineage of mutations. The corpus is scanned for these at most once p
 `afl_stats_interval`, so very large corpora do not slow every round.
 
 Each console status line (executions, executions per second, Edges, corpus size,
-crashes, hangs, and time since the last find) is printed at every statistics write, so the Simics console keeps
-reporting progress even when no new testcase or solution is found.
+crashes, hangs, and time since the last find) is printed at every statistics write, so
+the Simics console keeps reporting progress even when no new testcase or solution is found.
 
 When `coverage_reporting` is enabled, `fuzzer_stats` also carries
 `tsffs_branch_targets`: the number of distinct program counters reached by taken
