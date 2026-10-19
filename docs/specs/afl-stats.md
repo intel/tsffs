@@ -1,5 +1,7 @@
 # Spec: AFL++-compatible campaign statistics
 
+<!-- markdownlint-disable MD013 -->
+
 ## Problem Statement
 
 A user running a TSFFS campaign has no standard way to watch it. Progress is only visible as a prose status line on the Simics console and as proprietary JSON records in `log.json`, which no tool outside TSFFS understands and which carry little beyond execution counts. Users who already monitor fuzzers with `afl-whatsup` and `afl-plot`, or who track campaigns in their own dashboards, cannot point that tooling at TSFFS. Campaigns run for days, often several in parallel on one host or a CI farm, so this blind spot costs real triage time: operators cannot tell at a glance whether an Instance is alive, still finding Edges, stable, or stuck.
