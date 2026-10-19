@@ -14,7 +14,8 @@ impl Tsffs {
     /// Create this session's Instance and write the first stats. Called once when the session
     /// starts. Configuration mistakes (such as an invalid `instance_name`) fail the session.
     pub fn start_afl_stats(&mut self) -> Result<()> {
-        if !self.afl_stats || self.afl_writer.is_some() {
+        // A repro run must not lock, rotate or overwrite the campaign's Instance
+        if !self.afl_stats || self.afl_writer.is_some() || self.repro_testcase.is_some() {
             return Ok(());
         }
 
@@ -90,6 +91,10 @@ impl Tsffs {
             return;
         }
 
+        // Every stop, not only ticks, so the fuzzer's absolute counts never overwrite newer
+        // per-stop bumps by more than one stop
+        self.refresh_from_fuzzer_snapshot();
+
         let now = SystemTime::now();
 
         if !force
@@ -102,8 +107,6 @@ impl Tsffs {
         }
 
         self.last_afl_stats_time = Some(now);
-
-        self.refresh_from_fuzzer_snapshot();
 
         let sample = StatsSample {
             now,
