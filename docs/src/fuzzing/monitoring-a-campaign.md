@@ -70,8 +70,8 @@ plot["map_size"] = plot["map_size"].str.rstrip("%").astype(float)
 plot.plot(x="relative_time", y=["corpus_count", "edges_found"], secondary_y="edges_found")
 ```
 
-In a spreadsheet, open the file as comma-separated text and delete the `# ` from the
-first header cell. Every row has exactly 15 columns.
+In a spreadsheet, open the file as comma-separated text and delete the leading `#` and
+space from the first header cell. Every row has exactly 15 columns.
 
 A session that restarts into an existing Instance moves the old `plot_data` to
 `plot_data.<unix_timestamp>` and starts a new one, so each file is one session and you

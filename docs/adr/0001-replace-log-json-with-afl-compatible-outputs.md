@@ -1,5 +1,7 @@
 # Replace log.json with AFL-compatible outputs, in stages
 
+<!-- markdownlint-disable MD013 -->
+
 TSFFS's `log.json` is a proprietary JSON-lines log (startup, prose monitor stats, heartbeats, and interesting/solution/timeout records with input bytes and new edges). No tool outside TSFFS reads it, so users cannot point standard fuzzing tooling at a live campaign. We are retiring it in favour of formats the fuzzing community already uses, and accept breaking `log.json` consumers to do so.
 
 Each record type gets a standard replacement, and `log.json` stays alive until all of them exist so no release drops data with no replacement:

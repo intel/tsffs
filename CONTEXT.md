@@ -1,5 +1,7 @@
 # TSFFS
 
+<!-- markdownlint-disable MD013 -->
+
 Snapshot-based fuzzer for firmware and software running inside Simics, built on LibAFL.
 
 ## Language
