@@ -4,7 +4,7 @@
 //! Simics-side glue: owns the live counters and drives the [`InstanceWriter`] on a wall-clock
 //! cadence.
 
-use super::{status_line, InstanceConfig, InstanceWriter, StatsSample, WriteNotice};
+use super::{status_line, ConfigError, InstanceConfig, InstanceWriter, StatsSample, WriteNotice};
 use crate::Tsffs;
 use anyhow::Result;
 use simics::{debug, info, warn, AsConfObject};
@@ -12,7 +12,9 @@ use std::time::{Duration, SystemTime};
 
 impl Tsffs {
     /// Create this session's Instance and write the first stats. Called once when the session
-    /// starts. Configuration mistakes (such as an invalid `instance_name`) fail the session.
+    /// starts. Configuration mistakes (an invalid `instance_name`, an Instance in use) fail the
+    /// session; environmental problems (unwritable directory, no file locking, a locked
+    /// `plot_data`) only warn and run without statistics.
     pub fn start_afl_stats(&mut self) -> Result<()> {
         // A repro run must not lock, rotate or overwrite the campaign's Instance
         if !self.afl_stats || self.afl_writer.is_some() || self.repro_testcase.is_some() {
@@ -25,7 +27,7 @@ impl Tsffs {
             .copied()
             .unwrap_or_else(SystemTime::now);
 
-        self.afl_writer = Some(InstanceWriter::open(InstanceConfig {
+        let writer = InstanceWriter::open(InstanceConfig {
             output_directory: self.output_directory.clone(),
             instance_name: self.instance_name.clone(),
             start_time,
@@ -33,7 +35,19 @@ impl Tsffs {
             command_line: std::env::args().collect::<Vec<_>>().join(" "),
             exec_timeout_ms: (self.timeout * 1000.0).round() as u64,
             setup_attributes: self.setup_attributes(),
-        })?);
+        });
+
+        self.afl_writer = match writer {
+            Ok(writer) => Some(writer),
+            Err(e) if e.downcast_ref::<ConfigError>().is_some() => return Err(e),
+            Err(e) => {
+                warn!(
+                    self.as_conf_object(),
+                    "AFL statistics disabled for this session: {e}"
+                );
+                return Ok(());
+            }
+        };
 
         // The first write waits a full interval, by which time the campaign has executions to
         // report; `afl-whatsup` divides by `execs_done`. A very short session still gets its
