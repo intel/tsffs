@@ -30,7 +30,7 @@ impl Tsffs {
             start_time,
             fuzzer_pid: std::process::id(),
             command_line: std::env::args().collect::<Vec<_>>().join(" "),
-            exec_timeout_ms: (self.timeout * 1000.0) as u64,
+            exec_timeout_ms: (self.timeout * 1000.0).round() as u64,
             setup_attributes: self.setup_attributes(),
         })?);
 

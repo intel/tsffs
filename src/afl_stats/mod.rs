@@ -34,6 +34,10 @@ pub(crate) const FUZZER_SETUP_NAME: &str = "fuzzer_setup";
 
 /// The `plot_data` header, with the 15 columns `afl-plot` selects by position. This is the
 /// header AFL++ itself writes; column 7 (`map_size`) holds a coverage percentage there too.
+/// Extra attempts at rotating `plot_data` if the first rename fails
+const ROTATE_RETRIES: u32 = 5;
+const ROTATE_RETRY_DELAY: Duration = Duration::from_millis(200);
+
 const PLOT_DATA_HEADER: &str = "# relative_time, cycles_done, cur_item, corpus_count, \
 pending_total, pending_favs, map_size, saved_crashes, saved_hangs, max_depth, execs_per_sec, \
 total_execs, edges_found, total_crashes, servers_count";
@@ -250,7 +254,18 @@ impl InstanceWriter {
     /// never blocks the session.
     fn append_plot_data(&self, sample: &StatsSample, derived: &Derived) -> Result<()> {
         let fuzzer = sample.fuzzer.as_ref().cloned().unwrap_or_default();
-        let row = format!(
+        let path = self.dir.join(PLOT_DATA_NAME);
+        // If the file was deleted or truncated externally, restore the header so AFL++ tooling
+        // can still parse it
+        let needs_header = std::fs::metadata(&path).map_or(true, |m| m.len() == 0);
+        let mut row = String::new();
+        if needs_header {
+            row.push_str(PLOT_DATA_HEADER);
+            row.push('\n');
+        }
+        // `execs_per_sec` is the recent rate (`execs_ps_last_min`), as in AFL++, which writes
+        // its sliding-window rate in this column; the whole-run average is only in `fuzzer_stats`
+        row.push_str(&format!(
             "{}, {}, {}, {}, {}, {}, {:.2}%, {}, {}, {}, {:.2}, {}, {}, {}, {}\n",
             derived.run_time.as_secs(),
             fuzzer.cycles_done,
@@ -268,12 +283,12 @@ impl InstanceWriter {
             sample.crashes,
             // Sanitizer binaries, which TSFFS does not use
             0,
-        );
+        ));
 
         OpenOptions::new()
             .create(true)
             .append(true)
-            .open(self.dir.join(PLOT_DATA_NAME))?
+            .open(path)?
             .write_all(row.as_bytes())?;
 
         Ok(())
@@ -431,7 +446,18 @@ fn rotate_plot_data(dir: &Path, start_time: SystemTime) -> Result<()> {
         counter += 1;
     }
 
-    rename(&current, &target).map_err(|e| {
+    // A monitoring tool holding the file open without delete sharing (notably on Windows) makes
+    // the rename fail transiently, so retry briefly before refusing to start
+    let mut result = rename(&current, &target);
+    for _ in 0..ROTATE_RETRIES {
+        if result.is_ok() {
+            break;
+        }
+        std::thread::sleep(ROTATE_RETRY_DELAY);
+        result = rename(&current, &target);
+    }
+
+    result.map_err(|e| {
         anyhow!(
             "Failed to rotate {} to {}: {e}",
             current.display(),
@@ -822,6 +848,19 @@ mod tests {
             rows[1],
             "100, 3, 7, 12, 4, 1, 1.00%, 2, 1, 6, 50.00, 5000, 1310, 2, 0"
         );
+    }
+
+    #[test]
+    fn deleted_plot_data_gets_its_header_back() {
+        let dir = TempDir::new("plot-deleted");
+        let mut writer = InstanceWriter::open(config(&dir)).expect("open");
+        writer.write(&sample(100, 5000));
+        std::fs::remove_file(writer.dir().join(PLOT_DATA_NAME)).expect("remove");
+        writer.write(&sample(200, 9000));
+
+        let rows = plot_rows(&writer);
+        assert_eq!(rows.len(), 2, "{rows:?}");
+        assert!(rows[0].starts_with("# relative_time"));
     }
 
     #[test]
