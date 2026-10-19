@@ -6,7 +6,18 @@ use serde::Serialize;
 #[derive(Serialize, Debug, Clone)]
 pub(crate) enum FuzzerMessage {
     String(String),
-    Interesting { indices: Vec<usize>, input: Vec<u8> },
-    Crash { indices: Vec<usize>, input: Vec<u8> },
-    Timeout { indices: Vec<usize>, input: Vec<u8> },
+    Interesting {
+        indices: Vec<usize>,
+        input: Vec<u8>,
+        /// How many previously unoccupied coverage-map slots (Edges) this input filled
+        new_edges: usize,
+    },
+    Crash {
+        indices: Vec<usize>,
+        input: Vec<u8>,
+    },
+    Timeout {
+        indices: Vec<usize>,
+        input: Vec<u8>,
+    },
 }

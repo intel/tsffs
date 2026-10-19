@@ -299,8 +299,8 @@ An architecture hint can be set with:
 ### Adding a Trace Processor
 
 By default, only the processor core that either executes the start harness or is passed
-to the [manual start API](../harnessing/closed-box.md) is traced during execution. When fuzzing
-code running on multiple cores, the additional cores can be added with:
+to the [manual start API](../harnessing/closed-box.md) is traced during execution.
+When fuzzing code running on multiple cores, the additional cores can be added with:
 
 ```python
 @tsffs.iface.config.add_trace_processor(qsp.mb.cpu0.core[0][1])
@@ -317,10 +317,125 @@ can be disabled with:
 @tsffs.coverage_reporting = False
 ```
 
+### AFL++ Statistics and the Instance Directory
+
+Each fuzzing session keeps AFL++-format statistics current while the campaign runs.
+They live in an *Instance* directory, `<output_directory>/<instance_name>/`. By
+default that is `output/default/` in the Simics project, and it contains:
+
+- `fuzzer_stats`: the current state of the campaign as `key : value` lines, replaced
+  atomically on every write so a reader never sees a partial file.
+- `plot_data`: a time series with one row appended on every write, in the AFL++
+  15-column layout (`relative_time`, `cycles_done`, `cur_item`, `corpus_count`,
+  `pending_total`, `pending_favs`, `map_size`, `saved_crashes`, `saved_hangs`,
+  `max_depth`, `execs_per_sec`, `total_execs`, `edges_found`, `total_crashes`,
+  `servers_count`). Existing AFL++ plotting scripts and notebooks work unmodified, and
+  `afl-plot` renders it. `map_size` holds the coverage percentage, as in AFL++.
+- `fuzzer_setup`: written once per session. It lists the session's configuration as
+  `name=value` lines, followed by a `# command line:` line with the Simics command line.
+  `afl-whatsup` discovers an Instance by finding this file.
+- `.lock`: the Instance lock, described below.
+
+`fuzzer_stats` is rewritten every `afl_stats_interval` seconds of wall-clock time
+(checked each time the simulation stops, so a very long iteration delays the next
+write) and once more when the session shuts down. Writing statistics can never stop
+fuzzing: if a write fails, TSFFS logs a warning once, keeps fuzzing, and logs once more
+when writing recovers. Keys TSFFS cannot know, such as `slowest_exec_ms`, are omitted
+rather than reported as zero.
+
+The following attributes control this behavior:
+
+```python
+# Turn statistics off entirely. No Instance directory is created.
+@tsffs.afl_stats = False
+
+# Write statistics every 30 seconds instead of every 10
+@tsffs.afl_stats_interval = 30
+
+# Put Instances somewhere other than %simics%/output
+@tsffs.output_directory = SIM_lookup_file("%simics%") + "/my-output"
+
+# Name the Instance (default: "default")
+@tsffs.instance_name = "nightly-1"
+```
+
+An `instance_name` may contain only letters, digits, `.`, `_` and `-`, and may not
+consist only of dots. Anything else fails the session at startup with an error naming
+the allowed characters.
+
+When a session starts on an Instance that already holds a `plot_data` from an earlier
+session, that file is renamed to `plot_data.<unix_timestamp>` and a fresh `plot_data` is
+started, so two sessions are never mixed into one graph and no history is lost. A stale
+`fuzzer_stats` is simply replaced. Rotation only happens after the session holds the
+Instance lock, so a refused second session can never rotate a live session's files.
+
+The Instance is named `default` unless you name it, as AFL++ does, so repeated repro and
+debugging sessions reuse one directory instead of littering the output directory.
+
+At startup TSFFS takes an exclusive lock on `<instance>/.lock` and holds it for the
+session. A second live session that targets the same Instance fails at startup with an
+error saying the Instance is in use. **Sessions running in parallel need distinct
+`instance_name` values.** The operating system releases the lock when the process exits,
+so a session that crashed never blocks the next one and there is nothing to clean up by
+hand.
+
+`fuzzer_stats` reports **Edges**: occupied slots of the fuzzer's coverage map, which is
+what `edges_found` means for AFL++. `bitmap_cvg` is the share of the map they occupy and
+never exceeds 100%, and `total_edges` is the map size. These keys are reported whether or
+not `coverage_reporting` is enabled. `stability` is computed as AFL++ does, the share of
+occupied slots that calibration found stable, and reads 100% until calibration has run;
+`var_byte_count` is the number of unstable slots. `corpus_count` and `edges_found` are
+kept current between fuzzing rounds, which can be minutes apart, and are replaced by the
+fuzzer's exact values after every round.
+
+The queue keys describe how far the fuzzer has worked through its corpus: `cycles_done`
+is the number of completed passes over the corpus, `cycles_wo_finds` the passes since the
+corpus last grew, `pending_total` the entries not yet fuzzed, `pending_favs` the favored
+entries not yet fuzzed, `cur_item` the index of the entry being fuzzed, and `max_depth`
+the longest lineage of mutations. The corpus is scanned for these at most once per
+`afl_stats_interval`, so very large corpora do not slow every round.
+
+Each console status line (executions, executions per second, Edges, corpus size,
+crashes, hangs, and time since the last find) is printed at every statistics write, so
+the Simics console keeps reporting progress even when no new testcase or solution is found.
+
+When `coverage_reporting` is enabled, `fuzzer_stats` also carries
+`tsffs_branch_targets`: the number of distinct program counters reached by taken
+branches. This is the firmware reachability measure that `log.json` heartbeats used to
+report. It is a **Branch target** count, not an Edge count: several Branch targets can
+hash into one Edge and one Branch target can contribute to several Edges, so the two are
+not comparable. The key is absent when coverage reporting is disabled.
+
 ### Enable Logging and Set Log path
 
-By default, the fuzzer will log useful informational messages in JSON format to
-a log in the project directory (`log.json`).
+> **Deprecated.** `log.json`, and the `log_to_file`, `log_path`, `heartbeat` and
+> `heartbeat_interval` attributes that configure it, are being replaced by
+> AFL++-compatible outputs, in stages (see ADR 0001,
+> `docs/adr/0001-replace-log-json-with-afl-compatible-outputs.md` in the repository).
+> Heartbeat and message records are **no longer written** to `log.json`: use
+> `fuzzer_stats` and `plot_data` in the [Instance directory](#afl-statistics-and-the-instance-directory)
+> instead, with `afl_stats_interval` replacing `heartbeat_interval`. The `heartbeat`
+> and `heartbeat_interval` attributes are still accepted so existing scripts keep
+> working, but they no longer have any effect. Heartbeat Branch target counts moved to
+> `tsffs_branch_targets` in `fuzzer_stats`. `log_to_file` and `log_path` still control
+> the startup, interesting, solution and timeout records, which stay until their
+> replacements land.
+
+Each `log.json` record type has, or will have, a standard replacement:
+
+| `log.json` record                     | Replacement                                                          |
+| ------------------------------------- | -------------------------------------------------------------------- |
+| Heartbeat                             | `fuzzer_stats` and `plot_data` (**already replaced**, no longer written) |
+| Message (the prose statistics lines)  | `fuzzer_stats` and `plot_data` (**already replaced**, no longer written), and the Simics console |
+| Heartbeat Branch target count         | `tsffs_branch_targets` in `fuzzer_stats` (**already replaced**)      |
+| Interesting, solution and timeout     | The AFL output layout (`queue/`, `crashes/`, `hangs/`) in the Instance directory (**future**; these records stay until then) |
+| Per-record Edge lists                 | Per-testcase drcov output (**future**), after which `log.json` is removed |
+
+See [Monitoring a Campaign](../fuzzing/monitoring-a-campaign.md) for how to read the
+replacements.
+
+By default, the fuzzer will log startup, interesting input, solution and timeout
+records in JSON format to a log in the project directory (`log.json`).
 
 The path for this log can be set by setting:
 
