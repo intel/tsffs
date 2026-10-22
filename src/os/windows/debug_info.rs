@@ -20,7 +20,7 @@ use windows_sys::Win32::System::{
     SystemServices::{FILE_NOTIFY_FULL_INFORMATION, IMAGE_DOS_HEADER},
 };
 
-use crate::{os::DebugInfoConfig, source_cov::SourceCache};
+use crate::{os::DebugInfoConfig, source_cov::SourceCache, traits::DebugInfoModule};
 
 use super::{
     pdb::{CvInfoPdb70, Export},
@@ -470,6 +470,15 @@ impl ProcessModule {
     }
 }
 
+impl DebugInfoModule for ProcessModule {
+    /// Delegates to `ProcessModule::intervals` so PDB-backed process modules can be
+    /// used interchangeably with other `DebugInfoModule` implementations (e.g.
+    /// DWARF-backed modules).
+    fn intervals(&mut self, source_cache: &SourceCache) -> Result<Vec<Element<u64, SymbolInfo>>> {
+        ProcessModule::intervals(self, source_cache)
+    }
+}
+
 #[derive(Debug)]
 /// A process
 pub struct Process {
@@ -673,5 +682,14 @@ impl Module {
             .into_iter()
             .map(|s| (self.base + s.rva..self.base + s.rva + s.size, s).into())
             .collect())
+    }
+}
+
+impl DebugInfoModule for Module {
+    /// Delegates to `Module::intervals` so PDB-backed kernel modules can be used
+    /// interchangeably with other `DebugInfoModule` implementations (e.g. DWARF-backed
+    /// modules).
+    fn intervals(&mut self, source_cache: &SourceCache) -> Result<Vec<Element<u64, SymbolInfo>>> {
+        Module::intervals(self, source_cache)
     }
 }
