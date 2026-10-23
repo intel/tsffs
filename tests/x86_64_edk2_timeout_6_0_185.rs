@@ -32,6 +32,12 @@ fn test_x86_64_edk2_timeout_6_0_185() -> Result<()> {
             .join("tests")
             .join("rsrc")
             .join("x86_64-timeout-uefi-edk2")])
+        // 'A' makes the harness stall past the timeout; 'D' runs normally so the corpus is
+        // not empty once the timeout input is moved to solutions.
+        .files([
+            ("corpus/timeout".to_string(), vec![b'A']),
+            ("corpus/normal".to_string(), vec![b'D']),
+        ])
         .build()
         .to_env()?
         .test(indoc! {r#"
@@ -43,8 +49,9 @@ fn test_x86_64_edk2_timeout_6_0_185() -> Result<()> {
             @tsffs.stop_on_harness = True
             @tsffs.timeout = 3.0
             @tsffs.exceptions = [14]
-            @tsffs.generate_random_corpus = True
+            @tsffs.generate_random_corpus = False
             @tsffs.iteration_limit = 30
+            @tsffs.quit_on_iteration_limit = False
 
             load-target "qsp-x86/uefi-shell" namespace = qsp machine:hardware:storage:disk0:image = "minimal_boot_disk.craff"
 
@@ -66,11 +73,26 @@ fn test_x86_64_edk2_timeout_6_0_185() -> Result<()> {
             }
 
             run
+
+            @import os; solutions = os.path.join(SIM_lookup_file("%simics%"), "solutions"); print("TSFFS_" + "SOLUTIONS " + ",".join(open(os.path.join(solutions, f), "rb").read(1).hex() for f in sorted(os.listdir(solutions)) if not f.startswith(".")) + " END")
         "#})?;
 
     let output_str = String::from_utf8_lossy(&output.stdout);
 
     println!("{output_str}");
+
+    let solutions = output_str
+        .lines()
+        .find_map(|line| line.split("TSFFS_SOLUTIONS ").nth(1))
+        .and_then(|rest| rest.split(" END").next())
+        .expect("Simics script did not print TSFFS_SOLUTIONS");
+
+    // Only timeouts can be solutions for this harness, and only inputs starting with 'A' time out.
+    assert!(
+        !solutions.is_empty() && solutions.split(',').all(|first_byte| first_byte == "41"),
+        "Expected timeout solutions (inputs starting with 'A') in the solutions directory, \
+         found first bytes: [{solutions}]"
+    );
 
     Ok(())
 }
