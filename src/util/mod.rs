@@ -1,9 +1,20 @@
 // Copyright (C) 2024 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::Result;
+use anyhow::{ensure, Result};
 use simics::api::{get_attribute, get_object};
 use simics::FromAttrValueList;
+use std::ffi::{c_char, CStr};
+
+/// Convert a C string argument received through a Simics interface method, rejecting NULL.
+///
+/// # Safety
+///
+/// `ptr` must be NULL or point to a NUL-terminated string that outlives `'a`.
+pub(crate) unsafe fn c_str_arg<'a>(ptr: *const c_char, name: &str) -> Result<&'a str> {
+    ensure!(!ptr.is_null(), "{name} must not be NULL");
+    Ok(CStr::from_ptr(ptr).to_str()?)
+}
 
 #[derive(Debug, Clone, FromAttrValueList)]
 pub(crate) struct MicroCheckpointInfo {
