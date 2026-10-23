@@ -53,7 +53,6 @@ int test_assert() {
   return 0;
 }
 
-#ifndef __arm__
 int test_start_index() {
   char buf[1024];
   size_t size = 1024;
@@ -89,7 +88,5 @@ int test_assert_index() {
   return 0;
 }
 
-
-#endif
 
 int main() {}
