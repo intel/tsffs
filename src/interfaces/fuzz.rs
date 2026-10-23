@@ -3,15 +3,13 @@
 
 use crate::{
     state::{SolutionKind, StopReason},
+    util::c_str_arg,
     ManualStartAddress, ManualStartInfo, ManualStartSize, Tsffs,
 };
 use anyhow::{anyhow, Result};
 use libafl::inputs::HasBytesVec;
 use simics::{debug, interface, lookup_file, AsConfObject, AttrValue, ConfObject, GenericAddress};
-use std::{
-    ffi::{c_char, CStr},
-    fs::read,
-};
+use std::{ffi::c_char, fs::read};
 
 extern crate ffi2 as ffi;
 
@@ -25,7 +23,8 @@ impl Tsffs {
     /// This can be called during configuration *or* after stopping the fuzzer once a solution
     /// has been found.
     pub fn repro(&mut self, testcase_file: *mut c_char) -> Result<()> {
-        let simics_path = unsafe { CStr::from_ptr(testcase_file) }.to_str()?;
+        // SAFETY: Simics passes NULL or a NUL-terminated string valid for this call
+        let simics_path = unsafe { c_str_arg(testcase_file, "testcase_file") }?;
 
         let testcase_file = lookup_file(simics_path)?;
 
@@ -233,7 +232,8 @@ impl Tsffs {
     /// it had finished executing with an exception or timeout, and, if an initial
     /// snapshot exists, it will be restored before the next iteration resumes.
     pub fn solution(&mut self, id: u64, message: *mut c_char) -> Result<()> {
-        let message = unsafe { CStr::from_ptr(message) }.to_str()?;
+        // SAFETY: Simics passes NULL or a NUL-terminated string valid for this call
+        let message = unsafe { c_str_arg(message, "message") }?;
 
         debug!(self.as_conf_object(), "solution({id:#x}, {message})");
 
