@@ -35,7 +35,7 @@ impl Tsffs {
             "add_architecture_hint({processor_number}, {hint})"
         );
         self.architecture_hints
-            .insert(processor_number, ArchitectureHint::from_str(hint)?);
+            .insert(processor_number, ArchitectureHint::from_str(&hint)?);
 
         Ok(())
     }

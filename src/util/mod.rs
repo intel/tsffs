@@ -1,7 +1,7 @@
 // Copyright (C) 2024 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::{ensure, Result};
+use anyhow::{ensure, Context, Result};
 use simics::api::{get_attribute, get_object};
 use simics::FromAttrValueList;
 use std::ffi::{c_char, CStr};
@@ -10,10 +10,13 @@ use std::ffi::{c_char, CStr};
 ///
 /// # Safety
 ///
-/// `ptr` must be NULL or point to a NUL-terminated string that outlives `'a`.
-pub(crate) unsafe fn c_str_arg<'a>(ptr: *const c_char, name: &str) -> Result<&'a str> {
+/// `ptr` must be NULL or point to a NUL-terminated string valid for the duration of this call.
+pub(crate) unsafe fn c_str_arg(ptr: *const c_char, name: &str) -> Result<String> {
     ensure!(!ptr.is_null(), "{name} must not be NULL");
-    Ok(CStr::from_ptr(ptr).to_str()?)
+    Ok(CStr::from_ptr(ptr)
+        .to_str()
+        .with_context(|| format!("{name} must be valid UTF-8"))?
+        .to_owned())
 }
 
 #[derive(Debug, Clone, FromAttrValueList)]

@@ -26,7 +26,7 @@ impl Tsffs {
         // SAFETY: Simics passes NULL or a NUL-terminated string valid for this call
         let simics_path = unsafe { c_str_arg(testcase_file, "testcase_file") }?;
 
-        let testcase_file = lookup_file(simics_path)?;
+        let testcase_file = lookup_file(&simics_path)?;
 
         debug!(self.as_conf_object(), "repro({})", testcase_file.display());
 
