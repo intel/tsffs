@@ -5,8 +5,8 @@
 
 use self::{
     aarch64::AArch64ArchitectureOperations, arm::ARMArchitectureOperations,
-    risc_v::RISCVArchitectureOperations, x86::X86ArchitectureOperations,
-    x86_64::X86_64ArchitectureOperations,
+    ppe42::PPE42ArchitectureOperations, risc_v::RISCVArchitectureOperations,
+    x86::X86ArchitectureOperations, x86_64::X86_64ArchitectureOperations,
 };
 use crate::{
     tracer::TraceEntry, traits::TracerDisassembler, ManualStartAddress, ManualStartInfo, StartInfo,
@@ -27,6 +27,7 @@ use std::{fmt::Debug, str::FromStr};
 
 pub mod aarch64;
 pub mod arm;
+pub mod ppe42;
 pub mod risc_v;
 pub mod x86;
 pub mod x86_64;
@@ -44,6 +45,8 @@ pub(crate) enum ArchitectureHint {
     Arm,
     /// The architecture is aarch64
     Aarch64,
+    /// The architecture is PPE42
+    Ppe42,
 }
 
 impl FromStr for ArchitectureHint {
@@ -56,6 +59,7 @@ impl FromStr for ArchitectureHint {
             "riscv" | "risc-v" | "riscv32" | "riscv64" => Self::Riscv,
             "armv4" | "armv5" | "armv6" | "armv7" | "arm" | "arm32" => Self::Arm,
             "aarch64" | "armv8" | "arm64" => Self::Aarch64,
+            "ppe42" | "ppc" | "powerpc" | "ppc32" => Self::Ppe42,
             _ => bail!("Unknown hint: {}", s),
         })
     }
@@ -69,6 +73,7 @@ impl From<ArchitectureHint> for AttrValueType {
             ArchitectureHint::Riscv => "risc-v",
             ArchitectureHint::Arm => "arm",
             ArchitectureHint::Aarch64 => "aarch64",
+            ArchitectureHint::Ppe42 => "ppc",
         }
         .into()
     }
@@ -93,6 +98,9 @@ impl ArchitectureHint {
             ArchitectureHint::Aarch64 => {
                 Architecture::Aarch64(AArch64ArchitectureOperations::new_unchecked(cpu)?)
             }
+            ArchitectureHint::Ppe42 => {
+                Architecture::Ppe42(PPE42ArchitectureOperations::new_unchecked(cpu)?)
+            }
         })
     }
 }
@@ -108,6 +116,8 @@ pub(crate) enum Architecture {
     Arm(ARMArchitectureOperations),
     /// The AARCH64 architecture (v8 and above)
     Aarch64(AArch64ArchitectureOperations),
+    /// The PPE42 architecture
+    Ppe42(PPE42ArchitectureOperations),
 }
 
 impl Debug for Architecture {
@@ -121,6 +131,7 @@ impl Debug for Architecture {
                 Architecture::Riscv(_) => "risc-v",
                 Architecture::Arm(_) => "arm",
                 Architecture::Aarch64(_) => "aarch64",
+                Architecture::Ppe42(_) => "ppe42",
             }
         )
     }
@@ -132,6 +143,9 @@ pub trait ArchitectureOperations {
     const ARGUMENT_REGISTER_1: &'static str;
     const ARGUMENT_REGISTER_2: &'static str;
     const POINTER_WIDTH_OVERRIDE: Option<i32> = None;
+    /// If true, addresses are treated as physical (no logical-to-physical translation)
+    /// This is useful for embedded processors without MMU or with identity mapping
+    const USE_PHYSICAL_ADDRESSES: bool = false;
 
     /// Create a new instance of the architecture operations
     fn new(cpu: *mut ConfObject) -> Result<Self>
@@ -177,6 +191,11 @@ pub trait ArchitectureOperations {
             .and_then(|n| self.int_register().read(n))?)
     }
 
+    /// Get the current program counter value
+    fn get_program_counter(&mut self) -> Result<u64> {
+        Ok(self.processor_info_v2().get_program_counter()?)
+    }
+
     /// Get the magic start information from the harness which takes the arguments:
     ///
     /// - buffer: The address of the buffer containing the testcase
@@ -190,21 +209,36 @@ pub trait ArchitectureOperations {
             .get_number(Self::ARGUMENT_REGISTER_1.as_raw_cstr()?)?;
         let buffer_logical_address = self.int_register().read(buffer_register_number)?;
         let size_ptr_logical_address = self.int_register().read(size_ptr_register_number)?;
-        let buffer_physical_address_block = self
-            .processor_info_v2()
-            .logical_to_physical(buffer_logical_address, Access::Sim_Access_Read)?;
-        let size_ptr_physical_address_block = self
-            .processor_info_v2()
-            .logical_to_physical(size_ptr_logical_address, Access::Sim_Access_Read)?;
-
-        ensure!(
-            buffer_physical_address_block.valid != 0,
-            "Invalid linear address found in magic start buffer register {buffer_register_number}: {buffer_logical_address:#x}"
-        );
-        ensure!(
-            size_ptr_physical_address_block.valid != 0,
-            "Invalid linear address found in magic start size register {size_ptr_register_number}: {size_ptr_logical_address:#x}"
-        );
+        
+        
+        // For architectures that use physical addresses directly (like embedded processors),
+        // skip the logical-to-physical translation
+        let (buffer_physical_address, buffer_is_virtual) = if Self::USE_PHYSICAL_ADDRESSES {
+            (buffer_logical_address, false)
+        } else {
+            let buffer_physical_address_block = self
+                .processor_info_v2()
+                .logical_to_physical(buffer_logical_address, Access::Sim_Access_Read)?;
+            ensure!(
+                buffer_physical_address_block.valid != 0,
+                "Invalid linear address found in magic start buffer register {buffer_register_number}: {buffer_logical_address:#x}"
+            );
+            (buffer_physical_address_block.address, buffer_physical_address_block.address != buffer_logical_address)
+        };
+        
+        let (size_ptr_physical_address, _size_ptr_is_virtual) = if Self::USE_PHYSICAL_ADDRESSES {
+            (size_ptr_logical_address, false)
+        } else {
+            let size_ptr_physical_address_block = self
+                .processor_info_v2()
+                .logical_to_physical(size_ptr_logical_address, Access::Sim_Access_Read)?;
+            ensure!(
+                size_ptr_physical_address_block.valid != 0,
+                "Invalid linear address found in magic start size register {size_ptr_register_number}: {size_ptr_logical_address:#x}"
+            );
+            (size_ptr_physical_address_block.address, size_ptr_physical_address_block.address != size_ptr_logical_address)
+        };
+        
 
         let size_size = if let Some(width) = Self::POINTER_WIDTH_OVERRIDE {
             width
@@ -214,7 +248,7 @@ pub trait ArchitectureOperations {
 
         let size = read_phys_memory(
             self.cpu(),
-            size_ptr_physical_address_block.address,
+            size_ptr_physical_address,
             size_size,
         )?;
 
@@ -222,12 +256,12 @@ pub trait ArchitectureOperations {
             .map(|i| {
                 read_byte(
                     self.processor_info_v2().get_physical_memory()?,
-                    buffer_physical_address_block.address + i,
+                    buffer_physical_address + i,
                 )
                 .map_err(|e| {
                     anyhow!(
                         "Failed to read byte at {:#x}: {}",
-                        buffer_physical_address_block.address + i,
+                        buffer_physical_address + i,
                         e
                     )
                 })
@@ -236,18 +270,20 @@ pub trait ArchitectureOperations {
 
         Ok(StartInfo::builder()
             .address(
-                if buffer_physical_address_block.address != buffer_logical_address {
-                    StartPhysicalAddress::WasVirtual(buffer_physical_address_block.address)
+                if buffer_is_virtual {
+                    StartPhysicalAddress::WasVirtual(buffer_physical_address)
                 } else {
-                    StartPhysicalAddress::WasPhysical(buffer_physical_address_block.address)
+                    StartPhysicalAddress::WasPhysical(buffer_physical_address)
                 },
             )
             .contents(contents)
             .size(StartSize::SizePtr {
-                address: if size_ptr_physical_address_block.address != size_ptr_logical_address {
-                    StartPhysicalAddress::WasVirtual(size_ptr_physical_address_block.address)
+                address: if Self::USE_PHYSICAL_ADDRESSES {
+                    StartPhysicalAddress::WasPhysical(size_ptr_physical_address)
+                } else if size_ptr_physical_address != size_ptr_logical_address {
+                    StartPhysicalAddress::WasVirtual(size_ptr_physical_address)
                 } else {
-                    StartPhysicalAddress::WasPhysical(size_ptr_physical_address_block.address)
+                    StartPhysicalAddress::WasPhysical(size_ptr_physical_address)
                 },
                 maximum_size: size as usize,
             })
@@ -267,25 +303,33 @@ pub trait ArchitectureOperations {
             .get_number(Self::ARGUMENT_REGISTER_1.as_raw_cstr()?)?;
         let buffer_logical_address = self.int_register().read(buffer_register_number)?;
         let size_val = self.int_register().read(size_val_register_number)?;
-        let buffer_physical_address_block = self
-            .processor_info_v2()
-            .logical_to_physical(buffer_logical_address, Access::Sim_Access_Read)?;
 
-        ensure!(
-            buffer_physical_address_block.valid != 0,
-            "Invalid linear address found in magic start buffer register {buffer_register_number}: {buffer_logical_address:#x}"
-        );
+        let (buffer_physical_address, buffer_is_virtual) = if Self::USE_PHYSICAL_ADDRESSES {
+            (buffer_logical_address, false)
+        } else {
+            let buffer_physical_address_block = self
+                .processor_info_v2()
+                .logical_to_physical(buffer_logical_address, Access::Sim_Access_Read)?;
+            ensure!(
+                buffer_physical_address_block.valid != 0,
+                "Invalid linear address found in magic start buffer register {buffer_register_number}: {buffer_logical_address:#x}"
+            );
+            (
+                buffer_physical_address_block.address,
+                buffer_physical_address_block.address != buffer_logical_address,
+            )
+        };
 
         let contents = (0..size_val)
             .map(|i| {
                 read_byte(
                     self.processor_info_v2().get_physical_memory()?,
-                    buffer_physical_address_block.address + i,
+                    buffer_physical_address + i,
                 )
                 .map_err(|e| {
                     anyhow!(
                         "Failed to read byte at {:#x}: {}",
-                        buffer_physical_address_block.address + i,
+                        buffer_physical_address + i,
                         e
                     )
                 })
@@ -294,10 +338,10 @@ pub trait ArchitectureOperations {
 
         Ok(StartInfo::builder()
             .address(
-                if buffer_physical_address_block.address != buffer_logical_address {
-                    StartPhysicalAddress::WasVirtual(buffer_physical_address_block.address)
+                if buffer_is_virtual {
+                    StartPhysicalAddress::WasVirtual(buffer_physical_address)
                 } else {
-                    StartPhysicalAddress::WasPhysical(buffer_physical_address_block.address)
+                    StartPhysicalAddress::WasPhysical(buffer_physical_address)
                 },
             )
             .contents(contents)
@@ -325,33 +369,48 @@ pub trait ArchitectureOperations {
         let size_ptr_logical_address = self.int_register().read(size_ptr_register_number)?;
         let size_val = self.int_register().read(size_val_register_number)?;
 
-        let buffer_physical_address_block = self
-            .processor_info_v2()
-            .logical_to_physical(buffer_logical_address, Access::Sim_Access_Read)?;
+        let (buffer_physical_address, buffer_is_virtual) = if Self::USE_PHYSICAL_ADDRESSES {
+            (buffer_logical_address, false)
+        } else {
+            let buffer_physical_address_block = self
+                .processor_info_v2()
+                .logical_to_physical(buffer_logical_address, Access::Sim_Access_Read)?;
+            ensure!(
+                buffer_physical_address_block.valid != 0,
+                "Invalid linear address found in magic start buffer register {buffer_register_number}: {buffer_logical_address:#x}"
+            );
+            (
+                buffer_physical_address_block.address,
+                buffer_physical_address_block.address != buffer_logical_address,
+            )
+        };
 
-        let size_ptr_physical_address_block = self
-            .processor_info_v2()
-            .logical_to_physical(size_ptr_logical_address, Access::Sim_Access_Read)?;
-
-        ensure!(
-            buffer_physical_address_block.valid != 0,
-            "Invalid linear address found in magic start buffer register {buffer_register_number}: {buffer_logical_address:#x}"
-        );
-        ensure!(
-            size_ptr_physical_address_block.valid != 0,
-            "Invalid linear address found in magic start size register {size_ptr_register_number}: {size_ptr_logical_address:#x}"
-        );
+        let (size_ptr_physical_address, size_ptr_is_virtual) = if Self::USE_PHYSICAL_ADDRESSES {
+            (size_ptr_logical_address, false)
+        } else {
+            let size_ptr_physical_address_block = self
+                .processor_info_v2()
+                .logical_to_physical(size_ptr_logical_address, Access::Sim_Access_Read)?;
+            ensure!(
+                size_ptr_physical_address_block.valid != 0,
+                "Invalid linear address found in magic start size register {size_ptr_register_number}: {size_ptr_logical_address:#x}"
+            );
+            (
+                size_ptr_physical_address_block.address,
+                size_ptr_physical_address_block.address != size_ptr_logical_address,
+            )
+        };
 
         let contents = (0..size_val)
             .map(|i| {
                 read_byte(
                     self.processor_info_v2().get_physical_memory()?,
-                    buffer_physical_address_block.address + i,
+                    buffer_physical_address + i,
                 )
                 .map_err(|e| {
                     anyhow!(
                         "Failed to read byte at {:#x}: {}",
-                        buffer_physical_address_block.address + i,
+                        buffer_physical_address + i,
                         e
                     )
                 })
@@ -360,18 +419,18 @@ pub trait ArchitectureOperations {
 
         Ok(StartInfo::builder()
             .address(
-                if buffer_physical_address_block.address != buffer_logical_address {
-                    StartPhysicalAddress::WasVirtual(buffer_physical_address_block.address)
+                if buffer_is_virtual {
+                    StartPhysicalAddress::WasVirtual(buffer_physical_address)
                 } else {
-                    StartPhysicalAddress::WasPhysical(buffer_physical_address_block.address)
+                    StartPhysicalAddress::WasPhysical(buffer_physical_address)
                 },
             )
             .contents(contents)
             .size(StartSize::SizePtrAndMaxSize {
-                address: if size_ptr_physical_address_block.address != size_ptr_logical_address {
-                    StartPhysicalAddress::WasVirtual(size_ptr_physical_address_block.address)
+                address: if size_ptr_is_virtual {
+                    StartPhysicalAddress::WasVirtual(size_ptr_physical_address)
                 } else {
-                    StartPhysicalAddress::WasPhysical(size_ptr_physical_address_block.address)
+                    StartPhysicalAddress::WasPhysical(size_ptr_physical_address)
                 },
                 maximum_size: size_val as usize,
             })
@@ -381,7 +440,10 @@ pub trait ArchitectureOperations {
     /// Returns the address and whether the address is virtual for the testcase buffer used by
     /// the manual start functionality
     fn get_manual_start_info(&mut self, info: &ManualStartInfo) -> Result<StartInfo> {
-        let buffer_physical_address = if matches!(info.address, ManualStartAddress::Virtual(_)) {
+        let buffer_physical_address = if Self::USE_PHYSICAL_ADDRESSES {
+            // For embedded processors, treat all addresses as physical
+            info.address.address()
+        } else if matches!(info.address, ManualStartAddress::Virtual(_)) {
             let physical_address_block = self
                 .processor_info_v2()
                 // NOTE: Do we need to support segmented memory via logical_to_physical?
@@ -409,19 +471,26 @@ pub trait ArchitectureOperations {
 
         let size = match &info.size {
             crate::ManualStartSize::SizePtr { address } => {
-                let address = match address {
-                    ManualStartAddress::Virtual(v) => {
-                        let physical_address = self
-                            .processor_info_v2()
-                            .logical_to_physical(*v, Access::Sim_Access_Read)?;
+                let address = if Self::USE_PHYSICAL_ADDRESSES {
+                    // For embedded processors, treat size pointer as physical
+                    StartPhysicalAddress::WasPhysical(address.address())
+                } else {
+                    match address {
+                        ManualStartAddress::Virtual(v) => {
+                            let physical_address = self
+                                .processor_info_v2()
+                                .logical_to_physical(*v, Access::Sim_Access_Read)?;
 
-                        if physical_address.valid == 0 {
-                            bail!("Invalid linear address given for start buffer : {v:#x}");
+                            if physical_address.valid == 0 {
+                                bail!("Invalid linear address given for start buffer : {v:#x}");
+                            }
+
+                            StartPhysicalAddress::WasVirtual(physical_address.address)
                         }
-
-                        StartPhysicalAddress::WasVirtual(physical_address.address)
+                        ManualStartAddress::Physical(p) => {
+                            StartPhysicalAddress::WasPhysical(*p)
+                        }
                     }
-                    ManualStartAddress::Physical(p) => StartPhysicalAddress::WasPhysical(*p),
                 };
 
                 let size_size = if let Some(width) = Self::POINTER_WIDTH_OVERRIDE {
@@ -429,11 +498,12 @@ pub trait ArchitectureOperations {
                 } else {
                     self.processor_info_v2().get_logical_address_width()? / u8::BITS as i32
                 };
+                
                 let maximum_size =
-                    read_phys_memory(self.cpu(), address.physical_address(), size_size)?;
+                    read_phys_memory(self.cpu(), address.physical_address(), size_size)? as usize;
                 StartSize::SizePtr {
                     address,
-                    maximum_size: maximum_size as usize,
+                    maximum_size,
                 }
             }
             crate::ManualStartSize::MaxSize(maximum_size) => StartSize::MaxSize(*maximum_size),
@@ -441,19 +511,23 @@ pub trait ArchitectureOperations {
                 address,
                 maximum_size,
             } => {
-                let address = match address {
-                    ManualStartAddress::Virtual(v) => {
-                        let physical_address = self
-                            .processor_info_v2()
-                            .logical_to_physical(*v, Access::Sim_Access_Read)?;
+                let address = if Self::USE_PHYSICAL_ADDRESSES {
+                    StartPhysicalAddress::WasPhysical(address.address())
+                } else {
+                    match address {
+                        ManualStartAddress::Virtual(v) => {
+                            let physical_address = self
+                                .processor_info_v2()
+                                .logical_to_physical(*v, Access::Sim_Access_Read)?;
 
-                        if physical_address.valid == 0 {
-                            bail!("Invalid linear address given for start buffer : {v:#x}");
+                            if physical_address.valid == 0 {
+                                bail!("Invalid linear address given for start buffer : {v:#x}");
+                            }
+
+                            StartPhysicalAddress::WasVirtual(physical_address.address)
                         }
-
-                        StartPhysicalAddress::WasVirtual(physical_address.address)
+                        ManualStartAddress::Physical(p) => StartPhysicalAddress::WasPhysical(*p),
                     }
-                    ManualStartAddress::Physical(p) => StartPhysicalAddress::WasPhysical(*p),
                 };
 
                 StartSize::SizePtrAndMaxSize {
@@ -532,18 +606,24 @@ impl ArchitectureOperations for Architecture {
         Self: Sized,
     {
         if let Ok(x86_64) = X86_64ArchitectureOperations::new(cpu) {
-            Ok(Self::X86_64(x86_64))
-        } else if let Ok(x86) = X86ArchitectureOperations::new(cpu) {
-            Ok(Self::I386(x86))
-        } else if let Ok(riscv) = RISCVArchitectureOperations::new(cpu) {
-            Ok(Self::Riscv(riscv))
-        } else if let Ok(arm) = ARMArchitectureOperations::new(cpu) {
-            Ok(Self::Arm(arm))
-        } else if let Ok(aarch64) = AArch64ArchitectureOperations::new(cpu) {
-            Ok(Self::Aarch64(aarch64))
-        } else {
-            bail!("Unsupported architecture");
+            return Ok(Self::X86_64(x86_64));
         }
+        if let Ok(x86) = X86ArchitectureOperations::new(cpu) {
+            return Ok(Self::I386(x86));
+        }
+        if let Ok(riscv) = RISCVArchitectureOperations::new(cpu) {
+            return Ok(Self::Riscv(riscv));
+        }
+        if let Ok(arm) = ARMArchitectureOperations::new(cpu) {
+            return Ok(Self::Arm(arm));
+        }
+        if let Ok(aarch64) = AArch64ArchitectureOperations::new(cpu) {
+            return Ok(Self::Aarch64(aarch64));
+        }
+        if let Ok(ppe42) = PPE42ArchitectureOperations::new(cpu) {
+            return Ok(Self::Ppe42(ppe42));
+        }
+        bail!("Unsupported architecture");
     }
 
     fn cpu(&self) -> *mut ConfObject {
@@ -553,6 +633,7 @@ impl ArchitectureOperations for Architecture {
             Architecture::Riscv(riscv) => riscv.cpu(),
             Architecture::Arm(arm) => arm.cpu(),
             Architecture::Aarch64(aarch64) => aarch64.cpu(),
+            Architecture::Ppe42(ppe42) => ppe42.cpu(),
         }
     }
 
@@ -563,6 +644,7 @@ impl ArchitectureOperations for Architecture {
             Architecture::Riscv(riscv) => riscv.disassembler(),
             Architecture::Arm(arm) => arm.disassembler(),
             Architecture::Aarch64(aarch64) => aarch64.disassembler(),
+            Architecture::Ppe42(ppe42) => ppe42.disassembler(),
         }
     }
 
@@ -573,6 +655,7 @@ impl ArchitectureOperations for Architecture {
             Architecture::Riscv(riscv) => riscv.int_register(),
             Architecture::Arm(arm) => arm.int_register(),
             Architecture::Aarch64(aarch64) => aarch64.int_register(),
+            Architecture::Ppe42(ppe42) => ppe42.int_register(),
         }
     }
 
@@ -583,6 +666,7 @@ impl ArchitectureOperations for Architecture {
             Architecture::Riscv(riscv) => riscv.processor_info_v2(),
             Architecture::Arm(arm) => arm.processor_info_v2(),
             Architecture::Aarch64(aarch64) => aarch64.processor_info_v2(),
+            Architecture::Ppe42(ppe42) => ppe42.processor_info_v2(),
         }
     }
 
@@ -593,6 +677,7 @@ impl ArchitectureOperations for Architecture {
             Architecture::Riscv(riscv) => riscv.cpu_instruction_query(),
             Architecture::Arm(arm) => arm.cpu_instruction_query(),
             Architecture::Aarch64(aarch64) => aarch64.cpu_instruction_query(),
+            Architecture::Ppe42(ppe42) => ppe42.cpu_instruction_query(),
         }
     }
 
@@ -603,6 +688,7 @@ impl ArchitectureOperations for Architecture {
             Architecture::Riscv(riscv) => riscv.cpu_instrumentation_subscribe(),
             Architecture::Arm(arm) => arm.cpu_instrumentation_subscribe(),
             Architecture::Aarch64(aarch64) => aarch64.cpu_instrumentation_subscribe(),
+            Architecture::Ppe42(ppe42) => ppe42.cpu_instrumentation_subscribe(),
         }
     }
 
@@ -613,6 +699,7 @@ impl ArchitectureOperations for Architecture {
             Architecture::Riscv(riscv) => riscv.cycle(),
             Architecture::Arm(arm) => arm.cycle(),
             Architecture::Aarch64(aarch64) => aarch64.cycle(),
+            Architecture::Ppe42(ppe42) => ppe42.cycle(),
         }
     }
 
@@ -623,6 +710,7 @@ impl ArchitectureOperations for Architecture {
             Architecture::Riscv(riscv) => riscv.get_magic_index_selector(),
             Architecture::Arm(arm) => arm.get_magic_index_selector(),
             Architecture::Aarch64(aarch64) => aarch64.get_magic_index_selector(),
+            Architecture::Ppe42(ppe42) => ppe42.get_magic_index_selector(),
         }
     }
 
@@ -633,6 +721,7 @@ impl ArchitectureOperations for Architecture {
             Architecture::Riscv(riscv) => riscv.get_magic_start_buffer_ptr_size_ptr(),
             Architecture::Arm(arm) => arm.get_magic_start_buffer_ptr_size_ptr(),
             Architecture::Aarch64(aarch64) => aarch64.get_magic_start_buffer_ptr_size_ptr(),
+            Architecture::Ppe42(ppe42) => ppe42.get_magic_start_buffer_ptr_size_ptr(),
         }
     }
 
@@ -643,16 +732,18 @@ impl ArchitectureOperations for Architecture {
             Architecture::Riscv(riscv) => riscv.get_magic_start_buffer_ptr_size_val(),
             Architecture::Arm(arm) => arm.get_magic_start_buffer_ptr_size_val(),
             Architecture::Aarch64(aarch64) => aarch64.get_magic_start_buffer_ptr_size_val(),
+            Architecture::Ppe42(ppe42) => ppe42.get_magic_start_buffer_ptr_size_val(),
         }
     }
 
     fn get_magic_start_buffer_ptr_size_ptr_val(&mut self) -> Result<StartInfo> {
         match self {
-            Architecture::X86_64(x86_64) => x86_64.get_magic_start_buffer_ptr_size_ptr(),
-            Architecture::I386(i386) => i386.get_magic_start_buffer_ptr_size_ptr(),
-            Architecture::Riscv(riscv) => riscv.get_magic_start_buffer_ptr_size_ptr(),
+            Architecture::X86_64(x86_64) => x86_64.get_magic_start_buffer_ptr_size_ptr_val(),
+            Architecture::I386(i386) => i386.get_magic_start_buffer_ptr_size_ptr_val(),
+            Architecture::Riscv(riscv) => riscv.get_magic_start_buffer_ptr_size_ptr_val(),
             Architecture::Arm(arm) => arm.get_magic_start_buffer_ptr_size_ptr_val(),
             Architecture::Aarch64(aarch64) => aarch64.get_magic_start_buffer_ptr_size_ptr_val(),
+            Architecture::Ppe42(ppe42) => ppe42.get_magic_start_buffer_ptr_size_ptr_val(),
         }
     }
 
@@ -663,6 +754,7 @@ impl ArchitectureOperations for Architecture {
             Architecture::Riscv(riscv) => riscv.get_manual_start_info(info),
             Architecture::Arm(arm) => arm.get_manual_start_info(info),
             Architecture::Aarch64(aarch64) => aarch64.get_manual_start_info(info),
+            Architecture::Ppe42(ppe42) => ppe42.get_manual_start_info(info),
         }
     }
 
@@ -673,6 +765,7 @@ impl ArchitectureOperations for Architecture {
             Architecture::Riscv(riscv) => riscv.write_start(testcase, info),
             Architecture::Arm(arm) => arm.write_start(testcase, info),
             Architecture::Aarch64(aarch64) => aarch64.write_start(testcase, info),
+            Architecture::Ppe42(ppe42) => ppe42.write_start(testcase, info),
         }
     }
 
@@ -683,6 +776,7 @@ impl ArchitectureOperations for Architecture {
             Architecture::Riscv(riscv) => riscv.trace_pc(instruction_query),
             Architecture::Arm(arm) => arm.trace_pc(instruction_query),
             Architecture::Aarch64(aarch64) => aarch64.trace_pc(instruction_query),
+            Architecture::Ppe42(ppe42) => ppe42.trace_pc(instruction_query),
         }
     }
 
@@ -693,6 +787,7 @@ impl ArchitectureOperations for Architecture {
             Architecture::Riscv(riscv) => riscv.trace_cmp(instruction_query),
             Architecture::Arm(arm) => arm.trace_cmp(instruction_query),
             Architecture::Aarch64(aarch64) => aarch64.trace_cmp(instruction_query),
+            Architecture::Ppe42(ppe42) => ppe42.trace_cmp(instruction_query),
         }
     }
 }
