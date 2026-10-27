@@ -66,12 +66,6 @@ fn test_x86_64_manual_latest() -> Result<()> {
             qsp = simics.SIM_get_object("qsp")
 
 
-            def on_magic(o, e, r):
-                if r == 2:
-                    print("Got magic stop...")
-                    tsffs.iface.fuzz.stop()
-
-
             def start_script_branch():
                 # Wait for magic start -- in reality this could wait for any
                 # start condition, but we make it easy on ourselves for testing purposes
@@ -132,7 +126,7 @@ fn test_x86_64_manual_latest() -> Result<()> {
                 simics.SIM_quit(1)
 
             def on_magic(o, e, r):
-                if r == 2:
+                if r == 4:  # N_STOP_NORMAL
                     print("Got magic stop...")
                     tsffs.iface.fuzz.stop()
 
