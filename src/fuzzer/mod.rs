@@ -19,7 +19,7 @@ use libafl::{
         CachedOnDiskCorpus, Corpus, CrashFeedback, ExitKind, HasCurrentCorpusIdx, HasTargetBytes,
         HitcountsMapObserver, I2SRandReplace, MaxMapFeedback, OnDiskCorpus, RandBytesGenerator,
         SimpleEventManager, SimpleMonitor, StdCmpValuesObserver, StdMOptMutator, StdMapObserver,
-        StdScheduledMutator, TimeFeedback, TimeObserver, Tokens,
+        StdScheduledMutator, TimeFeedback, TimeObserver, TimeoutFeedback, Tokens,
     },
     schedulers::{
         powersched::PowerSchedule, IndexesLenTimeMinimizerScheduler, StdWeightedScheduler,
@@ -95,7 +95,6 @@ impl Tsffs {
     const AFLPP_CMP_OBSERVER_NAME: &'static str = "aflpp_cmplog";
     const CMPLOG_OBSERVER_NAME: &'static str = "cmplog";
     const TIME_OBSERVER_NAME: &'static str = "time";
-    const TIMEOUT_FEEDBACK_NAME: &'static str = "time";
     const CORPUS_CACHE_SIZE: usize = 4096;
 
     /// Start the fuzzing thread.
@@ -285,7 +284,7 @@ impl Tsffs {
                 let time_feedback = TimeFeedback::with_observer(&time_observer);
 
                 let crash_feedback = CrashFeedback::new();
-                let timeout_feedback = TimeFeedback::new(Self::TIMEOUT_FEEDBACK_NAME);
+                let timeout_feedback = TimeoutFeedback::new();
 
                 let solutions = OnDiskCorpus::with_meta_format(
                     solutions_directory.clone(),
