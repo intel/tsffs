@@ -84,7 +84,7 @@
       :                                                               \
       : "r"((unsigned long long)arg0), "r"((unsigned long long)arg1), \
         "r"((unsigned long long)arg2)                                 \
-      : "x10", "x9");
+      : "x10", "x9", "x8");
 
 /// __orr_extended4
 ///
@@ -107,7 +107,7 @@
       :                                                                   \
       : "r"((unsigned long long)arg0), "r"((unsigned long long)arg1),     \
         "r"((unsigned long long)arg2), "r"((unsigned long long)arg3)      \
-      : "x10", "x9");
+      : "x10", "x9", "x8", "x7");
 
 /// The default index number used for magic instructions. All magic instructions
 /// support multiple start and stop indices, which defaults to 0 if not

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /// Definitions and macros for compiled-in harnessing of C and C++ target
-/// software for the RISC-V (32-bit) architecture
+/// software for the ARM (32-bit) architecture
 
 #ifndef TSFFS_H
 #define TSFFS_H
@@ -43,7 +43,7 @@
       "mov r10, %0; orr r" __tostring(value) ", r" __tostring( \
           value) ", r" __tostring(value)                       \
       :                                                        \
-      : "r"(arg0)                                              \
+      : "r"((unsigned int)arg0)                                \
       : "r10");
 
 /// __orr_extended2
@@ -62,7 +62,7 @@
       "mov r10, %0; mov r9, %1; orr r" __tostring(value) ", r" __tostring( \
           value) ", r" __tostring(value)                                   \
       :                                                                    \
-      : "r"(arg0), "r"(arg1)                                               \
+      : "r"((unsigned int)arg0), "r"((unsigned int)arg1)                   \
       : "r10", "r9");
 
 /// __orr_extended3
@@ -82,7 +82,8 @@
       "mov r10, %0; mov r9, %1; mov r8, %2; orr r" __tostring(   \
           value) ", r" __tostring(value) ", r" __tostring(value) \
       :                                                          \
-      : "r"(arg0), "r"(arg1), "r"(arg2)                          \
+      : "r"((unsigned int)arg0), "r"((unsigned int)arg1),        \
+        "r"((unsigned int)arg2)                                  \
       : "r10", "r9", "r8");
 
 /// __orr_extended4
@@ -98,23 +99,23 @@
 /// * `arg1` - The value to place in register `r9`
 /// * `arg2` - The value to place in register `r8`
 /// * `arg3` - The value to place in register `r7`
+///
+/// `r7` is saved and restored instead of clobbered because it is the frame
+/// pointer in Thumb mode.
 #define __orr_extended4(value, arg0, arg1, arg2, arg3)                    \
   __asm__ __volatile__(                                                   \
-      "mov r10, %0; mov r9, %1; mov r8, %2; mov r7, %3; "                 \
+      "push {r7}; mov r10, %0; mov r9, %1; mov r8, %2; mov r7, %3; "      \
       "orr r" __tostring(value) ", r" __tostring(value) ", r" __tostring( \
-          value)                                                          \
+          value) "; pop {r7}"                                             \
       :                                                                   \
-      : "r"(arg0), "r"(arg1), "r"(arg2), "r"(arg3)                        \
-      : "r10", "r9", "r8", "r7");
-
-/// Magic value defined by SIMICS as the "leaf" value of a CPUID instruction
-/// that is treated as a magic instruction.
-#define MAGIC (0x4711U)
+      : "r"((unsigned int)arg0), "r"((unsigned int)arg1),                 \
+        "r"((unsigned int)arg2), "r"((unsigned int)arg3)                  \
+      : "r10", "r9", "r8");
 
 /// The default index number used for magic instructions. All magic instructions
 /// support multiple start and stop indices, which defaults to 0 if not
 /// specified.
-#define DEFAULT_INDEX (0x0000U)
+#define DEFAULT_INDEX (0x0000)
 
 /// Pseudo-hypercall number to signal the fuzzer to use the first argument to
 /// the magic instruction as the pointer to the testcase buffer and the second
@@ -151,9 +152,47 @@
 /// size_t size;
 /// HARNESS_START(buffer, &size);
 /// ```
-#define HARNESS_START(buffer, size_ptr)                             \
-  do {                                                              \
-    __orr_extended2(N_START_BUFFER_PTR_SIZE_PTR, buffer, size_ptr); \
+#define HARNESS_START(buffer, size_ptr)                                 \
+  do {                                                                  \
+    __orr_extended3(N_START_BUFFER_PTR_SIZE_PTR, DEFAULT_INDEX, buffer, \
+                    size_ptr);                                          \
+  } while (0);
+
+/// HARNESS_START_INDEX
+///
+/// Signal the fuzzer to start the fuzzing loop at the point this macro is
+/// called. The index specified by `start_index` will be used. If you need
+/// multiple start harnesses compiled into the same binary, you can use this
+/// macro to specify different indices, then enable them at runtime by
+/// configuring the fuzzer.
+///
+/// When this macro is called:
+///
+/// - A snapshot will be taken and saved
+/// - The buffer pointed to by `buffer` will be saved and used as the testcase
+///   buffer. Each
+///   fuzzing iteration, a new test case will be written to this buffer.
+/// - The size of the buffer pointed to by `size_ptr` will be saved as the
+///   maximum testcase size. Each fuzzing iteration, the actual size of the
+///   current testcase will be written to `*size_ptr`.
+///
+/// # Arguments
+///
+/// - `start_index`: The index to use for this start harness
+/// - `buffer`: The pointer to the testcase buffer
+/// - `size_ptr`: The pointer to the size of the testcase buffer
+///
+/// # Example
+///
+/// ```
+/// unsigned char buffer[1024];
+/// size_t size;
+/// HARNESS_START_INDEX(0x0001, buffer, &size);
+/// ```
+#define HARNESS_START_INDEX(start_index, buffer, size_ptr)            \
+  do {                                                                \
+    __orr_extended3(N_START_BUFFER_PTR_SIZE_PTR, start_index, buffer, \
+                    size_ptr);                                        \
   } while (0);
 
 /// Pseudo-hypercall number to signal the fuzzer to use the first argument to
@@ -190,9 +229,46 @@
 /// unsigned char buffer[1024];
 /// HARNESS_START_WITH_MAXIMUM_SIZE(buffer, 1024);
 /// ```
-#define HARNESS_START_WITH_MAXIMUM_SIZE(buffer, max_size)           \
-  do {                                                              \
-    __orr_extended2(N_START_BUFFER_PTR_SIZE_VAL, buffer, max_size); \
+#define HARNESS_START_WITH_MAXIMUM_SIZE(buffer, max_size)               \
+  do {                                                                  \
+    __orr_extended3(N_START_BUFFER_PTR_SIZE_VAL, DEFAULT_INDEX, buffer, \
+                    max_size);                                          \
+  } while (0);
+
+/// HARNESS_START_WITH_MAXIMUM_SIZE_INDEX
+///
+/// Signal the fuzzer to start the fuzzing loop at the point this macro is
+/// called. The index specified by `start_index` will be used. If you need
+/// multiple start harnesses compiled into the same binary, you can use this
+/// macro to specify different indices, then enable them at runtime by
+/// configuring the fuzzer.
+///
+/// When this macro is called:
+///
+/// - A snapshot will be taken and saved
+/// - The buffer pointed to by `buffer` will be saved and used as the testcase
+///   buffer. Each
+///   fuzzing iteration, a new test case will be written to this buffer.
+/// - The `max_size` value will be saved as the maximum testcase size. Fuzzing
+///   test cases will be truncated to this size before being written to the
+///   buffer.
+///
+/// # Arguments
+///
+/// - `start_index`: The index to use for this start harness
+/// - `buffer`: The pointer to the testcase buffer
+/// - `max_size`: The maximum size of the testcase buffer
+///
+/// # Example
+///
+/// ```
+/// unsigned char buffer[1024];
+/// HARNESS_START_WITH_MAXIMUM_SIZE_INDEX(0x0001, buffer, 1024);
+/// ```
+#define HARNESS_START_WITH_MAXIMUM_SIZE_INDEX(start_index, buffer, max_size) \
+  do {                                                                       \
+    __orr_extended3(N_START_BUFFER_PTR_SIZE_VAL, start_index, buffer,        \
+                    max_size);                                               \
   } while (0);
 
 /// Pseudo-hypercall number to signal the fuzzer to use the first argument to
@@ -236,8 +312,49 @@
 /// ```
 #define HARNESS_START_WITH_MAXIMUM_SIZE_AND_PTR(buffer, size_ptr, max_size) \
   do {                                                                      \
-    __orr_extended3(N_START_BUFFER_PTR_SIZE_PTR_VAL, buffer, size_ptr,      \
-                    max_size);                                              \
+    __orr_extended4(N_START_BUFFER_PTR_SIZE_PTR_VAL, DEFAULT_INDEX, buffer, \
+                    size_ptr, max_size);                                    \
+  } while (0);
+
+/// HARNESS_START_WITH_MAXIMUM_SIZE_AND_PTR_INDEX
+///
+/// Signal the fuzzer to start the fuzzing loop at the point this macro is
+/// called. The index specified by `start_index` will be used. If you need
+/// multiple start harnesses compiled into the same binary, you can use this
+/// macro to specify different indices, then enable them at runtime by
+/// configuring the fuzzer.
+///
+/// When this macro is called:
+///
+/// - A snapshot will be taken and saved
+/// - The buffer pointed to by `buffer` will be saved and used as the testcase
+///   buffer. Each
+///   fuzzing iteration, a new test case will be written to this buffer.
+/// - The address `size_ptr` will be saved. Each fuzzing iteration, the actual
+/// size of the current testcase will be written to `*size_ptr`.
+/// - The `max_size` value will be saved as the maximum testcase size. Fuzzing
+///   test cases will be truncated to this size before being written to the
+///   buffer.
+///
+/// # Arguments
+///
+/// - `start_index`: The index to use for this start harness
+/// - `buffer`: The pointer to the testcase buffer
+/// - `size_ptr`: The pointer to the size of the testcase buffer
+/// - `max_size`: The maximum size of the testcase buffer
+///
+/// # Example
+///
+/// ```
+/// unsigned char buffer[1024];
+/// size_t size;
+/// HARNESS_START_WITH_MAXIMUM_SIZE_AND_PTR_INDEX(0x0001U, buffer, &size, 1024);
+/// ```
+#define HARNESS_START_WITH_MAXIMUM_SIZE_AND_PTR_INDEX(start_index, buffer, \
+                                                      size_ptr, max_size)  \
+  do {                                                                     \
+    __orr_extended4(N_START_BUFFER_PTR_SIZE_PTR_VAL, start_index, buffer,  \
+                    size_ptr, max_size);                                   \
   } while (0);
 
 /// Pseudo-hypercall number to signal the fuzzer to stop the current fuzzing
@@ -259,9 +376,32 @@
 /// ```
 /// HARNESS_STOP();
 /// ```
-#define HARNESS_STOP()    \
-  do {                    \
-    __orr(N_STOP_NORMAL); \
+#define HARNESS_STOP()                             \
+  do {                                             \
+    __orr_extended1(N_STOP_NORMAL, DEFAULT_INDEX); \
+  } while (0);
+
+/// HARNESS_STOP_INDEX
+///
+/// Signal the fuzzer to stop and reset to the beginning of the fuzzing loop
+/// with a "normal" stop status, indicating no solution has occurred. The index
+/// specified by `stop_index` will be used. If you need to differentiate between
+/// multiple stop harnesses compiled into the same binary, you can use this
+/// macro to specify different indices, then enable them at runtime by
+/// configuring the fuzzer.
+///
+/// # Arguments
+///
+/// - `stop_index`: The index to use for this stop harness
+///
+/// # Example
+///
+/// ```
+/// HARNESS_STOP_INDEX(0x0001);
+/// ```
+#define HARNESS_STOP_INDEX(stop_index)          \
+  do {                                          \
+    __orr_extended1(N_STOP_NORMAL, stop_index); \
   } while (0);
 
 /// Pseudo-hypercall number to signal the fuzzer that a custom assertion has
@@ -287,6 +427,30 @@
 #define HARNESS_ASSERT()                           \
   do {                                             \
     __orr_extended1(N_STOP_ASSERT, DEFAULT_INDEX); \
+  } while (0);
+
+/// HARNESS_ASSERT_INDEX
+///
+/// Signal the fuzzer that a custom assertion has occurred, and the fuzzer
+/// should stop the current fuzzing iteration and reset to the beginning of the
+/// fuzzing loop with a "solution" stop status. The index specified by
+/// `assert_index` will be used. If you need to differentiate between multiple
+/// assertion harnesses compiled into the same binary, you can use this macro to
+/// specify different indices, then enable them at runtime by configuring the
+/// fuzzer.
+///
+/// # Arguments
+///
+/// - `assert_index`: The index to use for this assertion harness
+///
+/// # Example
+///
+/// ```
+/// HARNESS_ASSERT_INDEX(0x0001);
+/// ```
+#define HARNESS_ASSERT_INDEX(assert_index)        \
+  do {                                            \
+    __orr_extended1(N_STOP_ASSERT, assert_index); \
   } while (0);
 
 #endif  // TSFFS_H
