@@ -2587,6 +2587,8 @@
   } while (0);
 
 #endif  // TSFFS_H
+#elif defined(__PPC__) || defined(__ppc__) || defined(__powerpc__) || defined(_ARCH_PPC)
+#include "tsffs-gcc-ppe42.h"
 #else
 #error "Unsupported platform!"
 #endif
