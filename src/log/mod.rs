@@ -7,7 +7,7 @@ use crate::{fuzzer::messages::FuzzerMessage, Tsffs};
 use anyhow::{anyhow, Result};
 use chrono::Utc;
 use serde::Serialize;
-use simics::{info, AsConfObject};
+use simics::{debug, info, AsConfObject};
 use std::{fs::OpenOptions, io::Write, time::SystemTime};
 
 #[derive(Clone, Debug, Serialize)]
@@ -90,6 +90,12 @@ impl Tsffs {
                     self.afl_corpus_count += 1;
                     self.afl_edges_found += *new_edges as u64;
                     info!(
+                        self.as_conf_object(),
+                        "New coverage: {new_edges} new edges (corpus: {}, edges: {})",
+                        self.afl_corpus_count,
+                        self.afl_edges_found
+                    );
+                    debug!(
                         self.as_conf_object(),
                         "Interesting input for AFL indices {indices:?} with input {input:?}"
                     );
