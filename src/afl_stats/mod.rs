@@ -491,12 +491,8 @@ pub(crate) fn status_line(start_time: SystemTime, sample: &StatsSample) -> Strin
         .unwrap_or(Duration::ZERO);
     let last_find = match sample.last_find {
         Some(t) => format!(
-            "{}s ago",
-            sample
-                .now
-                .duration_since(t)
-                .unwrap_or(Duration::ZERO)
-                .as_secs()
+            "{} ago",
+            human_duration(sample.now.duration_since(t).unwrap_or(Duration::ZERO))
         ),
         None => "none yet".to_string(),
     };
@@ -511,6 +507,24 @@ pub(crate) fn status_line(start_time: SystemTime, sample: &StatsSample) -> Strin
         sample.hangs,
         last_find
     )
+}
+
+/// A duration as its two most significant units, such as `45s`, `5m 3s`, `5h 37m` or `2d 3h`
+fn human_duration(duration: Duration) -> String {
+    let secs = duration.as_secs();
+    let (days, hours, minutes, seconds) = (
+        secs / 86_400,
+        secs % 86_400 / 3_600,
+        secs % 3_600 / 60,
+        secs % 60,
+    );
+
+    match (days, hours, minutes) {
+        (0, 0, 0) => format!("{seconds}s"),
+        (0, 0, _) => format!("{minutes}m {seconds}s"),
+        (0, _, _) => format!("{hours}h {minutes}m"),
+        _ => format!("{days}d {hours}h"),
+    }
 }
 
 fn rate(count: u64, over: Duration) -> f64 {
@@ -999,11 +1013,24 @@ mod tests {
         s.corpus_count = 12;
         assert_eq!(
             status_line(at(0), &s),
-            "execs: 5000 (50.00/sec), edges: 700, corpus: 12, crashes: 2, hangs: 1, last find: 60s ago"
+            "execs: 5000 (50.00/sec), edges: 700, corpus: 12, crashes: 2, hangs: 1, last find: 1m 0s ago"
         );
 
         s.last_find = None;
         assert!(status_line(at(0), &s).ends_with("last find: none yet"));
+    }
+
+    #[test]
+    fn durations_read_as_their_two_largest_units() {
+        for (secs, expected) in [
+            (0, "0s"),
+            (59, "59s"),
+            (303, "5m 3s"),
+            (20_266, "5h 37m"),
+            (183_600, "2d 3h"),
+        ] {
+            assert_eq!(human_duration(Duration::from_secs(secs)), expected);
+        }
     }
 
     #[test]
