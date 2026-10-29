@@ -25,6 +25,9 @@ version = "6.2.0"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
+# The lib test binary links the Simics runtime, which Linux cannot locate under plain
+# `cargo test`, and the CI filter `_latest` skips unit tests anyway. To run them locally,
+# set this to true with the Simics library directories on the loader path.
 test = false
 
 [dependencies]
