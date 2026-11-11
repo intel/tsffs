@@ -19,6 +19,8 @@ pub(crate) unsafe fn c_str_arg(ptr: *const c_char, name: &str) -> Result<String>
         .to_owned())
 }
 
+pub mod path_suffix_index;
+
 #[derive(Debug, Clone, FromAttrValueList)]
 pub(crate) struct MicroCheckpointInfo {
     #[allow(unused)]
