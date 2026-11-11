@@ -160,8 +160,11 @@ download_and_verify_cmake() {
     mkdir -p "${BUILDER_DIR}/rsrc"
 
     if [ ! -f "${BUILDER_DIR}/rsrc/cmake-armored-keys.gpg" ]; then
-        curl -L -o "${BUILDER_DIR}/rsrc/cmake-armored-keys.asc" \
-            "${CMAKE_PGP_KEY_URL}"
+        # keyserver.ubuntu.com often refuses GitHub runners; fall back to the same key by fingerprint
+        curl -fL --retry 3 --retry-connrefused -o "${BUILDER_DIR}/rsrc/cmake-armored-keys.asc" \
+            "${CMAKE_PGP_KEY_URL}" ||
+            curl -fL --retry 3 -o "${BUILDER_DIR}/rsrc/cmake-armored-keys.asc" \
+                "https://keys.openpgp.org/vks/v1/by-fingerprint/CBA23971357C2E6590D9EFD3EC8FEF3A7BFB4EDA"
         gpg --no-default-keyring --keyring "${BUILDER_DIR}/rsrc/cmake-armored-keys.gpg" --import \
             "${BUILDER_DIR}/rsrc/cmake-armored-keys.asc"
     fi
