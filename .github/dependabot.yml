@@ -6,6 +6,9 @@ updates:
       interval: daily
     cooldown:
       default-days: 7
+    # The builder deliberately uses an old Fedora (old glibc) for portable binaries
+    ignore:
+      - dependency-name: fedora
 
   - package-ecosystem: github-actions
     directory: /
