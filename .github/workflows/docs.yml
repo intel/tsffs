@@ -57,6 +57,13 @@ jobs:
         run: |
           pushd docs || exit 1
           mdbook build
+          # Generate llms-full.txt: a single concatenated Markdown file of all docs
+          # in SUMMARY.md order, for LLM consumption (see https://llmstxt.org/).
+          # Extracts .md paths from SUMMARY.md links, then concatenates each file
+          # with a blank line separator. Output is served at /llms-full.txt.
+          grep -oP '\([^)]+\.md\)' src/SUMMARY.md | tr -d '()' | while read -r f; do
+            echo; cat "src/$f"
+          done > book/html/llms-full.txt
           popd || exit 1
 
       - name: Cache SIMICS Dependencies
