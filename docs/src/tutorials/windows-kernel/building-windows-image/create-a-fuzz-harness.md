@@ -9,7 +9,7 @@ cd ~/fuzzer
 
 We're going to fuzz the driver via its IOCTL interface. The handler for the interface is
 defined
-[here](https://github.com/novafacing/HackSysExtremeVulnerableDriver/blob/master/Driver/HEVD/Windows/BufferOverflowStack.c).
+[in BufferOverflowStack.c](https://github.com/novafacing/HackSysExtremeVulnerableDriver/blob/master/Driver/HEVD/Windows/BufferOverflowStack.c).
 It is possible as well to harness the kernel driver directly, but it is typically much
 easier to use a user-space driver to fuzz the kernel driver. This has the added benefit
 that most test cases for drivers are implemented as user-space programs, so converting a

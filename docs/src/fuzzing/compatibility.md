@@ -31,8 +31,8 @@ Supported Architectures:
 
 If your model's target architecture is one of these, it is supported by TSFFS. If not,
 file an issue or pull request. Adding new architectures is easy, and can be a good
-first contribution to the fuzzer. See the generic and specific architecture information
-[here](https://github.com/intel/tsffs/tree/main/src/arch).
+first contribution to the fuzzer. See the
+[generic and specific architecture information](https://github.com/intel/tsffs/tree/main/src/arch).
 
 ## Micro Checkpoints
 

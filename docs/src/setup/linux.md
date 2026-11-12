@@ -51,8 +51,8 @@ cargo +nightly --version
 For users of the public distribution of SIMICS, visit the [SIMICS download
 page](https://www.intel.com/content/www/us/en/developer/articles/tool/simics-simulator.html),
 accept the EULA, and download the following files. Users of internal or commercial
-private Wind River or Intel SIMICS should follow internal documentation available
-[here](https://goto/simics).
+private Wind River or Intel SIMICS should follow the
+[internal documentation](https://goto/simics).
 
 * `intel-simics-package-manager-[VERSION].tar.gz`
 * `simics-6-packages-[VERSION].ispm`
