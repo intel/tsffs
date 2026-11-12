@@ -74,6 +74,6 @@ jobs:
       # ℹ️ Command-line programs to run using the OS shell.
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v3.29.5
+        uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v3.29.5
         with:
           category: "/language:${{matrix.language}}"
