@@ -56,7 +56,7 @@ A SIMICS "target" is a YAML file which declares configuration options that are
 ultimately passed to a script. It provides an easy way to configure and override options
 without digging through scripts to find the right configuration options. You can read
 more about targets
-[here](https://intel.github.io/tsffs/simics/simics-user-guide/targets.html).
+[in the SIMICS user guide](https://intel.github.io/tsffs/simics/simics-user-guide/targets.html).
 
 We'll create a new target in `project/targets/qsp-x86/qsp-uefi-custom.target.yml`:
 

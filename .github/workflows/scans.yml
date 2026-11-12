@@ -13,7 +13,7 @@ permissions:
 jobs:
   super_lint:
     name: Run Super Linter
-    container: github/super-linter
+    container: ghcr.io/super-linter/super-linter:v9.0.0@sha256:7620fb6f07a1908b0642d9ddc4f49da7d9f2b9497bcafee4d3d151d1e5567c0b
     runs-on: ubuntu-latest
     steps:
       - name: Harden Runner
@@ -30,25 +30,23 @@ jobs:
       - name: (CT222) (E/C) - Use hadolint to evaluate Dockerfile configuration
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Rust validation is handled by build_and_test
-          VALIDATE_RUST_2015: false
-          VALIDATE_RUST_2018: false
-          VALIDATE_RUST_2021: false
-          VALIDATE_RUST_CLIPPY: false
-          # We have no non-example CPP in the codebase
-          VALIDATE_CPP: false
-          VALIDATE_CLANG_FORMAT: false
-          VALIDATE_JSCPD: false
-          # This is way too pedantic
-          VALIDATE_NATURAL_LANGUAGE: false
-          # Dont flake8/mypy/pylint because our only python files attempt to import
-          # simics and fail
-          VALIDATE_PYTHON_FLAKE8: false
-          VALIDATE_PYTHON_MYPY: false
-          VALIDATE_PYTHON_PYLINT: false
-          # If gitleaks finds anything, it is too late. Suggested in developer docs in
-          # pre-commit instead. Too many false positives (X509VerifyCert, for example)
-          VALIDATE_GITLEAKS: false
+          # Only these linters run; setting any VALIDATE_* to true disables the rest.
+          # Rust is handled by build_and_test, flake8/mypy/pylint fail on `import simics`,
+          # and the remaining linters are too pedantic or report false positives here.
+          VALIDATE_BASH: true
+          VALIDATE_BASH_EXEC: true
+          VALIDATE_DOCKERFILE_HADOLINT: true
+          VALIDATE_GITHUB_ACTIONS: true
+          VALIDATE_HTML: true
+          VALIDATE_JSON: true
+          VALIDATE_MARKDOWN: true
+          VALIDATE_PYTHON_BLACK: true
+          VALIDATE_PYTHON_ISORT: true
+          VALIDATE_YAML: true
+          # Archived dependabot reports are data, not source
+          FILTER_REGEX_EXCLUDE: .*/\.github/dependabot/.*
+          # The job token is read-only, so it cannot post a PR comment
+          ENABLE_GITHUB_PULL_REQUEST_SUMMARY_COMMENT: false
         run: |
           /action/lib/linter.sh || ( echo "❗ [CT222] Super linter found an issue (possibly Hadolint)" && exit 1 )
           echo "✅ [CT222] Hadolint Dockerfile check passed"

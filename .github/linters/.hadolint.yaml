@@ -8,3 +8,5 @@ failure-threshold: warning
 ignored:
   - DL3022 # DL3022 raises a false positive when --build-context is used to provide multiple
            # contexts
+  - DL3064 # False positive: flags `ARG USERNAME` as sensitive data
+  - SC3046 # False positive: `source` is flagged although SHELL is set to bash

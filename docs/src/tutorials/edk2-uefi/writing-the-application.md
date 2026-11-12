@@ -8,7 +8,7 @@ First, we will create a `src` directory with the following files:
 * `PlatformBuild.py` - the
   [stuart](https://github.com/tianocore/tianocore.github.io/wiki/How-to-Build-With-Stuart)
   build description file for our target software. You can read more about the pytool
-  extensions [here](https://www.tianocore.org/edk2-pytool-extensions/integrate/porting/).
+  extensions [in their porting guide](https://www.tianocore.org/edk2-pytool-extensions/integrate/porting/).
 * `Tutorial.dsc` - The EDK2 description file for building our target software
 * `Tutorial.inf` - The EDK2 info file for building our target software
 * `Tutorial.c` - Our C source file
