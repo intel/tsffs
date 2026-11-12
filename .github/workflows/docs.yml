@@ -22,7 +22,8 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    # shortcut: ubuntu-26.04 breaks simics-api-sys bindgen (E0080 size asserts); unpin once fixed upstream
+    runs-on: ubuntu-24.04
 
     environment:
       name: github-pages
