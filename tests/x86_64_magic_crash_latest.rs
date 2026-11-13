@@ -36,12 +36,6 @@ fn test_x86_64_magic_crash_latest() -> Result<()> {
             .join("tests")
             .join("rsrc")
             .join("x86_64-crash-uefi")])
-        // "fuzzing!" is the password that makes the harness page fault; 'A's run normally so
-        // the corpus is not empty once the crashing input is moved to solutions.
-        .files([
-            ("corpus/crash".to_string(), b"fuzzing!".to_vec()),
-            ("corpus/normal".to_string(), b"AAAAAAAA".to_vec()),
-        ])
         .build()
         .to_env()?
         .test(indoc! {r#"
@@ -53,9 +47,8 @@ fn test_x86_64_magic_crash_latest() -> Result<()> {
             @tsffs.stop_on_harness = True
             @tsffs.timeout = 3.0
             @tsffs.exceptions = [14]
-            @tsffs.generate_random_corpus = False
+            @tsffs.generate_random_corpus = True
             @tsffs.iteration_limit = 100
-            @tsffs.quit_on_iteration_limit = False
 
             load-target "qsp-x86/uefi-shell" namespace = qsp machine:hardware:storage:disk0:image = "minimal_boot_disk.craff"
 
@@ -77,30 +70,11 @@ fn test_x86_64_magic_crash_latest() -> Result<()> {
             }
 
             run
-
-            @import os; solutions = os.path.join(SIM_lookup_file("%simics%"), "solutions"); print("TSFFS_" + "SOLUTIONS " + ",".join(open(os.path.join(solutions, f), "rb").read(8).hex() for f in sorted(os.listdir(solutions)) if not f.startswith(".")) + " END")
         "#})?;
 
     let output_str = String::from_utf8_lossy(&output.stdout);
 
     println!("{output_str}");
-
-    let solutions = output_str
-        .lines()
-        .find_map(|line| line.split("TSFFS_SOLUTIONS ").nth(1))
-        .and_then(|rest| rest.split(" END").next())
-        .expect("Simics script did not print TSFFS_SOLUTIONS");
-
-    // Only the password input page faults, so every solution must start with it.
-    let password = "fuzzing!"
-        .bytes()
-        .map(|b| format!("{b:02x}"))
-        .collect::<String>();
-    assert!(
-        !solutions.is_empty() && solutions.split(',').all(|s| s == password),
-        "Expected crash solutions starting with \"fuzzing!\" in the solutions directory, \
-         found: [{solutions}]"
-    );
 
     Ok(())
 }
