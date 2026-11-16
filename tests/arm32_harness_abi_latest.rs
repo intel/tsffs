@@ -100,7 +100,8 @@ fn check_isa(isa: &str, decoder: &InstDecoder) -> Result<()> {
         .arg(&src)
         .arg("-o")
         .arg(&obj)
-        .status()?;
+        .status()
+        .map_err(|e| anyhow!("running clang (install clang with the ARM target): {e}"))?;
     ensure!(
         status.success(),
         "clang failed to compile the arm32 harness ({isa})"
@@ -114,10 +115,16 @@ fn check_isa(isa: &str, decoder: &InstDecoder) -> Result<()> {
             .strtab
             .get_at(sym.st_name)
             .ok_or_else(|| anyhow!("bad symbol name"))?;
-        let section = &elf.section_headers[sym.st_shndx];
+        let section = elf
+            .section_headers
+            .get(sym.st_shndx)
+            .ok_or_else(|| anyhow!("{name}: bad section index"))?;
         // Bit 0 of a Thumb function symbol is the interworking bit, not part of the offset.
         let start = (section.sh_offset + (sym.st_value & !1)) as usize;
-        functions.insert(name, &bytes[start..start + sym.st_size as usize]);
+        let code = bytes
+            .get(start..start + sym.st_size as usize)
+            .ok_or_else(|| anyhow!("{name}: symbol outside the object file"))?;
+        functions.insert(name, code);
     }
 
     let (buf, size_ptr, max_size) = (Some(0x1000), Some(0x2000), Some(0x3000));

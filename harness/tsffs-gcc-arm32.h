@@ -100,17 +100,17 @@
 /// * `arg2` - The value to place in register `r8`
 /// * `arg3` - The value to place in register `r7`
 ///
-/// `r7` is saved and restored instead of clobbered because it is the frame
-/// pointer in Thumb mode.
-#define __orr_extended4(value, arg0, arg1, arg2, arg3)                    \
-  __asm__ __volatile__(                                                   \
-      "push {r7}; mov r10, %0; mov r9, %1; mov r8, %2; mov r7, %3; "      \
-      "orr r" __tostring(value) ", r" __tostring(value) ", r" __tostring( \
-          value) "; pop {r7}"                                             \
-      :                                                                   \
-      : "r"((unsigned int)arg0), "r"((unsigned int)arg1),                 \
-        "r"((unsigned int)arg2), "r"((unsigned int)arg3)                  \
-      : "r10", "r9", "r8");
+/// `r7` is saved in `r12` and restored instead of clobbered because it is the
+/// frame pointer in Thumb mode; `sp` is left untouched.
+#define __orr_extended4(value, arg0, arg1, arg2, arg3)                       \
+  __asm__ __volatile__(                                                      \
+      "mov r12, r7; mov r10, %0; mov r9, %1; mov r8, %2; mov r7, %3; "       \
+      "orr r" __tostring(value) ", r" __tostring(value) ", r" __tostring(    \
+          value) "; mov r7, r12"                                             \
+      :                                                                      \
+      : "r"((unsigned int)arg0), "r"((unsigned int)arg1),                    \
+        "r"((unsigned int)arg2), "r"((unsigned int)arg3)                     \
+      : "r12", "r10", "r9", "r8");
 
 /// The default index number used for magic instructions. All magic instructions
 /// support multiple start and stop indices, which defaults to 0 if not
