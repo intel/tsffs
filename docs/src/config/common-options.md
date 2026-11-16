@@ -396,8 +396,9 @@ the longest lineage of mutations. The corpus is scanned for these at most once p
 `afl_stats_interval`, so very large corpora do not slow every round.
 
 Each console status line (executions, executions per second, Edges, corpus size,
-crashes, hangs, and time since the last find) is printed at every statistics write, so the Simics console keeps
-reporting progress even when no new testcase or solution is found.
+crashes, hangs, and time since the last find) is printed at every statistics write, so
+the Simics console keeps reporting progress even when no new testcase or solution is
+found.
 
 When `coverage_reporting` is enabled, `fuzzer_stats` also carries
 `tsffs_branch_targets`: the number of distinct program counters reached by taken
