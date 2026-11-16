@@ -18,7 +18,7 @@ On the same wall-clock cadence, TSFFS prints a one-line status summary to the Si
 
 Writing stats can never stop fuzzing. Two live sessions can never share an Instance, and restarting into an existing Instance never mixes two sessions into one graph.
 
-This is the first stage of retiring `log.json` in favour of community-standard outputs (see ADR 0001): heartbeat and prose stats records stop being written to `log.json`, while its remaining records stay until their replacements land.
+`log.json` is unchanged: the AFL++ files are written alongside it.
 
 ## User Stories
 
@@ -59,19 +59,16 @@ This is the first stage of retiring `log.json` in favour of community-standard o
 35. As a fuzzing operator, I want a run of consecutive write failures reported once and the recovery reported once, so that a persistent problem does not flood the Simics log.
 36. As a fuzzing operator, I want stats writing to resume automatically when the failure cause goes away, so that a brief lock does not disable stats for the rest of the campaign.
 37. As a fuzzing operator, I want `fuzzer_setup` written once per session and describing the TSFFS configuration, so that `afl-whatsup` can discover the Instance and I can see how the campaign was set up.
-38. As a fuzzing operator with coverage reporting enabled, I want the Branch target count reported as `tsffs_branch_targets` in `fuzzer_stats`, so that I keep the firmware reachability measure that `log.json` heartbeats used to carry.
+38. As a fuzzing operator with coverage reporting enabled, I want the Branch target count reported as `tsffs_branch_targets` in `fuzzer_stats`, so that I can track firmware reachability alongside Edges.
 39. As a fuzzing operator, I want `afl_version` to identify TSFFS and its version, so that tools and humans can tell a TSFFS Instance from an AFL++ one.
 40. As a fuzzing operator, I want keys whose value TSFFS cannot know to be omitted rather than zero-filled, so that every value in the file is real.
-41. As a TSFFS user, I want `log.json` to stop accumulating heartbeat and prose stats records, so that stats have a single, standard home.
-42. As a TSFFS user, I want `log.json` to keep its interesting, solution, and timeout records for now, so that I lose no data until the AFL output layout replaces them.
-43. As a TSFFS user, I want `heartbeat`, `heartbeat_interval`, `log_to_file`, and `log_path` documented as deprecated with their replacements, so that I can migrate my scripts.
-44. As a TSFFS user, I want the documentation to describe the new attributes, the Instance layout, the `default` name and the Instance lock, and restart rotation, so that I can configure stats without reading source.
-45. As a TSFFS user, I want the `log.json` documentation to state that it is deprecated and what replaces each record type, including where Branch target counts went, so that I can migrate before it is removed.
-46. As a Windows user, I want a "Monitoring a campaign" guide that explains `afl-whatsup -d` (the PID liveness check does not work for Windows or remote Instances), `afl-plot` prerequisites (bash and gnuplot via WSL or Git Bash), loading `plot_data` in pandas or a spreadsheet, and that a stale `last_update` means a stuck iteration, so that I can monitor campaigns without AFL++ installed natively.
-47. As a fuzzing researcher, I want `plot_data` to use the AFL++ 15-column layout, so that existing plotting scripts and notebooks work unmodified.
-48. As a TSFFS maintainer, I want fuzzer-state-derived stats computed inside the fuzzer and live counters kept on the Simics side, so that each value comes from the component that actually knows it.
-49. As a TSFFS maintainer, I want the stats stage's field names and computations to mirror upstream LibAFL's `AflStatsStage`, so that a future LibAFL upgrade can replace ours with upstream's.
-50. As a TSFFS maintainer, I want the domain glossary to distinguish Edge from Branch target, so that future contributors do not conflate the two again.
+41. As a TSFFS user, I want `log.json` and its `log_to_file`, `log_path`, `heartbeat`, and `heartbeat_interval` attributes to keep working unchanged, so that existing scripts and log consumers are unaffected.
+42. As a TSFFS user, I want the documentation to describe the new attributes, the Instance layout, the `default` name and the Instance lock, and restart rotation, so that I can configure stats without reading source.
+43. As a Windows user, I want a "Monitoring a campaign" guide that explains `afl-whatsup -d` (the PID liveness check does not work for Windows or remote Instances), `afl-plot` prerequisites (bash and gnuplot via WSL or Git Bash), loading `plot_data` in pandas or a spreadsheet, and that a stale `last_update` means a stuck iteration, so that I can monitor campaigns without AFL++ installed natively.
+44. As a fuzzing researcher, I want `plot_data` to use the AFL++ 15-column layout, so that existing plotting scripts and notebooks work unmodified.
+45. As a TSFFS maintainer, I want fuzzer-state-derived stats computed inside the fuzzer and live counters kept on the Simics side, so that each value comes from the component that actually knows it.
+46. As a TSFFS maintainer, I want the stats stage's field names and computations to mirror upstream LibAFL's `AflStatsStage`, so that a future LibAFL upgrade can replace ours with upstream's.
+47. As a TSFFS maintainer, I want the domain glossary to distinguish Edge from Branch target, so that future contributors do not conflate the two again.
 
 ## Implementation Decisions
 
@@ -91,26 +88,26 @@ This is the first stage of retiring `log.json` in favour of community-standard o
 - **`fuzzer_setup` content.** Written once at session start: one `name=value` line per TSFFS configuration attribute, followed by a `# command line:` line with the Simics command line, matching the layout AFL++ uses so that `afl-whatsup` 4.x, which discovers Instances by finding `fuzzer_setup`, picks them up.
 - **Configuration attributes** on the `tsffs` object: `afl_stats` (bool, default true), `afl_stats_interval` (seconds, default 10), `output_directory` (default: an `output` directory in the Simics project), and `instance_name` (default `default`). An `instance_name` that does not match `[A-Za-z0-9._-]+`, or that consists only of dots, is rejected at startup with an error naming the allowed characters.
 - **Instance lock.** At session start TSFFS takes an exclusive OS file lock (`File::try_lock`) on `<instance>/.lock` and holds it for the session. If the lock is held, startup fails with an error stating that the Instance is in use and that parallel sessions need distinct `instance_name` values. The OS releases the lock when the process exits, so a crashed session never blocks the next one. The lock is taken before rotation, so a second session can never rotate a live session's `plot_data`.
-- **Instance directory contents.** `fuzzer_stats` (rewritten on each write via write-to-temporary then rename), `plot_data` (AFL++ 15-column format with header, appended each write), `fuzzer_setup` (written once per session), and `.lock`. ADR 0001's next stage puts `queue/`, `crashes/`, and `hangs/` in this same directory.
+- **Instance directory contents.** `fuzzer_stats` (rewritten on each write via write-to-temporary then rename), `plot_data` (AFL++ 15-column format with header, appended each write), `fuzzer_setup` (written once per session), and `.lock`.
 - **Restart rotation.** At session start, after taking the lock, an existing `plot_data` in the Instance is renamed to `plot_data.<unix_timestamp>` and a fresh file with a header is started. A stale `fuzzer_stats` is simply replaced.
 - **Error policy.** Stats write errors never propagate out of the simulation-stop handling. The writer keeps a single `failing` flag: the first failure after a success logs a warning naming the error; further failures log at debug level; the first success after a failure logs an informational recovery message. There is no immediate retry; the next tick is the retry. Startup errors (invalid name, Instance in use) are the exception and fail the session, because they are configuration mistakes rather than transient I/O.
-- **`log.json` changes.** Heartbeat and prose message records are no longer written. Startup, interesting, solution, and timeout records are unchanged. `log_to_file` and `log_path` keep working. `heartbeat` and `heartbeat_interval` are accepted but no longer have any effect; the stats cadence is `afl_stats_interval`. All four are documented as deprecated; there is no runtime deprecation warning.
-- **Documentation.** The configuration chapter documents the four new attributes, the Instance layout, the `default` name and the Instance lock, rotation, and the deprecated attributes with their replacements. The `log.json` section gains a deprecation notice pointing to ADR 0001's replacement plan, including that heartbeat Branch target counts moved to `tsffs_branch_targets`. A new "Monitoring a campaign" page covers `afl-whatsup -d`, `afl-plot` prerequisites, loading `plot_data` with pandas or a spreadsheet, and reading a stale `last_update` as a stuck iteration.
+- **`log.json`.** Unchanged. All records, and the `log_to_file`, `log_path`, `heartbeat`, and `heartbeat_interval` attributes, keep their current behaviour.
+- **Documentation.** The configuration chapter documents the four new attributes, the Instance layout, the `default` name and the Instance lock, and rotation. A new "Monitoring a campaign" page covers `afl-whatsup -d`, `afl-plot` prerequisites, loading `plot_data` with pandas or a spreadsheet, and reading a stale `last_update` as a stuck iteration.
 - **Format target.** Field names and file layouts track AFL++ 4.x/5.x as consumed by `afl-whatsup` and `afl-plot`.
 
 ## Testing Decisions
 
-- **Good tests here assert on the files a user would read**, not on internal structures: the key set and values in `fuzzer_stats`, the header and column count of `plot_data`, the presence of rotated files, and the absence of removed `log.json` records.
+- **Good tests here assert on the files a user would read**, not on internal structures: the key set and values in `fuzzer_stats`, the header and column count of `plot_data`, and the presence of rotated files.
 - **Seam 1: the Instance writer (unit tests, no Simics).** Input: one merged stats record. Output: files in an Instance directory under a unique temporary directory per test. Cases: the full `fuzzer_stats` key set and value formatting, including omitted keys and `tsffs_branch_targets` present only when coverage reporting is on; the 15-column `plot_data` header and rows; `execs_ps_last_min` from actual elapsed time; rotation of an existing `plot_data` at session start; `fuzzer_setup` written only once; atomic replacement of `fuzzer_stats`; a second writer on a locked Instance failing with the in-use error, and a lock released by a dropped writer allowing the next; an injected I/O failure producing a warning instead of an error, a second failure not warning again, and recovery logged on the next successful write; rejection of invalid Instance names. These replace the existing writer test, which used a fixed temporary path and failed on re-runs.
 - **Seam 2: the stage's pure derivation functions (unit tests).** Stability (including unstable entries outside the filled set, and no calibration data yet), coverage percentage, and pending counts, given plain inputs. No LibAFL `State` is constructed.
-- **Seam 3: one end-to-end Simics integration test.** Modelled on the existing magic-harness integration tests (built on `simics_test::TestEnvSpec` with an iteration limit). It runs a short campaign with a fixed `instance_name` and asserts: `fuzzer_stats` parses; `edges_found > 0`; `corpus_count >= 1`; `execs_done` equals the iteration limit exactly (which verifies the final shutdown write); `plot_data` has a header and at least one row; `log.json` contains no heartbeat or message records. This is the only test that exercises `TsffsAflStatsStage`'s extraction from a real LibAFL `State`. Rotation is covered by Seam 1 only.
+- **Seam 3: one end-to-end Simics integration test.** Modelled on the existing magic-harness integration tests (built on `simics_test::TestEnvSpec` with an iteration limit). It runs a short campaign with a fixed `instance_name` and asserts: `fuzzer_stats` parses; `edges_found > 0`; `corpus_count >= 1`; `execs_done` equals the iteration limit exactly (which verifies the final shutdown write); `plot_data` has a header and at least one row. This is the only test that exercises `TsffsAflStatsStage`'s extraction from a real LibAFL `State`. Rotation is covered by Seam 1 only.
 - **Build verification** includes the Windows GNU target (`x86_64-pc-windows-gnu`), since the default MSVC target does not link.
 
 ## Out of Scope
 
-- An AFL output layout (`queue/`, `crashes/`, `hangs/`) replacing `log.json`'s interesting, solution, and timeout records. This is the next stage of ADR 0001; this spec only fixes its location (the Instance directory).
+- An AFL output layout (`queue/`, `crashes/`, `hangs/`) replacing `log.json`'s interesting, solution, and timeout records. This spec only fixes its location (the Instance directory).
 - Dumping the raw coverage bitmap (`map.afl` / `fuzz_bitmap`), including the choice of bitmap format and dump trigger.
-- Cumulative or per-testcase drcov output for Lighthouse/IDA, and the final removal of `log.json`.
+- Cumulative or per-testcase drcov output for Lighthouse/IDA.
 - Upgrading the pinned LibAFL revision.
 - A bundled plotting script, a JSON-lines stats stream, a Prometheus endpoint, or a Simics `status` command.
 - Separate cadences for `fuzzer_stats` and `plot_data`.
@@ -120,6 +117,6 @@ This is the first stage of retiring `log.json` in favour of community-standard o
 ## Further Notes
 
 - This spec supersedes the first implementation on this branch, which used a custom LibAFL `Monitor`. Review of that version found that stats write errors could abort the Simics session, that coverage counted Branch targets against the map size (exceeding 100% on large targets and reading 0 with coverage reporting off), that the recent-speed figure divided by the configured interval rather than elapsed time, that stability and several timestamps were hard-coded, that writes were not atomic, and that parallel and restarted sessions corrupted each other's files.
-- Review of an earlier revision of this spec against the original motivation found the console-freshness goal unaddressed, `corpus_count` staleness contradicting its user story, heartbeat attributes left with no meaning, and Branch target counts dropped with no replacement. This revision fixes all four, switches the default Instance name to `default` with a lock, and cuts the Windows rename retry, per-error-kind deduplication, and the history-map snapshot.
+- Review of an earlier revision of this spec against the original motivation found the console-freshness goal unaddressed and `corpus_count` staleness contradicting its user story. This revision fixes both, switches the default Instance name to `default` with a lock, and cuts the Windows rename retry, per-error-kind deduplication, and the history-map snapshot.
 - `afl-whatsup` checks liveness with `kill -0 <fuzzer_pid>`, which cannot see a native Windows Simics process from WSL or Git Bash, nor a process on another host. Instances then show as dead; `afl-whatsup -d` includes them. This is documented rather than worked around.
-- Vocabulary follows `CONTEXT.md` (Edge, Branch target, Instance). The `log.json` retirement plan is ADR 0001.
+- Vocabulary follows `CONTEXT.md` (Edge, Branch target, Instance).

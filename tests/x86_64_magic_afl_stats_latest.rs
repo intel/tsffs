@@ -46,9 +46,6 @@ fn test_x86_64_magic_afl_stats_latest() -> Result<()> {
         @tsffs.output_directory = "{output_directory_str}"
         @tsffs.instance_name = "{INSTANCE_NAME}"
         @tsffs.coverage_reporting = True
-        @tsffs.heartbeat = True
-        @tsffs.heartbeat_interval = 1
-        @tsffs.log_path = "{output_directory_str}/log.json"
 
         load-target "qsp-x86/uefi-shell" namespace = qsp machine:hardware:storage:disk0:image = "minimal_boot_disk.craff"
 
@@ -161,29 +158,6 @@ fn test_x86_64_magic_afl_stats_latest() -> Result<()> {
         "tsffs_branch_targets must be positive: {stats:?}"
     );
 
-    // log.json keeps its startup and find records but no longer carries stats records
-    let log =
-        read_to_string(output_directory.join("log.json")).context("Failed to read log.json")?;
-    let record_kinds = log
-        .lines()
-        .map(|line| {
-            let record: serde_json::Value = serde_json::from_str(line)?;
-            Ok(record
-                .as_object()
-                .and_then(|o| o.keys().next().cloned())
-                .unwrap_or_default())
-        })
-        .collect::<Result<Vec<String>>>()?;
-    assert!(
-        record_kinds.iter().any(|k| k == "Startup"),
-        "{record_kinds:?}"
-    );
-    assert!(
-        !record_kinds
-            .iter()
-            .any(|k| k == "Heartbeat" || k == "Message"),
-        "log.json must not contain heartbeat or message records: {record_kinds:?}"
-    );
     for key in [
         "cycles_done",
         "cycles_wo_finds",
