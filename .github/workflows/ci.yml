@@ -254,6 +254,46 @@ jobs:
           name: test-artifacts-x86_64-timeout-uefi-edk2
           path: tests/rsrc/x86_64-timeout-uefi-edk2
 
+  build_test_artifacts_x86_64_timeout_busyloop_uefi_edk2:
+    name: Build Test Artifacts (x86_64 Timeout Busyloop UEFI EDK2)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get -y update && \
+          sudo apt-get -y install \
+            clang libclang-dev cmake curl dosfstools g++ gcc git llvm make \
+            mtools ninja-build openssl libssl-dev python3 python3-pip lld
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          lfs: true
+          persist-credentials: false
+
+      - name: Cache Test Artifacts
+        id: cache-test-artifacts-x86_64-timeout-uefi-edk2-busyloop
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: tests/rsrc/x86_64-timeout-uefi-edk2-busyloop
+          key: cache-test-artifacts-${{ hashFiles('tests/rsrc/x86_64-timeout-uefi-edk2-busyloop/**/*') }}
+
+      - name: Build Test Artifacts
+        if: ${{ steps.cache-test-artifacts-x86_64-timeout-uefi-edk2-busyloop.outputs.cache-hit != 'true' }}
+        run: |
+          cd tests/rsrc/x86_64-timeout-uefi-edk2-busyloop
+          ./build.sh
+
+      - name: Upload Test Artifacts
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-artifacts-x86_64-timeout-uefi-edk2-busyloop
+          path: tests/rsrc/x86_64-timeout-uefi-edk2-busyloop
+
   build_test_artifacts_x86_64_uefi:
     name: Build Test Artifacts (x86_64 UEFI)
     runs-on: ubuntu-latest
@@ -405,6 +445,7 @@ jobs:
       - build_test_artifacts_x86_64_breakpoint_uefi_edk2
       - build_test_artifacts_x86_64_crash-uefi
       - build_test_artifacts_x86_64_timeout_uefi_edk2
+      - build_test_artifacts_x86_64_timeout_busyloop_uefi_edk2
       - build_test_artifacts_x86_64_uefi
       - build_test_artifacts_x86_64_uefi_edk2
       - build_test_artifacts_x86_user
@@ -511,6 +552,12 @@ jobs:
         with:
           name: test-artifacts-x86_64-timeout-uefi-edk2
           path: tests/rsrc/x86_64-timeout-uefi-edk2
+
+      - name: Download Test Artifacts (x86_64 Timeout Busyloop UEFI EDK2)
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: test-artifacts-x86_64-timeout-uefi-edk2-busyloop
+          path: tests/rsrc/x86_64-timeout-uefi-edk2-busyloop
 
       - name: Download Test Artifacts (x86_64 UEFI)
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
