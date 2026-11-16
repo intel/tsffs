@@ -3,14 +3,14 @@
 
 //! Checks that `harness/tsffs-gcc-arm32.h` places the magic index and arguments in the
 //! registers `src/arch/arm.rs` reads them from (index: r10, args: r9, r8, r7). No public
-//! Simics package models an ARM32 CPU, so this compiles the harness with clang and
-//! constant-propagates each function up to its magic `orr rN, rN, rN` instruction.
+//! Simics package models an ARM32 CPU, so this compiles the harness with clang (ARM and Thumb)
+//! and constant-propagates each function up to its magic `orr rN, rN, rN` instruction.
 
 use anyhow::{anyhow, bail, ensure, Result};
 use goblin::elf::{sym::STT_FUNC, Elf};
 use std::{collections::BTreeMap, fs, path::PathBuf, process::Command};
 use yaxpeax_arch::{Decoder, U8Reader};
-use yaxpeax_arm::armv7::{InstDecoder, Opcode, Operand, RegShiftStyle};
+use yaxpeax_arm::armv7::{InstDecoder, Opcode, Operand, RegShiftStyle, ShiftStyle};
 
 const INDEX_REGISTER: usize = 10;
 const ARGUMENT_REGISTERS: [usize; 3] = [9, 8, 7];
@@ -35,11 +35,25 @@ void assert_index(void) { HARNESS_ASSERT_INDEX(7); }
 /// Register values at the magic instruction: (magic number, index, arguments).
 type Magic = (u8, Option<u32>, [Option<u32>; 3]);
 
-/// Walk straight-line ARM code, tracking registers loaded with constants, and snapshot them at
-/// the first magic instruction. Any other instruction writing a register makes it unknown, so
-/// unsupported code can only fail the test, never pass it.
-fn magic_registers(code: &[u8]) -> Result<Magic> {
-    let decoder = InstDecoder::default();
+/// The register an operand reads unmodified: `rN`, or `rN, lsl #0` (how some Thumb-2
+/// encodings decode).
+fn plain_reg(op: Operand) -> Option<usize> {
+    match op {
+        Operand::Reg(r) => Some(r.number() as usize),
+        Operand::RegShift(rs) => match rs.into_shift() {
+            RegShiftStyle::RegImm(s) if s.imm() == 0 && s.stype() == ShiftStyle::LSL => {
+                Some(s.shiftee().number() as usize)
+            }
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+/// Walk straight-line ARM/Thumb code, tracking registers loaded with constants, and snapshot
+/// them at the first magic instruction. Any other instruction writing a register makes it
+/// unknown, so unsupported code can only fail the test, never pass it.
+fn magic_registers(decoder: &InstDecoder, code: &[u8]) -> Result<Magic> {
     let mut reader = U8Reader::new(code);
     let mut regs = [None::<u32>; 16];
     while let Ok(insn) = decoder.decode(&mut reader) {
@@ -48,22 +62,14 @@ fn magic_registers(code: &[u8]) -> Result<Magic> {
             _ => continue,
         };
         match (insn.opcode, insn.operands[1], insn.operands[2]) {
-            (Opcode::ORR, Operand::Reg(a), Operand::Reg(b))
-                if a.number() as usize == dest && b.number() as usize == dest =>
-            {
+            (Opcode::ORR, a, b) if plain_reg(a) == Some(dest) && plain_reg(b) == Some(dest) => {
                 let args = ARGUMENT_REGISTERS.map(|r| regs[r]);
                 return Ok((dest as u8, regs[INDEX_REGISTER], args));
             }
             (Opcode::MOV, Operand::Imm32(v), Operand::Nothing) => regs[dest] = Some(v),
             (Opcode::MOV, Operand::Imm12(v), Operand::Nothing) => regs[dest] = Some(v.into()),
-            (Opcode::MOV, Operand::Reg(src), Operand::Nothing) => {
-                regs[dest] = regs[src.number() as usize]
-            }
-            (Opcode::MOV, Operand::RegShift(rs), Operand::Nothing) => {
-                regs[dest] = match rs.into_shift() {
-                    RegShiftStyle::RegImm(s) if s.imm() == 0 => regs[s.shiftee().number() as usize],
-                    _ => None,
-                }
+            (Opcode::MOV, src, Operand::Nothing) => {
+                regs[dest] = plain_reg(src).and_then(|r| regs[r])
             }
             _ => regs[dest] = None,
         }
@@ -71,20 +77,20 @@ fn magic_registers(code: &[u8]) -> Result<Magic> {
     bail!("no magic instruction found")
 }
 
-#[test]
-#[cfg_attr(miri, ignore)]
-fn test_arm32_harness_abi_latest() -> Result<()> {
+/// Compile `SOURCE` with clang in `isa` mode ("-marm" or "-mthumb") and check every macro.
+fn check_isa(isa: &str, decoder: &InstDecoder) -> Result<()> {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let out_dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("arm32_harness_abi");
     fs::create_dir_all(&out_dir)?;
-    let (src, obj) = (out_dir.join("abi.c"), out_dir.join("abi.o"));
+    let (src, obj) = (out_dir.join("abi.c"), out_dir.join(format!("abi{isa}.o")));
     fs::write(&src, SOURCE)?;
 
     let status = Command::new("clang")
         .args([
             "-target",
             "arm-unknown-linux-gnueabi",
-            "-marm",
+            "-march=armv7-a",
+            isa,
             "-mfloat-abi=soft",
             "-O2",
         ])
@@ -97,7 +103,7 @@ fn test_arm32_harness_abi_latest() -> Result<()> {
         .status()?;
     ensure!(
         status.success(),
-        "clang failed to compile the arm32 harness"
+        "clang failed to compile the arm32 harness ({isa})"
     );
 
     let bytes = fs::read(&obj)?;
@@ -109,7 +115,8 @@ fn test_arm32_harness_abi_latest() -> Result<()> {
             .get_at(sym.st_name)
             .ok_or_else(|| anyhow!("bad symbol name"))?;
         let section = &elf.section_headers[sym.st_shndx];
-        let start = (section.sh_offset + sym.st_value) as usize;
+        // Bit 0 of a Thumb function symbol is the interworking bit, not part of the offset.
+        let start = (section.sh_offset + (sym.st_value & !1)) as usize;
         functions.insert(name, &bytes[start..start + sym.st_size as usize]);
     }
 
@@ -132,18 +139,26 @@ fn test_arm32_harness_abi_latest() -> Result<()> {
     for (name, (magic, index, args)) in expected {
         let code = functions
             .get(name)
-            .ok_or_else(|| anyhow!("missing {name}"))?;
-        let (got_magic, got_index, got_args) = magic_registers(code)?;
-        assert_eq!(got_magic, magic, "{name}: magic number");
-        assert_eq!(got_index, index, "{name}: index register r10");
+            .ok_or_else(|| anyhow!("{isa}: missing {name}"))?;
+        let (got_magic, got_index, got_args) =
+            magic_registers(decoder, code).map_err(|e| anyhow!("{isa} {name}: {e}"))?;
+        assert_eq!(got_magic, magic, "{isa} {name}: magic number");
+        assert_eq!(got_index, index, "{isa} {name}: index register r10");
         // Only arguments the magic number consumes are part of the contract.
         for (i, want) in args.iter().enumerate().filter(|(_, a)| a.is_some()) {
             assert_eq!(
                 got_args[i], *want,
-                "{name}: argument register r{}",
+                "{isa} {name}: argument register r{}",
                 ARGUMENT_REGISTERS[i]
             );
         }
     }
     Ok(())
+}
+
+#[test]
+#[cfg_attr(miri, ignore)]
+fn test_arm32_harness_abi_latest() -> Result<()> {
+    check_isa("-marm", &InstDecoder::armv7())?;
+    check_isa("-mthumb", &InstDecoder::armv7_thumb())
 }

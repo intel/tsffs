@@ -19,7 +19,7 @@
 
 /// __orr
 ///
-/// Invoke the magic instruction defined by SIMICS for the RISC-V architecture
+/// Invoke the magic instruction defined by SIMICS for the ARM (32-bit) architecture
 /// with a specific value of `n`
 ///
 /// # Arguments
@@ -31,7 +31,7 @@
 
 /// __orr_extended1
 ///
-/// Invoke the magic instruction defined by SIMICS for the RISC-V architecture
+/// Invoke the magic instruction defined by SIMICS for the ARM (32-bit) architecture
 /// with a specific value of `n` and a pseudo-argument in register `r10`.
 ///
 /// # Arguments
@@ -48,7 +48,7 @@
 
 /// __orr_extended2
 ///
-/// Invoke the magic instruction defined by SIMICS for the RISC-V architecture
+/// Invoke the magic instruction defined by SIMICS for the ARM (32-bit) architecture
 /// with a specific value of `n` and two pseudo-arguments in registers `r10` and
 /// `r9`.
 ///
@@ -67,7 +67,7 @@
 
 /// __orr_extended3
 ///
-/// Invoke the magic instruction defined by SIMICS for the RISC-V architecture
+/// Invoke the magic instruction defined by SIMICS for the ARM (32-bit) architecture
 /// with a specific value of `n` and three pseudo-arguments in registers `r10`,
 /// `r9`, and `r8`.
 ///
@@ -88,7 +88,7 @@
 
 /// __orr_extended4
 ///
-/// Invoke the magic instruction defined by SIMICS for the RISC-V architecture
+/// Invoke the magic instruction defined by SIMICS for the ARM (32-bit) architecture
 /// with a specific value of `n` and four pseudo-arguments in registers `r10`,
 /// `r9`, `r8`, and `r7`.
 ///
