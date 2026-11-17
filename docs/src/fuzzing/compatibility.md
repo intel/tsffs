@@ -130,11 +130,11 @@ Finally, build and copy the `test.efi` module and the `minimal_boot_disk.craff` 
 into the project root:
 
 ```sh
-pushd /path/to/this/repo/examples/tests/x86_64-uefi/
-ninja
+pushd /path/to/this/repo/tests/rsrc/x86_64-uefi/
+./build.sh
 popd
-cp /path/to/this/repo/examples/tests/x86_64-uefi/test.efi ./
-cp /path/to/this/repo/examples/rsrc/minimal_boot_disk.craff ./
+cp /path/to/this/repo/tests/rsrc/x86_64-uefi/test.efi ./
+cp /path/to/this/repo/tests/rsrc/minimal_boot_disk.craff ./
 ```
 
 #### Test Micro Checkpoints
@@ -220,7 +220,8 @@ First, we'll run our EFI app to make sure all is well.
 running> $system.console.con.input "test.efi\n"
 ```
 
-You should see "Working..." print out on the console.
+You should see the contents of the test buffer, "4141414141414141", print out on the
+console.
 
 ![The EFI console, after test run](../images/REQUIREMENTS_Test_Micro_Checkpoints_TestRun.png)
 
@@ -242,7 +243,7 @@ running> stop
 ```
 
 We stopped our execution after the app executed, so you should see the output from the
-second time we ran it ("Working...") printed on the GUI console.
+second time we ran it ("4141414141414141") printed on the GUI console.
 
 ![The EFI console, after running again](../images/REQUIREMENTS_Test_Micro_Checkpoints_Post.png)
 
