@@ -82,6 +82,9 @@ where
             let initial = observer.initial();
 
             let mut interesting_indices = vec![];
+            // Slots no earlier input has occupied: the new Edges. The base feedback only
+            // fills the history map later, in `append_metadata`, so it is still unchanged here.
+            let mut new_edges = 0;
 
             for (i, item) in observer
                 .as_iter()
@@ -90,6 +93,9 @@ where
                 .filter(|(_, item)| *item != initial)
             {
                 let existing = unsafe { *history_map.get_unchecked(i) };
+                if existing == initial {
+                    new_edges += 1;
+                }
                 let reduced = R::reduce(existing, item);
                 if N::is_novel(existing, reduced) {
                     interesting_indices.push(i);
@@ -103,6 +109,7 @@ where
                         .send(FuzzerMessage::Interesting {
                             indices: interesting_indices,
                             input: input.target_bytes().as_slice().to_vec(),
+                            new_edges,
                         })
                         .ok()
                 })
