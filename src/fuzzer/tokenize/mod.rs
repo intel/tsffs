@@ -38,8 +38,8 @@ fn tokenize_strings(bytes: &[u8]) -> Result<Vec<Vec<u8>>> {
 
     // Smush sequences of 0 to single 0s
     bytes.iter().for_each(|b| {
-        if remap_bytes.last().is_some_and(|l| *l == 0) {
-            // Nothing
+        if *b == 0 && remap_bytes.last().is_some_and(|l| *l == 0) {
+            // Skip a NUL that follows another NUL
         } else {
             remap_bytes.push(*b);
         }
@@ -119,4 +119,24 @@ where
     }
 
     Ok(tokens)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tokenizes_every_nul_separated_string() -> Result<()> {
+        assert_eq!(
+            tokenize_strings(b"abc\0def\0\0\0ghi")?,
+            vec![b"abc".to_vec(), b"def".to_vec(), b"ghi".to_vec()]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn drops_strings_below_the_minimum_length() -> Result<()> {
+        assert_eq!(tokenize_strings(b"ab\0abc\0")?, vec![b"abc".to_vec()]);
+        Ok(())
+    }
 }
