@@ -1078,15 +1078,10 @@ impl TracerDisassembler for Disassembler {
                     | Opcode::BR
                     | Opcode::BRAA
                     | Opcode::BRAAZ
+                    | Opcode::BRAB
                     | Opcode::BRABZ
                     | Opcode::CBNZ
                     | Opcode::CBZ
-                    | Opcode::CCMN
-                    | Opcode::CCMP
-                    | Opcode::CSINC
-                    | Opcode::CSINV
-                    | Opcode::CSNEG
-                    | Opcode::CSEL
                     | Opcode::TBNZ
                     | Opcode::TBZ
             );
@@ -1103,7 +1098,12 @@ impl TracerDisassembler for Disassembler {
         if let Some(last) = self.last.as_ref() {
             return matches!(
                 last.opcode,
-                Opcode::BL | Opcode::BLRAA | Opcode::BLRAAZ | Opcode::BLRAB | Opcode::BLRABZ
+                Opcode::BL
+                    | Opcode::BLR
+                    | Opcode::BLRAA
+                    | Opcode::BLRAAZ
+                    | Opcode::BLRAB
+                    | Opcode::BLRABZ
             );
         }
 
