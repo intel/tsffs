@@ -95,7 +95,7 @@ the fuzzer treats as solutions with:
 
 ```python
 @tsffs.breakpoints = [2]
-@tsffs.breakpoints.remove()
+@tsffs.breakpoints.remove(2)
 ```
 
 Note that when setting a breakpoint via a Simics command, like:
@@ -324,7 +324,7 @@ to the [manual start API](../harnessing/closed-box.md) is traced during executio
 fuzzing code running on multiple cores, the additional cores can be added with:
 
 ```python
-@tsffs.iface.config.add_trace_processor(qsp.mb.cpu0.core[0][1])
+@tsffs.iface.config.add_trace_processor(conf.qsp.mb.cpu0.core[0][1])
 ```
 
 ### Disabling Coverage Reporting
