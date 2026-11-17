@@ -22,6 +22,10 @@ use super::{
     util::{read_unicode_string, read_unicode_string_dtb, read_virtual_dtb},
 };
 
+/// Upper bound on the number of entries walked in a process module list, so a corrupt or
+/// cyclic list in the guest cannot loop forever
+const MAX_USER_MODULES: usize = 4096;
+
 #[allow(clippy::large_enum_variant)]
 pub enum WindowsKpcr {
     Windows10_0_10240_16384 {
@@ -2860,17 +2864,37 @@ impl WindowsEProcess {
                 ldr_address,
             )?;
             let mut list_entry = ldr.in_load_order_module_list();
-            let last_entry = list_entry.Blink;
+            // The list is circular and ends back at its head, which is embedded in
+            // PEB_LDR_DATA. The first entry's Blink gives the address of the head.
+            let mut list_head = None;
 
-            while !list_entry.Flink.is_null() {
+            for _ in 0..MAX_USER_MODULES {
+                let entry_address = list_entry.Flink;
+
+                if entry_address.is_null()
+                    || list_head.is_some_and(|h| std::ptr::eq(entry_address, h))
+                {
+                    break;
+                }
+
                 let ldr_data_entry = WindowsLdrDataTableEntry::new_dtb(
                     processor,
                     major,
                     minor,
                     build,
                     directory_table_base,
-                    list_entry.Flink as u64,
+                    entry_address as u64,
                 )?;
+
+                list_entry = ldr_data_entry.in_load_order_links();
+
+                if list_head.is_none() {
+                    if std::ptr::eq(entry_address, list_entry.Blink) {
+                        // Empty list: the head points back at itself and is not a module
+                        break;
+                    }
+                    list_head = Some(list_entry.Blink);
+                }
 
                 let base = ldr_data_entry.dll_base();
                 let size = ldr_data_entry.size_of_image();
@@ -2903,12 +2927,6 @@ impl WindowsEProcess {
                     base_name,
                     debug_info,
                 });
-
-                list_entry = ldr_data_entry.in_load_order_links();
-
-                if std::ptr::eq(list_entry.Flink, last_entry) {
-                    break;
-                }
             }
         }
 
