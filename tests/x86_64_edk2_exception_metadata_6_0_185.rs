@@ -19,10 +19,6 @@ fn test_x86_64_edk2_exception_metadata_6_0_185() -> Result<()> {
                 .version("6.0.185")
                 .build(),
             ProjectPackage::builder()
-                .package_number(1030)
-                .version("6.0.185")
-                .build(),
-            ProjectPackage::builder()
                 .package_number(2096)
                 .version("6.0.73")
                 .build(),

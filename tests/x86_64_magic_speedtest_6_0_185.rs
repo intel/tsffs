@@ -45,6 +45,7 @@ fn test_x86_64_magic_speedtest_6_0_185() -> Result<()> {
             @tsffs.exceptions = [14]
             @tsffs.generate_random_corpus = True
             @tsffs.iteration_limit = 1000
+            @tsffs.selective_instrumentation = True
 
             load-target "qsp-x86/uefi-shell" namespace = qsp machine:hardware:storage:disk0:image = "minimal_boot_disk.craff"
 
@@ -71,6 +72,11 @@ fn test_x86_64_magic_speedtest_6_0_185() -> Result<()> {
     let output_str = String::from_utf8_lossy(&output.stdout);
 
     println!("{output_str}");
+
+    assert!(
+        output_str.contains("selective branch/compare instrumentation enabled"),
+        "selective instrumentation was not enabled"
+    );
 
     Ok(())
 }

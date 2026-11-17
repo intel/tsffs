@@ -135,6 +135,27 @@ Comparison logging is enabled by default. It can be disabled with:
 @tsffs.cmplog = False
 ```
 
+### Using Selective Instrumentation
+
+By default, TSFFS runs a callback on every executed instruction to collect coverage and
+comparison feedback. On x86-64 and i386 processors, selective instrumentation can be
+enabled instead: each instruction is classified once when Simics adds it to its
+instruction cache, and callbacks are attached only to branches and, when CMPLog is
+enabled, comparisons. The coverage and comparison feedback is the same, and fuzzing is
+faster on targets that execute the same code many times per testcase.
+
+Selective instrumentation is disabled by default. It can be enabled with:
+
+```python
+@tsffs.selective_instrumentation = True
+```
+
+Set it before fuzzing starts. Saving execution traces and symbolic coverage need a
+callback on every instruction, so when either is enabled TSFFS uses per-instruction
+instrumentation and logs a warning. The same happens, with a warning, if the CPU model
+does not support cached-instruction instrumentation. Other architectures always use
+per-instruction instrumentation.
+
 ### Set Corpus and Solutions Directory
 
 By default, the corpus will be taken from (and written to) the directory "%simics%/corpus".
