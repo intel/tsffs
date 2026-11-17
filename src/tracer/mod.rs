@@ -4,6 +4,7 @@
 use anyhow::{anyhow, bail, Error, Result};
 use cpp_demangle::{DemangleOptions, Symbol};
 use ffi2::ffi;
+use lcov2::Records;
 use libafl::prelude::CmpValues;
 use libafl_bolts::{AsMutSlice, AsSlice};
 use libafl_targets::{AFLppCmpLogOperands, AFL_CMP_TYPE_INS, CMPLOG_MAP_H};
@@ -23,7 +24,7 @@ use std::{
 };
 use typed_builder::TypedBuilder;
 
-use crate::{arch::ArchitectureOperations, Tsffs};
+use crate::{arch::ArchitectureOperations, os::windows::debug_info::SymbolInfo, Tsffs};
 
 pub(crate) struct DecodedComparison {
     pub expressions: Vec<CmpExpr>,
@@ -496,6 +497,35 @@ impl Tsffs {
     }
 }
 
+/// Record a hit of `pc` in the line and function coverage of the symbol containing it. Each
+/// line is recorded against its own source file, because a function can contain lines inlined
+/// from other files.
+fn record_symbol_hit(coverage: &mut Records, symbol: &SymbolInfo, pc: u64) {
+    let Some(function_start_line) = symbol.lines.first() else {
+        return;
+    };
+    let offset = pc - symbol.base;
+    let mut hit_function_start = false;
+
+    symbol
+        .lines
+        .iter()
+        .filter(|l| offset >= l.rva && offset < l.rva + l.size as u64)
+        .for_each(|l| {
+            let record = coverage.get_or_insert_mut(&l.file_path);
+            (l.start_line..=l.end_line).for_each(|line| record.increment_line(line as usize));
+            hit_function_start |= l.file_path == function_start_line.file_path
+                && (l.start_line..=l.end_line).contains(&function_start_line.start_line);
+        });
+
+    if hit_function_start {
+        // Increment function hit counter if we just hit the fn
+        coverage
+            .get_or_insert_mut(&function_start_line.file_path)
+            .increment_function_data(&symbol.name);
+    }
+}
+
 #[ffi(from_ptr, expect, self_ty = "*mut c_void")]
 impl Tsffs {
     #[ffi(arg(rest), arg(self))]
@@ -630,32 +660,7 @@ impl Tsffs {
                                         .and_then(|s| s.demangle(&DemangleOptions::new()).ok())
                                 });
 
-                            if let Some(function_start_line) = symbol_for_query.value.lines.first()
-                            {
-                                let record = self
-                                    .coverage
-                                    .get_or_insert_mut(&function_start_line.file_path);
-                                let pc_lines = symbol_for_query
-                                    .value
-                                    .lines
-                                    .iter()
-                                    .filter(|line_info| {
-                                        pc - symbol_for_query.value.base >= line_info.rva
-                                            && pc - symbol_for_query.value.base
-                                                < line_info.rva + line_info.size as u64
-                                    })
-                                    .flat_map(|l| (l.start_line..=l.end_line).map(|i| i as usize))
-                                    .collect::<Vec<_>>();
-
-                                if pc_lines.contains(&(function_start_line.start_line as usize)) {
-                                    // Increment function hit counter if we just hit the fn
-                                    record.increment_function_data(&symbol_for_query.value.name);
-                                }
-
-                                pc_lines.iter().for_each(|line| {
-                                    record.increment_line(*line);
-                                });
-                            }
+                            record_symbol_hit(&mut self.coverage, &symbol_for_query.value, pc);
                             ExecutionTraceSymbol {
                                 symbol: symbol_for_query.value.name.clone(),
                                 symbol_demangled,
@@ -673,31 +678,7 @@ impl Tsffs {
                 .get(&processor_number)
             {
                 if let Some(symbol_for_query) = lookup_tree.query(pc..pc + 1).next() {
-                    if let Some(function_start_line) = symbol_for_query.value.lines.first() {
-                        let record = self
-                            .coverage
-                            .get_or_insert_mut(&function_start_line.file_path);
-                        let pc_lines = symbol_for_query
-                            .value
-                            .lines
-                            .iter()
-                            .filter(|line_info| {
-                                pc - symbol_for_query.value.base >= line_info.rva
-                                    && pc - symbol_for_query.value.base
-                                        < line_info.rva + line_info.size as u64
-                            })
-                            .flat_map(|l| (l.start_line..=l.end_line).map(|i| i as usize))
-                            .collect::<Vec<_>>();
-
-                        if pc_lines.contains(&(function_start_line.start_line as usize)) {
-                            // Increment function hit counter if we just hit the fn
-                            record.increment_function_data(&symbol_for_query.value.name);
-                        }
-
-                        pc_lines.iter().for_each(|line| {
-                            record.increment_line(*line);
-                        });
-                    }
+                    record_symbol_hit(&mut self.coverage, &symbol_for_query.value, pc);
                 }
             }
             None
@@ -744,5 +725,61 @@ impl Tsffs {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod symbol_coverage_tests {
+    use super::*;
+    use crate::os::windows::debug_info::LineInfo;
+    use std::path::{Path, PathBuf};
+
+    fn line(rva: u64, file_path: &str, line: u32) -> LineInfo {
+        LineInfo {
+            rva,
+            size: 0x10,
+            file_path: PathBuf::from(file_path),
+            start_line: line,
+            end_line: line,
+        }
+    }
+
+    fn hit_count(coverage: &Records, file_path: &str, line: usize) -> Option<usize> {
+        coverage
+            .get(Path::new(file_path))
+            .and_then(|record| record.lines.get(&line))
+            .map(|entry| entry.hit_count)
+    }
+
+    #[test]
+    fn inlined_lines_are_recorded_against_their_own_file() {
+        const BASE: u64 = 0x40_0000;
+        let symbol = SymbolInfo::new(
+            0x1000,
+            BASE,
+            0x20,
+            "function".to_string(),
+            "module".to_string(),
+            vec![line(0x1000, "main.c", 10), line(0x1010, "inline.h", 99)],
+        );
+        let mut coverage = Records::default();
+
+        // Hit the code inlined from the header
+        record_symbol_hit(&mut coverage, &symbol, BASE + 0x1010);
+
+        assert_eq!(hit_count(&coverage, "inline.h", 99), Some(1));
+        assert_eq!(hit_count(&coverage, "main.c", 99), None);
+        assert!(coverage
+            .get(Path::new("main.c"))
+            .is_none_or(|record| record.function_data.is_empty()));
+
+        // Hit the first line of the function
+        record_symbol_hit(&mut coverage, &symbol, BASE + 0x1000);
+
+        assert_eq!(hit_count(&coverage, "main.c", 10), Some(1));
+        assert_eq!(hit_count(&coverage, "inline.h", 10), None);
+        assert!(coverage
+            .get(Path::new("main.c"))
+            .is_some_and(|record| record.function_data.contains_key("function")));
     }
 }
