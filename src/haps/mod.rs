@@ -41,8 +41,6 @@ enum SnapshotRestoreMode {
 impl Tsffs {
     fn on_simulation_stopped_magic_start(&mut self, magic_number: MagicNumber) -> Result<()> {
         if !self.have_initial_snapshot() {
-            self.start_fuzzer_thread()?;
-
             let start_processor = self
                 .start_processor()
                 .ok_or_else(|| anyhow!("No start processor"))?;
@@ -67,6 +65,9 @@ impl Tsffs {
             self.start_info
                 .set(start_info)
                 .map_err(|_| anyhow!("Failed to set start size"))?;
+            // The fuzzer thread reads the start info (`use_initial_as_corpus`), so it must start
+            // after the start info is set
+            self.start_fuzzer_thread()?;
             self.start_time
                 .set(SystemTime::now())
                 .map_err(|_| anyhow!("Failed to set start time"))?;
@@ -270,7 +271,6 @@ impl Tsffs {
         info: ManualStartInfo,
     ) -> Result<()> {
         if !self.have_initial_snapshot() {
-            self.start_fuzzer_thread()?;
             self.add_processor(processor, true)?;
 
             let start_info = self
@@ -281,6 +281,9 @@ impl Tsffs {
             self.start_info
                 .set(start_info)
                 .map_err(|_| anyhow!("Failed to set start info"))?;
+            // The fuzzer thread reads the start info (`use_initial_as_corpus`), so it must start
+            // after the start info is set
+            self.start_fuzzer_thread()?;
             self.start_time
                 .set(SystemTime::now())
                 .map_err(|_| anyhow!("Failed to set start time"))?;
