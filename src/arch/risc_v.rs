@@ -427,6 +427,19 @@ impl RISCVArchitectureOperations {
     }
 }
 
+/// The sign-extended offset of a `jal` instruction, from its J-type immediate
+fn jal_offset(word: u32) -> i32 {
+    let imm = (((word >> 31) & 0x1) << 20)
+        | (((word >> 12) & 0xff) << 12)
+        | (((word >> 20) & 0x1) << 11)
+        | (((word >> 21) & 0x3ff) << 1);
+
+    // The immediate is 21 bits wide
+    ((imm << 11) as i32) >> 11
+}
+
+/// NOTE: The pinned yaxpeax-riscv does not decode 16-bit compressed instructions, so on targets
+/// built with the C extension, compressed branches, jumps and compares are not traced.
 pub(crate) struct Disassembler {
     decoder: RiscVDecoder,
     last: Option<Instruction>,
@@ -464,6 +477,20 @@ impl TracerDisassembler for Disassembler {
         let mut r = U8Reader::new(bytes);
 
         if let Ok(insn) = self.decoder.decode(&mut r) {
+            if matches!(insn.opcode(), Opcode::JAL) {
+                // The pinned yaxpeax-riscv panics (`todo!()`) when it decodes the J-type
+                // immediate, which formatting the instruction does, so `jal` is formatted here
+                let word = *insn.word();
+                let rd = Operand::Reg(((word >> 7) & 0b11111) as u8);
+                let offset = jal_offset(word);
+
+                return Ok(if offset < 0 {
+                    format!("{} {}, -{:#x}", insn.opcode(), rd, offset.wrapping_neg())
+                } else {
+                    format!("{} {}, {:#x}", insn.opcode(), rd, offset)
+                });
+            }
+
             Ok(insn.to_string())
         } else {
             bail!("Could not disassemble {:?}", bytes);
@@ -491,7 +518,7 @@ impl TracerDisassembler for Disassembler {
 
     fn last_was_call(&self) -> bool {
         if let Some(last) = self.last.as_ref() {
-            return matches!(last.opcode(), Opcode::JALR | Opcode::JAL | Opcode::AUIPC);
+            return matches!(last.opcode(), Opcode::JALR | Opcode::JAL);
         }
 
         false
@@ -499,7 +526,7 @@ impl TracerDisassembler for Disassembler {
 
     fn last_was_ret(&self) -> bool {
         if let Some(last) = self.last.as_ref() {
-            return matches!(last.opcode(), Opcode::JALR | Opcode::JAL | Opcode::AUIPC);
+            return matches!(last.opcode(), Opcode::JALR | Opcode::JAL);
         }
 
         false
@@ -515,6 +542,7 @@ impl TracerDisassembler for Disassembler {
                     | Opcode::SLTIU
                     | Opcode::BEQ
                     | Opcode::BNE
+                    | Opcode::BLT
                     | Opcode::BGE
                     | Opcode::BLTU
                     | Opcode::BGEU
@@ -528,7 +556,14 @@ impl TracerDisassembler for Disassembler {
         let mut cmp_exprs = Vec::new();
         if self.last_was_cmp() {
             if let Some(last) = self.last.as_ref() {
-                for operand in last.operands() {
+                // SLT* write the result of the comparison to rd, which is their first operand.
+                // The compared values are the operands after it.
+                let skipped_operands = usize::from(matches!(
+                    last.opcode(),
+                    Opcode::SLT | Opcode::SLTI | Opcode::SLTU | Opcode::SLTIU
+                ));
+
+                for operand in last.operands().into_iter().skip(skipped_operands) {
                     match operand {
                         Some(Operand::Reg(r)) => {
                             let regname = format!("x{}", r);
@@ -570,6 +605,7 @@ impl TracerDisassembler for Disassembler {
                     Opcode::SLTIU => vec![CmpType::Lesser],
                     Opcode::BEQ => vec![CmpType::Equal],
                     Opcode::BNE => vec![CmpType::Equal],
+                    Opcode::BLT => vec![CmpType::Lesser],
                     Opcode::BGE => vec![CmpType::Greater, CmpType::Equal],
                     Opcode::BLTU => vec![CmpType::Lesser],
                     Opcode::BGEU => vec![CmpType::Greater, CmpType::Equal],
@@ -579,5 +615,88 @@ impl TracerDisassembler for Disassembler {
         }
 
         vec![]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // jal ra, +8
+    const JAL: [u8; 4] = [0xef, 0x00, 0x80, 0x00];
+    // jal zero, -4
+    const JAL_BACKWARDS: [u8; 4] = [0x6f, 0xf0, 0xdf, 0xff];
+    // auipc a0, 0
+    const AUIPC: [u8; 4] = [0x17, 0x05, 0x00, 0x00];
+    // blt a0, a1, +8
+    const BLT: [u8; 4] = [0x63, 0x44, 0xb5, 0x00];
+    // slt a0, a1, a2
+    const SLT: [u8; 4] = [0x33, 0xa5, 0xc5, 0x00];
+    // slti a0, a1, 5
+    const SLTI: [u8; 4] = [0x13, 0xa5, 0x55, 0x00];
+
+    #[test]
+    fn jal_is_formatted_without_panicking() -> Result<()> {
+        let mut disassembler = Disassembler::new();
+
+        assert_eq!(disassembler.disassemble_to_string(&JAL)?, "jal ra, 0x8");
+        assert_eq!(
+            disassembler.disassemble_to_string(&JAL_BACKWARDS)?,
+            "jal zero, -0x4"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn auipc_is_not_control_flow() -> Result<()> {
+        let mut disassembler = Disassembler::new();
+
+        disassembler.disassemble(&AUIPC)?;
+        assert!(!disassembler.last_was_control_flow());
+        assert!(!disassembler.last_was_call());
+        assert!(!disassembler.last_was_ret());
+
+        disassembler.disassemble(&JAL)?;
+        assert!(disassembler.last_was_call());
+        Ok(())
+    }
+
+    #[test]
+    fn blt_is_a_signed_less_than_compare_of_both_sources() -> Result<()> {
+        let mut disassembler = Disassembler::new();
+
+        disassembler.disassemble(&BLT)?;
+        assert!(disassembler.last_was_control_flow());
+        assert!(disassembler.last_was_cmp());
+        assert_eq!(disassembler.cmp_type(), vec![CmpType::Lesser]);
+        assert_eq!(
+            disassembler.cmp(),
+            vec![
+                CmpExpr::Reg(("x10".to_string(), 0)),
+                CmpExpr::Reg(("x11".to_string(), 0)),
+            ]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn slt_compares_its_sources_not_its_destination() -> Result<()> {
+        let mut disassembler = Disassembler::new();
+
+        disassembler.disassemble(&SLT)?;
+        assert_eq!(
+            disassembler.cmp(),
+            vec![
+                CmpExpr::Reg(("x11".to_string(), 0)),
+                CmpExpr::Reg(("x12".to_string(), 0)),
+            ]
+        );
+
+        disassembler.disassemble(&SLTI)?;
+        assert_eq!(
+            disassembler.cmp(),
+            vec![CmpExpr::Reg(("x11".to_string(), 0)), CmpExpr::I32(5)]
+        );
+        Ok(())
     }
 }
