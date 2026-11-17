@@ -9,17 +9,20 @@ use self::{
     x86_64::X86_64ArchitectureOperations,
 };
 use crate::{
-    tracer::TraceEntry, traits::TracerDisassembler, ManualStartAddress, ManualStartInfo, StartInfo,
-    StartPhysicalAddress, StartSize,
+    tracer::{DecodedComparison, DecodedInstruction, TraceEntry},
+    traits::TracerDisassembler,
+    ManualStartAddress, ManualStartInfo, StartInfo, StartPhysicalAddress, StartSize,
 };
 use anyhow::anyhow;
-use anyhow::{bail, ensure, Error, Result};
+use anyhow::{bail, ensure, Context, Error, Result};
 use raw_cstr::AsRawCstr;
 use simics::{
     api::{
-        read_phys_memory, sys::instruction_handle_t, write_byte, Access, AttrValueType, ConfObject,
-        CpuInstructionQueryInterface, CpuInstrumentationSubscribeInterface, CycleInterface,
-        IntRegisterInterface, ProcessorInfoV2Interface,
+        get_attribute, get_class, get_class_interface, get_interface, read_phys_memory,
+        sys::instruction_handle_t, write_byte, Access, AttrValueType, ConfObject,
+        CpuCachedInstructionInterface, CpuInstructionQueryInterface,
+        CpuInstrumentationSubscribeInterface, CycleInterface, IntRegisterInterface,
+        ProcessorInfoV2Interface,
     },
     read_byte,
 };
@@ -125,6 +128,73 @@ impl Debug for Architecture {
         )
     }
 }
+
+/// Check that `cpu` supports selective cached-instruction instrumentation and return its
+/// cached-instruction interface. Individual methods are checked, not just interface presence.
+pub(crate) fn cached_instruction_interface(
+    cpu: *mut ConfObject,
+    cmplog: bool,
+) -> Result<CpuCachedInstructionInterface> {
+    let class = get_class(String::try_from(get_attribute(cpu, "classname")?)?)?;
+    let cached = get_class_interface::<CpuCachedInstructionInterface>(class)
+        .context("selective instrumentation requires cpu_cached_instruction")?;
+    let cached = unsafe { cached.as_ref() }
+        .ok_or_else(|| anyhow!("CPU has no cpu_cached_instruction interface"))?;
+    ensure!(
+        cached.register_instruction_after_cb.is_some()
+            && (!cmplog || cached.register_instruction_before_cb.is_some()),
+        "CPU lacks required cached instruction execution callbacks"
+    );
+    let subscribe = get_class_interface::<CpuInstrumentationSubscribeInterface>(class)?;
+    ensure!(
+        unsafe { subscribe.as_ref() }
+            .is_some_and(|interface| interface.register_cached_instruction_cb.is_some()),
+        "CPU lacks register_cached_instruction_cb"
+    );
+    Ok(get_interface(cpu)?)
+}
+
+/// Selective cached-instruction instrumentation, implemented for x86-64 and i386.
+impl Architecture {
+    pub(crate) fn enable_cached_instrumentation(&mut self, cmplog: bool) -> Result<()> {
+        match self {
+            Architecture::X86_64(arch) => arch.enable_cached_instrumentation(cmplog),
+            Architecture::I386(arch) => arch.enable_cached_instrumentation(cmplog),
+            _ => bail!("only supported on x86-64 and i386"),
+        }
+    }
+
+    pub(crate) fn decode_cached_instruction(
+        &mut self,
+        handle: *mut instruction_handle_t,
+    ) -> Result<DecodedInstruction> {
+        match self {
+            Architecture::X86_64(arch) => arch.decode_cached_instruction(handle),
+            Architecture::I386(arch) => arch.decode_cached_instruction(handle),
+            _ => bail!("only supported on x86-64 and i386"),
+        }
+    }
+
+    pub(crate) fn cached_instruction(&mut self) -> Option<&mut CpuCachedInstructionInterface> {
+        match self {
+            Architecture::X86_64(arch) => arch.cached_instruction.as_mut(),
+            Architecture::I386(arch) => arch.cached_instruction.as_mut(),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn trace_decoded_cmp(
+        &mut self,
+        comparison: &DecodedComparison,
+    ) -> Result<TraceEntry> {
+        match self {
+            Architecture::X86_64(arch) => arch.trace_decoded_cmp(comparison),
+            Architecture::I386(arch) => arch.trace_decoded_cmp(comparison),
+            _ => bail!("only supported on x86-64 and i386"),
+        }
+    }
+}
+
 /// Each architecture must provide a struct that performs architecture-specific operations
 pub trait ArchitectureOperations {
     const INDEX_SELECTOR_REGISTER: &'static str;

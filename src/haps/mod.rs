@@ -71,6 +71,7 @@ impl Tsffs {
                 .set(SystemTime::now())
                 .map_err(|_| anyhow!("Failed to set start time"))?;
             self.start_afl_stats()?;
+            self.instrument_processors()?;
             self.coverage_enabled = true;
             self.save_initial_snapshot()?;
             // Collect windows coverage info if enabled
@@ -284,6 +285,7 @@ impl Tsffs {
                 .set(SystemTime::now())
                 .map_err(|_| anyhow!("Failed to set start time"))?;
             self.start_afl_stats()?;
+            self.instrument_processors()?;
             self.coverage_enabled = true;
             self.save_initial_snapshot()?;
 
@@ -327,6 +329,7 @@ impl Tsffs {
                 .set(SystemTime::now())
                 .map_err(|_| anyhow!("Failed to set start time"))?;
             self.start_afl_stats()?;
+            self.instrument_processors()?;
             self.coverage_enabled = true;
             self.save_initial_snapshot()?;
 

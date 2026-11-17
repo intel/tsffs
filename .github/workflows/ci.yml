@@ -647,7 +647,9 @@ jobs:
 
       - name: Test Project
         run: |
-          SIMICS_TEST_CLEANUP_EACH=1 SIMICS_TEST_LOCAL_PACKAGES_ONLY=1 cargo test --no-fail-fast -r _latest || ( echo "❗ Tests failed" && exit 1 )
+          # Integration tests only: the lib unit-test binary links libsimics-common, which needs
+          # libpython preloaded to start, and no unit test matches the _latest filter anyway.
+          SIMICS_TEST_CLEANUP_EACH=1 SIMICS_TEST_LOCAL_PACKAGES_ONLY=1 cargo test --no-fail-fast -r --test '*' _latest || ( echo "❗ Tests failed" && exit 1 )
           echo "✅ Tests passed"
         env:
           CARGO_INCREMENTAL: 0 # Disable incremental compilation to save disk space

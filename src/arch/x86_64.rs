@@ -5,8 +5,9 @@
 
 use std::{ffi::CStr, mem::size_of, slice::from_raw_parts};
 
+use super::cached_instruction_interface;
 use crate::{
-    tracer::{CmpExpr, CmpType, CmpValue, TraceEntry},
+    tracer::{CmpExpr, CmpType, CmpValue, DecodedComparison, DecodedInstruction, TraceEntry},
     traits::TracerDisassembler,
 };
 use anyhow::{anyhow, bail, Error, Result};
@@ -14,8 +15,9 @@ use libafl::prelude::CmpValues;
 use raw_cstr::AsRawCstr;
 use simics::api::{
     get_interface, read_phys_memory, sys::instruction_handle_t, Access, ConfObject,
-    CpuInstructionQueryInterface, CpuInstrumentationSubscribeInterface, CycleInterface,
-    IntRegisterInterface, ProcessorInfoV2Interface,
+    CpuCachedInstructionInterface, CpuInstructionQueryInterface,
+    CpuInstrumentationSubscribeInterface, CycleInterface, IntRegisterInterface,
+    ProcessorInfoV2Interface,
 };
 use yaxpeax_x86::amd64::{ConditionCode, InstDecoder, Instruction, Opcode, Operand};
 
@@ -30,6 +32,8 @@ pub(crate) struct X86_64ArchitectureOperations {
     #[allow(dead_code)]
     cpu_instrumentation_subscribe: CpuInstrumentationSubscribeInterface,
     cycle: CycleInterface,
+    pub(crate) cached_instruction: Option<CpuCachedInstructionInterface>,
+    cached_cmplog: bool,
 }
 
 impl ArchitectureOperations for X86_64ArchitectureOperations {
@@ -80,6 +84,8 @@ impl ArchitectureOperations for X86_64ArchitectureOperations {
                     cpu_instruction_query: get_interface(cpu)?,
                     cpu_instrumentation_subscribe: get_interface(cpu)?,
                     cycle: get_interface(cpu)?,
+                    cached_instruction: None,
+                    cached_cmplog: false,
                 })
             } else if reg_names.iter().all(|n| {
                 ![
@@ -109,6 +115,8 @@ impl ArchitectureOperations for X86_64ArchitectureOperations {
             cpu_instruction_query: get_interface(cpu)?,
             cpu_instrumentation_subscribe: get_interface(cpu)?,
             cycle: get_interface(cpu)?,
+            cached_instruction: None,
+            cached_cmplog: false,
         })
     }
 
@@ -167,51 +175,10 @@ impl ArchitectureOperations for X86_64ArchitectureOperations {
             from_raw_parts(instruction_bytes.data, instruction_bytes.size)
         })?;
         if self.disassembler.last_was_cmp() {
-            let pc = self.processor_info_v2.get_program_counter()?;
-            let mut cmp_values = Vec::new();
-
-            for expr in self.disassembler.cmp() {
-                if let Ok(value) = self.simplify(&expr) {
-                    cmp_values.push(value);
-                }
-            }
-
-            let cmp_value = if let (Some(l), Some(r)) = (cmp_values.first(), cmp_values.get(1)) {
-                match (l, r) {
-                    (CmpValue::U8(l), CmpValue::U8(r)) => Some(CmpValues::U8((*l, *r))),
-                    (CmpValue::I8(l), CmpValue::I8(r)) => Some(CmpValues::U8((
-                        u8::from_le_bytes(l.to_le_bytes()),
-                        u8::from_le_bytes(r.to_le_bytes()),
-                    ))),
-                    (CmpValue::U16(l), CmpValue::U16(r)) => Some(CmpValues::U16((*l, *r))),
-                    (CmpValue::I16(l), CmpValue::I16(r)) => Some(CmpValues::U16((
-                        u16::from_le_bytes(l.to_le_bytes()),
-                        u16::from_le_bytes(r.to_le_bytes()),
-                    ))),
-                    (CmpValue::U32(l), CmpValue::U32(r)) => Some(CmpValues::U32((*l, *r))),
-                    (CmpValue::I32(l), CmpValue::I32(r)) => Some(CmpValues::U32((
-                        u32::from_le_bytes(l.to_le_bytes()),
-                        u32::from_le_bytes(r.to_le_bytes()),
-                    ))),
-                    (CmpValue::U64(l), CmpValue::U64(r)) => Some(CmpValues::U64((*l, *r))),
-                    (CmpValue::I64(l), CmpValue::I64(r)) => Some(CmpValues::U64((
-                        u64::from_le_bytes(l.to_le_bytes()),
-                        u64::from_le_bytes(r.to_le_bytes()),
-                    ))),
-                    (CmpValue::Expr(_), CmpValue::Expr(_)) => None,
-                    _ => None,
-                }
-            } else {
-                None
-            };
-
-            Ok(TraceEntry::builder()
-                .cmp((
-                    pc,
-                    self.disassembler.cmp_type(),
-                    cmp_value.ok_or_else(|| anyhow!("No cmp value available"))?,
-                ))
-                .build())
+            self.trace_decoded_cmp(&DecodedComparison {
+                expressions: self.disassembler.cmp(),
+                types: self.disassembler.cmp_type(),
+            })
         } else {
             Ok(TraceEntry::default())
         }
@@ -219,6 +186,74 @@ impl ArchitectureOperations for X86_64ArchitectureOperations {
 }
 
 impl X86_64ArchitectureOperations {
+    pub(crate) fn enable_cached_instrumentation(&mut self, cmplog: bool) -> Result<()> {
+        self.cached_instruction = Some(cached_instruction_interface(self.cpu, cmplog)?);
+        self.cached_cmplog = cmplog;
+        Ok(())
+    }
+
+    pub(crate) fn decode_cached_instruction(
+        &mut self,
+        handle: *mut instruction_handle_t,
+    ) -> Result<DecodedInstruction> {
+        let bytes = self.cpu_instruction_query.get_instruction_bytes(handle)?;
+        self.disassembler.classify(
+            unsafe { from_raw_parts(bytes.data, bytes.size) },
+            self.cached_cmplog,
+        )
+    }
+
+    pub(crate) fn trace_decoded_cmp(
+        &mut self,
+        comparison: &DecodedComparison,
+    ) -> Result<TraceEntry> {
+        let pc = self.processor_info_v2.get_program_counter()?;
+        let mut cmp_values = Vec::new();
+
+        for expr in &comparison.expressions {
+            if let Ok(value) = self.simplify(expr) {
+                cmp_values.push(value);
+            }
+        }
+
+        let cmp_value = if let (Some(l), Some(r)) = (cmp_values.first(), cmp_values.get(1)) {
+            match (l, r) {
+                (CmpValue::U8(l), CmpValue::U8(r)) => Some(CmpValues::U8((*l, *r))),
+                (CmpValue::I8(l), CmpValue::I8(r)) => Some(CmpValues::U8((
+                    u8::from_le_bytes(l.to_le_bytes()),
+                    u8::from_le_bytes(r.to_le_bytes()),
+                ))),
+                (CmpValue::U16(l), CmpValue::U16(r)) => Some(CmpValues::U16((*l, *r))),
+                (CmpValue::I16(l), CmpValue::I16(r)) => Some(CmpValues::U16((
+                    u16::from_le_bytes(l.to_le_bytes()),
+                    u16::from_le_bytes(r.to_le_bytes()),
+                ))),
+                (CmpValue::U32(l), CmpValue::U32(r)) => Some(CmpValues::U32((*l, *r))),
+                (CmpValue::I32(l), CmpValue::I32(r)) => Some(CmpValues::U32((
+                    u32::from_le_bytes(l.to_le_bytes()),
+                    u32::from_le_bytes(r.to_le_bytes()),
+                ))),
+                (CmpValue::U64(l), CmpValue::U64(r)) => Some(CmpValues::U64((*l, *r))),
+                (CmpValue::I64(l), CmpValue::I64(r)) => Some(CmpValues::U64((
+                    u64::from_le_bytes(l.to_le_bytes()),
+                    u64::from_le_bytes(r.to_le_bytes()),
+                ))),
+                (CmpValue::Expr(_), CmpValue::Expr(_)) => None,
+                _ => None,
+            }
+        } else {
+            None
+        };
+
+        Ok(TraceEntry::builder()
+            .cmp((
+                pc,
+                comparison.types.clone(),
+                cmp_value.ok_or_else(|| anyhow!("No cmp value available"))?,
+            ))
+            .build())
+    }
+
     fn simplify(&mut self, expr: &CmpExpr) -> Result<CmpValue> {
         match expr {
             CmpExpr::Deref((expr, width)) => {
@@ -725,11 +760,155 @@ impl Disassembler {
             last: None,
         }
     }
+
+    pub(crate) fn classify(&mut self, bytes: &[u8], cmplog: bool) -> Result<DecodedInstruction> {
+        self.disassemble(bytes)?;
+        Ok(DecodedInstruction {
+            branch: self.last_was_call() || self.last_was_control_flow() || self.last_was_ret(),
+            comparison: (cmplog && self.last_was_cmp()).then(|| DecodedComparison {
+                expressions: self.cmp(),
+                types: self.cmp_type(),
+            }),
+        })
+    }
 }
 
 impl Default for Disassembler {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod cached_instruction_tests {
+    use super::*;
+    use simics::{
+        sys::{int_register_interface, processor_info_v2_interface},
+        Interface,
+    };
+    use std::{ffi::c_char, ptr::null_mut};
+
+    #[test]
+    fn selects_branches_and_configured_comparisons_only() -> Result<()> {
+        let mut decoder = Disassembler::new();
+        for bytes in [
+            &[0x75, 0x02][..],       // jne
+            &[0xe8, 0, 0, 0, 0][..], // call
+            &[0xc3][..],             // ret
+            &[0xff, 0xe0][..],       // jmp rax
+            &[0xe2, 0xfe][..],       // loop
+            &[0x0f, 0x05][..],       // syscall
+        ] {
+            let instruction = decoder.classify(bytes, true)?;
+            assert!(instruction.branch);
+            assert!(instruction.comparison.is_none());
+        }
+        for bytes in [
+            &[0x90][..],
+            &[0x48, 0x89, 0xd8][..],
+            &[0x48, 0x01, 0xd8][..],
+        ] {
+            let instruction = decoder.classify(bytes, true)?;
+            assert!(!instruction.branch);
+            assert!(instruction.comparison.is_none());
+        }
+        for bytes in [&[0x48, 0x39, 0xd8][..], &[0x48, 0x85, 0xc0][..]] {
+            let instruction = decoder.classify(bytes, true)?;
+            assert!(!instruction.branch);
+            assert!(instruction.comparison.is_some());
+            assert!(decoder.classify(bytes, false)?.comparison.is_none());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn comparison_metadata_survives_later_decodes() -> Result<()> {
+        let mut decoder = Disassembler::new();
+        let first = decoder
+            .classify(&[0x48, 0x83, 0x38, 0x07], true)?
+            .comparison
+            .ok_or_else(|| anyhow!("Expected comparison"))?;
+        decoder.classify(&[0x48, 0x39, 0xd1], true)?;
+        assert_eq!(
+            first.expressions,
+            vec![
+                CmpExpr::Deref((Box::new(CmpExpr::Reg(("rax".into(), 8))), Some(8))),
+                CmpExpr::I8(7),
+            ]
+        );
+        assert!(decoder.classify(&[], true).is_err());
+        let nop = decoder.classify(&[0x90], true)?;
+        assert!(!nop.branch && nop.comparison.is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn cached_comparison_reads_current_registers_and_pc() -> Result<()> {
+        struct Registers {
+            values: [u64; 2],
+            pc: u64,
+        }
+        unsafe extern "C" fn number(_cpu: *mut ConfObject, name: *const c_char) -> i32 {
+            match CStr::from_ptr(name).to_bytes() {
+                b"rax" => 0,
+                b"rbx" => 1,
+                _ => -1,
+            }
+        }
+        unsafe extern "C" fn read(cpu: *mut ConfObject, number: i32) -> u64 {
+            (*cpu.cast::<Registers>()).values[number as usize]
+        }
+        unsafe extern "C" fn pc(cpu: *mut ConfObject) -> u64 {
+            (*cpu.cast::<Registers>()).pc
+        }
+        let mut registers = Registers {
+            values: [10, 20],
+            pc: 0x1000,
+        };
+        let cpu = (&mut registers as *mut Registers).cast();
+        let mut register_interface = int_register_interface {
+            get_number: Some(number),
+            read: Some(read),
+            ..Default::default()
+        };
+        let mut processor_interface = processor_info_v2_interface {
+            get_program_counter: Some(pc),
+            ..Default::default()
+        };
+        let mut arch = X86_64ArchitectureOperations {
+            cpu,
+            disassembler: Disassembler::new(),
+            int_register: IntRegisterInterface::new(cpu, &mut register_interface),
+            processor_info_v2: ProcessorInfoV2Interface::new(cpu, &mut processor_interface),
+            cpu_instruction_query: CpuInstructionQueryInterface::new(cpu, null_mut()),
+            cpu_instrumentation_subscribe: CpuInstrumentationSubscribeInterface::new(
+                cpu,
+                null_mut(),
+            ),
+            cycle: CycleInterface::new(cpu, null_mut()),
+            cached_instruction: None,
+            cached_cmplog: true,
+        };
+        let decoded = arch
+            .disassembler
+            .classify(&[0x48, 0x39, 0xd8], true)?
+            .comparison
+            .ok_or_else(|| anyhow!("Expected comparison"))?;
+        for (values, pc) in [([10, 20], 0x1000), ([30, 40], 0x8000)] {
+            registers.values = values;
+            registers.pc = pc;
+            assert_eq!(
+                arch.trace_decoded_cmp(&decoded)?,
+                TraceEntry::builder()
+                    .cmp((
+                        pc,
+                        decoded.types.clone(),
+                        CmpValues::U64((values[0], values[1])),
+                    ))
+                    .build(),
+            );
+        }
+        Ok(())
     }
 }
 

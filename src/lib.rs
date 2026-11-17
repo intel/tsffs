@@ -72,6 +72,7 @@ use std::{
     alloc::{alloc_zeroed, Layout},
     cell::OnceCell,
     collections::{hash_map::Entry, BTreeSet, HashMap, HashSet},
+    ffi::c_void,
     fs::{create_dir_all, remove_dir_all, File},
     hash::{DefaultHasher, Hash, Hasher},
     path::PathBuf,
@@ -82,7 +83,7 @@ use std::{
     time::SystemTime,
 };
 use tracer::{
-    tsffs::{on_instruction_after, on_instruction_before},
+    tsffs::{on_cached_instruction, on_instruction_after, on_instruction_before},
     ExecutionTrace,
 };
 use typed_builder::TypedBuilder;
@@ -336,6 +337,14 @@ pub(crate) struct Tsffs {
     /// purposes, and is not recommended for use in production. A real corpus representative of
     /// both valid and invalid inputs should be used in production.
     pub generate_random_corpus: bool,
+    #[class(attribute(optional, default = false))]
+    /// Whether to use selective instrumentation on x86-64 and i386 processors. When enabled,
+    /// each instruction is classified once when Simics adds it to its instruction cache, and
+    /// callbacks are attached only to branches and (with `cmplog`) comparisons, instead of
+    /// running a callback on every executed instruction. Feedback is unchanged. Execution
+    /// trace saving and symbolic coverage still use per-instruction callbacks. Must be set
+    /// before fuzzing starts.
+    pub selective_instrumentation: bool,
     #[class(attribute(optional, default = true))]
     /// Whether comparison logging should be used during fuzzing to enable value-driven
     /// mutations. If set to `True`, the fuzzer will use comparison logging to enable
@@ -594,6 +603,10 @@ pub(crate) struct Tsffs {
     /// Tracked processors. This always includes the start processor, and may include
     /// additional processors that are manually added by the user
     processors: HashMap<i32, Architecture>,
+    /// Tracked processors whose feedback callbacks have been subscribed
+    instrumented_processors: HashSet<i32>,
+    /// Whether a cached-instruction callback failure has already been reported
+    cached_feedback_error_reported: bool,
     /// A testcase to use for repro
     repro_testcase: Option<Vec<u8>>,
     /// Whether a bookmark has been set for repro mode
@@ -770,29 +783,135 @@ impl Tsffs {
         );
 
         if let Entry::Vacant(e) = self.processors.entry(cpu_number) {
-            let architecture = if let Some(hint) = self.architecture_hints.get(&cpu_number) {
-                hint.architecture(cpu)?
-            } else {
-                Architecture::new(cpu)?
-            };
-            e.insert(architecture);
-            let mut cpu_interface: CpuInstrumentationSubscribeInterface = get_interface(cpu)?;
-            cpu_interface.register_instruction_after_cb(
-                null_mut(),
-                Some(on_instruction_after),
-                self as *mut Self as *mut _,
-            )?;
-            cpu_interface.register_instruction_before_cb(
-                null_mut(),
-                Some(on_instruction_before),
-                self as *mut Self as *mut _,
-            )?;
+            e.insert(
+                if let Some(hint) = self.architecture_hints.get(&cpu_number) {
+                    hint.architecture(cpu)?
+                } else {
+                    Architecture::new(cpu)?
+                },
+            );
+        }
+
+        // Processors added before fuzzing starts are instrumented when coverage is enabled,
+        // so the mode reflects the final configuration. All feedback is gated on
+        // coverage_enabled, so deferring the subscription is not observable.
+        if self.coverage_enabled {
+            self.instrument_processors()?;
         }
 
         if is_start {
             self.start_processor_number
                 .set(cpu_number)
                 .map_err(|_| anyhow!("Start processor number already set"))?;
+        }
+
+        Ok(())
+    }
+
+    /// Whether any execution-trace saving option is enabled.
+    pub(crate) fn saves_execution_traces(&self) -> bool {
+        self.save_all_execution_traces
+            || self.save_interesting_execution_traces
+            || self.save_solution_execution_traces
+            || self.save_timeout_execution_traces
+    }
+
+    /// Enabled features that need callbacks on every instruction.
+    fn full_instruction_features(&self) -> Vec<&'static str> {
+        [
+            ("symbolic/source coverage", self.symbolic_coverage),
+            ("all execution traces", self.save_all_execution_traces),
+            (
+                "interesting execution traces",
+                self.save_interesting_execution_traces,
+            ),
+            (
+                "solution execution traces",
+                self.save_solution_execution_traces,
+            ),
+            (
+                "timeout execution traces",
+                self.save_timeout_execution_traces,
+            ),
+        ]
+        .into_iter()
+        .filter_map(|(name, enabled)| enabled.then_some(name))
+        .collect()
+    }
+
+    /// Subscribe feedback callbacks on every tracked processor not yet instrumented. Called
+    /// when fuzzing starts (and for processors added afterwards). When
+    /// `selective_instrumentation` is enabled, x86-64 and i386 processors use cached-instruction
+    /// instrumentation unless a full-instruction feature is enabled or the CPU model lacks the
+    /// cached-instruction API; otherwise every processor uses per-instruction callbacks.
+    pub(crate) fn instrument_processors(&mut self) -> Result<()> {
+        let features = self.full_instruction_features();
+        let tsffs = self as *mut Self as *mut c_void;
+        let mut pending = self
+            .processors
+            .keys()
+            .filter(|n| !self.instrumented_processors.contains(n))
+            .copied()
+            .collect::<Vec<_>>();
+        pending.sort();
+
+        for cpu_number in pending {
+            let Some(architecture) = self.processors.get_mut(&cpu_number) else {
+                continue;
+            };
+            let cpu = architecture.cpu();
+            // Err(Some(reason)) falls back to full-instruction mode with a warning; Err(None)
+            // is the default (selective mode not requested) and stays silent.
+            let mut selective: Result<(), Option<String>> = if !self.selective_instrumentation {
+                Err(None)
+            } else if !features.is_empty() {
+                Err(Some(format!(
+                    "full-instruction instrumentation enabled for {}; callbacks on every instruction may substantially reduce fuzzing throughput",
+                    features.join(", ")
+                )))
+            } else {
+                architecture
+                    .enable_cached_instrumentation(self.cmplog)
+                    .map_err(|error| {
+                        Some(format!(
+                            "selective instrumentation unavailable ({error:#}); using full-instruction instrumentation"
+                        ))
+                    })
+            };
+            let mut cpu_interface: CpuInstrumentationSubscribeInterface = get_interface(cpu)?;
+            if selective.is_ok() {
+                selective = cpu_interface
+                    .register_cached_instruction_cb(null_mut(), Some(on_cached_instruction), tsffs)
+                    .map(|_| ())
+                    .map_err(|error| {
+                        Some(format!(
+                            "failed to subscribe to cached instructions ({error}); using full-instruction instrumentation"
+                        ))
+                    });
+            }
+
+            match selective {
+                Ok(()) => info!(
+                    self.as_conf_object(),
+                    "CPU {cpu_number}: selective branch/compare instrumentation enabled"
+                ),
+                Err(reason) => {
+                    if let Some(reason) = reason {
+                        warn!(self.as_conf_object(), "CPU {cpu_number}: {reason}");
+                    }
+                    cpu_interface.register_instruction_after_cb(
+                        null_mut(),
+                        Some(on_instruction_after),
+                        tsffs,
+                    )?;
+                    cpu_interface.register_instruction_before_cb(
+                        null_mut(),
+                        Some(on_instruction_before),
+                        tsffs,
+                    )?;
+                }
+            }
+            self.instrumented_processors.insert(cpu_number);
         }
 
         Ok(())
