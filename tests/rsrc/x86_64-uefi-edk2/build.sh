@@ -22,4 +22,23 @@ docker create --name "${CONTAINER_NAME}" "${IMAGE_NAME}"
 docker cp \
     "${CONTAINER_NAME}:/edk2/HelloWorld/Build/HelloWorld/DEBUG_GCC5/X64/HelloWorld.efi" \
     "${SCRIPT_DIR}/test.efi"
+
+# The source and debug files of the application, laid out as in the container below
+# /edk2/HelloWorld, for source coverage with the path map
+# "/edk2/HelloWorld" -> "debug-info"
+CONTAINER_APP_DIR="/edk2/HelloWorld"
+MODULE_DEBUG_DIR="Build/HelloWorld/DEBUG_GCC5/X64/HelloWorld/HelloWorld/DEBUG"
+DEBUG_INFO_DIR="${SCRIPT_DIR}/debug-info"
+
+rm -rf "${DEBUG_INFO_DIR}"
+mkdir -p "${DEBUG_INFO_DIR}/${MODULE_DEBUG_DIR}"
+docker cp \
+    "${CONTAINER_NAME}:${CONTAINER_APP_DIR}/HelloWorld.c" \
+    "${DEBUG_INFO_DIR}/HelloWorld.c"
+for DEBUG_FILE in HelloWorld.efi HelloWorld.dll HelloWorld.debug; do
+    docker cp \
+        "${CONTAINER_NAME}:${CONTAINER_APP_DIR}/${MODULE_DEBUG_DIR}/${DEBUG_FILE}" \
+        "${DEBUG_INFO_DIR}/${MODULE_DEBUG_DIR}/${DEBUG_FILE}"
+done
+
 docker rm -f "${CONTAINER_NAME}"
