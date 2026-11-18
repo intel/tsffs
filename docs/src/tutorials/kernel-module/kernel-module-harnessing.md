@@ -174,7 +174,7 @@ error:
 ```
 
 Notice that instead of using `HARNESS_START` and `HARNESS_STOP` here, we use
-`HARNESS_START_INDEX` and `HARNESS_STOP_INDEX` with index `1`, so that this harness has a
-different index than the one in the kernel module (which uses the default index `0`).
+`HARNESS_START_INDEX` and `HARNESS_STOP_INDEX` with index `1`, so that this harness has
+a different index than the one in the kernel module (which uses the default index `0`).
 This allows us to keep the compiled-in harnessing in the test kernel module, while
 leaving it inactive.
