@@ -767,6 +767,22 @@ impl Tsffs {
 
         Ok(())
     }
+
+    /// Stop the simulation because the harness start was reached.
+    ///
+    /// In repro mode the start is a stop only the first time it is reached. After that,
+    /// `repro` restores the initial snapshot and prepares its testcase itself, and the
+    /// restored snapshot executes the harness start again. Stopping there would take a
+    /// second resume before the testcase runs, so the simulation keeps running instead.
+    pub fn stop_simulation_at_start(&mut self, reason: StopReason) -> Result<()> {
+        if self.repro_bookmark_set {
+            self.execution_trace.0.clear();
+
+            return Ok(());
+        }
+
+        self.stop_simulation(reason)
+    }
 }
 
 /// Implementations for common functionality

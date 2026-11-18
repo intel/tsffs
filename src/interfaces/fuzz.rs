@@ -21,7 +21,8 @@ impl Tsffs {
     /// instead of continuing the fuzzing loop.
     ///
     /// This can be called during configuration *or* after stopping the fuzzer once a solution
-    /// has been found.
+    /// has been found. It can be called again after a reproduced execution has stopped, to
+    /// run another test case from the initial snapshot.
     pub fn repro(&mut self, testcase_file: *mut c_char) -> Result<()> {
         // SAFETY: Simics passes NULL or a NUL-terminated string valid for this call
         let simics_path = unsafe { c_str_arg(testcase_file, "testcase_file") }?;
@@ -40,11 +41,17 @@ impl Tsffs {
 
         self.repro_testcase = Some(contents);
 
-        if self.iterations > 0 {
-            // We've done an iteration already, so we need to reset and run
+        if self.have_initial_snapshot() {
+            // The harness start was already reached, in a fuzzing iteration or in an earlier
+            // repro run, so we need to reset and run. An earlier repro run left the stop
+            // handlers disabled: enable them again for this testcase.
+            self.stopped_for_repro = false;
             self.restore_initial_snapshot()?;
             self.get_and_write_testcase()?;
             self.post_timeout_event()?;
+            // Everything the harness start prepares is done, so that the start the restored
+            // snapshot executes again does not stop the simulation a second time.
+            self.save_repro_bookmark_if_needed()?;
             self.continue_after_repro_prepared()?;
         }
 
@@ -76,7 +83,7 @@ impl Tsffs {
             "start({buffer_address:#x}, {size_address:#x})"
         );
 
-        self.stop_simulation(StopReason::ManualStart {
+        self.stop_simulation_at_start(StopReason::ManualStart {
             processor: cpu,
             info: ManualStartInfo {
                 address: if virt {
@@ -123,7 +130,7 @@ impl Tsffs {
             "start_with_maximum_size({testcase_address:#x}, {maximum_size:#x})"
         );
 
-        self.stop_simulation(StopReason::ManualStart {
+        self.stop_simulation_at_start(StopReason::ManualStart {
             processor: cpu,
             info: ManualStartInfo {
                 address: if virt {
@@ -165,7 +172,7 @@ impl Tsffs {
             "start({buffer_address:#x}, {size_address:#x}, {maximum_size:#x})"
         );
 
-        self.stop_simulation(StopReason::ManualStart {
+        self.stop_simulation_at_start(StopReason::ManualStart {
             processor: cpu,
             info: ManualStartInfo {
                 address: if virt {

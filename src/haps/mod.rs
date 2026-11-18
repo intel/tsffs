@@ -672,7 +672,16 @@ impl Tsffs {
                     self.stop_on_harness && self.magic_assert_indices.contains(&index_selector)
                 }
             } {
-                self.stop_simulation(StopReason::Magic { magic_number })?;
+                match magic_number {
+                    MagicNumber::StartBufferPtrSizePtr
+                    | MagicNumber::StartBufferPtrSizeVal
+                    | MagicNumber::StartBufferPtrSizePtrVal => {
+                        self.stop_simulation_at_start(StopReason::Magic { magic_number })?
+                    }
+                    MagicNumber::StopNormal | MagicNumber::StopAssert => {
+                        self.stop_simulation(StopReason::Magic { magic_number })?
+                    }
+                }
             } else {
                 debug!(
                     self.as_conf_object(),
