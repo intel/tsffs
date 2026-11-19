@@ -190,8 +190,22 @@ download_and_verify_cmake() {
 }
 
 download_and_verify_simics() {
-    PUBLIC_SIMICS_PKGS_URL="https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/simics-6-packages-2024-05-linux64.ispm"
-    PUBLIC_SIMICS_PKGS_SHA384="90d498e3b2afa54191bf09c5a0dcb9641595150eb9eab8dbaf9101ad6a1e7e892ef5db9637da85d1a4787bd541dea806"
+    # SIMICS major version to build against, selected with the SIMICS_VERSION environment variable
+    local simics_version="${SIMICS_VERSION:-6}"
+    case "${simics_version}" in
+        6)
+            PUBLIC_SIMICS_PKGS_URL="https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/simics-6-packages-2024-05-linux64.ispm"
+            PUBLIC_SIMICS_PKGS_SHA384="90d498e3b2afa54191bf09c5a0dcb9641595150eb9eab8dbaf9101ad6a1e7e892ef5db9637da85d1a4787bd541dea806"
+            ;;
+        7)
+            PUBLIC_SIMICS_PKGS_URL="https://registrationcenter-download.intel.com/akdlm/IRC_NAS/b9edaa91-4c18-4758-b8e2-b6e709270a4c/simics-7-packages-2025-51-linux64.ispm"
+            PUBLIC_SIMICS_PKGS_SHA384="62a83e1fc546d7d078c34de89168ab718b562c9c69a5b1628d2c0a8b0a792863e7f97f6af62b539275c6a44ea0d8ac4a"
+            ;;
+        *)
+            echo "Unsupported SIMICS_VERSION '${simics_version}', expected 6 or 7. Exiting..."
+            exit 1
+            ;;
+    esac
     PUBLIC_SIMICS_ISPM_URL="https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/intel-simics-package-manager-1.8.3-linux64.tar.gz"
     PUBLIC_SIMICS_ISPM_SHA384="a2c42ea1577e54c4c68e1d6a7d2ad3da3c7298412f008c71fb3b98a1ffddb89f20f96998de9a9d9c20424fe6ae4c9882"
 
@@ -208,13 +222,13 @@ download_and_verify_simics() {
             "${PUBLIC_SIMICS_ISPM_URL}"
     fi
 
-    if [ ! -f "${BUILDER_DIR}/rsrc/simics.ispm" ]; then
-        curl --noproxy '*.intel.com' -L -o "${BUILDER_DIR}/rsrc/simics.ispm" \
+    if [ ! -f "${BUILDER_DIR}/rsrc/simics-${simics_version}.ispm" ]; then
+        curl --noproxy '*.intel.com' -L -o "${BUILDER_DIR}/rsrc/simics-${simics_version}.ispm" \
             "${PUBLIC_SIMICS_PKGS_URL}"
     fi
 
     sha384sum "${BUILDER_DIR}/rsrc/ispm.tar.gz" | awk '{print $1}' | grep -q "${PUBLIC_SIMICS_ISPM_SHA384}"
-    sha384sum "${BUILDER_DIR}/rsrc/simics.ispm" | awk '{print $1}' | grep -q "${PUBLIC_SIMICS_PKGS_SHA384}"
+    sha384sum "${BUILDER_DIR}/rsrc/simics-${simics_version}.ispm" | awk '{print $1}' | grep -q "${PUBLIC_SIMICS_PKGS_SHA384}"
 }
 
 download_and_verify_builder_rpms() {

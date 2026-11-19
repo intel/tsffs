@@ -41,7 +41,7 @@ RUN tar -C /install --strip-components=1 -xvf /install/rust-nightly-x86_64-unkno
 
 WORKDIR /
 
-ARG PUBLIC_SIMICS_PACKAGE_VERSION_1000
+ARG SIMICS_VERSION=6
 ENV PATH="${PATH}:/simics/ispm/"
 ENV PATH="${PATH}:/root/.cargo/bin/"
 
@@ -52,7 +52,7 @@ WORKDIR /tsffs/
 RUN mkdir -p /simics/ispm && \
     tar -C /simics/ispm --strip-components=1 -xf .github/builder/rsrc/ispm.tar.gz && \
     ispm settings install-dir /simics && \
-    ispm packages --install-bundle .github/builder/rsrc/simics.ispm --non-interactive --trust-insecure-packages
+    ispm packages --install-bundle ".github/builder/rsrc/simics-${SIMICS_VERSION}.ispm" --non-interactive --trust-insecure-packages
 
 RUN RUSTFLAGS="-C linker=clang -C link-arg=-fuse-ld=$(which ld.lld)" && \
     export RUSTFLAGS && \
