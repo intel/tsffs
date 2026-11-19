@@ -5,14 +5,16 @@
 
 use crate::{
     fuzzer::{
-        corpus_sync::CorpusSyncStage, executors::inprocess::InProcessExecutor,
-        feedbacks::ReportingMapFeedback, messages::FuzzerMessage,
+        corpus_sync::CorpusSyncStage,
+        executors::inprocess::InProcessExecutor,
+        feedbacks::{ReportingMapFeedback, SolutionReporter},
+        messages::FuzzerMessage,
     },
     Tsffs,
 };
 use anyhow::{anyhow, Result};
 use libafl::{
-    feedback_or, feedback_or_fast,
+    feedback_and_fast, feedback_or, feedback_or_fast,
     inputs::{HasBytesVec, Input},
     prelude::{
         havoc_mutations, ondisk::OnDiskMetadataFormat, tokens_mutations, AFLppRedQueen, BytesInput,
@@ -311,12 +313,17 @@ impl Tsffs {
 
                 // NOTE: Initialize these here before we move the feedbacks
                 let map_name = map_feedback.name().to_string();
+                let solution_reporter =
+                    SolutionReporter::new(&edges_observer, &map_name, mtx.clone());
                 let calibration_stage = CalibrationStage::new(&map_feedback);
                 let colorization_stage = ColorizationStage::new(&edges_observer);
                 let generalization_stage = GeneralizationStage::new(&edges_observer);
 
                 let mut feedback = feedback_or!(map_feedback, time_feedback);
-                let mut objective = feedback_or_fast!(crash_feedback, timeout_feedback);
+                let mut objective = feedback_and_fast!(
+                    feedback_or_fast!(crash_feedback, timeout_feedback),
+                    solution_reporter
+                );
 
                 let mut state = StdState::new(
                     StdRand::with_seed(current_nanos()),
