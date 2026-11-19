@@ -28,9 +28,9 @@ def tsffs_replay_inputs(directory):
     """
     Return the absolute paths of the inputs directly inside `directory`, sorted by name.
 
-    Only regular files are inputs. Hidden files (the lock and metadata files LibAFL keeps
-    next to each corpus entry) and subdirectories are skipped. `directory` may start with
-    `%simics%`.
+    Only regular files are inputs. Hidden files (the lock and metadata files LibAFL
+    keeps next to each corpus entry) and subdirectories are skipped. `directory` may
+    start with `%simics%`.
 
     Raises `ValueError` when the directory is missing or holds no input.
     """

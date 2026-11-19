@@ -46,12 +46,27 @@ impl Tsffs {
             // repro run, so we need to reset and run. An earlier repro run left the stop
             // handlers disabled: enable them again for this testcase.
             self.stopped_for_repro = false;
+            // What the previous execution reported does not describe this testcase
+            self.last_exception_processor_number = None;
+            self.last_stop_reason = None;
             self.restore_initial_snapshot()?;
-            self.get_and_write_testcase()?;
+
+            if self.start_info.get().is_some() {
+                self.get_and_write_testcase()?;
+            } else {
+                // The harness started with `start_without_buffer`: there is no buffer to
+                // write. The restored snapshot executes the harness start again, where the
+                // harness calls `start_without_buffer` and is handed this testcase.
+                debug!(
+                    self.as_conf_object(),
+                    "No start buffer, the harness start hands over the repro testcase"
+                );
+            }
+
             self.post_timeout_event()?;
             // Everything the harness start prepares is done, so that the start the restored
             // snapshot executes again does not stop the simulation a second time.
-            self.save_repro_bookmark_if_needed()?;
+            self.mark_repro_start_prepared()?;
             self.continue_after_repro_prepared()?;
         }
 
@@ -83,7 +98,7 @@ impl Tsffs {
             "start({buffer_address:#x}, {size_address:#x})"
         );
 
-        self.stop_simulation_at_start(StopReason::ManualStart {
+        self.stop_simulation(StopReason::ManualStart {
             processor: cpu,
             info: ManualStartInfo {
                 address: if virt {
@@ -130,7 +145,7 @@ impl Tsffs {
             "start_with_maximum_size({testcase_address:#x}, {maximum_size:#x})"
         );
 
-        self.stop_simulation_at_start(StopReason::ManualStart {
+        self.stop_simulation(StopReason::ManualStart {
             processor: cpu,
             info: ManualStartInfo {
                 address: if virt {
@@ -172,7 +187,7 @@ impl Tsffs {
             "start({buffer_address:#x}, {size_address:#x}, {maximum_size:#x})"
         );
 
-        self.stop_simulation_at_start(StopReason::ManualStart {
+        self.stop_simulation(StopReason::ManualStart {
             processor: cpu,
             info: ManualStartInfo {
                 address: if virt {
@@ -206,6 +221,11 @@ impl Tsffs {
     /// # Return Value
     ///
     /// Returns an [`AttrValue`] list of integers. Integers are `u8` sized, in the range 0-255.
+    ///
+    /// TSFFS has no buffer to write the next testcase to, so this method is called again
+    /// each time the restored snapshot reaches the start, and returns that execution's
+    /// testcase: the next one from the fuzzer, or in repro mode the one of the latest
+    /// `repro` call.
     pub fn start_without_buffer(&mut self, cpu: *mut ConfObject) -> Result<AttrValue> {
         if !self.have_initial_snapshot() {
             // Start the fuzzer thread early so we can get a testcase
