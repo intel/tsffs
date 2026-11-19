@@ -15,7 +15,10 @@ This page gives the full recipe. It relies on three things:
 - The *corpus*: the directory of inputs the fuzzer kept because each one reached code
   no earlier input had reached (`%simics%/corpus` unless you
   [changed it](../config/common-options.md#set-corpus-and-solutions-directory)).
-  Running every input of the corpus again reaches the code the campaign reached.
+  Running every input of the corpus again reaches the code the campaign reached, as
+  long as the campaign restored its snapshot at every iteration (the default, see
+  [Campaigns That Do Not Restore Every
+  Iteration](#campaigns-that-do-not-restore-every-iteration)).
 - [Repro mode](analyzing-results.md), which runs one saved input from the snapshot TSFFS
   takes at the harness. Here it is called in a loop, once per input.
 - The SIMICS *UEFI firmware tracker*, which tells SIMICS which firmware module is loaded
@@ -154,7 +157,10 @@ an input that ran longer than `tsffs.timeout`.
 **The settings stay those of the campaign.** An input must end in the replay where it
 ended while fuzzing. Keep the harness settings, `tsffs.timeout`, `tsffs.exceptions` and
 any breakpoints of the fuzzing script, so that a crashing input stops at its exception
-and a hanging input stops at the timeout instead of running on.
+and a hanging input stops at the timeout instead of running on. One setting has no
+effect on the replay: `tsffs.snapshot_restore_interval` (see
+[Campaigns That Do Not Restore Every
+Iteration](#campaigns-that-do-not-restore-every-iteration)).
 
 **`tsffs_replay_arm(directory)`** puts TSFFS in repro mode with the first input of the
 directory, and sets `tsffs.repro_auto_continue = False`. Call it after `init-tsffs` and
@@ -299,6 +305,21 @@ solutions directory full of hangs takes a while.
 To get a report while the campaign is still running, copy the corpus directory and
 replay the copy in a separate SIMICS project, so that the replay session never works in
 the directory the campaign is writing to.
+
+## Campaigns That Do Not Restore Every Iteration
+
+The replay runs every input from the initial snapshot, whatever the
+[snapshot restore interval](../config/common-options.md#set-snapshot-restore-interval)
+(`tsffs.snapshot_restore_interval`) is set to: `repro` always restores the snapshot
+before it writes the input.
+
+With the default interval of `1` the campaign did the same, so each input takes in the
+replay the path it took while fuzzing. In a semi-persistent or fully persistent campaign
+(an interval of `N` greater than `1`, or `0`), an input ran on whatever state the inputs
+before it left in the target. Replayed from a clean snapshot, that input can take a
+different path. The report then shows what each saved input reaches by itself, which
+need not be everything the campaign reached, and can include lines the campaign never
+reached.
 
 ## Limits
 
