@@ -1,11 +1,10 @@
 # Tests
 
-Examples that should be tested should be placed here. Each example should have a
-`build.sh` script that generates or places all files required to run the test into the
-test's directory. The `build.sh` script may accept a `SIMICS_BASE` environment
-variable to locate simics-provided scripts.
+Targets used by the integration tests in `tests/*.rs` are placed here. Each target has a
+`build.sh` script that generates or places all files required to run the tests into the
+target's directory.
 
-For example, [minimal-riscv-64/build.sh](minimal-riscv-64/build.sh) produces:
+For example, [riscv-64/build.sh](riscv-64/build.sh) produces:
 
 - `fw_jump.elf`
 - `Image`
@@ -15,10 +14,9 @@ For example, [minimal-riscv-64/build.sh](minimal-riscv-64/build.sh) produces:
 - `test-mod-userspace`
 - `test-mod.ko`
 
-All of which are used by the tests that use this example. The files should be output in
+All of which are used by the tests that use this target. The files should be output in
 the same directory structure they should be placed into the SIMICS project set up for
 testing.
 
-Test scripts should be named following the pattern `test*.simics` and placed in the test
-directory.
-
+A test copies a target's directory into its SIMICS project with the `directories` option
+of `TestEnvSpec`, and drives SIMICS with an inline script (see `tests/x86_64_magic_latest.rs`).

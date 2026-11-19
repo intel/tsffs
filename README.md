@@ -6,10 +6,10 @@ TSFFS is a snapshotting, coverage-guided fuzzer built on the
 [SIMICS](https://www.intel.com/content/www/us/en/developer/articles/tool/simics-simulator.html)
 full system simulator. TSFFS makes it easy to fuzz and triage crashes on
 traditionally challenging targets including UEFI applications, bootloaders,
-BIOS, kernel modules, and device firmware. TSSFS can even fuzz user-space
+BIOS, kernel modules, and device firmware. TSFFS can even fuzz user-space
 applications on Linux and Windows. See the
 [requirements](https://intel.github.io/tsffs/fuzzing/compatibility.html) to
-find out if TSSFS can fuzz your code.
+find out if TSFFS can fuzz your code.
 
 - [TSFFS: Target Software Fuzzer For SIMICS](#tsffs-target-software-fuzzer-for-simics)
   - [Quick Start](#quick-start)
@@ -63,7 +63,7 @@ and takes advantage of several of the state of the art capabilities of both.
 
 TSFFS is focused on several primary use cases:
 
-- UEFI and BIOS code, particulary based on [EDKII](https://github.com/tianocore/edk2)
+- UEFI and BIOS code, particularly based on [EDKII](https://github.com/tianocore/edk2)
 - Pre- and early-silicon firmware and device drivers
 - Hardware-dependent kernel and firmware code
 - Fuzzing for complex error conditions
@@ -82,8 +82,7 @@ If you discover a non-security issue or problem, please file an
 
 The best place to ask questions about and get help using TSFFS is in the [Awesome
 Fuzzing](https://discord.gg/gCraWct) Discord server. If you prefer, you can email the
-[authors](#authors). Questions we receive are periodically added from both Discord and
-email to the [FAQ](./docs/FAQ.md).
+[authors](#authors).
 
 Please do not create issues or ask publicly about possible security issues you discover
 in TSFFS. Instead, see our [Security Policy](./SECURITY.md) and follow the linked

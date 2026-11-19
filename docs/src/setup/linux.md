@@ -31,11 +31,14 @@ sudo dnf -y install clang clang-libs cmake curl dosfstools g++ gcc git glibc-dev
 
 Rust's official installation instructions can be found at
 [rustup.rs](https://rustup.rs). To install Rust with the recommended settings for this
-project (including the nightly toolchain), run:
+project, run:
 
 ```sh
-curl https://sh.rustup.rs -sSf | bash -s -- -y --default-toolchain nightly
+curl https://sh.rustup.rs -sSf | bash -s -- -y
 ```
+
+The repository pins the toolchain it is built with in `rust-toolchain.toml`. `rustup`
+installs that toolchain automatically the first time `cargo` runs inside the repository.
 
 The installer may prompt you to add `source $HOME/.cargo/env` to your shell init file.
 You should accept this option if prompted, or otherwise add `cargo` to your path.
@@ -43,7 +46,7 @@ You should accept this option if prompted, or otherwise add `cargo` to your path
 Verify that `cargo` is installed in your path with:
 
 ```sh
-cargo +nightly --version
+cargo --version
 ```
 
 ## Install SIMICS
@@ -51,8 +54,7 @@ cargo +nightly --version
 For users of the public distribution of SIMICS, visit the [SIMICS download
 page](https://www.intel.com/content/www/us/en/developer/articles/tool/simics-simulator.html),
 accept the EULA, and download the following files. Users of internal or commercial
-private Wind River or Intel SIMICS should follow the
-[internal documentation](https://goto/simics).
+private Wind River or Intel SIMICS should follow their internal documentation.
 
 * `intel-simics-package-manager-[VERSION].tar.gz`
 * `simics-6-packages-[VERSION].ispm`

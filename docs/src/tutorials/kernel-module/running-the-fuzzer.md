@@ -68,20 +68,19 @@ driver application will call into the kernel module, and the fuzzer will start f
 ## Switch Harnesses
 
 To change harnesses, instead harnessing via the user-space
-driver program, the same target software should be used. Only the two lines:
+driver program, the same target software should be used. The user-space harness uses
+index `1`, so after the two lines:
 
 ```simics
 @tsffs.start_on_harness = True
 @tsffs.stop_on_harness = True
 ```
 
-Should be changed to:
+Add:
 
 ```simics
-@tsffs.start_on_harness = False
-@tsffs.stop_on_harness = False
-@tsffs.magic_start = 4
-@tsffs.magic_stop = 5
+@tsffs.magic_start_index = 1
+@tsffs.magic_stop_indices = [1]
 ```
 
 You can run the script again -- this time, the fuzzing loop will instantiate in the

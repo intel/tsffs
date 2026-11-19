@@ -171,7 +171,7 @@
 ///
 /// ```
 /// unsigned char buffer[1024];
-/// size_t size;
+/// size_t size = sizeof(buffer);
 /// HARNESS_START(buffer, &size);
 /// ```
 #define HARNESS_START(buffer, size_ptr)                                  \
@@ -208,7 +208,7 @@
 ///
 /// ```
 /// unsigned char buffer[1024];
-/// size_t size;
+/// size_t size = sizeof(buffer);
 /// HARNESS_START_INDEX(0x0001U, buffer, &size);
 /// ```
 #define HARNESS_START_INDEX(start_index, buffer, size_ptr)               \
@@ -649,7 +649,7 @@
 ///
 /// ```
 /// unsigned char buffer[1024];
-/// size_t size;
+/// size_t size = sizeof(buffer);
 /// HARNESS_START(buffer, &size);
 /// ```
 #define HARNESS_START(buffer, size_ptr)                                  \
@@ -686,7 +686,7 @@
 ///
 /// ```
 /// unsigned char buffer[1024];
-/// size_t size;
+/// size_t size = sizeof(buffer);
 /// HARNESS_START_INDEX(0x0001U, buffer, &size);
 /// ```
 #define HARNESS_START_INDEX(start_index, buffer, size_ptr)               \
@@ -1097,7 +1097,7 @@
 ///
 /// ```
 /// unsigned char buffer[1024];
-/// size_t size;
+/// size_t size = sizeof(buffer);
 /// HARNESS_START(buffer, &size);
 /// ```
 #define HARNESS_START(buffer, size_ptr)                                  \
@@ -1134,7 +1134,7 @@
 ///
 /// ```
 /// unsigned char buffer[1024];
-/// size_t size;
+/// size_t size = sizeof(buffer);
 /// HARNESS_START_INDEX(0x0001U, buffer, &size);
 /// ```
 #define HARNESS_START_INDEX(start_index, buffer, size_ptr)             \
@@ -1541,7 +1541,7 @@
 ///
 /// ```
 /// unsigned char buffer[1024];
-/// size_t size;
+/// size_t size = sizeof(buffer);
 /// HARNESS_START(buffer, &size);
 /// ```
 #define HARNESS_START(buffer, size_ptr)                                  \
@@ -1577,7 +1577,7 @@
 ///
 /// ```
 /// unsigned char buffer[1024];
-/// size_t size;
+/// size_t size = sizeof(buffer);
 /// HARNESS_START_INDEX(0x0001U, buffer, &size);
 /// ```
 #define HARNESS_START_INDEX(start_index, buffer, size_ptr)               \
@@ -1989,7 +1989,7 @@
 ///
 /// ```
 /// unsigned char buffer[1024];
-/// size_t size;
+/// size_t size = sizeof(buffer);
 /// HARNESS_START(buffer, &size);
 /// ```
 #define HARNESS_START(buffer, size_ptr)                                 \
@@ -2026,7 +2026,7 @@
 ///
 /// ```
 /// unsigned char buffer[1024];
-/// size_t size;
+/// size_t size = sizeof(buffer);
 /// HARNESS_START_INDEX(0x0001, buffer, &size);
 /// ```
 #define HARNESS_START_INDEX(start_index, buffer, size_ptr)            \
@@ -2446,7 +2446,7 @@
 ///
 /// ```
 /// unsigned char buffer[1024];
-/// size_t size;
+/// size_t size = sizeof(buffer);
 /// HARNESS_START(buffer, &size);
 /// ```
 #define HARNESS_START(buffer, size_ptr)                                 \
@@ -2483,7 +2483,7 @@
 ///
 /// ```
 /// unsigned char buffer[1024];
-/// size_t size;
+/// size_t size = sizeof(buffer);
 /// HARNESS_START_INDEX(0x0001, buffer, &size);
 /// ```
 #define HARNESS_START_INDEX(start_index, buffer, size_ptr)            \
@@ -2796,7 +2796,7 @@
 ///
 /// ```
 /// unsigned char buffer[1024];
-/// size_t size;
+/// size_t size = sizeof(buffer);
 /// HARNESS_START(buffer, &size);
 /// ```
 extern "C" void HARNESS_START(void *buffer, void *size_ptr);
@@ -2829,7 +2829,7 @@ extern "C" void HARNESS_START(void *buffer, void *size_ptr);
 ///
 /// ```
 /// unsigned char buffer[1024];
-/// size_t size;
+/// size_t size = sizeof(buffer);
 /// HARNESS_START_INDEX(0x0001U, buffer, &size);
 /// ```
 extern "C" void HARNESS_START_INDEX(size_t start_index, void *buffer, void *size_ptr);
@@ -3077,7 +3077,7 @@ extern "C" void HARNESS_ASSERT_INDEX(size_t assert_index);
 ///
 /// ```
 /// unsigned char buffer[1024];
-/// size_t size;
+/// size_t size = sizeof(buffer);
 /// HARNESS_START(buffer, &size);
 /// ```
 void HARNESS_START(void *buffer, void *size_ptr);
@@ -3110,7 +3110,7 @@ void HARNESS_START(void *buffer, void *size_ptr);
 ///
 /// ```
 /// unsigned char buffer[1024];
-/// size_t size;
+/// size_t size = sizeof(buffer);
 /// HARNESS_START_INDEX(0x0001U, buffer, &size);
 /// ```
 void HARNESS_START_INDEX(size_t start_index, void *buffer, void *size_ptr);

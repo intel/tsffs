@@ -6,7 +6,7 @@ name = "tsffs"
 authors = [
     "Rowan Hart <rowan.hart@intel.com>",
     "Brandon Marken <brandon.marken@intel.com>",
-    "Robert Geunzel <robert.geunzel@intel.com>",
+    "Robert Guenzel <robert.guenzel@intel.com>",
 ]
 categories = ["development-tools::testing", "emulators", "simulation"]
 description = "A snapshotting, coverage-guided fuzzer for software (UEFI, Kernel, firmware, BIOS) built on SIMICS"

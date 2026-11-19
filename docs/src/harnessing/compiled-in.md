@@ -75,7 +75,7 @@ This sets TSFFS to start the fuzzing loop on a *magic*
 harness with magic number `1` (used by `HARNESS_START`)
 and index `0` (the default) and stop execution and
 restore to the initial snapshot on *magic* harnesses
-with magic number `2` (used by `HARNESS_STOP`) and
+with magic number `4` (used by `HARNESS_STOP`) and
 index `0` (the default).
 
 ## Multiple Harnesses in One Binary
@@ -86,7 +86,7 @@ software ahead of time, and choose which to enable at runtime.Each provided
 header also provides two lower-level macros for this purpose.
 
 * `HARNESS_START_INDEX(index, testcase_ptr, size_ptr)`
-* `HARNESS_STOP(index)`
+* `HARNESS_STOP_INDEX(index)`
 
 These macros are used in the same way as `HARNESS_START` and `HARNESS_STOP`,
 with the additional first argument. The default value of `index` is 0, but
@@ -194,6 +194,6 @@ temporary to hold the address and pass it instead, like:
 ```c
 char buffer[100];
 size_t size = sizeof(buffer);
-size_t size_ptr = &size;
+size_t *size_ptr = &size;
 HARNESS_START(buffer, size_ptr);
 ```

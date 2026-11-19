@@ -37,13 +37,13 @@ actually exist in the target software, but it is good practice).
 ```
 
 Once compiled-in harnesses are disabled, the fuzzing loop can be started manually. There
-are two APIs available. Both receive a `cpu` object as their first argument, which
-should be a processor instance, for example on the QSP platform
-`qsp.mb.cpu0.core[0][0]`. This is the processor whose associated memory will be written
-with new testcases, and whose address space will be used for virtual address
-translation.
+are three APIs available that write testcases into a buffer in target memory. Each
+receives a `cpu` object as its first argument, which should be a processor instance, for
+example on the QSP platform `qsp.mb.cpu0.core[0][0]`. This is the processor whose
+associated memory will be written with new testcases, and whose address space will be
+used for virtual address translation.
 
-Both testcases also take a `virt: bool` as their final argument, to specify whether the
+Each API also takes a `virt: bool` as its final argument, to specify whether the
 addresses passed are virtual addresses or physical addresses. If `False`, the addresses
 will *not* be translated, which can allow circumventing issues where the address is
 accessible, but the page table does not contain an identity mapping for it. A physical
@@ -53,22 +53,35 @@ address that is identity mapped may be passed with either a `True` or `False` va
 The first API takes two memory addresses, and is equivalent to the [compiled in
 `HARNESS_START`](compiled-in.md#using-provided-headers) macro. When called, the fuzzer
 will save the passed-in addresses (which may be virtual or physical), read the
-pointer-sized integer at `*size_address` as the maximum size of testcases. take a
+pointer-sized integer at `*size_address` as the maximum size of testcases, take a
 snapshot, and begin the fuzzing loop. Each iteration, a testcase will be written to the
 testcase pointer, and the size of the testcase will be written to the provided size
 pointer. This API is called like:
 
 ```python
-@tsffs.iface.fuzz.start(cpu, testcase_address, size_address, True)
+@tsffs.iface.fuzz.start_with_buffer_ptr_size_ptr(cpu, testcase_address, size_address, True)
 ```
 
-The second API takes one memory address and a maximum size. Testcases will be written
-to the provided testcase address, and will be truncated to the provided maximum size.
-This API is called like:
+The second API takes one memory address and a maximum size, and is equivalent to the
+`HARNESS_START_WITH_MAXIMUM_SIZE` macro. Testcases will be written to the provided
+testcase address, and will be truncated to the provided maximum size. The size of each
+testcase is not written back to the target software. This API is called like:
 
 ```python
-@tsffs.iface.fuzz.start_with_maximum_size(cpu, testcase_address, maximum_size, True)
+@tsffs.iface.fuzz.start_with_buffer_ptr_size_value(cpu, testcase_address, maximum_size, True)
 ```
+
+The third API takes two memory addresses and a maximum size, and is equivalent to the
+`HARNESS_START_WITH_MAXIMUM_SIZE_AND_PTR` macro. The maximum size of testcases is the
+provided maximum size instead of the integer at `*size_address`, and the size of each
+testcase is written to the provided size pointer. This API is called like:
+
+```python
+@tsffs.iface.fuzz.start_with_buffer_ptr_size_ptr_value(cpu, testcase_address, size_address, maximum_size, True)
+```
+
+A fourth API, `start_without_buffer`, does not write testcases into target memory at
+all. It is described in [manual harnessing](manual.md).
 
 ## Triggering Manual Stops/Solutions
 

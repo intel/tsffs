@@ -14,7 +14,7 @@ init-tsffs
 @tsffs.stop_on_harness = False
 @tsffs.timeout = 3.0
 @tsffs.exceptions += [14]
-@tsffs.set_generate_random_corpus = True
+@tsffs.generate_random_corpus = True
 @tsffs.token_executables += [SIM_lookup_file("%simics%/test.efi")]
 
 # load the target
@@ -31,7 +31,7 @@ script-branch {
         echo "Got start BP"
         local $rdi = (qsp.mb.cpu0.core[0][0].read-reg reg-name = "rdi")
         echo ("Starting with buffer " + $rdi)
-        @tsffs.iface.fuzz.start_with_maximum_size(conf.qsp.mb.cpu0.core[0][0], simenv.rdi, 8)
+        @tsffs.iface.fuzz.start_with_buffer_ptr_size_value(conf.qsp.mb.cpu0.core[0][0], simenv.rdi, 8, True)
     }
 }
 

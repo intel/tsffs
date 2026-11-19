@@ -136,7 +136,7 @@
 ///
 /// ```
 /// unsigned char buffer[1024];
-/// size_t size;
+/// size_t size = sizeof(buffer);
 /// HARNESS_START(buffer, &size);
 /// ```
 #define HARNESS_START(buffer, size_ptr)                                  \
@@ -172,7 +172,7 @@
 ///
 /// ```
 /// unsigned char buffer[1024];
-/// size_t size;
+/// size_t size = sizeof(buffer);
 /// HARNESS_START_INDEX(0x0001U, buffer, &size);
 /// ```
 #define HARNESS_START_INDEX(start_index, buffer, size_ptr)               \

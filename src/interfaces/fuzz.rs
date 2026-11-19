@@ -59,11 +59,11 @@ impl Tsffs {
     ///
     /// * `cpu` - The CPU whose memory space should be written
     /// * `testcase_address` - The address to write test cases to
-    /// * `size_address` - The address to write the size of each test case to (optional,
-    /// `max_size` must be given if not provided).
+    /// * `size_address` - The address to write the size of each test case to. The maximum
+    ///   size of test cases is read from this address when the fuzzing loop starts.
     ///
     /// If your target cannot take advantage of the written-back size pointer, use
-    /// `start_with_max_size` instead.
+    /// `start_with_buffer_ptr_size_value` instead.
     pub fn start_with_buffer_ptr_size_ptr(
         &mut self,
         cpu: *mut ConfObject,
@@ -151,7 +151,7 @@ impl Tsffs {
     ///   be written back to the target software at the provided size address.
     ///
     /// If your target cannot take advantage of the written-back size pointer, use
-    /// `start_with_max_size` instead.
+    /// `start_with_buffer_ptr_size_value` instead.
     pub fn start_with_buffer_ptr_size_ptr_value(
         &mut self,
         cpu: *mut ConfObject,
