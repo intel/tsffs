@@ -150,6 +150,18 @@ impl Tsffs {
                 self.iterations as f32 / duration.as_secs_f32()
             );
 
+            // The fuzzer still has to hear how the final iteration ended, or a solution found
+            // on it is never saved. It asks for its next testcase once it is done with that
+            // result, so wait for that request before shutting down.
+            self.fuzzer_tx
+                .get()
+                .ok_or_else(|| anyhow!("No fuzzer tx channel"))?
+                .send(exit_kind)?;
+            if let Some(fuzzer_rx) = self.fuzzer_rx.get_mut() {
+                let _ = fuzzer_rx.recv();
+            }
+            self.log_messages()?;
+
             self.send_shutdown()?;
 
             if self.quit_on_iteration_limit {
