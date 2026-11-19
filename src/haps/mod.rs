@@ -511,15 +511,6 @@ impl Tsffs {
         if self.have_initial_snapshot() {
             // We only do anything here if we have run, otherwise the simulation was just
             // stopped for a reason unrelated to fuzzing (like the user using the CLI)
-            self.cancel_timeout_event()?;
-
-            let fuzzer_tx = self
-                .fuzzer_tx
-                .get()
-                .ok_or_else(|| anyhow!("No fuzzer tx channel"))?;
-
-            fuzzer_tx.send(ExitKind::Ok)?;
-
             info!(
                 self.as_conf_object(),
                 "Simulation stopped without reason, not resuming."
@@ -544,8 +535,19 @@ impl Tsffs {
             );
 
             if self.shutdown_on_stop_without_reason {
+                // Fuzzing ends here: end the iteration in flight so that the fuzzer thread
+                // stops waiting for it
+                self.cancel_timeout_event()?;
+                self.fuzzer_tx
+                    .get()
+                    .ok_or_else(|| anyhow!("No fuzzer tx channel"))?
+                    .send(ExitKind::Ok)?;
                 self.send_shutdown()?;
             }
+            // Otherwise the iteration in flight stays pending and its timeout stays armed: when
+            // the simulation is continued it runs to its own stop, which reports its real
+            // result. Reporting a result here would attribute every later result to the wrong
+            // testcase.
         }
 
         Ok(())
