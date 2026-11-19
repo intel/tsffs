@@ -7,16 +7,49 @@ use ispm_wrapper::data::ProjectPackage;
 use simics_test::TestEnvSpec;
 use std::path::PathBuf;
 
-/// Prints `TSFFS_REPLAY_EMPTY ok` only if arming a replay on a directory without inputs is
-/// refused with a `ValueError`.
+/// Prints `TSFFS_REPLAY_EMPTY ok` and `TSFFS_REPLAY_MISSING ok` only if arming a replay is
+/// refused with a `ValueError`, on a directory without inputs and on a directory that does
+/// not exist.
 const CHECK_EMPTY: &str = indoc! {r#"
-    try:
-        tsffs_replay_arm("%simics%/empty-inputs")
-    except ValueError as e:
-        print(f"TSFFS_REPLAY_EMPTY ok ({e})")
-    else:
-        print("TSFFS_REPLAY_EMPTY armed")
+    for label, directory in [
+        ("EMPTY", "%simics%/empty-inputs"),
+        ("MISSING", "%simics%/missing-inputs"),
+    ]:
+        try:
+            tsffs_replay_arm(directory)
+        except ValueError as e:
+            print(f"TSFFS_REPLAY_{label} ok ({e})")
+        else:
+            print(f"TSFFS_REPLAY_{label} armed")
 "#};
+
+/// Reproduces the page fault once more, then prepares another testcase without running it.
+/// Prints the stop reason and the exception processor number TSFFS reports at both points,
+/// as `TSFFS_REPRO_ENDED` and `TSFFS_REPRO_PREPARED`.
+const CHECK_CLEARED: &str = indoc! {r#"
+    import cli
+    import conf
+
+
+    def report(label):
+        print(
+            f"TSFFS_REPRO_{label} {conf.tsffs.last_stop_reason} "
+            f"{conf.tsffs.last_exception_processor_number}"
+        )
+
+
+    conf.tsffs.iface.fuzz.repro("%simics%/replay-inputs/2_pagefault")
+    cli.quiet_run_command("run")
+    report("ENDED")
+    conf.tsffs.iface.fuzz.repro("%simics%/replay-inputs/1_default")
+    report("PREPARED")
+"#};
+
+/// The stop reason TSFFS reports for a page fault, as `last_stop_reason` serializes it
+const PAGE_FAULT: &str = r#"{"Solution":{"kind":{"Exception":{"number":14}}}}"#;
+
+/// The stop reason TSFFS reports for an invalid opcode
+const INVALID_OPCODE: &str = r#"{"Solution":{"kind":{"Exception":{"number":6}}}}"#;
 
 /// Replays a directory of inputs with `repro` in a session that never fuzzed: every input
 /// runs from the snapshot, and one resume per input ends at that input's own stop.
@@ -70,6 +103,10 @@ fn test_x86_64_edk2_repro_loop_6_0_185() -> Result<()> {
                 "check_empty.py".to_string(),
                 CHECK_EMPTY.as_bytes().to_vec(),
             ),
+            (
+                "check_cleared.py".to_string(),
+                CHECK_CLEARED.as_bytes().to_vec(),
+            ),
         ])
         .build()
         .to_env()?
@@ -111,6 +148,8 @@ fn test_x86_64_edk2_repro_loop_6_0_185() -> Result<()> {
 
             run
             @tsffs_replay("%simics%/replay-inputs")
+
+            run-script "%simics%/check_cleared.py"
         "#})?;
 
     let output_str = String::from_utf8_lossy(&output.stdout);
@@ -118,16 +157,21 @@ fn test_x86_64_edk2_repro_loop_6_0_185() -> Result<()> {
     println!("{output_str}");
 
     assert!(
-        output_str.contains("TSFFS_REPLAY_EMPTY ok"),
+        output_str.contains("TSFFS_REPLAY_EMPTY ok (no inputs to replay in %simics%/empty-inputs)"),
         "Arming a replay on a directory without inputs did not raise ValueError"
+    );
+    assert!(
+        output_str
+            .contains("TSFFS_REPLAY_MISSING ok (no inputs to replay in %simics%/missing-inputs)"),
+        "Arming a replay on a directory that does not exist did not raise ValueError"
     );
 
     for (input, expected) in [
         ("1/6 0_empty", &["StopNormal"][..]),
         ("2/6 1_default", &["StopNormal"][..]),
-        ("3/6 2_pagefault", &["Exception", "14"][..]),
+        ("3/6 2_pagefault", &[PAGE_FAULT][..]),
         ("4/6 3_timeout", &["Timeout"][..]),
-        ("5/6 4_invalid_opcode", &["Exception", "6"][..]),
+        ("5/6 4_invalid_opcode", &[INVALID_OPCODE][..]),
         ("6/6 5_oversized", &["StopNormal"][..]),
     ] {
         let prefix = format!("TSFFS_REPLAY {input} ");
@@ -147,6 +191,17 @@ fn test_x86_64_edk2_repro_loop_6_0_185() -> Result<()> {
     assert!(
         output_str.contains("TSFFS_REPLAY done 6"),
         "The replay did not run to the end of the directory"
+    );
+
+    // What a reproduced execution reports is that execution's own: once `repro` has
+    // prepared another testcase, the page fault of the previous one is gone.
+    assert!(
+        output_str.contains(&format!("TSFFS_REPRO_ENDED {PAGE_FAULT} 0")),
+        "The reproduced page fault did not report exception 14 on processor 0"
+    );
+    assert!(
+        output_str.contains("TSFFS_REPRO_PREPARED None None"),
+        "A testcase prepared by repro still reports the stop of the previous testcase"
     );
 
     Ok(())
