@@ -7,11 +7,13 @@ use std::{ffi::CStr, mem::size_of, slice::from_raw_parts};
 
 use super::cached_instruction_interface;
 use crate::{
-    tracer::{CmpExpr, CmpType, CmpValue, DecodedComparison, DecodedInstruction, TraceEntry},
+    tracer::{
+        pair_cmp_values, CmpExpr, CmpType, CmpValue, DecodedComparison, DecodedInstruction,
+        TraceEntry,
+    },
     traits::TracerDisassembler,
 };
 use anyhow::{anyhow, bail, Error, Result};
-use libafl::prelude::CmpValues;
 use raw_cstr::AsRawCstr;
 use simics::api::{
     get_interface, read_phys_memory, sys::instruction_handle_t, Access, ConfObject,
@@ -216,34 +218,10 @@ impl X86_64ArchitectureOperations {
             }
         }
 
-        let cmp_value = if let (Some(l), Some(r)) = (cmp_values.first(), cmp_values.get(1)) {
-            match (l, r) {
-                (CmpValue::U8(l), CmpValue::U8(r)) => Some(CmpValues::U8((*l, *r))),
-                (CmpValue::I8(l), CmpValue::I8(r)) => Some(CmpValues::U8((
-                    u8::from_le_bytes(l.to_le_bytes()),
-                    u8::from_le_bytes(r.to_le_bytes()),
-                ))),
-                (CmpValue::U16(l), CmpValue::U16(r)) => Some(CmpValues::U16((*l, *r))),
-                (CmpValue::I16(l), CmpValue::I16(r)) => Some(CmpValues::U16((
-                    u16::from_le_bytes(l.to_le_bytes()),
-                    u16::from_le_bytes(r.to_le_bytes()),
-                ))),
-                (CmpValue::U32(l), CmpValue::U32(r)) => Some(CmpValues::U32((*l, *r))),
-                (CmpValue::I32(l), CmpValue::I32(r)) => Some(CmpValues::U32((
-                    u32::from_le_bytes(l.to_le_bytes()),
-                    u32::from_le_bytes(r.to_le_bytes()),
-                ))),
-                (CmpValue::U64(l), CmpValue::U64(r)) => Some(CmpValues::U64((*l, *r))),
-                (CmpValue::I64(l), CmpValue::I64(r)) => Some(CmpValues::U64((
-                    u64::from_le_bytes(l.to_le_bytes()),
-                    u64::from_le_bytes(r.to_le_bytes()),
-                ))),
-                (CmpValue::Expr(_), CmpValue::Expr(_)) => None,
-                _ => None,
-            }
-        } else {
-            None
-        };
+        let cmp_value = cmp_values
+            .first()
+            .zip(cmp_values.get(1))
+            .and_then(|(l, r)| pair_cmp_values(l, r));
 
         Ok(TraceEntry::builder()
             .cmp((
@@ -773,6 +751,7 @@ impl Default for Disassembler {
 #[cfg(test)]
 mod cached_instruction_tests {
     use super::*;
+    use libafl::prelude::CmpValues;
     use simics::{
         sys::{int_register_interface, processor_info_v2_interface},
         Interface,
@@ -955,6 +934,27 @@ mod cached_instruction_tests {
                         pc,
                         decoded.types.clone(),
                         CmpValues::U64((values[0], values[1])),
+                    ))
+                    .build(),
+            );
+        }
+        // cmp rax, 0x41424344 and cmp rax, -1: the immediate is signed, the register is not
+        for (bytes, immediate) in [
+            (&[0x48, 0x3d, 0x44, 0x43, 0x42, 0x41][..], 0x41424344),
+            (&[0x48, 0x83, 0xf8, 0xff][..], u64::MAX),
+        ] {
+            let decoded = arch
+                .disassembler
+                .classify(bytes, true)?
+                .comparison
+                .ok_or_else(|| anyhow!("Expected comparison"))?;
+            assert_eq!(
+                arch.trace_decoded_cmp(&decoded)?,
+                TraceEntry::builder()
+                    .cmp((
+                        0x8000,
+                        decoded.types.clone(),
+                        CmpValues::U64((30, immediate)),
                     ))
                     .build(),
             );

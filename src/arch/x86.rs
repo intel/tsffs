@@ -7,12 +7,14 @@ use std::{ffi::CStr, mem::size_of, slice::from_raw_parts};
 
 use super::{cached_instruction_interface, ArchitectureOperations};
 use crate::{
-    tracer::{CmpExpr, CmpType, CmpValue, DecodedComparison, DecodedInstruction, TraceEntry},
+    tracer::{
+        pair_cmp_values, CmpExpr, CmpType, CmpValue, DecodedComparison, DecodedInstruction,
+        TraceEntry,
+    },
     traits::TracerDisassembler,
     CLASS_NAME,
 };
 use anyhow::{anyhow, bail, Error, Result};
-use libafl::prelude::CmpValues;
 use raw_cstr::AsRawCstr;
 use simics::{
     api::{
@@ -243,34 +245,10 @@ impl X86ArchitectureOperations {
             }
         }
 
-        let cmp_value = if let (Some(l), Some(r)) = (cmp_values.first(), cmp_values.get(1)) {
-            match (l, r) {
-                (CmpValue::U8(l), CmpValue::U8(r)) => Some(CmpValues::U8((*l, *r))),
-                (CmpValue::I8(l), CmpValue::I8(r)) => Some(CmpValues::U8((
-                    u8::from_le_bytes(l.to_le_bytes()),
-                    u8::from_le_bytes(r.to_le_bytes()),
-                ))),
-                (CmpValue::U16(l), CmpValue::U16(r)) => Some(CmpValues::U16((*l, *r))),
-                (CmpValue::I16(l), CmpValue::I16(r)) => Some(CmpValues::U16((
-                    u16::from_le_bytes(l.to_le_bytes()),
-                    u16::from_le_bytes(r.to_le_bytes()),
-                ))),
-                (CmpValue::U32(l), CmpValue::U32(r)) => Some(CmpValues::U32((*l, *r))),
-                (CmpValue::I32(l), CmpValue::I32(r)) => Some(CmpValues::U32((
-                    u32::from_le_bytes(l.to_le_bytes()),
-                    u32::from_le_bytes(r.to_le_bytes()),
-                ))),
-                (CmpValue::U64(l), CmpValue::U64(r)) => Some(CmpValues::U64((*l, *r))),
-                (CmpValue::I64(l), CmpValue::I64(r)) => Some(CmpValues::U64((
-                    u64::from_le_bytes(l.to_le_bytes()),
-                    u64::from_le_bytes(r.to_le_bytes()),
-                ))),
-                (CmpValue::Expr(_), CmpValue::Expr(_)) => None,
-                _ => None,
-            }
-        } else {
-            None
-        };
+        let cmp_value = cmp_values
+            .first()
+            .zip(cmp_values.get(1))
+            .and_then(|(l, r)| pair_cmp_values(l, r));
 
         Ok(TraceEntry::builder()
             .cmp((

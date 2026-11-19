@@ -237,6 +237,89 @@ impl TryFrom<&CmpExpr> for CmpValue {
     }
 }
 
+impl CmpValue {
+    /// The value extended to 64 bits (sign-extended when signed) and its width in bytes
+    fn extended(&self) -> Option<(u64, usize)> {
+        Some(match self {
+            CmpValue::U8(v) => (*v as u64, 1),
+            CmpValue::I8(v) => (*v as u64, 1),
+            CmpValue::U16(v) => (*v as u64, 2),
+            CmpValue::I16(v) => (*v as u64, 2),
+            CmpValue::U32(v) => (*v as u64, 4),
+            CmpValue::I32(v) => (*v as u64, 4),
+            CmpValue::U64(v) => (*v, 8),
+            CmpValue::I64(v) => (*v as u64, 8),
+            CmpValue::Expr(_) => return None,
+        })
+    }
+}
+
+/// Pair the operands of a compare at the width of the left operand. The right operand is
+/// extended then truncated to that width, as the CPU does with an immediate: `cmp rax, 5`
+/// encodes a sign-extended 8-bit immediate.
+pub(crate) fn pair_cmp_values(left: &CmpValue, right: &CmpValue) -> Option<CmpValues> {
+    let (left, width) = left.extended()?;
+    let (right, _) = right.extended()?;
+    Some(match width {
+        1 => CmpValues::U8((left as u8, right as u8)),
+        2 => CmpValues::U16((left as u16, right as u16)),
+        4 => CmpValues::U32((left as u32, right as u32)),
+        _ => CmpValues::U64((left, right)),
+    })
+}
+
+#[cfg(test)]
+mod pair_cmp_values_tests {
+    use super::*;
+
+    #[test]
+    fn pairs_an_immediate_at_the_width_of_the_left_operand() {
+        // cmp rax, 5 and cmp rax, -1: sign-extended 8-bit immediate
+        assert_eq!(
+            pair_cmp_values(&CmpValue::U64(7), &CmpValue::I8(5)),
+            Some(CmpValues::U64((7, 5)))
+        );
+        assert_eq!(
+            pair_cmp_values(&CmpValue::U64(7), &CmpValue::I8(-1)),
+            Some(CmpValues::U64((7, u64::MAX)))
+        );
+        // cmp eax, 0x41424344 and cmp eax, -2
+        assert_eq!(
+            pair_cmp_values(&CmpValue::U32(7), &CmpValue::I32(0x41424344)),
+            Some(CmpValues::U32((7, 0x41424344)))
+        );
+        assert_eq!(
+            pair_cmp_values(&CmpValue::U32(7), &CmpValue::I8(-2)),
+            Some(CmpValues::U32((7, 0xffff_fffe)))
+        );
+        // cmp ax, 0x4142 and cmp al, 0x80
+        assert_eq!(
+            pair_cmp_values(&CmpValue::U16(7), &CmpValue::I16(0x4142)),
+            Some(CmpValues::U16((7, 0x4142)))
+        );
+        assert_eq!(
+            pair_cmp_values(&CmpValue::U8(7), &CmpValue::I8(-128)),
+            Some(CmpValues::U8((7, 0x80)))
+        );
+    }
+
+    #[test]
+    fn keeps_same_width_pairs_and_rejects_expressions() {
+        assert_eq!(
+            pair_cmp_values(&CmpValue::U64(1), &CmpValue::U64(u64::MAX)),
+            Some(CmpValues::U64((1, u64::MAX)))
+        );
+        assert_eq!(
+            pair_cmp_values(&CmpValue::I32(-1), &CmpValue::I32(2)),
+            Some(CmpValues::U32((u32::MAX, 2)))
+        );
+        assert_eq!(
+            pair_cmp_values(&CmpValue::Expr(Box::new(CmpExpr::U8(1))), &CmpValue::U8(1)),
+            None
+        );
+    }
+}
+
 fn cmp_shape(cmp: &CmpValues) -> Result<u32> {
     match cmp {
         CmpValues::U8(_) => Ok(0),
