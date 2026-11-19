@@ -534,6 +534,11 @@ impl SymbolInfo {
             lines,
         }
     }
+
+    /// The offset of `pc` into the symbol, which starts at `base + rva`
+    pub fn offset(&self, pc: u64) -> u64 {
+        pc - self.base - self.rva
+    }
 }
 
 #[derive(Debug)]
@@ -673,5 +678,26 @@ impl Module {
             .into_iter()
             .map(|s| (self.base + s.rva..self.base + s.rva + s.size, s).into())
             .collect())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SymbolInfo;
+
+    #[test]
+    fn symbol_offset_is_relative_to_the_symbol_start() {
+        let base = 0x1_4000_0000;
+        let symbol = SymbolInfo::new(
+            0x1000,
+            base,
+            0x40,
+            "function".to_string(),
+            "module.exe".to_string(),
+            Vec::new(),
+        );
+        // The symbol covers base + rva .. base + rva + size
+        assert_eq!(symbol.offset(base + 0x1000), 0);
+        assert_eq!(symbol.offset(base + 0x1010), 0x10);
     }
 }

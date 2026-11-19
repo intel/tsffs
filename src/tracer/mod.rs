@@ -701,8 +701,7 @@ impl Tsffs {
                         .query(pc..pc + 1)
                         .next()
                         .map(|symbol_for_query| {
-                            let offset =
-                                pc - symbol_for_query.value.base + symbol_for_query.value.rva;
+                            let offset = symbol_for_query.value.offset(pc);
                             let symbol_demangled = try_demangle(&symbol_for_query.value.name)
                                 .map(|d| d.to_string())
                                 .ok()
