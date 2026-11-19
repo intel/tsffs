@@ -189,7 +189,8 @@ where
 
 /// Reports solutions to the simulator thread. LibAFL does not evaluate the corpus feedback for
 /// an execution the objective accepts, so [`ReportingMapFeedback`] never sees a solution. This
-/// feedback accepts every execution: chain it after the feedbacks that decide what a solution is.
+/// feedback accepts every crash and timeout: chain it after the feedbacks that decide what a
+/// solution is.
 #[derive(Clone, Debug)]
 pub(crate) struct SolutionReporter<O> {
     /// The name of the coverage map observer
@@ -240,15 +241,23 @@ where
         EM: EventFirer<State = S>,
         OT: ObserversTuple<S>,
     {
+        if !matches!(exit_kind, ExitKind::Crash | ExitKind::Timeout) {
+            return Ok(false);
+        }
         let observer = observers
             .match_name::<O>(&self.observer_name)
             .ok_or_else(|| libafl::Error::unknown("Failed to get observer from observers tuple"))?;
         let initial = observer.initial();
+        // The map feedback adds its history when the state is created, empty until an input is
+        // evaluated. Without it the name is wrong, and every edge would be reported as new.
         let history_map = state
             .named_metadata_map()
             .get::<MapFeedbackMetadata<u8>>(&self.map_name)
-            .map(|metadata| metadata.history_map.as_slice())
-            .unwrap_or_default();
+            .ok_or_else(|| {
+                libafl::Error::key_not_found(format!("No coverage history named {}", self.map_name))
+            })?
+            .history_map
+            .as_slice();
         // The coverage map slots this execution fills that no corpus entry does
         let indices = observer
             .as_iter()
@@ -288,7 +297,8 @@ mod tests {
         let (sender, receiver) = channel();
         // The execution fills slots 1 and 3, the corpus already fills slot 1
         let observer = StdMapObserver::owned("edges", vec![0u8, 1, 0, 1]);
-        let mut reporter = SolutionReporter::new(&observer, "history", sender);
+        let mut reporter = SolutionReporter::new(&observer, "history", sender.clone());
+        let mut misnamed_reporter = SolutionReporter::new(&observer, "no such history", sender);
         let mut state = StdState::new(
             StdRand::with_seed(0),
             InMemoryCorpus::<BytesInput>::new(),
@@ -330,6 +340,25 @@ mod tests {
             receiver.try_recv(),
             Ok(FuzzerMessage::Timeout { indices, input }) if indices == [3] && input == b"boom"
         ));
+
+        // Anything else is not a solution, and a missing history is an error: neither reports
+        assert!(!reporter.is_interesting(
+            &mut state,
+            &mut manager,
+            &input,
+            &observers,
+            &ExitKind::Ok
+        )?);
+        assert!(misnamed_reporter
+            .is_interesting(
+                &mut state,
+                &mut manager,
+                &input,
+                &observers,
+                &ExitKind::Crash
+            )
+            .is_err());
+        assert!(receiver.try_recv().is_err());
         Ok(())
     }
 }
