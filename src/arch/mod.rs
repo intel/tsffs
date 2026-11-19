@@ -561,7 +561,7 @@ pub trait ArchitectureOperations {
     fn write_start(&mut self, testcase: &[u8], info: &StartInfo) -> Result<()> {
         let mut testcase = testcase.to_vec();
         // NOTE: The size is written back with the same width it was read with
-        let addr_size = self.size_width()? as usize;
+        let size_width = self.size_width()? as usize;
 
         let physical_memory = self.processor_info_v2().get_physical_memory()?;
 
@@ -577,7 +577,7 @@ pub trait ArchitectureOperations {
                 .len()
                 .to_le_bytes()
                 .iter()
-                .take(addr_size)
+                .take(size_width)
                 .enumerate()
                 .try_for_each(|(i, c)| {
                     let physical_address = size_address + (i as u64);
