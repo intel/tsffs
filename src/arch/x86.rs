@@ -838,6 +838,43 @@ mod cached_instruction_tests {
     }
 
     #[test]
+    fn sib_operand_multiplies_index_by_scale() -> Result<()> {
+        let mut decoder = Disassembler::new();
+        let scaled_index = || {
+            Box::new(CmpExpr::Mul((
+                Box::new(CmpExpr::Reg(("ecx".into(), 4))),
+                Box::new(CmpExpr::U8(4)),
+            )))
+        };
+        let base = || Box::new(CmpExpr::Reg(("esi".into(), 4)));
+        let first_expression = |decoder: &mut Disassembler, bytes: &[u8]| {
+            decoder
+                .classify(bytes, true)?
+                .comparison
+                .and_then(|c| c.expressions.into_iter().next())
+                .ok_or_else(|| anyhow!("Expected comparison"))
+        };
+
+        // cmp dword [esi + ecx * 4], eax
+        assert_eq!(
+            first_expression(&mut decoder, &[0x39, 0x04, 0x8e])?,
+            CmpExpr::Deref((Box::new(CmpExpr::Add((base(), scaled_index()))), Some(4)))
+        );
+        // cmp dword [esi + ecx * 4 + 0x10], eax
+        assert_eq!(
+            first_expression(&mut decoder, &[0x39, 0x44, 0x8e, 0x10])?,
+            CmpExpr::Deref((
+                Box::new(CmpExpr::Add((
+                    Box::new(CmpExpr::Add((base(), scaled_index()))),
+                    Box::new(CmpExpr::I32(0x10)),
+                ))),
+                Some(4)
+            ))
+        );
+        Ok(())
+    }
+
+    #[test]
     fn comparison_metadata_survives_later_decodes() -> Result<()> {
         let mut decoder = Disassembler::new();
         let first = decoder
@@ -931,7 +968,7 @@ impl TryFrom<(&Operand, Option<u8>)> for CmpExpr {
             Operand::MemBaseIndexScale { base, index, scale } => CmpExpr::Deref((
                 Box::new(CmpExpr::Add((
                     Box::new(CmpExpr::Reg((base.name().to_string(), base.width()))),
-                    Box::new(CmpExpr::Add((
+                    Box::new(CmpExpr::Mul((
                         Box::new(CmpExpr::Reg((index.name().to_string(), index.width()))),
                         Box::new(CmpExpr::U8(*scale)),
                     ))),
@@ -947,7 +984,7 @@ impl TryFrom<(&Operand, Option<u8>)> for CmpExpr {
                 Box::new(CmpExpr::Add((
                     Box::new(CmpExpr::Add((
                         Box::new(CmpExpr::Reg((base.name().to_string(), base.width()))),
-                        Box::new(CmpExpr::Add((
+                        Box::new(CmpExpr::Mul((
                             Box::new(CmpExpr::Reg((index.name().to_string(), index.width()))),
                             Box::new(CmpExpr::U8(*scale)),
                         ))),
