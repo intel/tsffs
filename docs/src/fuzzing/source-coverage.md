@@ -6,6 +6,10 @@ already ships source-level code coverage (the `collect-coverage` command), so th
 is produced by running the inputs the campaign saved once more, in a separate SIMICS
 session, while SIMICS collects coverage.
 
+An *input* on this page is one file saved by the fuzzer, in the corpus or in the
+solutions directory. The rest of this documentation calls it a *testcase*, the name it
+has once TSFFS runs it.
+
 This page gives the full recipe. It relies on three things:
 
 - The *corpus*: the directory of inputs the fuzzer kept because each one reached code
@@ -20,10 +24,13 @@ This page gives the full recipe. It relies on three things:
 
 ## Why Coverage Is a Separate Pass
 
-The coverage that guides the fuzzer is edge coverage: a compact map of which jumps
-between blocks of instructions were taken. It is cheap to maintain, but it says nothing
-about source files and lines. Source coverage needs the firmware's debug information and
-costs more at run time.
+The coverage that guides the fuzzer is a fixed-size map, as in AFL. Each branch the
+target takes is hashed, together with the branch taken before it, into one slot of the
+map, and an occupied slot is what TSFFS counts as an
+[Edge](../config/common-options.md#afl-statistics-and-the-instance-directory). The map
+is cheap to maintain, but it is not a list of the jumps that were taken: several
+branches can share a slot, and nothing in it names a source file or a line. Source
+coverage needs the firmware's debug information and costs more at run time.
 
 Collecting source coverage while fuzzing has two costs:
 
@@ -35,6 +42,13 @@ Collecting source coverage while fuzzing has two costs:
 Replaying the corpus afterwards avoids both. The campaign runs at full speed and only
 writes its corpus, as it always does. The report is rebuilt from the corpus whenever you
 want it: after the campaign, while it is still running, or on another machine.
+
+Each run of the replay script needs report directories that do not exist yet. The two
+report commands refuse an existing output directory, and they only run at the end, so a
+second run fails after the whole replay with
+`Error: '<...>/coverage-lcov' is a directory`. Before each run, remove the two report
+directories of the previous one (`coverage-lcov` and `coverage-html` in the script
+below) or choose new ones.
 
 ## What You Need
 
@@ -168,9 +182,15 @@ Hidden files are skipped (the fuzzer keeps `.lafl_lock` and `.metadata` files ne
 the corpus entries), and so are subdirectories. If the directory is missing or holds no
 input, both functions raise a `ValueError` naming the directory.
 
+A corpus written by a campaign holds every input twice, with identical bytes: once as
+`<hash>` and once as `id_<n>_<hash>`. The replay runs both files. The coverage is the
+same as with one of them, and the replay takes twice as long.
+
 **The report commands** stop the collection, add function and source line information
 to the collected data, and write it in two formats: LCOV in `coverage-lcov` and HTML in
-`coverage-html`, both in the SIMICS project.
+`coverage-html`, both in the SIMICS project. Neither directory may exist before the
+run, as explained in
+[Why Coverage Is a Separate Pass](#why-coverage-is-a-separate-pass).
 
 > **Note:** TSFFS starts its fuzzer when the harness is first reached, even in a session
 > that only replays, and the fuzzer does not start without at least one input. If
@@ -223,20 +243,31 @@ expect, the path map is the first thing to check.
 
 ## Reading the Report
 
-**HTML.** Open `coverage-html/index.html` in a browser. The first page lists the source
-files SIMICS knows from the debug information, with the number of executable lines, the
-number of executed lines and the percentage, per file and in total. The page of a file
-shows its source: executed lines in green, lines that could have been executed but were
-not in red, and lines without code (comments, lines the compiler optimized away, the
-continuation lines of a statement) in grey. A line counts as executed as soon as one
-instruction compiled from it was executed. The report also links to a disassembly view
-with the coverage of each function.
+**HTML.** Open `coverage-html/index.html` in a browser. The first page lists the
+directories of the source files SIMICS knows from the debug information, with their
+coverage. The files are one level down, on the page of their directory. To have the
+files listed on the first page instead, write the report with
+`$cc.html-report $html -summary-per-file`.
 
-**LCOV.** `coverage-lcov` holds the same data in the LCOV tracefile format, a text
-format that other tools read: `genhtml` from the LCOV project, editor plugins, and the
-coverage services of CI systems. In a tracefile, a record starts with `SF:` and the path
-of a source file, and each `DA:<line>,<count>` entry below it is one executable line. A
-count of zero means the line was not executed.
+The page of a file shows its source: executed lines in green, lines that could have been
+executed but were not in red, and lines without code (comments, lines the compiler
+optimized away, the continuation lines of a statement) in grey. A line counts as
+executed as soon as one instruction compiled from it was executed. The report also links
+to a disassembly view with the coverage of each function.
+
+**LCOV.** `coverage-lcov` is a directory that holds the same data in the LCOV tracefile
+format, a text format that other tools read: `genhtml` from the LCOV project, editor
+plugins, and the coverage services of CI systems. There is one tracefile per module that
+has debug information, named `<symbol file>_<load address>`: `HelloWorld.efi_dd99d000`
+for the application above, `BoardBdsHookDxe.debug_dee9e000` for a module of a full
+firmware. A module without debug information gets no tracefile.
+
+In a tracefile, a record starts with `SF:` and the path of a source file, and each
+`DA:<line>,<count>` entry below it is one executable line. A count of zero means the
+line was not executed. An `FNDA:<count>,<function>` entry counts the entries into a
+function. The function that contains the harness has a count of zero there
+(`FNDA:0,UefiMain` for the application above) although its lines are executed, because
+it was entered before coverage started.
 
 When reading either report, keep in mind:
 
@@ -258,6 +289,10 @@ directory after the corpus:
 $cc.stop
 ```
 
+Add the `solutions` line only when the campaign found solutions. If that directory is
+missing or holds no input, `tsffs_replay` raises a `ValueError` naming it and the script
+ends there, before the report commands run.
+
 Each input that times out runs for `tsffs.timeout` seconds of simulated time, so a
 solutions directory full of hangs takes a while.
 
@@ -273,10 +308,19 @@ the directory the campaign is writing to.
   modules, which needs both its SMM tracking and its execution tracking (the
   `smm_tracking` and `exec_tracking` parameters of the tracker). See the [SIMICS tracker
   docs](https://intel.github.io/tsffs/simics/analyzer-user-guide/uefi-fw-trk.html).
+- **SIMICS versions.** The recipe was run on the EDK2 test application of the TSFFS test
+  suite with SIMICS 6.0.185, 7.70.0 and 7.113.0, and on a full debug firmware with
+  SIMICS 7.113.0 only.
 - **One core.** The recipe is tested on a target with a single processor core.
 - **Harness type.** The replay loop is tested with compiled-in start harnesses, which
-  pass a buffer to TSFFS (`HARNESS_START`). Calling `repro` repeatedly is not tested
-  with a [manual start](../harnessing/closed-box.md) (`tsffs.iface.fuzz.start` and its
-  variants) or with [`start_without_buffer`](../harnessing/manual.md).
+  pass a buffer to TSFFS (`HARNESS_START`), and with
+  [`start_without_buffer`](../harnessing/manual.md) called from a callback on the magic
+  instruction of the start harness. With `start_without_buffer`, TSFFS has no buffer to
+  write the input to: the restored snapshot reaches the start again, where your script
+  must call `start_without_buffer` again, as it does while fuzzing, and the call returns
+  the input given to the latest `repro`. Calling `repro` repeatedly is not tested with
+  the other [manual start methods](../harnessing/closed-box.md) of the `fuzz` interface
+  (`start_with_buffer_ptr_size_ptr`, `start_with_buffer_ptr_size_value` and
+  `start_with_buffer_ptr_size_ptr_value`).
 - **No fuzzing in the same session.** As in any repro session, fuzzing cannot be resumed
   after the replay. Use a separate SIMICS session for the report.
