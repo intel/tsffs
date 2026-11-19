@@ -98,6 +98,8 @@ fn test_x86_64_edk2_repro_loop_6_0_185() -> Result<()> {
                 b"{}".to_vec(),
             ),
             ("replay-inputs/subdir/ignored".to_string(), b"C".to_vec()),
+            ("replay-again/0_pagefault".to_string(), b"C".to_vec()),
+            ("replay-again/1_default".to_string(), b"Zdefault".to_vec()),
             ("empty-inputs/.keep".to_string(), vec![]),
             (
                 "check_empty.py".to_string(),
@@ -150,6 +152,18 @@ fn test_x86_64_edk2_repro_loop_6_0_185() -> Result<()> {
             @tsffs_replay("%simics%/replay-inputs")
 
             run-script "%simics%/check_cleared.py"
+
+            # The snapshot was taken with repro_auto_continue = False. Restoring it must not
+            # bring that value back: the setting of the moment decides, so this repro
+            # resumes by itself and has run its testcase before the next line.
+            @tsffs.repro_auto_continue = True
+            @tsffs.iface.fuzz.repro("%simics%/replay-inputs/2_pagefault")
+            @print(f"TSFFS_AUTO_RESUMED {tsffs.repro_auto_continue} {tsffs.last_stop_reason}")
+
+            # A replay without arming first, with repro_auto_continue enabled: the helper
+            # still owns the resumes.
+            @tsffs_replay("%simics%/replay-again")
+            @print(f"TSFFS_AUTO_CONTINUE {tsffs.repro_auto_continue}")
         "#})?;
 
     let output_str = String::from_utf8_lossy(&output.stdout);
@@ -202,6 +216,41 @@ fn test_x86_64_edk2_repro_loop_6_0_185() -> Result<()> {
     assert!(
         output_str.contains("TSFFS_REPRO_PREPARED None None"),
         "A testcase prepared by repro still reports the stop of the previous testcase"
+    );
+
+    // Restoring the snapshot restores the attributes TSFFS had when it was taken. `repro`
+    // must keep the `repro_auto_continue` of the moment, here `True` over a snapshot taken
+    // with `False`.
+    assert!(
+        output_str.contains(&format!("TSFFS_AUTO_RESUMED True {PAGE_FAULT}")),
+        "repro did not resume by itself with repro_auto_continue set after the snapshot"
+    );
+
+    // `tsffs_replay` without `tsffs_replay_arm`, with `repro_auto_continue` enabled:
+    // `repro` must not also resume by itself, or an input runs past its stop.
+    for (input, expected) in [
+        ("1/2 0_pagefault", PAGE_FAULT),
+        ("2/2 1_default", "StopNormal"),
+    ] {
+        let prefix = format!("TSFFS_REPLAY {input} ");
+        let stop_reason = output_str
+            .lines()
+            .find_map(|line| line.split(&prefix).nth(1))
+            .unwrap_or_else(|| panic!("No '{prefix}' line: the input was not replayed"));
+
+        assert!(
+            stop_reason.contains(expected),
+            "Input {input} stopped with '{stop_reason}', expected a stop reason with '{expected}'"
+        );
+    }
+
+    assert!(
+        output_str.contains("TSFFS_REPLAY done 2"),
+        "The replay without arming did not run to the end of the directory"
+    );
+    assert!(
+        output_str.contains("TSFFS_AUTO_CONTINUE False"),
+        "tsffs_replay left repro_auto_continue enabled"
     );
 
     Ok(())

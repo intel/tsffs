@@ -70,9 +70,17 @@ def tsffs_replay(directory):
 
     Prints one `TSFFS_REPLAY <i>/<n> <name> <stop reason>` line per input, then
     `TSFFS_REPLAY done <n>`.
+
+    Sets `repro_auto_continue` to `False` and leaves it so: this loop resumes the
+    simulation itself, once per input.
     """
     inputs = tsffs_replay_inputs(directory)
     total = len(inputs)
+
+    # Without this, `repro` also queues a resume of its own and an input can run past
+    # its stop. `tsffs_replay_arm` sets it too, but this function may be called on a
+    # session that was not armed, for example after fuzzing.
+    conf.tsffs.repro_auto_continue = False
 
     for index, path in enumerate(inputs, start=1):
         conf.tsffs.iface.fuzz.repro(path)
