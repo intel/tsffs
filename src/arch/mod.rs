@@ -718,9 +718,9 @@ impl ArchitectureOperations for Architecture {
 
     fn get_magic_start_buffer_ptr_size_ptr_val(&mut self) -> Result<StartInfo> {
         match self {
-            Architecture::X86_64(x86_64) => x86_64.get_magic_start_buffer_ptr_size_ptr(),
-            Architecture::I386(i386) => i386.get_magic_start_buffer_ptr_size_ptr(),
-            Architecture::Riscv(riscv) => riscv.get_magic_start_buffer_ptr_size_ptr(),
+            Architecture::X86_64(x86_64) => x86_64.get_magic_start_buffer_ptr_size_ptr_val(),
+            Architecture::I386(i386) => i386.get_magic_start_buffer_ptr_size_ptr_val(),
+            Architecture::Riscv(riscv) => riscv.get_magic_start_buffer_ptr_size_ptr_val(),
             Architecture::Arm(arm) => arm.get_magic_start_buffer_ptr_size_ptr_val(),
             Architecture::Aarch64(aarch64) => aarch64.get_magic_start_buffer_ptr_size_ptr_val(),
         }

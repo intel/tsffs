@@ -21,3 +21,6 @@ build test-fast.efi: link test-fast.o
 build test-cov.o: cc test-cov.c
     cflags = -O0 
 build test-cov.efi: link test-cov.o
+build test-max-size.o: cc test-max-size.c
+    cflags = -O0 
+build test-max-size.efi: link test-max-size.o
