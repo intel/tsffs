@@ -7,6 +7,9 @@
 # this only needs to be run if you want to modify the source code for the HelloWorld.efi module,
 # otherwise, the EFI is included in the source tree for ease of use
 
+# A failed build or copy must fail the script: CI caches whatever this directory holds
+set -e
+
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 IMAGE_NAME="edk2-build-tsffs-gcc-x86_64-test"
 CONTAINER_UID=$(echo "${RANDOM}" | sha256sum | head -c 8)
