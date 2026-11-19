@@ -276,11 +276,7 @@ pub trait ArchitectureOperations {
             "Invalid linear address found in magic start size register {size_ptr_register_number}: {size_ptr_logical_address:#x}"
         );
 
-        let size_size = if let Some(width) = Self::POINTER_WIDTH_OVERRIDE {
-            width
-        } else {
-            self.processor_info_v2().get_logical_address_width()? / u8::BITS as i32
-        };
+        let size_size = self.size_width()?;
 
         let size = read_phys_memory(
             self.cpu(),
@@ -494,11 +490,7 @@ pub trait ArchitectureOperations {
                     ManualStartAddress::Physical(p) => StartPhysicalAddress::WasPhysical(*p),
                 };
 
-                let size_size = if let Some(width) = Self::POINTER_WIDTH_OVERRIDE {
-                    width
-                } else {
-                    self.processor_info_v2().get_logical_address_width()? / u8::BITS as i32
-                };
+                let size_size = self.size_width()?;
                 let maximum_size =
                     read_phys_memory(self.cpu(), address.physical_address(), size_size)?;
                 StartSize::SizePtr {
@@ -556,11 +548,20 @@ pub trait ArchitectureOperations {
             .build())
     }
 
+    /// Width in bytes of the size variable the harness passes by pointer. The maximum size is
+    /// read with this width and the testcase size is written back with it.
+    fn size_width(&mut self) -> Result<i32> {
+        if let Some(width) = Self::POINTER_WIDTH_OVERRIDE {
+            Ok(width)
+        } else {
+            Ok(self.processor_info_v2().get_logical_address_width()? / u8::BITS as i32)
+        }
+    }
+
     fn write_start(&mut self, testcase: &[u8], info: &StartInfo) -> Result<()> {
         let mut testcase = testcase.to_vec();
-        // NOTE: We have to handle both riscv64 and riscv32 here
-        let addr_size =
-            self.processor_info_v2().get_logical_address_width()? as usize / u8::BITS as usize;
+        // NOTE: The size is written back with the same width it was read with
+        let size_width = self.size_width()? as usize;
 
         let physical_memory = self.processor_info_v2().get_physical_memory()?;
 
@@ -576,7 +577,7 @@ pub trait ArchitectureOperations {
                 .len()
                 .to_le_bytes()
                 .iter()
-                .take(addr_size)
+                .take(size_width)
                 .enumerate()
                 .try_for_each(|(i, c)| {
                     let physical_address = size_address + (i as u64);
@@ -733,6 +734,16 @@ impl ArchitectureOperations for Architecture {
             Architecture::Riscv(riscv) => riscv.get_manual_start_info(info),
             Architecture::Arm(arm) => arm.get_manual_start_info(info),
             Architecture::Aarch64(aarch64) => aarch64.get_manual_start_info(info),
+        }
+    }
+
+    fn size_width(&mut self) -> Result<i32> {
+        match self {
+            Architecture::X86_64(x86_64) => x86_64.size_width(),
+            Architecture::I386(i386) => i386.size_width(),
+            Architecture::Riscv(riscv) => riscv.size_width(),
+            Architecture::Arm(arm) => arm.size_width(),
+            Architecture::Aarch64(aarch64) => aarch64.size_width(),
         }
     }
 
