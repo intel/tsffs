@@ -518,7 +518,7 @@ LD_PRELOAD=/path/to/simics-python/lib/libpython3.10.so.1.0 \
 SIMICS_BASE=/path/to/simics-7 SIMICS_TEST_LOCAL_PACKAGES_ONLY=1 \
   cargo test --offline --release --test x86_64_magic_speedtest_latest -- --nocapture
 SIMICS_BASE=/path/to/simics-6.0.185 SIMICS_TEST_LOCAL_PACKAGES_ONLY=1 \
-  cargo test --offline --release --test x86_64_magic_speedtest_6_0_185 -- --nocapture
+  cargo test --offline --release --test x86_64_magic_speedtest_latest -- --nocapture
 ```
 
 The Python preload was required by the local standalone unit-test executable because
