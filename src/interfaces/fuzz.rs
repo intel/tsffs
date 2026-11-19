@@ -49,7 +49,12 @@ impl Tsffs {
             // What the previous execution reported does not describe this testcase
             self.last_exception_processor_number = None;
             self.last_stop_reason = None;
+            // Restoring the snapshot also restores the attributes this object had when
+            // the snapshot was taken. Whether to resume is decided below, by the value
+            // the user has set by now, not by the one saved in the snapshot.
+            let repro_auto_continue = self.repro_auto_continue;
             self.restore_initial_snapshot()?;
+            self.repro_auto_continue = repro_auto_continue;
 
             if self.start_info.get().is_some() {
                 self.get_and_write_testcase()?;
