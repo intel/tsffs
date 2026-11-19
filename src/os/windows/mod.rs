@@ -219,13 +219,23 @@ impl WindowsOsInfo {
         // Populate elements into the coverage record set
         elements.iter().map(|e| &e.value).for_each(|si| {
             if let Some(first) = si.lines.first() {
-                let record = user_debug_info.coverage.get_or_insert_mut(&first.file_path);
-                record.add_function_if_not_exists(
-                    first.start_line as usize,
-                    si.lines.last().map(|l| l.end_line as usize),
-                    &si.name,
-                );
+                // The function belongs to the file of its first line and ends at its last line
+                // in that file. Lines inlined from other files are recorded against their own
+                // file below.
+                user_debug_info
+                    .coverage
+                    .get_or_insert_mut(&first.file_path)
+                    .add_function_if_not_exists(
+                        first.start_line as usize,
+                        si.lines
+                            .iter()
+                            .rev()
+                            .find(|l| l.file_path == first.file_path)
+                            .map(|l| l.end_line as usize),
+                        &si.name,
+                    );
                 si.lines.iter().for_each(|l| {
+                    let record = user_debug_info.coverage.get_or_insert_mut(&l.file_path);
                     (l.start_line..=l.end_line).for_each(|line| {
                         record.add_line_if_not_exists(line as usize);
                     });

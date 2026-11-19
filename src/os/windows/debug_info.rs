@@ -5,8 +5,7 @@ use pdb::{FallibleIterator, SymbolData, PDB};
 use reqwest::blocking::get;
 use std::{
     collections::{HashMap, HashSet},
-    fs::{create_dir_all, File},
-    io::{copy, Write},
+    fs::{create_dir_all, rename, write, File},
     path::{Path, PathBuf},
 };
 
@@ -26,6 +25,24 @@ use super::{
     pdb::{CvInfoPdb70, Export},
     util::{read_virtual, read_virtual_dtb},
 };
+
+/// The symbol server key of a PE file: its timestamp as 8 upper-case hex digits followed by its
+/// image size in hex, without padding
+fn pe_symbol_key(time_date_stamp: u32, size_of_image: u32) -> String {
+    format!("{time_date_stamp:08X}{size_of_image:X}")
+}
+
+/// Download `url` to `path`. The body is written to a temporary file next to `path` and renamed
+/// into place, so a failed download never leaves a partial file behind.
+fn download(url: &str, path: &Path) -> Result<()> {
+    let contents = get(url)?.error_for_status()?.bytes()?;
+    let partial_path = path.with_extension("part");
+
+    write(&partial_path, &contents)?;
+    rename(&partial_path, path)?;
+
+    Ok(())
+}
 
 #[derive(Debug)]
 /// Debug info for an executable (which may be a .exe, .sys, etc)
@@ -98,9 +115,9 @@ impl DebugInfo<'_> {
             let cv_info_pdb70 =
                 CvInfoPdb70::new(processor, base + debug_directory.AddressOfRawData as u64)?;
 
-            let exe_guid = format!(
-                "{:08X}{:05X}",
-                nt_header.FileHeader.TimeDateStamp, nt_header.OptionalHeader.SizeOfImage
+            let exe_guid = pe_symbol_key(
+                nt_header.FileHeader.TimeDateStamp,
+                nt_header.OptionalHeader.SizeOfImage,
             );
 
             // Download kernel PDB file
@@ -127,16 +144,9 @@ impl DebugInfo<'_> {
 
             if !exe_path.exists() && !not_found_full_name_cache.contains(name) {
                 info!(get_object("tsffs")?, "Downloading PE file from {}", exe_url);
-                match get(&exe_url)?.error_for_status() {
-                    Ok(response) => {
-                        let mut file = File::create(&exe_path)?;
-                        copy(&mut response.bytes()?.as_ref(), &mut file)?;
-                        file.flush()?;
-                    }
-                    Err(e) => {
-                        not_found_full_name_cache.insert(name.to_string());
-                        bail!("Failed to download PE file: {}", e);
-                    }
+                if let Err(e) = download(&exe_url, &exe_path) {
+                    not_found_full_name_cache.insert(name.to_string());
+                    bail!("Failed to download PE file: {}", e);
                 }
             }
 
@@ -144,22 +154,14 @@ impl DebugInfo<'_> {
                 .as_ref()
                 .join(format!("{}.pdb", cv_info_pdb70.guid()));
 
-            if !pdb_path.exists() && !not_found_full_name_cache.contains(cv_info_pdb70.file_name())
-            {
+            if !pdb_path.exists() && !not_found_full_name_cache.contains(&cv_info_pdb70.guid()) {
                 info!(
                     get_object("tsffs")?,
                     "Downloading PDB file from {}", pdb_url
                 );
-                match get(&pdb_url)?.error_for_status() {
-                    Ok(response) => {
-                        let mut file = File::create(&pdb_path)?;
-                        copy(&mut response.bytes()?.as_ref(), &mut file)?;
-                        file.flush()?;
-                    }
-                    Err(e) => {
-                        not_found_full_name_cache.insert(cv_info_pdb70.guid().to_string());
-                        bail!("Failed to download PDB file: {}", e);
-                    }
+                if let Err(e) = download(&pdb_url, &pdb_path) {
+                    not_found_full_name_cache.insert(cv_info_pdb70.guid());
+                    bail!("Failed to download PDB file: {}", e);
                 }
             }
 
@@ -250,9 +252,9 @@ impl DebugInfo<'_> {
             let cv_info_pdb70 =
                 CvInfoPdb70::new(processor, base + debug_directory.AddressOfRawData as u64)?;
 
-            let exe_guid = format!(
-                "{:08X}{:05X}",
-                nt_header.FileHeader.TimeDateStamp, nt_header.OptionalHeader.SizeOfImage
+            let exe_guid = pe_symbol_key(
+                nt_header.FileHeader.TimeDateStamp,
+                nt_header.OptionalHeader.SizeOfImage,
             );
 
             // Download kernel PDB file
@@ -279,16 +281,9 @@ impl DebugInfo<'_> {
 
             if !exe_path.exists() && !not_found_full_name_cache.contains(name) {
                 info!(get_object("tsffs")?, "Downloading PE file from {}", exe_url);
-                match get(&exe_url)?.error_for_status() {
-                    Ok(response) => {
-                        let mut file = File::create(&exe_path)?;
-                        copy(&mut response.bytes()?.as_ref(), &mut file)?;
-                        file.flush()?;
-                    }
-                    Err(e) => {
-                        not_found_full_name_cache.insert(name.to_string());
-                        bail!("Failed to download PE file: {}", e);
-                    }
+                if let Err(e) = download(&exe_url, &exe_path) {
+                    not_found_full_name_cache.insert(name.to_string());
+                    bail!("Failed to download PE file: {}", e);
                 }
             }
 
@@ -298,22 +293,14 @@ impl DebugInfo<'_> {
                 .as_ref()
                 .join(format!("{}.pdb", cv_info_pdb70.guid()));
 
-            if !pdb_path.exists() && !not_found_full_name_cache.contains(cv_info_pdb70.file_name())
-            {
+            if !pdb_path.exists() && !not_found_full_name_cache.contains(&cv_info_pdb70.guid()) {
                 info!(
                     get_object("tsffs")?,
                     "Downloading PDB file from {}", pdb_url
                 );
-                match get(&pdb_url)?.error_for_status() {
-                    Ok(response) => {
-                        let mut file = File::create(&pdb_path)?;
-                        copy(&mut response.bytes()?.as_ref(), &mut file)?;
-                        file.flush()?;
-                    }
-                    Err(e) => {
-                        not_found_full_name_cache.insert(cv_info_pdb70.guid().to_string());
-                        bail!("Failed to download PDB file: {}", e);
-                    }
+                if let Err(e) = download(&pdb_url, &pdb_path) {
+                    not_found_full_name_cache.insert(cv_info_pdb70.guid());
+                    bail!("Failed to download PDB file: {}", e);
                 }
             }
 
@@ -673,5 +660,17 @@ impl Module {
             .into_iter()
             .map(|s| (self.base + s.rva..self.base + s.rva + s.size, s).into())
             .collect())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pe_symbol_key_does_not_pad_the_image_size() {
+        // An image smaller than 64 KiB has a size of fewer than 5 hex digits
+        assert_eq!(pe_symbol_key(0x5E0E_B0F9, 0x7000), "5E0EB0F97000");
+        assert_eq!(pe_symbol_key(0x0012_3456, 0x0104_6000), "001234561046000");
     }
 }
