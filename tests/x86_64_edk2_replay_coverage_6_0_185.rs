@@ -11,8 +11,10 @@ use std::{collections::BTreeSet, path::PathBuf};
 const SOURCE: &str = include_str!("rsrc/x86_64-uefi-edk2/src/HelloWorld.c");
 
 /// Prints every line of the LCOV records of `HelloWorld.c` found in the report directory
-/// `$lcov`, prefixed with `TSFFS_LCOV `.
-const PRINT_LCOV: &str = indoc! {r#"
+/// `$lcov`, prefixed with `TSFFS_LCOV `. Then prints, as `TSFFS_HTML index <bytes>`, the size
+/// of the first page of the HTML report in `$html`, and as `TSFFS_HTML source <path>` each
+/// page of that report that names `HelloWorld.c`.
+const PRINT_REPORT: &str = indoc! {r#"
     import os
 
     from cli import simenv
@@ -24,7 +26,23 @@ const PRINT_LCOV: &str = indoc! {r#"
                 if any(l.startswith("SF:") and l.endswith("/HelloWorld.c") for l in lines):
                     for line in lines:
                         print(f"TSFFS_LCOV {line}")
+
+    print(f"TSFFS_HTML index {os.path.getsize(os.path.join(simenv.html, 'index.html'))}")
+
+    for directory, _, names in sorted(os.walk(simenv.html)):
+        for name in sorted(names):
+            if name.endswith(".html"):
+                with open(os.path.join(directory, name), errors="replace") as page:
+                    if "HelloWorld.c" in page.read():
+                        path = os.path.relpath(os.path.join(directory, name), simenv.html)
+                        print(f"TSFFS_HTML source {path}")
 "#};
+
+/// The stop reason TSFFS reports for a page fault, as `last_stop_reason` serializes it
+const PAGE_FAULT: &str = r#"{"Solution":{"kind":{"Exception":{"number":14}}}}"#;
+
+/// The stop reason TSFFS reports for an invalid opcode
+const INVALID_OPCODE: &str = r#"{"Solution":{"kind":{"Exception":{"number":6}}}}"#;
 
 /// The number of the only source line of the test application's `UefiMain` containing
 /// `marker`
@@ -48,7 +66,7 @@ fn source_line(marker: &str) -> usize {
 
 /// Replays a directory of inputs with `repro` while Simics collects coverage of the UEFI
 /// firmware context: the LCOV report credits the lines of every replayed path to the
-/// source file of the test application.
+/// source file of the test application, and the HTML report is written.
 #[test]
 #[cfg_attr(miri, ignore)]
 fn test_x86_64_edk2_replay_coverage_6_0_185() -> Result<()> {
@@ -87,7 +105,10 @@ fn test_x86_64_edk2_replay_coverage_6_0_185() -> Result<()> {
             ("replay-inputs/2_pagefault".to_string(), b"C".to_vec()),
             ("replay-inputs/3_timeout".to_string(), b"B".to_vec()),
             ("replay-inputs/4_invalid_opcode".to_string(), b"A".to_vec()),
-            ("print_lcov.py".to_string(), PRINT_LCOV.as_bytes().to_vec()),
+            (
+                "print_report.py".to_string(),
+                PRINT_REPORT.as_bytes().to_vec(),
+            ),
         ])
         .build()
         .to_env()?
@@ -143,9 +164,11 @@ fn test_x86_64_edk2_replay_coverage_6_0_185() -> Result<()> {
             $cc.add-functions
             $cc.add-source-info
             @simenv.lcov = SIM_lookup_file("%simics%") + "/coverage-lcov"
+            @simenv.html = SIM_lookup_file("%simics%") + "/coverage-html"
             $cc.lcov-output $lcov
+            $cc.html-report $html
 
-            run-script "%simics%/print_lcov.py"
+            run-script "%simics%/print_report.py"
         "#})?;
 
     let output_str = String::from_utf8_lossy(&output.stdout);
@@ -154,9 +177,9 @@ fn test_x86_64_edk2_replay_coverage_6_0_185() -> Result<()> {
 
     for (input, expected) in [
         ("1/4 1_default", &["StopNormal"][..]),
-        ("2/4 2_pagefault", &["Exception", "14"][..]),
+        ("2/4 2_pagefault", &[PAGE_FAULT][..]),
         ("3/4 3_timeout", &["Timeout"][..]),
-        ("4/4 4_invalid_opcode", &["Exception", "6"][..]),
+        ("4/4 4_invalid_opcode", &[INVALID_OPCODE][..]),
     ] {
         let prefix = format!("TSFFS_REPLAY {input} ");
         let stop_reason = output_str
@@ -204,6 +227,25 @@ fn test_x86_64_edk2_replay_coverage_6_0_185() -> Result<()> {
             "Line {line} of HelloWorld.c ('{marker}') is not covered, covered lines: {hit_lines:?}"
         );
     }
+
+    // The HTML report was written too: its first page is not empty, and one of its pages
+    // is about the source file. Its layout differs between Simics versions.
+    let html = output_str
+        .lines()
+        .filter_map(|line| line.split("TSFFS_HTML ").nth(1))
+        .map(str::trim_end)
+        .collect::<Vec<_>>();
+
+    assert!(
+        html.iter()
+            .filter_map(|line| line.strip_prefix("index "))
+            .any(|size| size.parse::<u64>().is_ok_and(|size| size > 0)),
+        "No first page in the HTML report, got {html:?}"
+    );
+    assert!(
+        html.iter().any(|line| line.starts_with("source ")),
+        "No page of the HTML report names HelloWorld.c, got {html:?}"
+    );
 
     Ok(())
 }
