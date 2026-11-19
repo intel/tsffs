@@ -5,8 +5,8 @@
 
 use crate::{
     fuzzer::{
-        executors::inprocess::InProcessExecutor, feedbacks::ReportingMapFeedback,
-        messages::FuzzerMessage,
+        corpus_sync::CorpusSyncStage, executors::inprocess::InProcessExecutor,
+        feedbacks::ReportingMapFeedback, messages::FuzzerMessage,
     },
     Tsffs,
 };
@@ -25,9 +25,8 @@ use libafl::{
         powersched::PowerSchedule, IndexesLenTimeMinimizerScheduler, StdWeightedScheduler,
     },
     stages::{
-        mutational::MultiMutationalStage, CalibrationStage, ColorizationStage, DumpToDiskStage,
-        GeneralizationStage, IfStage, StdMutationalStage, StdPowerMutationalStage,
-        SyncFromDiskStage, TracingStage,
+        mutational::MultiMutationalStage, CalibrationStage, ColorizationStage, GeneralizationStage,
+        IfStage, StdMutationalStage, StdPowerMutationalStage, TracingStage,
     },
     state::{HasCorpus, HasMetadata, StdState},
     Fuzzer, StdFuzzer,
@@ -52,6 +51,7 @@ use tracing_subscriber::{
     filter::filter_fn, fmt, layer::SubscriberExt, registry, util::SubscriberInitExt, Layer,
 };
 
+pub mod corpus_sync;
 pub mod executors;
 pub mod feedbacks;
 pub mod messages;
@@ -415,17 +415,6 @@ impl Tsffs {
                     Self::AFLPP_CMP_OBSERVER_NAME,
                 );
                 let tracing_stage = TracingStage::new(tracing_executor);
-                let synchronize_corpus_stage =
-                    SyncFromDiskStage::with_from_file(corpus_directory.clone());
-                let dump_corpus_stage = DumpToDiskStage::new(
-                    |input: &BytesInput, _state: &_| input.target_bytes().as_slice().to_vec(),
-                    corpus_directory.clone(),
-                    solutions_directory.clone(),
-                )
-                .map_err(|e| {
-                    eprintln!("Couldn't initialize fuzzer dump to disk stage: {e}");
-                    anyhow!("Couldn't initialize fuzzer dump to disk stage: {e}")
-                })?;
 
                 if let Some(contents) = initial_contents {
                     write(
@@ -481,6 +470,8 @@ impl Tsffs {
                     state.corpus().count() as u64,
                     afl_stats_interval,
                 );
+                // The corpus directory now holds the initial corpus, which is already evaluated
+                let synchronize_corpus_stage = CorpusSyncStage::new(corpus_directory.clone())?;
 
                 let mut stages = tuple_list!(
                     calibration_stage,
@@ -538,7 +529,6 @@ impl Tsffs {
                     ),
                     havoc_mutational_stage,
                     mopt_mutational_stage,
-                    dump_corpus_stage,
                     synchronize_corpus_stage,
                     afl_stats_stage,
                 );
