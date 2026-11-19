@@ -192,14 +192,19 @@ download_and_verify_cmake() {
 download_and_verify_simics() {
     # SIMICS major version to build against, selected with the SIMICS_VERSION environment variable
     local simics_version="${SIMICS_VERSION:-6}"
+    local python_pkgs_url="" python_pkgs_sha384=""
     case "${simics_version}" in
         6)
             PUBLIC_SIMICS_PKGS_URL="https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/simics-6-packages-2024-05-linux64.ispm"
             PUBLIC_SIMICS_PKGS_SHA384="90d498e3b2afa54191bf09c5a0dcb9641595150eb9eab8dbaf9101ad6a1e7e892ef5db9637da85d1a4787bd541dea806"
             ;;
         7)
-            PUBLIC_SIMICS_PKGS_URL="https://registrationcenter-download.intel.com/akdlm/IRC_NAS/b9edaa91-4c18-4758-b8e2-b6e709270a4c/simics-7-packages-2025-51-linux64.ispm"
-            PUBLIC_SIMICS_PKGS_SHA384="62a83e1fc546d7d078c34de89168ab718b562c9c69a5b1628d2c0a8b0a792863e7f97f6af62b539275c6a44ea0d8ac4a"
+            PUBLIC_SIMICS_PKGS_URL="https://registrationcenter-download.intel.com/akdlm/IRC_NAS/5d078eaa-c8f6-4173-a4fa-5a8ed75f9d95/simics-7-packages-2026-42-linux64.ispm"
+            PUBLIC_SIMICS_PKGS_SHA384="fcee24807e6096d60184e1d110002672e2f7b9f1c4178e5fbee7e3e307d2a4250fb76b12177d72b8728ba6dad835ea18"
+            # The 2026-42 bundle has no Python package (1033), which the simics crate needs to
+            # build: the builder takes it from the last bundle that has one.
+            python_pkgs_url="https://registrationcenter-download.intel.com/akdlm/IRC_NAS/b9edaa91-4c18-4758-b8e2-b6e709270a4c/simics-7-packages-2025-51-linux64.ispm"
+            python_pkgs_sha384="62a83e1fc546d7d078c34de89168ab718b562c9c69a5b1628d2c0a8b0a792863e7f97f6af62b539275c6a44ea0d8ac4a"
             ;;
         *)
             echo "Unsupported SIMICS_VERSION '${simics_version}', expected 6 or 7. Exiting..."
@@ -229,6 +234,14 @@ download_and_verify_simics() {
 
     sha384sum "${BUILDER_DIR}/rsrc/ispm.tar.gz" | awk '{print $1}' | grep -q "${PUBLIC_SIMICS_ISPM_SHA384}"
     sha384sum "${BUILDER_DIR}/rsrc/simics-${simics_version}.ispm" | awk '{print $1}' | grep -q "${PUBLIC_SIMICS_PKGS_SHA384}"
+
+    if [ -n "${python_pkgs_url}" ]; then
+        if [ ! -f "${BUILDER_DIR}/rsrc/simics-${simics_version}-python.ispm" ]; then
+            curl --noproxy '*.intel.com' -L -o "${BUILDER_DIR}/rsrc/simics-${simics_version}-python.ispm" \
+                "${python_pkgs_url}"
+        fi
+        sha384sum "${BUILDER_DIR}/rsrc/simics-${simics_version}-python.ispm" | awk '{print $1}' | grep -q "${python_pkgs_sha384}"
+    fi
 }
 
 download_and_verify_builder_rpms() {

@@ -49,9 +49,14 @@ COPY . /tsffs/
 
 WORKDIR /tsffs/
 
+# The Python package goes in before the bundle: the base package compiles its Python cache with it
 RUN mkdir -p /simics/ispm && \
     tar -C /simics/ispm --strip-components=1 -xf .github/builder/rsrc/ispm.tar.gz && \
     ispm settings install-dir /simics && \
+    if [ -f ".github/builder/rsrc/simics-${SIMICS_VERSION}-python.ispm" ]; then \
+        tar -C /tmp -xf ".github/builder/rsrc/simics-${SIMICS_VERSION}-python.ispm" --wildcards './simics-pkg-1033-*' && \
+        ispm packages -i /tmp/simics-pkg-1033-*.ispm --non-interactive --trust-insecure-packages; \
+    fi && \
     ispm packages --install-bundle ".github/builder/rsrc/simics-${SIMICS_VERSION}.ispm" --non-interactive --trust-insecure-packages
 
 RUN RUSTFLAGS="-C linker=clang -C link-arg=-fuse-ld=$(which ld.lld)" && \

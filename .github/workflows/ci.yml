@@ -439,8 +439,11 @@ jobs:
             package_version: "6.0.185"
             pkgs_url: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/simics-6-packages-2024-05-linux64.ispm"
           - simics_version: "7"
-            package_version: "7.70.0"
-            pkgs_url: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/b9edaa91-4c18-4758-b8e2-b6e709270a4c/simics-7-packages-2025-51-linux64.ispm"
+            package_version: "7.113.0"
+            pkgs_url: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/5d078eaa-c8f6-4173-a4fa-5a8ed75f9d95/simics-7-packages-2026-42-linux64.ispm"
+            # The 2026-42 bundle has no Python package (1033), which the simics crate needs to
+            # build: it is taken from the last bundle that has one.
+            python_pkgs_url: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/b9edaa91-4c18-4758-b8e2-b6e709270a4c/simics-7-packages-2025-51-linux64.ispm"
     needs:
       - build_test_artifacts_riscv_64
       - build_test_artifacts_x86_64_breakpoint_uefi_edk2
@@ -609,6 +612,18 @@ jobs:
         run: |
           ispm settings install-dir "${HOME}/simics"
 
+      # Installed before the bundle: the base package compiles its Python cache with it
+      - name: Install SIMICS Python Package
+        if: ${{ steps.cache-simics-packages.outputs.cache-hit != 'true' && matrix.python_pkgs_url }}
+        run: |
+          curl --fail --noproxy '*' -L -o "${HOME}/simics/python.ispm" \
+              "${{ matrix.python_pkgs_url }}"
+          tar -C "${HOME}/simics" -xf "${HOME}/simics/python.ispm" \
+              --wildcards './simics-pkg-1033-*'
+          ispm packages -i "${HOME}"/simics/simics-pkg-1033-*.ispm \
+              --non-interactive --trust-insecure-packages
+          rm "${HOME}/simics/python.ispm" "${HOME}"/simics/simics-pkg-1033-*.ispm
+
       - name: Install SIMICS Packages
         if: ${{ steps.cache-simics-packages.outputs.cache-hit != 'true' }}
         run: |
@@ -671,8 +686,10 @@ jobs:
             package_version: "6.0.185"
             pkgs_url: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/ead79ef5-28b5-48c7-8d1f-3cde7760798f/simics-6-packages-2024-05-win64.ispm"
           - simics_version: "7"
-            package_version: "7.70.0"
-            pkgs_url: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/b9edaa91-4c18-4758-b8e2-b6e709270a4c/simics-7-packages-2025-51-win64.ispm"
+            package_version: "7.113.0"
+            pkgs_url: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/5d078eaa-c8f6-4173-a4fa-5a8ed75f9d95/simics-7-packages-2026-42-win64.ispm"
+            # See python_pkgs_url in build_and_test
+            python_pkgs_url: "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/b9edaa91-4c18-4758-b8e2-b6e709270a4c/simics-7-packages-2025-51-win64.ispm"
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
@@ -740,6 +757,16 @@ jobs:
         run: |
           ispm.exe settings install-dir C:\SIMICS\
 
+      # Installed before the bundle: the base package compiles its Python cache with it.
+      # The full path selects the Windows tar: the one from Git reads C:\ as a remote host
+      - name: Download and Install SIMICS Python Package
+        if: ${{ steps.cache-simics-packages-windows.outputs.cache-hit != 'true' && matrix.python_pkgs_url }}
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          Invoke-WebRequest -URI ${{ matrix.python_pkgs_url }} -OutFile C:\simics-python-packages.ispm
+          C:\Windows\System32\tar.exe -xf C:\simics-python-packages.ispm -C C:\ "./simics-pkg-1033-*"
+          ispm.exe packages -i (Get-Item C:\simics-pkg-1033-*.ispm).FullName --non-interactive --trust-insecure-packages
+
       - name: Download and Install SIMICS Packages
         if: ${{ steps.cache-simics-packages-windows.outputs.cache-hit != 'true' }}
         run: |
@@ -776,7 +803,7 @@ jobs:
           - simics_version: "6"
             package_version: "6.0.185"
           - simics_version: "7"
-            package_version: "7.70.0"
+            package_version: "7.113.0"
     steps:
       - name: Aggressive cleanup
         run: |
