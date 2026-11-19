@@ -286,7 +286,11 @@ impl X86ArchitectureOperations {
     fn simplify(&mut self, expr: &CmpExpr) -> Result<CmpValue> {
         match expr {
             CmpExpr::Deref((expr, width)) => {
-                let v = self.simplify(expr)?;
+                let v = match self.simplify(expr)? {
+                    // Addresses are 32 bits wide on i386
+                    CmpValue::U32(a) => CmpValue::U64(a as u64),
+                    v => v,
+                };
 
                 match v {
                     CmpValue::U64(a) => {
@@ -760,15 +764,6 @@ impl X86ArchitectureOperations {
             | CmpExpr::I32(_)
             | CmpExpr::U64(_)
             | CmpExpr::I64(_) => Ok(CmpValue::try_from(expr)?),
-            CmpExpr::Addr(a) => {
-                let address = self
-                    .processor_info_v2
-                    .logical_to_physical(*a, Access::Sim_Access_Read)?;
-                let bytes: [u8; 8] =
-                    read_phys_memory(self.cpu, address.address, size_of::<u64>() as i32)?
-                        .to_le_bytes();
-                Ok(CmpValue::U64(u64::from_le_bytes(bytes)))
-            }
             _ => {
                 // There are other types but they are never emitted on x86
                 bail!("Unsupported expression type");
@@ -858,6 +853,29 @@ mod cached_instruction_tests {
         assert!(matches!(first.expressions.first(), Some(CmpExpr::Deref(_))));
         Ok(())
     }
+
+    #[test]
+    fn absolute_memory_operand_is_read_at_the_operand_width() -> Result<()> {
+        let mut decoder = Disassembler::new();
+        // cmp eax, dword [0x1234] and cmp al, byte [0x1234]
+        for (bytes, register, width) in [
+            (&[0x3b, 0x05, 0x34, 0x12, 0x00, 0x00][..], "eax", 4),
+            (&[0x3a, 0x05, 0x34, 0x12, 0x00, 0x00][..], "al", 1),
+        ] {
+            let comparison = decoder
+                .classify(bytes, true)?
+                .comparison
+                .ok_or_else(|| anyhow!("Expected comparison"))?;
+            assert_eq!(
+                comparison.expressions,
+                vec![
+                    CmpExpr::Reg((register.into(), width)),
+                    CmpExpr::Deref((Box::new(CmpExpr::U32(0x1234)), Some(width))),
+                ]
+            );
+        }
+        Ok(())
+    }
 }
 
 impl Default for Disassembler {
@@ -881,7 +899,7 @@ impl TryFrom<(&Operand, Option<u8>)> for CmpExpr {
             Operand::ImmediateI32 { imm } => CmpExpr::I32(*imm),
             Operand::ImmediateU32 { imm } => CmpExpr::U32(*imm),
             Operand::Register { reg } => CmpExpr::Reg((reg.name().to_string(), reg.width())),
-            Operand::AbsoluteU32 { addr } => CmpExpr::Addr(*addr as u64),
+            Operand::AbsoluteU32 { addr } => CmpExpr::Deref((Box::new(CmpExpr::U32(*addr)), width)),
             Operand::MemDeref { base } => CmpExpr::Deref((
                 Box::new(CmpExpr::Reg((base.name().to_string(), base.width()))),
                 width,

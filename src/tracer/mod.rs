@@ -191,7 +191,6 @@ pub(crate) enum CmpExpr {
     I32(i32),
     U64(u64),
     I64(i64),
-    Addr(u64),
 }
 
 #[allow(unused)]
