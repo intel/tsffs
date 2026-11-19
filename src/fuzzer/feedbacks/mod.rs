@@ -13,6 +13,7 @@ use libafl_bolts::{AsIter, AsSlice, Named};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     fmt::Debug,
+    marker::PhantomData,
     sync::{mpsc::Sender, OnceLock},
 };
 
@@ -116,106 +117,6 @@ where
                 .ok_or_else(|| libafl::Error::unknown("Failed to send report"))?;
         }
 
-        if *exit_kind == ExitKind::Crash {
-            let observer = observers
-                .match_name::<O>(self.observer_name())
-                .ok_or_else(|| {
-                    libafl::Error::unknown("Failed to get observer from observers tuple")
-                })?;
-
-            let map_state = state
-                .named_metadata_map_mut()
-                .get_mut::<MapFeedbackMetadata<T>>(self.name())
-                .ok_or_else(|| libafl::Error::unknown("Failed to get metadata"))?;
-
-            let len = observer.len();
-
-            if map_state.history_map.len() < len {
-                map_state.history_map.resize(len, observer.initial());
-            }
-
-            let history_map = map_state.history_map.as_slice();
-
-            let initial = observer.initial();
-
-            let mut indices = vec![];
-
-            for (i, item) in observer
-                .as_iter()
-                .copied()
-                .enumerate()
-                .filter(|(_, item)| *item != initial)
-            {
-                let existing = unsafe { *history_map.get_unchecked(i) };
-                let reduced = R::reduce(existing, item);
-                if N::is_novel(existing, reduced) {
-                    indices.push(i);
-                }
-            }
-
-            self.sender
-                .get_mut()
-                .and_then(|sender| {
-                    sender
-                        .send(FuzzerMessage::Crash {
-                            indices,
-                            input: input.target_bytes().as_slice().to_vec(),
-                        })
-                        .ok()
-                })
-                .ok_or_else(|| libafl::Error::unknown("Failed to send report"))?;
-        }
-
-        if *exit_kind == ExitKind::Timeout {
-            let observer = observers
-                .match_name::<O>(self.observer_name())
-                .ok_or_else(|| {
-                    libafl::Error::unknown("Failed to get observer from observers tuple")
-                })?;
-
-            let map_state = state
-                .named_metadata_map_mut()
-                .get_mut::<MapFeedbackMetadata<T>>(self.name())
-                .ok_or_else(|| libafl::Error::unknown("Failed to get metadata"))?;
-
-            let len = observer.len();
-
-            if map_state.history_map.len() < len {
-                map_state.history_map.resize(len, observer.initial());
-            }
-
-            let history_map = map_state.history_map.as_slice();
-
-            let initial = observer.initial();
-
-            let mut indices = vec![];
-
-            for (i, item) in observer
-                .as_iter()
-                .copied()
-                .enumerate()
-                .filter(|(_, item)| *item != initial)
-            {
-                let existing = unsafe { *history_map.get_unchecked(i) };
-                let reduced = R::reduce(existing, item);
-                if N::is_novel(existing, reduced) {
-                    indices.push(i);
-                }
-            }
-
-            self.sender
-                .get_mut()
-                .and_then(|sender| {
-                    sender
-                        .send(FuzzerMessage::Timeout {
-                            indices,
-                            input: input.target_bytes().as_slice().to_vec(),
-                        })
-                        .ok()
-                })
-                .ok_or_else(|| libafl::Error::unknown("Failed to send report"))?;
-        }
-
         Ok(is_interesting)
     }
 
@@ -283,5 +184,181 @@ where
             lock
         };
         Self { base, sender }
+    }
+}
+
+/// Reports solutions to the simulator thread. LibAFL does not evaluate the corpus feedback for
+/// an execution the objective accepts, so [`ReportingMapFeedback`] never sees a solution. This
+/// feedback accepts every crash and timeout: chain it after the feedbacks that decide what a
+/// solution is.
+#[derive(Clone, Debug)]
+pub(crate) struct SolutionReporter<O> {
+    /// The name of the coverage map observer
+    observer_name: String,
+    /// The name of the coverage map feedback, whose history map holds the corpus coverage
+    map_name: String,
+    sender: Sender<FuzzerMessage>,
+    phantom: PhantomData<O>,
+}
+
+impl<O> SolutionReporter<O>
+where
+    O: Named,
+{
+    #[must_use]
+    pub fn new(observer: &O, map_name: &str, sender: Sender<FuzzerMessage>) -> Self {
+        Self {
+            observer_name: observer.name().to_string(),
+            map_name: map_name.to_string(),
+            sender,
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<O> Named for SolutionReporter<O> {
+    #[inline]
+    fn name(&self) -> &str {
+        "SolutionReporter"
+    }
+}
+
+impl<O, S> Feedback<S> for SolutionReporter<O>
+where
+    O: MapObserver<Entry = u8> + for<'it> AsIter<'it, Item = u8>,
+    S: State + HasNamedMetadata,
+    S::Input: HasTargetBytes,
+{
+    fn is_interesting<EM, OT>(
+        &mut self,
+        state: &mut S,
+        _manager: &mut EM,
+        input: &<S>::Input,
+        observers: &OT,
+        exit_kind: &ExitKind,
+    ) -> Result<bool, libafl::Error>
+    where
+        EM: EventFirer<State = S>,
+        OT: ObserversTuple<S>,
+    {
+        if !matches!(exit_kind, ExitKind::Crash | ExitKind::Timeout) {
+            return Ok(false);
+        }
+        let observer = observers
+            .match_name::<O>(&self.observer_name)
+            .ok_or_else(|| libafl::Error::unknown("Failed to get observer from observers tuple"))?;
+        let initial = observer.initial();
+        // The map feedback adds its history when the state is created, empty until an input is
+        // evaluated. Without it the name is wrong, and every edge would be reported as new.
+        let history_map = state
+            .named_metadata_map()
+            .get::<MapFeedbackMetadata<u8>>(&self.map_name)
+            .ok_or_else(|| {
+                libafl::Error::key_not_found(format!("No coverage history named {}", self.map_name))
+            })?
+            .history_map
+            .as_slice();
+        // The coverage map slots this execution fills that no corpus entry does
+        let indices = observer
+            .as_iter()
+            .copied()
+            .enumerate()
+            .filter(|(i, item)| {
+                *item != initial && history_map.get(*i).is_none_or(|seen| *seen == initial)
+            })
+            .map(|(i, _)| i)
+            .collect();
+        let input = input.target_bytes().as_slice().to_vec();
+
+        self.sender
+            .send(if *exit_kind == ExitKind::Timeout {
+                FuzzerMessage::Timeout { indices, input }
+            } else {
+                FuzzerMessage::Crash { indices, input }
+            })
+            .map_err(|_| libafl::Error::unknown("Failed to send report"))?;
+
+        Ok(true)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use libafl::{
+        prelude::{BytesInput, InMemoryCorpus, NopEventManager, StdMapObserver},
+        state::{HasNamedMetadata, StdState},
+    };
+    use libafl_bolts::{rands::StdRand, tuples::tuple_list};
+    use std::sync::mpsc::channel;
+
+    #[test]
+    fn reports_crashes_and_timeouts_with_the_edges_only_they_reach() -> Result<(), libafl::Error> {
+        let (sender, receiver) = channel();
+        // The execution fills slots 1 and 3, the corpus already fills slot 1
+        let observer = StdMapObserver::owned("edges", vec![0u8, 1, 0, 1]);
+        let mut reporter = SolutionReporter::new(&observer, "history", sender.clone());
+        let mut misnamed_reporter = SolutionReporter::new(&observer, "no such history", sender);
+        let mut state = StdState::new(
+            StdRand::with_seed(0),
+            InMemoryCorpus::<BytesInput>::new(),
+            InMemoryCorpus::new(),
+            &mut (),
+            &mut (),
+        )?;
+        state.add_named_metadata(
+            "history",
+            MapFeedbackMetadata::<u8> {
+                history_map: vec![0, 1, 0, 0],
+                num_covered_map_indexes: 1,
+            },
+        );
+        let observers = tuple_list!(observer);
+        let mut manager = NopEventManager::new();
+        let input = BytesInput::new(b"boom".to_vec());
+
+        assert!(reporter.is_interesting(
+            &mut state,
+            &mut manager,
+            &input,
+            &observers,
+            &ExitKind::Crash
+        )?);
+        assert!(matches!(
+            receiver.try_recv(),
+            Ok(FuzzerMessage::Crash { indices, input }) if indices == [3] && input == b"boom"
+        ));
+
+        assert!(reporter.is_interesting(
+            &mut state,
+            &mut manager,
+            &input,
+            &observers,
+            &ExitKind::Timeout
+        )?);
+        assert!(matches!(
+            receiver.try_recv(),
+            Ok(FuzzerMessage::Timeout { indices, input }) if indices == [3] && input == b"boom"
+        ));
+
+        // Anything else is not a solution, and a missing history is an error: neither reports
+        assert!(!reporter.is_interesting(
+            &mut state,
+            &mut manager,
+            &input,
+            &observers,
+            &ExitKind::Ok
+        )?);
+        assert!(misnamed_reporter
+            .is_interesting(
+                &mut state,
+                &mut manager,
+                &input,
+                &observers,
+                &ExitKind::Crash
+            )
+            .is_err());
+        assert!(receiver.try_recv().is_err());
+        Ok(())
     }
 }

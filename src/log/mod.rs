@@ -176,27 +176,25 @@ impl Tsffs {
                         "Solution input for AFL indices {indices:?} with input {input:?}"
                     );
 
-                    if !self.edges_seen_since_last.is_empty() {
-                        let mut edges = self
-                            .edges_seen_since_last
-                            .iter()
-                            .map(|(p, a)| LogMessageEdge {
-                                pc: *p,
-                                afl_idx: *a,
-                            })
-                            .collect::<Vec<_>>();
+                    let mut edges = self
+                        .edges_seen_since_last
+                        .iter()
+                        .map(|(p, a)| LogMessageEdge {
+                            pc: *p,
+                            afl_idx: *a,
+                        })
+                        .collect::<Vec<_>>();
 
-                        edges.sort_by(|e1, e2| e1.pc.cmp(&e2.pc));
+                    edges.sort_by(|e1, e2| e1.pc.cmp(&e2.pc));
 
-                        self.log(LogMessage::Solution {
-                            timestamp: Utc::now().to_rfc3339(),
-                            message: LogMessageSolution {
-                                indices: indices.clone(),
-                                input: input.clone(),
-                                edges,
-                            },
-                        })?;
-                    }
+                    self.log(LogMessage::Solution {
+                        timestamp: Utc::now().to_rfc3339(),
+                        message: LogMessageSolution {
+                            indices: indices.clone(),
+                            input: input.clone(),
+                            edges,
+                        },
+                    })?;
 
                     if self.save_solution_execution_traces {
                         self.save_execution_trace()?;
@@ -212,27 +210,25 @@ impl Tsffs {
                         "Timeout input for AFL indices {indices:?} with input {input:?}"
                     );
 
-                    if !self.edges_seen_since_last.is_empty() {
-                        let mut edges = self
-                            .edges_seen_since_last
-                            .iter()
-                            .map(|(p, a)| LogMessageEdge {
-                                pc: *p,
-                                afl_idx: *a,
-                            })
-                            .collect::<Vec<_>>();
+                    let mut edges = self
+                        .edges_seen_since_last
+                        .iter()
+                        .map(|(p, a)| LogMessageEdge {
+                            pc: *p,
+                            afl_idx: *a,
+                        })
+                        .collect::<Vec<_>>();
 
-                        edges.sort_by(|e1, e2| e1.pc.cmp(&e2.pc));
+                    edges.sort_by(|e1, e2| e1.pc.cmp(&e2.pc));
 
-                        self.log(LogMessage::Timeout {
-                            timestamp: Utc::now().to_rfc3339(),
-                            message: LogMessageTimeout {
-                                indices: indices.clone(),
-                                input: input.clone(),
-                                edges,
-                            },
-                        })?;
-                    }
+                    self.log(LogMessage::Timeout {
+                        timestamp: Utc::now().to_rfc3339(),
+                        message: LogMessageTimeout {
+                            indices: indices.clone(),
+                            input: input.clone(),
+                            edges,
+                        },
+                    })?;
 
                     if self.save_timeout_execution_traces {
                         self.save_execution_trace()?;
