@@ -94,7 +94,7 @@ impl Tsffs {
         }
 
         self.execution_trace.0.clear();
-        self.save_repro_bookmark_if_needed()?;
+        self.mark_repro_start_prepared()?;
 
         self.continue_after_repro_prepared()?;
 
@@ -221,7 +221,7 @@ impl Tsffs {
         } else {
             self.cancel_timeout_event()?;
 
-            if self.repro_bookmark_set {
+            if self.repro_start_prepared {
                 self.stopped_for_repro = true;
                 let current_log_level = log_level(self.as_conf_object_mut())?;
 
@@ -325,7 +325,7 @@ impl Tsffs {
         }
 
         self.execution_trace.0.clear();
-        self.save_repro_bookmark_if_needed()?;
+        self.mark_repro_start_prepared()?;
 
         self.continue_after_repro_prepared()?;
 
@@ -367,14 +367,9 @@ impl Tsffs {
         }
 
         self.execution_trace.0.clear();
-        self.save_repro_bookmark_if_needed()?;
+        self.mark_repro_start_prepared()?;
 
-        debug!(self.as_conf_object(), "Resuming simulation");
-
-        run_alone(|| {
-            continue_simulation(0)?;
-            Ok(())
-        })?;
+        self.continue_after_repro_prepared()?;
 
         Ok(())
     }
@@ -388,7 +383,7 @@ impl Tsffs {
         } else {
             self.cancel_timeout_event()?;
 
-            if self.repro_bookmark_set {
+            if self.repro_start_prepared {
                 self.stopped_for_repro = true;
                 let current_log_level = log_level(self.as_conf_object_mut())?;
 
@@ -444,7 +439,7 @@ impl Tsffs {
         } else {
             self.cancel_timeout_event()?;
 
-            if self.repro_bookmark_set {
+            if self.repro_start_prepared {
                 self.stopped_for_repro = true;
                 let current_log_level = log_level(self.as_conf_object_mut())?;
 

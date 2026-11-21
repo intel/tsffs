@@ -21,7 +21,8 @@ impl Tsffs {
     /// instead of continuing the fuzzing loop.
     ///
     /// This can be called during configuration *or* after stopping the fuzzer once a solution
-    /// has been found.
+    /// has been found. It can be called again after a reproduced execution has stopped, to
+    /// run another test case from the initial snapshot.
     pub fn repro(&mut self, testcase_file: *mut c_char) -> Result<()> {
         // SAFETY: Simics passes NULL or a NUL-terminated string valid for this call
         let simics_path = unsafe { c_str_arg(testcase_file, "testcase_file") }?;
@@ -40,11 +41,37 @@ impl Tsffs {
 
         self.repro_testcase = Some(contents);
 
-        if self.iterations > 0 {
-            // We've done an iteration already, so we need to reset and run
+        if self.have_initial_snapshot() {
+            // The harness start was already reached, in a fuzzing iteration or in an earlier
+            // repro run, so we need to reset and run. An earlier repro run left the stop
+            // handlers disabled: enable them again for this testcase.
+            self.stopped_for_repro = false;
+            // What the previous execution reported does not describe this testcase
+            self.last_exception_processor_number = None;
+            self.last_stop_reason = None;
+            // Restoring the snapshot also restores the attributes this object had when
+            // the snapshot was taken. Whether to resume is decided below, by the value
+            // the user has set by now, not by the one saved in the snapshot.
+            let repro_auto_continue = self.repro_auto_continue;
             self.restore_initial_snapshot()?;
-            self.get_and_write_testcase()?;
+            self.repro_auto_continue = repro_auto_continue;
+
+            if self.start_info.get().is_some() {
+                self.get_and_write_testcase()?;
+            } else {
+                // The harness started with `start_without_buffer`: there is no buffer to
+                // write. The restored snapshot executes the harness start again, where the
+                // harness calls `start_without_buffer` and is handed this testcase.
+                debug!(
+                    self.as_conf_object(),
+                    "No start buffer, the harness start hands over the repro testcase"
+                );
+            }
+
             self.post_timeout_event()?;
+            // Everything the harness start prepares is done, so that the start the restored
+            // snapshot executes again does not stop the simulation a second time.
+            self.mark_repro_start_prepared()?;
             self.continue_after_repro_prepared()?;
         }
 
@@ -199,6 +226,11 @@ impl Tsffs {
     /// # Return Value
     ///
     /// Returns an [`AttrValue`] list of integers. Integers are `u8` sized, in the range 0-255.
+    ///
+    /// TSFFS has no buffer to write the next testcase to, so this method is called again
+    /// each time the restored snapshot reaches the start, and returns that execution's
+    /// testcase: the next one from the fuzzer, or in repro mode the one of the latest
+    /// `repro` call.
     pub fn start_without_buffer(&mut self, cpu: *mut ConfObject) -> Result<AttrValue> {
         if !self.have_initial_snapshot() {
             // Start the fuzzer thread early so we can get a testcase

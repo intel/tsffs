@@ -35,8 +35,14 @@ simics> @tsffs.iface.fuzz.repro("%simics%/corpus/4385dc33f608888d")
 ```
 
 > **Note:** You can change the testcase you are examining by choosing a different one
-> with `tsffs.iface.fuzz.repro`, but you cannot resume fuzzing after entering repro
-> mode due to inconsistencies with the simulated system clock.
+> with `tsffs.iface.fuzz.repro`, as many times as you like, but you cannot resume
+> fuzzing after entering repro mode due to inconsistencies with the simulated system
+> clock.
+
+Each call restores the state at the harness and runs the testcase you give it. A script
+can do the same for every file of the corpus, which is how a source coverage report of a
+campaign is produced: see
+[Source Coverage for UEFI Targets](../../fuzzing/source-coverage.md).
 
 ## Inspecting State with SIMICS Reverse Debugging
 
@@ -93,6 +99,10 @@ resume manually.
 
   Print(L"Input: %p Size: %d\n", Input, InputSize);
 ```
+
+The same holds when you call `repro` again later in the session with another testcase:
+TSFFS restores the state at the harness, writes the new testcase and waits. One resume
+then runs that testcase.
 
 **Step 2: Start the GDB stub.**
 

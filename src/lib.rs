@@ -478,7 +478,8 @@ pub(crate) struct Tsffs {
     /// since the start of the current iteration.
     ///
     /// This attribute is informational and transient: it reflects internal fuzzer state,
-    /// is cleared at the start of each iteration, and is not saved across checkpoints.
+    /// is cleared at the start of each iteration (in repro mode, each time `repro`
+    /// prepares another testcase), and is not saved across checkpoints.
     /// Setting it has no effect on fuzzing behavior; it will be overwritten at the next
     /// exception-based solution or clear point.
     pub last_exception_processor_number: Option<i32>,
@@ -488,7 +489,8 @@ pub(crate) struct Tsffs {
     /// start of the current iteration.
     ///
     /// This attribute is informational and transient: it reflects internal fuzzer state,
-    /// is cleared at the start of each iteration, and is not saved across checkpoints.
+    /// is cleared at the start of each iteration (in repro mode, each time `repro`
+    /// prepares another testcase), and is not saved across checkpoints.
     /// Setting it has no effect on fuzzing behavior; it will be overwritten at the next
     /// exception-based solution or clear point.
     pub last_stop_reason: Option<String>,
@@ -609,8 +611,12 @@ pub(crate) struct Tsffs {
     cached_feedback_error_reported: bool,
     /// A testcase to use for repro
     repro_testcase: Option<Vec<u8>>,
-    /// Whether a bookmark has been set for repro mode
-    repro_bookmark_set: bool,
+    /// Whether the harness start was already prepared in repro mode: the initial snapshot
+    /// exists, the repro testcase was prepared from it and, on Simics 6 only, the `start`
+    /// bookmark is set (Simics 7 has no bookmark, the snapshot is what gets restored).
+    /// From then on a stop ends the reproduced execution instead of starting another
+    /// iteration, and reaching the harness start again does not stop the simulation.
+    repro_start_prepared: bool,
     /// Whether the fuzzer is currently stopped in repro mode
     stopped_for_repro: bool,
     /// The number of iterations which have been executed so far
@@ -756,8 +762,27 @@ impl Tsffs {
 
 /// Implementations for controlling the simulation
 impl Tsffs {
-    /// Stop the simulation with a reason
+    /// Stop the simulation with a reason.
+    ///
+    /// Every magic harness and every interface method that starts, stops or reports a
+    /// solution goes through here, so the one reason that must not stop is decided here
+    /// and not by each caller: a harness start reached again in repro mode. The start is
+    /// a stop only the first time it is reached. After that, `repro` restores the initial
+    /// snapshot and prepares its testcase itself, and the restored snapshot executes the
+    /// harness start again. Stopping there would take a second resume before the testcase
+    /// runs, so the simulation keeps running instead.
     pub fn stop_simulation(&mut self, reason: StopReason) -> Result<()> {
+        if self.repro_start_prepared && reason.is_harness_start() {
+            debug!(
+                self.as_conf_object(),
+                "Harness start reached again in repro mode, not stopping"
+            );
+
+            self.execution_trace.0.clear();
+
+            return Ok(());
+        }
+
         let break_string = reason.to_string();
 
         self.last_stop_reason = Some(break_string.clone());
@@ -1054,14 +1079,16 @@ impl Tsffs {
         have
     }
 
-    /// Save a repro bookmark if one is needed
-    pub fn save_repro_bookmark_if_needed(&mut self) -> Result<()> {
-        if self.repro_testcase.is_some() && !self.repro_bookmark_set {
-            // On Simics 7 the reverse-execution `set-bookmark` CLI command is gone;
-            // the existing `Self::SNAPSHOT_NAME` snapshot is what gets restored for repro.
+    /// In repro mode, record that the harness start is prepared (see
+    /// `repro_start_prepared`). Does nothing while fuzzing, or once it is recorded.
+    pub fn mark_repro_start_prepared(&mut self) -> Result<()> {
+        if self.repro_testcase.is_some() && !self.repro_start_prepared {
+            // On Simics 6 the user goes back to this point with `reverse-to start`. On
+            // Simics 7 the reverse-execution `set-bookmark` CLI command is gone; the
+            // existing `Self::SNAPSHOT_NAME` snapshot is what gets restored for repro.
             #[cfg(simics_version = "6")]
             free_attribute(run_command("set-bookmark start")?)?;
-            self.repro_bookmark_set = true;
+            self.repro_start_prepared = true;
         }
 
         Ok(())
