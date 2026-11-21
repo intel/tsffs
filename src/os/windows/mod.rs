@@ -258,17 +258,18 @@ impl Tsffs {
             && self.windows
             && self.symbolic_coverage
             && register_nr == int_register.get_number("cr3".as_raw_cstr()?)? as i64
-            && self
-                .cr3_cache
-                .get(&processor_nr)
-                .is_some_and(|v| *v != value)
+            && self.cr3_cache.get(&processor_nr) != Some(&value)
         {
+            self.cr3_cache.insert(processor_nr, value);
+
             info!(
                     get_object("tsffs")?,
                     "Got write {value:#x} to CR3 for processor {processor_nr}, refreshing kernel & process mappings"
                 );
 
-            self.windows_os_info.collect(
+            // This runs in a HAP callback whose error aborts the simulation, and a failed
+            // refresh only costs symbolic coverage for the new address space
+            if let Err(e) = self.windows_os_info.collect(
                 trigger_obj,
                 &self.debuginfo_download_directory,
                 &mut DebugInfoConfig {
@@ -277,9 +278,12 @@ impl Tsffs {
                     coverage: &mut self.coverage,
                 },
                 &self.source_file_cache,
-            )?;
-
-            self.cr3_cache.insert(processor_nr, value);
+            ) {
+                warn!(
+                    get_object("tsffs")?,
+                    "Failed to refresh kernel & process mappings for processor {processor_nr}: {e}"
+                );
+            }
         }
 
         Ok(())
