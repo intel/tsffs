@@ -19,8 +19,7 @@ download_and_verify_builder_deps
 
 unset SIMICS_BASE
 docker build \
-    --build-arg \
-    "PUBLIC_SIMICS_PACKAGE_VERSION_1000=${PUBLIC_SIMICS_PACKAGE_VERSION_1000}" \
+    --build-arg "SIMICS_VERSION=${SIMICS_VERSION:-6}" \
     -t "${IMAGE_NAME}" -f "${BUILDER_DIR}/Dockerfile" "${ROOT_DIR}"
 docker create --name "${CONTAINER_NAME}" "${IMAGE_NAME}" bash
 mkdir -p "${ROOT_DIR}/packages"
