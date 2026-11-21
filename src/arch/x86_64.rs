@@ -767,6 +767,8 @@ mod cached_instruction_tests {
             &[0xc3][..],             // ret
             &[0xff, 0xe0][..],       // jmp rax
             &[0xe2, 0xfe][..],       // loop
+            &[0xe3, 0xfe][..],       // jrcxz
+            &[0x67, 0xe3, 0xfd][..], // jecxz
             &[0x0f, 0x05][..],       // syscall
         ] {
             let instruction = decoder.classify(bytes, true)?;
@@ -1058,6 +1060,7 @@ impl TracerDisassembler for Disassembler {
                     | Opcode::JA
                     | Opcode::JB
                     | Opcode::JRCXZ
+                    | Opcode::JECXZ
                     | Opcode::JG
                     | Opcode::JGE
                     | Opcode::JL
