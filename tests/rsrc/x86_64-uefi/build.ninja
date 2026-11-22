@@ -33,3 +33,6 @@ build test-size-width.efi: link test-size-width.o
 build test-page-cross.o: cc test-page-cross.c
     cflags = -O0 
 build test-page-cross.efi: link test-page-cross.o
+build test-size-uninit.o: cc test-size-uninit.c
+    cflags = -O0 
+build test-size-uninit.efi: link test-size-uninit.o

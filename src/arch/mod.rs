@@ -34,6 +34,10 @@ pub mod risc_v;
 pub mod x86;
 pub mod x86_64;
 
+/// The largest testcase buffer accepted from a harness. A larger size is a harness mistake,
+/// usually an uninitialized size variable.
+const MAXIMUM_TESTCASE_SIZE: u64 = 1 << 30;
+
 /// The smallest page size of the supported architectures: a translation holds at least up to
 /// the next multiple of it.
 const PAGE_SIZE: u64 = 0x1000;
@@ -292,9 +296,18 @@ pub trait ArchitectureOperations {
     }
 
     /// Build the start information for a testcase buffer of `size.maximum_size()` bytes at
-    /// `address`, reading its initial contents.
-    fn start_info(&mut self, address: &ManualStartAddress, size: StartSize) -> Result<StartInfo> {
+    /// `address`, reading its initial contents. `size_source` names where the size came from.
+    fn start_info(
+        &mut self,
+        address: &ManualStartAddress,
+        size: StartSize,
+        size_source: &str,
+    ) -> Result<StartInfo> {
         let maximum_size = size.maximum_size() as u64;
+        ensure!(
+            maximum_size <= MAXIMUM_TESTCASE_SIZE,
+            "Testcase size {maximum_size:#x} from {size_source} is larger than the maximum {MAXIMUM_TESTCASE_SIZE:#x}, is the size initialized?"
+        );
         let pieces = match *address {
             ManualStartAddress::Virtual(logical) => self.translate_range(logical, maximum_size)?,
             ManualStartAddress::Physical(physical) => vec![(physical, maximum_size)],
@@ -339,6 +352,10 @@ pub trait ArchitectureOperations {
                 address,
                 maximum_size: size as usize,
             },
+            &format!(
+                "the size variable at {size_ptr:#x} (register {})",
+                Self::ARGUMENT_REGISTER_1
+            ),
         )
     }
 
@@ -353,6 +370,7 @@ pub trait ArchitectureOperations {
         self.start_info(
             &ManualStartAddress::Virtual(buffer),
             StartSize::MaxSize(size_val as usize),
+            &format!("register {}", Self::ARGUMENT_REGISTER_1),
         )
     }
 
@@ -373,6 +391,7 @@ pub trait ArchitectureOperations {
                 address,
                 maximum_size: size_val as usize,
             },
+            &format!("register {}", Self::ARGUMENT_REGISTER_2),
         )
     }
 
@@ -384,28 +403,38 @@ pub trait ArchitectureOperations {
             ManualStartAddress::Physical(p) => Ok(StartPhysicalAddress::WasPhysical(p)),
         };
 
-        let size = match &info.size {
+        let (size, size_source) = match &info.size {
             crate::ManualStartSize::SizePtr { address } => {
+                let source = format!("the size variable at {address:?}");
                 let address = size_ptr(address)?;
                 let size_size = self.size_width()?;
                 let maximum_size =
                     read_phys_memory(self.cpu(), address.physical_address(), size_size)?;
-                StartSize::SizePtr {
-                    address,
-                    maximum_size: maximum_size as usize,
-                }
+                (
+                    StartSize::SizePtr {
+                        address,
+                        maximum_size: maximum_size as usize,
+                    },
+                    source,
+                )
             }
-            crate::ManualStartSize::MaxSize(maximum_size) => StartSize::MaxSize(*maximum_size),
+            crate::ManualStartSize::MaxSize(maximum_size) => (
+                StartSize::MaxSize(*maximum_size),
+                "the maximum size argument".to_string(),
+            ),
             crate::ManualStartSize::SizePtrAndMaxSize {
                 address,
                 maximum_size,
-            } => StartSize::SizePtrAndMaxSize {
-                address: size_ptr(address)?,
-                maximum_size: *maximum_size,
-            },
+            } => (
+                StartSize::SizePtrAndMaxSize {
+                    address: size_ptr(address)?,
+                    maximum_size: *maximum_size,
+                },
+                "the maximum size argument".to_string(),
+            ),
         };
 
-        self.start_info(&info.address, size)
+        self.start_info(&info.address, size, &size_source)
     }
 
     /// Width in bytes of the size variable the harness passes by pointer. The maximum size is
