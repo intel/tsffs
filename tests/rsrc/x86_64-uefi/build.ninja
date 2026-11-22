@@ -27,6 +27,9 @@ build test-max-size.efi: link test-max-size.o
 build test-cmp-imm.o: cc test-cmp-imm.c
     cflags = -O0 
 build test-cmp-imm.efi: link test-cmp-imm.o
+build test-cmp-rip.o: cc test-cmp-rip.c
+    cflags = -O0 
+build test-cmp-rip.efi: link test-cmp-rip.o
 build test-size-width.o: cc test-size-width.c
     cflags = -O0 
 build test-size-width.efi: link test-size-width.o

@@ -21,7 +21,8 @@ use simics::api::{
     CpuInstrumentationSubscribeInterface, CycleInterface, IntRegisterInterface,
     ProcessorInfoV2Interface,
 };
-use yaxpeax_x86::amd64::{ConditionCode, InstDecoder, Instruction, Opcode, Operand};
+use yaxpeax_arch::LengthedInstruction;
+use yaxpeax_x86::amd64::{ConditionCode, InstDecoder, Instruction, Opcode, Operand, RegSpec};
 
 use super::ArchitectureOperations;
 
@@ -875,13 +876,14 @@ mod cached_instruction_tests {
     #[test]
     fn cached_comparison_reads_current_registers_and_pc() -> Result<()> {
         struct Registers {
-            values: [u64; 2],
+            values: [u64; 3],
             pc: u64,
         }
         unsafe extern "C" fn number(_cpu: *mut ConfObject, name: *const c_char) -> i32 {
             match CStr::from_ptr(name).to_bytes() {
                 b"rax" => 0,
                 b"rbx" => 1,
+                b"rip" => 2,
                 _ => -1,
             }
         }
@@ -892,7 +894,7 @@ mod cached_instruction_tests {
             (*cpu.cast::<Registers>()).pc
         }
         let mut registers = Registers {
-            values: [10, 20],
+            values: [10, 20, 0],
             pc: 0x1000,
         };
         let cpu = (&mut registers as *mut Registers).cast();
@@ -924,7 +926,7 @@ mod cached_instruction_tests {
             .classify(&[0x48, 0x39, 0xd8], true)?
             .comparison
             .ok_or_else(|| anyhow!("Expected comparison"))?;
-        for (values, pc) in [([10, 20], 0x1000), ([30, 40], 0x8000)] {
+        for (values, pc) in [([10, 20, 0], 0x1000), ([30, 40, 0], 0x8000)] {
             registers.values = values;
             registers.pc = pc;
             assert_eq!(
@@ -938,6 +940,17 @@ mod cached_instruction_tests {
                     .build(),
             );
         }
+        // cmp dword [rip + 0x2000], 5 is 7 bytes long: the operand is at 0x8000 + 7 + 0x2000
+        registers.values[2] = 0x8000;
+        let decoded = arch
+            .disassembler
+            .classify(&[0x83, 0x3d, 0x00, 0x20, 0x00, 0x00, 0x05], true)?
+            .comparison
+            .ok_or_else(|| anyhow!("Expected comparison"))?;
+        let CmpExpr::Deref((address, Some(4))) = &decoded.expressions[0] else {
+            bail!("Expected a 4-byte memory operand");
+        };
+        assert_eq!(arch.simplify(address)?, CmpValue::U64(0xa007));
         // cmp rax, 0x41424344 and cmp rax, -1: the immediate is signed, the register is not
         for (bytes, immediate) in [
             (&[0x48, 0x3d, 0x44, 0x43, 0x42, 0x41][..], 0x41424344),
@@ -963,12 +976,24 @@ mod cached_instruction_tests {
     }
 }
 
-impl TryFrom<(&Operand, Option<u8>)> for CmpExpr {
+/// Converts an operand, given its width and the length of its instruction
+impl TryFrom<(&Operand, Option<u8>, u64)> for CmpExpr {
     type Error = Error;
 
-    fn try_from(value: (&Operand, Option<u8>)) -> Result<Self> {
+    fn try_from(value: (&Operand, Option<u8>, u64)) -> Result<Self> {
         let width = value.1;
+        let length = value.2;
         let value = value.0;
+        // Compares are logged before the instruction executes, when `rip` is still the address
+        // of the instruction, but a RIP-relative operand is relative to the next instruction
+        let base_expr = |base: &RegSpec| {
+            let reg = CmpExpr::Reg((base.name().to_string(), base.width()));
+            if *base == RegSpec::rip() {
+                CmpExpr::Add((Box::new(reg), Box::new(CmpExpr::U64(length))))
+            } else {
+                reg
+            }
+        };
 
         let expr = match value {
             Operand::ImmediateI8 { imm } => CmpExpr::I8(*imm),
@@ -984,13 +1009,10 @@ impl TryFrom<(&Operand, Option<u8>)> for CmpExpr {
                 CmpExpr::Deref((Box::new(CmpExpr::U64(*addr as u64)), width))
             }
             Operand::AbsoluteU64 { addr } => CmpExpr::Deref((Box::new(CmpExpr::U64(*addr)), width)),
-            Operand::MemDeref { base } => CmpExpr::Deref((
-                Box::new(CmpExpr::Reg((base.name().to_string(), base.width()))),
-                width,
-            )),
+            Operand::MemDeref { base } => CmpExpr::Deref((Box::new(base_expr(base)), width)),
             Operand::Disp { base, disp } => CmpExpr::Deref((
                 Box::new(CmpExpr::Add((
-                    Box::new(CmpExpr::Reg((base.name().to_string(), base.width()))),
+                    Box::new(base_expr(base)),
                     Box::new(CmpExpr::I32(*disp)),
                 ))),
                 width,
@@ -1206,7 +1228,9 @@ impl TracerDisassembler for Disassembler {
                     } else {
                         None
                     };
-                    if let Ok(expr) = CmpExpr::try_from((&op, width)) {
+                    // RIP-relative operands are relative to the next instruction
+                    let length = last.len().to_const();
+                    if let Ok(expr) = CmpExpr::try_from((&op, width, length)) {
                         cmp_exprs.push(expr);
                     }
                 }
