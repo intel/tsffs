@@ -132,20 +132,11 @@ pub(crate) enum ManualStartAddress {
     Physical(u64),
 }
 
-impl ManualStartAddress {
-    pub fn address(&self) -> u64 {
-        match self {
-            ManualStartAddress::Virtual(addr) => *addr,
-            ManualStartAddress::Physical(addr) => *addr,
-        }
-    }
-}
-
 #[derive(TypedBuilder, Serialize, Deserialize, Clone, Debug)]
 pub(crate) struct StartInfo {
-    /// The physical address of the buffer. Must be physical, if the input address was
-    /// virtual, it should be pre-translated
-    pub address: StartPhysicalAddress,
+    /// The `(physical address, length)` pieces of the buffer, in order. A buffer given by
+    /// virtual address is translated one page at a time, as it need not be physically contiguous
+    pub pieces: Vec<(u64, u64)>,
     /// The initial contents of the buffer
     pub contents: Vec<u8>,
     /// The initial size of the buffer. This will either be only an address, in which
