@@ -173,16 +173,9 @@ impl Tsffs {
             .into_iter()
             .flatten()
             .collect::<Vec<_>>();
-        let src_file_tokens = self
-            .token_src_files
-            .iter()
-            .map(|f| {
-                tokenize_src_file(f)
-                    .map(|t| t.iter().map(|s| s.as_bytes().to_vec()).collect::<Vec<_>>())
-            })
-            .collect::<Result<Vec<_>>>()?
+        let src_file_tokens = tokenize_src_file(&self.token_src_files)?
             .into_iter()
-            .flatten()
+            .map(String::into_bytes)
             .collect::<Vec<_>>();
         let token_files = self.token_files.clone();
         let input_tokens = self.tokens.clone();

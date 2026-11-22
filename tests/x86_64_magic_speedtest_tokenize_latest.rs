@@ -50,6 +50,7 @@ fn test_x86_64_magic_speedtest_tokenize_latest() -> Result<()> {
             @tsffs.generate_random_corpus = True
             @tsffs.iteration_limit = 1000
             @tsffs.token_executables += [SIM_lookup_file("%simics%/test-fast.efi")]
+            @tsffs.token_src_files += [SIM_lookup_file("%simics%/test-fast.c")]
 
             load-target "qsp-x86/uefi-shell" namespace = qsp machine:hardware:storage:disk0:image = "minimal_boot_disk.craff"
 
