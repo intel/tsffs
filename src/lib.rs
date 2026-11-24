@@ -71,7 +71,7 @@ use source_cov::SourceCache;
 use std::{
     alloc::{alloc_zeroed, Layout},
     cell::OnceCell,
-    collections::{hash_map::Entry, BTreeSet, HashMap, HashSet},
+    collections::{hash_map::Entry, BTreeSet, HashMap, HashSet, VecDeque},
     ffi::c_void,
     fs::{create_dir_all, remove_dir_all, File},
     hash::{DefaultHasher, Hash, Hasher},
@@ -274,11 +274,14 @@ pub(crate) struct Tsffs {
     /// will start fuzzing when a harness macro is executed.
     pub stop_on_harness: bool,
     #[class(attribute(optional, default = true))]
-    /// Whether TSFFS should automatically resume simulation after preparing a repro testcase.
+    /// Whether TSFFS resumes the simulation by itself once the first testcase of a `repro`
+    /// call is prepared.
     ///
-    /// When set to `False`, TSFFS will prepare repro execution state (snapshot restore,
-    /// testcase write, timeout event, bookmark) but not call continue. This is useful when
-    /// an external debugger (for example a GDB stub) should control resume.
+    /// When set to `False`, TSFFS prepares that testcase (snapshot, testcase write, timeout
+    /// event) and leaves the simulation stopped at the harness start. This is useful when
+    /// an external debugger (for example a GDB stub) should control resume, or to start a
+    /// tool such as `collect-coverage` there. The testcases after the first one of a
+    /// directory always run without a stop in between.
     pub repro_auto_continue: bool,
     #[class(attribute(optional, default = 0))]
     /// The index number which is passed to the platform-specific magic instruction HAP
@@ -609,16 +612,10 @@ pub(crate) struct Tsffs {
     instrumented_processors: HashSet<i32>,
     /// Whether a cached-instruction callback failure has already been reported
     cached_feedback_error_reported: bool,
-    /// A testcase to use for repro
-    repro_testcase: Option<Vec<u8>>,
-    /// Whether the harness start was already prepared in repro mode: the initial snapshot
-    /// exists, the repro testcase was prepared from it and, on Simics 6 only, the `start`
-    /// bookmark is set (Simics 7 has no bookmark, the snapshot is what gets restored).
-    /// From then on a stop ends the reproduced execution instead of starting another
-    /// iteration, and reaching the harness start again does not stop the simulation.
-    repro_start_prepared: bool,
-    /// Whether the fuzzer is currently stopped in repro mode
-    stopped_for_repro: bool,
+    /// The testcases `repro` still has to run, with the file each one was read from. The
+    /// first one is the testcase being executed. `None` while fuzzing, and empty once the
+    /// last one has ended: the simulation then stays stopped and stops are not handled.
+    replay: Option<VecDeque<(PathBuf, Vec<u8>)>>,
     /// The number of iterations which have been executed so far
     iterations: usize,
     /// Whether snapshots are used. Snapshots are used on Simics 7.0.0 and later.
@@ -762,16 +759,8 @@ impl Tsffs {
 
 /// Implementations for controlling the simulation
 impl Tsffs {
-    /// Stop the simulation with a reason, except a harness start reached again in repro
-    /// mode: `repro` restores the snapshot and prepares its testcase itself, so stopping
-    /// where the restored snapshot executes the start again would cost a second resume.
+    /// Stop the simulation with a reason
     pub fn stop_simulation(&mut self, reason: StopReason) -> Result<()> {
-        if self.repro_start_prepared && reason.is_harness_start() {
-            self.execution_trace.0.clear();
-
-            return Ok(());
-        }
-
         let break_string = reason.to_string();
 
         self.last_stop_reason = Some(break_string.clone());
@@ -1022,6 +1011,11 @@ impl Tsffs {
                         })?,
                 )
                 .map_err(|_| anyhow!("Micro checkpoint index already set"))?;
+
+            // The point `reverse-to start` goes back to after a reproduced execution
+            if self.replay.is_some() {
+                free_attribute(run_command("set-bookmark start")?)?;
+            }
         }
 
         Ok(())
@@ -1068,43 +1062,32 @@ impl Tsffs {
         have
     }
 
-    /// In repro mode, record that the harness start is prepared (see
-    /// `repro_start_prepared`). Does nothing while fuzzing, or once it is recorded.
-    pub fn mark_repro_start_prepared(&mut self) -> Result<()> {
-        if self.repro_testcase.is_some() && !self.repro_start_prepared {
-            // On Simics 6 the user goes back to this point with `reverse-to start`. On
-            // Simics 7 the reverse-execution `set-bookmark` CLI command is gone; the
-            // existing `Self::SNAPSHOT_NAME` snapshot is what gets restored for repro.
-            #[cfg(simics_version = "6")]
-            free_attribute(run_command("set-bookmark start")?)?;
-            self.repro_start_prepared = true;
-        }
+    /// Resume the simulation from a stop handler
+    pub fn resume(&self) -> Result<()> {
+        debug!(self.as_conf_object(), "Resuming simulation");
+
+        run_alone(|| {
+            continue_simulation(0)?;
+            Ok(())
+        })?;
 
         Ok(())
     }
 
-    /// Return true if TSFFS should continue simulation after preparing repro state.
-    pub fn should_auto_continue_repro(&self) -> bool {
-        self.repro_testcase.is_none() || self.repro_auto_continue
-    }
-
-    /// Resume immediately after preparing repro state, or log that external resume is required.
-    pub fn continue_after_repro_prepared(&self) -> Result<()> {
-        if self.should_auto_continue_repro() {
-            debug!(self.as_conf_object(), "Resuming simulation");
-
-            run_alone(|| {
-                continue_simulation(0)?;
-                Ok(())
-            })?;
-        } else {
+    /// Resume after a harness start. `first` is whether this start prepared the first
+    /// testcase of a `repro` call or of the fuzzing loop: that one waits for an external
+    /// resume when a replay was asked not to continue by itself.
+    pub fn resume_after_start(&self, first: bool) -> Result<()> {
+        if first && self.replay.is_some() && !self.repro_auto_continue {
             info!(
                 self.as_conf_object(),
                 "Repro testcase prepared; waiting for external resume."
             );
+
+            return Ok(());
         }
 
-        Ok(())
+        self.resume()
     }
 }
 

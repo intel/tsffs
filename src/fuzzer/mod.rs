@@ -103,6 +103,11 @@ impl Tsffs {
 
     /// Start the fuzzing thread.
     pub fn start_fuzzer_thread(&mut self) -> Result<()> {
+        // A session that only reproduces testcases takes none from the fuzzer
+        if self.replay.is_some() {
+            return Ok(());
+        }
+
         if self.fuzz_thread.get().is_some() {
             warn!(self.as_conf_object(), "Fuzz thread already started but start_fuzzer_thread called. Returning without error.");
             // We can only start the thread once
@@ -575,10 +580,16 @@ impl Tsffs {
     }
 
     pub fn get_testcase(&mut self) -> Result<Testcase> {
-        let testcase = if let Some(testcase) = self.repro_testcase.as_ref() {
+        let testcase = if let Some(inputs) = self.replay.as_ref() {
             debug!(self.as_conf_object(), "Using repro testcase");
             Testcase {
-                testcase: BytesInput::new(testcase.clone()),
+                // Empty once the last testcase has ended and the user runs into the start
+                testcase: BytesInput::new(
+                    inputs
+                        .front()
+                        .map(|(_, contents)| contents.clone())
+                        .unwrap_or_default(),
+                ),
                 cmplog: false,
             }
         } else {

@@ -41,10 +41,6 @@ want it: after the campaign, while it is still running, or on another machine.
   SIMICS which firmware module is loaded at which address. The script below enables it.
   Its options are described in the [SIMICS documentation of the
   tracker](https://intel.github.io/tsffs/simics/analyzer-user-guide/uefi-fw-trk.html).
-- **The replay helper**, `examples/source-coverage/replay.py` in the TSFFS repository
-  ([view it on
-  GitHub](https://github.com/intel/tsffs/blob/main/examples/source-coverage/replay.py)),
-  copied into your SIMICS project. It defines the two functions the script calls.
 - **Your fuzzing script.** The replay session must load the target, boot it and reach
   the harness exactly as the campaign does.
 
@@ -66,9 +62,9 @@ init-tsffs
 @tsffs.timeout = 3.0
 @tsffs.exceptions = [14, 6]
 
-# Addition 1: load the helper and prepare the first input, before the target runs
-run-script "%simics%/replay.py"
-@tsffs_replay_arm("%simics%/corpus")
+# Addition 1: ask for the replay of the corpus, before the target runs
+@tsffs.repro_auto_continue = False
+@tsffs.iface.fuzz.repro("%simics%/corpus")
 
 load-target "qsp-x86/uefi-shell" namespace = qsp machine:hardware:storage:disk0:image = "minimal_boot_disk.craff"
 
@@ -98,7 +94,7 @@ run
 # Addition 3: start coverage, replay every input, stop coverage
 $cc = (collect-coverage context-query = "'UEFI Firmware'" -running)
 $cc.add-path-map "/edk2/HelloWorld" (lookup-file "%simics%/debug-info")
-@tsffs_replay("%simics%/corpus")
+run
 $cc.stop
 
 # Addition 4: write the report
@@ -116,17 +112,21 @@ Run it like a fuzzing script:
 ./simics --no-win --batch-mode coverage.simics
 ```
 
-The helper prints one line per input, then a last line with the number of inputs:
+TSFFS logs one line per input when it ends, then a last line once the replay is over:
 
 ```txt
-TSFFS_REPLAY <i>/<n> <file name> <stop reason>
-TSFFS_REPLAY done <n>
+[tsffs info] Replayed <file>: <stop reason>
+[tsffs info] Stopped for repro. Restore origin state with '<command>'
 ```
 
 The stop reason is the value of `tsffs.last_stop_reason` when the input ended. It
 contains `StopNormal` for an input that reached the stop harness, `Exception` and the
 exception number for an input that raised one of `tsffs.exceptions`, and `Timeout` for
 an input that ran longer than `tsffs.timeout`.
+
+On SIMICS 7, the SIMICS debugger also logs two `[tcf error] Will send
+'containerResumed' but expected to send 'containerSuspended'` lines between two inputs,
+as it does when `collect-coverage` runs during fuzzing. They do not affect the report.
 
 ## What the Script Does
 
@@ -137,30 +137,31 @@ and a hanging input stops at the timeout. One setting has no effect on the repla
 `tsffs.snapshot_restore_interval` (see [Campaigns That Do Not Restore Every
 Iteration](#campaigns-that-do-not-restore-every-iteration)).
 
-**`tsffs_replay_arm(directory)`** puts TSFFS in [repro mode](analyzing-results.md) with
-the first input of the directory, and sets `tsffs.repro_auto_continue = False`. Call it
-after `init-tsffs` and before the target runs. The first `run` then ends when the target
-reaches the harness: TSFFS takes its snapshot, writes the input into the target's buffer
-and leaves the simulation stopped there.
+**`tsffs.iface.fuzz.repro(directory)`** puts TSFFS in
+[repro mode](analyzing-results.md): instead of fuzzing, it runs the inputs of the
+directory. Call it after `init-tsffs` and before the target runs. With
+`tsffs.repro_auto_continue = False`, the first `run` ends when the target reaches the
+harness: TSFFS takes its snapshot, writes the first input into the target's buffer and
+leaves the simulation stopped there.
 
 **Coverage starts at that stop**, which keeps the boot out of the report. The context
 query `'UEFI Firmware'` is the name the tracker gives to the firmware in the SIMICS
 debugger (`list-debug-contexts` shows it). `-running` makes SIMICS collect on that
 context, which already exists at this point, instead of waiting for a new one.
 
-**`tsffs_replay(directory)`** runs every input, one after the other. For each one it
-calls `tsffs.iface.fuzz.repro(file)`, which restores the snapshot and writes the input,
-then resumes the simulation once. That resume ends when the input ends: at the stop
-harness, at an exception, or at the timeout. Restoring the snapshot rewinds the target,
+**The second `run`** executes every input, one after the other, and ends when the last
+one has ended. Each input ends at the stop harness, at an exception, or at the timeout.
+TSFFS then restores the snapshot, writes the next input and resumes by itself, as it
+does between two iterations while fuzzing. Restoring the snapshot rewinds the target,
 not the coverage SIMICS has collected, so the coverage of all the inputs adds up.
 
 **The inputs** are the regular files directly inside the directory, sorted by name.
 Hidden files are skipped (the fuzzer keeps `.lafl_lock` and `.metadata` files next to
 the corpus entries), and so are subdirectories. If the directory is missing or holds no
-input, both functions raise a `ValueError` naming the directory. A corpus written by a
-campaign holds every input twice, with identical bytes: once as `<hash>` and once as
-`id_<n>_<hash>`. The replay runs both, which doubles its duration and changes nothing in
-the coverage.
+input, SIMICS exits at the `repro` call with an error that names the directory
+(`No testcase to reproduce in <directory>`). A corpus written by a campaign holds
+every input twice, with identical bytes: once as `<hash>` and once as `id_<n>_<hash>`.
+The replay runs both, which doubles its duration and changes nothing in the coverage.
 
 **The report commands** add function and source line information to the collected data
 and write it in two formats: LCOV in `coverage-lcov` and HTML in `coverage-html`, both
@@ -169,16 +170,8 @@ run at the end, so a second run fails after the whole replay with
 `Error: '<...>/coverage-lcov' is a directory`. Before each run, remove the report
 directories of the previous one or choose new ones.
 
-> **Note:** TSFFS starts its fuzzer when the harness is first reached, even in a session
-> that only replays, and the fuzzer does not start without at least one input. If
-> `tsffs.corpus_directory` (by default `%simics%/corpus`) is missing or empty, SIMICS
-> exits at the harness with `No interesting cases found from inputs!`. Replaying the
-> corpus from its usual place satisfies this. Otherwise point `tsffs.corpus_directory`
-> at a directory with at least one input, or set `tsffs.generate_random_corpus = True`.
-> See [Set Corpus and Solutions
-> Directory](../config/common-options.md#set-corpus-and-solutions-directory) and [Enable
-> Random Corpus
-> Generation](../config/common-options.md#enable-random-corpus-generation).
+> **Note:** A session that calls `repro` before the target runs never starts the fuzzer,
+> so it needs no corpus directory.
 
 ## Mapping Build Paths
 
@@ -249,20 +242,22 @@ When reading either report, keep in mind:
 
 ## Choosing the Inputs to Replay
 
-`tsffs_replay` can be called several times before `$cc.stop`, and the coverage keeps
-adding up. To include the inputs that crashed or timed out, replay the solutions
-directory after the corpus:
+`repro` can be called again before `$cc.stop`, and the coverage keeps adding up. To
+include the inputs that crashed or timed out, replay the solutions directory after the
+corpus:
 
 ```simics
-@tsffs_replay("%simics%/corpus")
-@tsffs_replay("%simics%/solutions")
+run
+@tsffs.iface.fuzz.repro("%simics%/solutions")
+run
 $cc.stop
 ```
 
-Add the `solutions` line only when the campaign found solutions: on a missing or empty
-directory the `ValueError` ends the script before the report commands run. Each input
-that times out runs for `tsffs.timeout` seconds of simulated time, so a solutions
-directory full of hangs takes a while.
+The call restores the snapshot and prepares the first input of the directory, and the
+`run` after it executes them all. Add the two `solutions` lines only when the campaign
+found solutions: on a missing or empty directory SIMICS exits at the `repro` call,
+before the report commands run. Each input that times out runs for `tsffs.timeout`
+seconds of simulated time, so a solutions directory full of hangs takes a while.
 
 To get a report while the campaign is still running, copy the corpus directory and
 replay the copy in a separate SIMICS project, so that the replay session never works in
@@ -294,14 +289,14 @@ reached.
   suite with SIMICS 6.0.185, 7.70.0 and 7.113.0, and on a full debug firmware with
   SIMICS 7.113.0 only.
 - **One core.** The recipe is tested on a target with a single processor core.
-- **Harness type.** The replay loop is tested with compiled-in start harnesses, which
-  pass a buffer to TSFFS (`HARNESS_START`), and with
+- **Harness type.** The replay is tested with compiled-in start harnesses, which pass a
+  buffer to TSFFS (`HARNESS_START`), and with
   [`start_without_buffer`](../harnessing/manual.md) called from a callback on the magic
   instruction of the start harness. With `start_without_buffer`, TSFFS has no buffer to
   write the input to: the restored snapshot reaches the start again, where your script
   must call `start_without_buffer` again, as it does while fuzzing, and the call returns
-  the input given to the latest `repro`. Calling `repro` repeatedly is not tested with
-  the other [manual start methods](../harnessing/closed-box.md) of the `fuzz` interface
+  the input being replayed. The replay is not tested with the other
+  [manual start methods](../harnessing/closed-box.md) of the `fuzz` interface
   (`start_with_buffer_ptr_size_ptr`, `start_with_buffer_ptr_size_value` and
   `start_with_buffer_ptr_size_ptr_value`).
 - **No fuzzing in the same session.** As in any repro session, fuzzing cannot be resumed

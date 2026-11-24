@@ -6,23 +6,32 @@ use crate::{
     util::c_str_arg,
     ManualStartAddress, ManualStartInfo, ManualStartSize, Tsffs,
 };
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, ensure, Result};
 use libafl::inputs::HasBytesVec;
 use simics::{debug, interface, lookup_file, AsConfObject, AttrValue, ConfObject, GenericAddress};
-use std::{ffi::c_char, fs::read};
+use std::{
+    collections::VecDeque,
+    ffi::c_char,
+    fs::{read, read_dir},
+    io,
+};
 
 extern crate ffi2 as ffi;
 
 #[interface(name = "fuzz")]
 impl Tsffs {
-    /// Reproduce a test case execution. This will set the fuzzer's next input through
-    /// one execution using the provided file as input instead of taking input from the
-    /// fuzzer. It will stop execution at the first stop, timeout, or other solution
-    /// instead of continuing the fuzzing loop.
+    /// Reproduce test case executions. Instead of taking input from the fuzzer, TSFFS runs
+    /// the provided file, or every file of the provided directory, one after the other,
+    /// each from the initial snapshot. Execution stops at the stop, timeout, or other
+    /// solution of the last test case instead of continuing the fuzzing loop. How each
+    /// test case ended is logged.
+    ///
+    /// The test cases of a directory are the regular files directly inside it, sorted by
+    /// name. Hidden files are skipped: the fuzzer keeps lock and metadata files next to the
+    /// corpus entries.
     ///
     /// This can be called during configuration *or* after stopping the fuzzer once a solution
-    /// has been found. It can be called again after a reproduced execution has stopped, to
-    /// run another test case from the initial snapshot.
+    /// has been found. It can be called again after the reproduced executions have stopped.
     pub fn repro(&mut self, testcase_file: *mut c_char) -> Result<()> {
         // SAFETY: Simics passes NULL or a NUL-terminated string valid for this call
         let simics_path = unsafe { c_str_arg(testcase_file, "testcase_file") }?;
@@ -31,39 +40,64 @@ impl Tsffs {
 
         debug!(self.as_conf_object(), "repro({})", testcase_file.display());
 
-        let contents = read(&testcase_file).map_err(|e| {
-            anyhow!(
-                "Failed to read repro testcase file {}: {}",
-                testcase_file.display(),
-                e
-            )
-        })?;
+        let mut files = if testcase_file.is_dir() {
+            let mut files = read_dir(&testcase_file)?
+                .map(|entry| entry.map(|entry| entry.path()))
+                .collect::<io::Result<Vec<_>>>()?;
 
-        self.repro_testcase = Some(contents);
+            files.retain(|file| {
+                file.is_file()
+                    && !file
+                        .file_name()
+                        .is_some_and(|name| name.to_string_lossy().starts_with('.'))
+            });
+
+            files
+        } else {
+            vec![testcase_file.clone()]
+        };
+
+        files.sort();
+
+        let inputs = files
+            .into_iter()
+            .map(|file| {
+                let contents = read(&file).map_err(|e| {
+                    anyhow!(
+                        "Failed to read repro testcase file {}: {}",
+                        file.display(),
+                        e
+                    )
+                })?;
+
+                Ok((file, contents))
+            })
+            .collect::<Result<VecDeque<_>>>()?;
+
+        ensure!(
+            !inputs.is_empty(),
+            "No testcase to reproduce in {}",
+            testcase_file.display()
+        );
+
+        self.replay = Some(inputs);
 
         if self.have_initial_snapshot() {
             // The harness start was already reached, while fuzzing or in an earlier repro
-            // run. That run left the stop handlers disabled: enable them again.
-            self.stopped_for_repro = false;
+            // run: run the first testcase from the snapshot, as the harness start would.
             // What the previous execution reported does not describe this testcase
             self.last_exception_processor_number = None;
             self.last_stop_reason = None;
             // Restoring the snapshot also restores this object's attributes: keep the
             // `repro_auto_continue` the user has set by now.
             let repro_auto_continue = self.repro_auto_continue;
-            self.restore_initial_snapshot()?;
+            self.start_next_execution(
+                true,
+                "No start buffer, the harness start hands over the testcase.",
+            )?;
             self.repro_auto_continue = repro_auto_continue;
-
-            // With `start_without_buffer` there is no buffer to write: the restored
-            // snapshot executes the harness start again, which hands over this testcase.
-            if self.start_info.get().is_some() {
-                self.get_and_write_testcase()?;
-            }
-
-            self.post_timeout_event()?;
-            // The start the restored snapshot executes again must not stop a second time
-            self.mark_repro_start_prepared()?;
-            self.continue_after_repro_prepared()?;
+            self.execution_trace.0.clear();
+            self.resume_after_start(true)?;
         }
 
         Ok(())
@@ -220,8 +254,7 @@ impl Tsffs {
     ///
     /// TSFFS has no buffer to write the next testcase to, so this method is called again
     /// each time the restored snapshot reaches the start, and returns that execution's
-    /// testcase: the next one from the fuzzer, or in repro mode the one of the latest
-    /// `repro` call.
+    /// testcase: the next one from the fuzzer, or in repro mode the one being reproduced.
     pub fn start_without_buffer(&mut self, cpu: *mut ConfObject) -> Result<AttrValue> {
         if !self.have_initial_snapshot() {
             // Start the fuzzer thread early so we can get a testcase

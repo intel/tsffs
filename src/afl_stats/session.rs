@@ -17,7 +17,7 @@ impl Tsffs {
     /// `plot_data`) only warn and run without statistics.
     pub fn start_afl_stats(&mut self) -> Result<()> {
         // A repro run must not lock, rotate or overwrite the campaign's Instance
-        if !self.afl_stats || self.afl_writer.is_some() || self.repro_testcase.is_some() {
+        if !self.afl_stats || self.afl_writer.is_some() || self.replay.is_some() {
             return Ok(());
         }
 

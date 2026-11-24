@@ -37,15 +37,9 @@ const NO_BUFFER_HARNESS: &str = indoc! {r#"
     simics.SIM_hap_add_callback("Core_Magic_Instruction", on_magic, None)
 "#};
 
-/// The stop reason TSFFS reports for a page fault, as `last_stop_reason` serializes it
-const PAGE_FAULT: &str = r#"{"Solution":{"kind":{"Exception":{"number":14}}}}"#;
-
-/// The stop reason TSFFS reports for an invalid opcode
-const INVALID_OPCODE: &str = r#"{"Solution":{"kind":{"Exception":{"number":6}}}}"#;
-
-/// Replays a directory of inputs with `repro` when the harness starts with
-/// `start_without_buffer`: every input is handed to the harness and runs from the
-/// snapshot, and one resume per input ends at that input's own stop.
+/// Replays a directory of testcases with `repro` when the harness starts with
+/// `start_without_buffer`: TSFFS has no buffer to write to, so each testcase is handed
+/// over where the restored snapshot reaches the start again, and runs to its own stop.
 #[test]
 #[cfg_attr(miri, ignore)]
 fn test_x86_64_edk2_repro_no_buffer_latest() -> Result<()> {
@@ -75,13 +69,9 @@ fn test_x86_64_edk2_repro_no_buffer_latest() -> Result<()> {
             .join("tests")
             .join("rsrc")
             .join("x86_64-uefi-edk2")])
-        // The first byte of an input selects the path of the test application: 'A' is an
+        // The first byte of a testcase selects the path of the test application: 'A' is an
         // invalid opcode, 'B' a hang, 'C' a page fault, anything else returns normally.
         .files([
-            (
-                "replay.py".to_string(),
-                include_bytes!("../examples/source-coverage/replay.py").to_vec(),
-            ),
             (
                 "no_buffer_harness.py".to_string(),
                 NO_BUFFER_HARNESS.as_bytes().to_vec(),
@@ -102,11 +92,10 @@ fn test_x86_64_edk2_repro_no_buffer_latest() -> Result<()> {
             @tsffs.stop_on_harness = True
             @tsffs.timeout = 3.0
             @tsffs.exceptions = [14, 6]
-            @tsffs.generate_random_corpus = True
 
-            run-script "%simics%/replay.py"
             run-script "%simics%/no_buffer_harness.py"
-            @tsffs_replay_arm("%simics%/replay-inputs")
+            @tsffs.repro_auto_continue = False
+            @tsffs.iface.fuzz.repro("%simics%/replay-inputs")
 
             load-target "qsp-x86/uefi-shell" namespace = qsp machine:hardware:storage:disk0:image = "minimal_boot_disk.craff"
 
@@ -129,46 +118,62 @@ fn test_x86_64_edk2_repro_no_buffer_latest() -> Result<()> {
             @guard.daemon = True
             @guard.start()
 
-            # Ends at the harness start: no input has run yet.
+            # Ends at the harness start: no testcase has run yet.
             run
-            @print(f"TSFFS_ARMED {tsffs.last_stop_reason}")
+            @print(f"TSFFS_EVENT at start {tsffs.last_stop_reason}")
 
-            @tsffs_replay("%simics%/replay-inputs")
+            # Runs every testcase of the directory
+            run
+            @print("TSFFS_EVENT directory ended")
         "#})?;
 
     let output_str = String::from_utf8_lossy(&output.stdout);
 
     println!("{output_str}");
 
-    // With `repro_auto_continue = False`, which the helper sets, the first run stops at
-    // the harness start like the other harnesses do, before the first input runs.
-    assert!(
-        output_str.contains(r#"TSFFS_ARMED {"ManualStartWithoutBuffer":{}}"#),
-        "The run that reaches the harness did not end at the start_without_buffer stop"
+    // What the session did, in order: the lines the script prints and the `Replayed
+    // <file>: <stop reason>` line TSFFS logs when a testcase ends.
+    let events = output_str
+        .lines()
+        .filter_map(|line| {
+            line.split_once("TSFFS_EVENT ")
+                .or_else(|| line.split_once("Replayed "))
+                .map(|(_, event)| event.trim_end())
+        })
+        .collect::<Vec<_>>();
+
+    // Each expected event is given by the parts its line must contain
+    let expected = [
+        // With `repro_auto_continue = False` the first run ends at the harness start,
+        // like with the other harnesses
+        ["at start", "ManualStartWithoutBuffer"],
+        ["replay-inputs/1_default: ", "StopNormal"],
+        [
+            "replay-inputs/2_pagefault: ",
+            r#"{"Exception":{"number":14}}"#,
+        ],
+        ["replay-inputs/3_timeout: ", "Timeout"],
+        [
+            "replay-inputs/4_invalid_opcode: ",
+            r#"{"Exception":{"number":6}}"#,
+        ],
+        // The start the restored snapshot reaches again does not end the run
+        ["directory ended", ""],
+    ];
+
+    assert_eq!(
+        events.len(),
+        expected.len(),
+        "Expected {} events, got {events:#?}",
+        expected.len()
     );
 
-    for (input, expected) in [
-        ("1/4 1_default", "StopNormal"),
-        ("2/4 2_pagefault", PAGE_FAULT),
-        ("3/4 3_timeout", "Timeout"),
-        ("4/4 4_invalid_opcode", INVALID_OPCODE),
-    ] {
-        let prefix = format!("TSFFS_REPLAY {input} ");
-        let stop_reason = output_str
-            .lines()
-            .find_map(|line| line.split(&prefix).nth(1))
-            .unwrap_or_else(|| panic!("No '{prefix}' line: the input was not replayed"));
-
+    for (event, parts) in events.iter().zip(&expected) {
         assert!(
-            stop_reason.contains(expected),
-            "Input {input} stopped with '{stop_reason}', expected a stop reason with '{expected}'"
+            parts.iter().all(|part| event.contains(part)),
+            "Event '{event}' does not contain {parts:?}, events: {events:#?}"
         );
     }
-
-    assert!(
-        output_str.contains("TSFFS_REPLAY done 4"),
-        "The replay did not run to the end of the directory"
-    );
 
     Ok(())
 }

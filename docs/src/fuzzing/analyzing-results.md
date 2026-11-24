@@ -4,7 +4,8 @@ Once a solution is found, the fuzzer can be run in *repro* mode which will:
 
 * Mark a restore point at the moment the testcase is written (a bookmark on SIMICS 6,
   the initial snapshot on SIMICS 7)
-* Write only one testcase, the bytes from the specified file
+* Write only the testcase from the specified file, or one after the other the testcases
+  of the specified directory
 * Stop without resetting to the initial snapshot
 
 Repro mode can be run after stopping execution, or before executing the fuzzing loop.
@@ -28,9 +29,22 @@ details.
 
 ## Reproducing Several Testcases in One Session
 
-`repro` can be called again once a reproduced execution has stopped, as many times as
-needed, to run another testcase from the same starting point. This also works in a
-session that never fuzzed (one where `repro` was called before the target ran).
+`repro` also takes a directory. TSFFS then runs every testcase of it, one after the
+other, each from the initial snapshot, logs how each one ended
+(`Replayed <file>: <stop reason>`) and stops at the end of the last one:
+
+```python
+@tsffs.iface.fuzz.repro("%simics%/solutions")
+```
+
+The testcases are the regular files directly inside the directory, sorted by name,
+without the hidden files the fuzzer keeps next to them.
+[Source Coverage for UEFI Targets](source-coverage.md) uses this to replay a whole
+corpus while SIMICS collects source coverage.
+
+`repro` can also be called again once the reproduced executions have stopped, as many
+times as needed, with another file or directory. This also works in a session that never
+fuzzed (one where `repro` was called before the target ran).
 
 Each new call restores the initial snapshot and writes the new testcase:
 
@@ -50,15 +64,8 @@ performs it once the command that called `repro` has returned. So:
   the result would read it before the testcase has run.
 
 With `repro_auto_continue = False`, nothing is queued. The simulation stays stopped with
-the testcase written, and one resume (`run` or `continue`) runs that testcase to its
-end: the stop harness, a solution such as an exception, or the timeout. The restored
-snapshot executes the start harness again, but that does not stop the simulation a
-second time.
-
-This is the setting for a loop over a directory of testcases, in a SIMICS script or in
-Python: set `repro_auto_continue = False`, then for each file call `repro` and resume
-once (from Python, `cli.quiet_run_command("run")`). The example script of
-[Source Coverage for UEFI Targets](source-coverage.md) does exactly that to replay a
-whole corpus while SIMICS collects source coverage.
+the first testcase written, and one resume (`run` or `continue`) runs the testcases to
+the end of the last one: the stop harness, a solution such as an exception, or the
+timeout.
 
 Fuzzing cannot be resumed in a session that has entered repro mode.

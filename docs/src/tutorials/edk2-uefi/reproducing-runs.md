@@ -39,8 +39,8 @@ simics> @tsffs.iface.fuzz.repro("%simics%/corpus/4385dc33f608888d")
 > fuzzing after entering repro mode due to inconsistencies with the simulated system
 > clock.
 
-Each call restores the state at the harness and runs the testcase you give it. A script
-can do the same for every file of the corpus, which is how a source coverage report of a
+Each call restores the state at the harness and runs the testcase you give it. Given a
+directory, `repro` runs every testcase of it, which is how a source coverage report of a
 campaign is produced: see
 [Source Coverage for UEFI Targets](../../fuzzing/source-coverage.md).
 

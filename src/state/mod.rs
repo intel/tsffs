@@ -49,22 +49,6 @@ pub(crate) enum StopReason {
     },
 }
 
-impl StopReason {
-    /// Whether this reason is the harness start being reached, by a start magic
-    /// instruction or by one of the manual start methods
-    pub(crate) fn is_harness_start(&self) -> bool {
-        matches!(
-            self,
-            StopReason::Magic {
-                magic_number: MagicNumber::StartBufferPtrSizePtr
-                    | MagicNumber::StartBufferPtrSizeVal
-                    | MagicNumber::StartBufferPtrSizePtrVal
-            } | StopReason::ManualStart { .. }
-                | StopReason::ManualStartWithoutBuffer { .. }
-        )
-    }
-}
-
 impl Display for StopReason {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", to_string(self).unwrap_or_default())

@@ -40,7 +40,9 @@ enum SnapshotRestoreMode {
 
 impl Tsffs {
     fn on_simulation_stopped_magic_start(&mut self, magic_number: MagicNumber) -> Result<()> {
-        if !self.have_initial_snapshot() {
+        let first = !self.have_initial_snapshot();
+
+        if first {
             let start_processor = self
                 .start_processor()
                 .ok_or_else(|| anyhow!("No start processor"))?;
@@ -94,15 +96,38 @@ impl Tsffs {
         }
 
         self.execution_trace.0.clear();
-        self.mark_repro_start_prepared()?;
 
-        self.continue_after_repro_prepared()?;
+        self.resume_after_start(first)?;
 
         Ok(())
     }
 
     fn on_simulation_stopped_magic_assert(&mut self) -> Result<()> {
         self.on_simulation_stopped_solution(SolutionKind::Manual)
+    }
+
+    /// Set up the next execution: restore the initial snapshot if asked to, write the next
+    /// testcase when there is a buffer to write it to, and arm the timeout.
+    pub fn start_next_execution(
+        &mut self,
+        restore_snapshot: bool,
+        missing_start_info_message: &str,
+    ) -> Result<()> {
+        if restore_snapshot {
+            self.restore_initial_snapshot()?;
+        }
+
+        // Reset AFL edge chaining state for the next execution.
+        self.coverage_prev_loc = 0;
+
+        // Persist testcase bytes when start metadata is available.
+        if self.start_info.get().is_some() {
+            self.get_and_write_testcase()?;
+        } else {
+            debug!(self.as_conf_object(), "{missing_start_info_message}");
+        }
+
+        self.post_timeout_event()
     }
 
     fn finish_iteration(
@@ -112,6 +137,43 @@ impl Tsffs {
         snapshot_restore_mode: SnapshotRestoreMode,
         missing_start_info_message: &str,
     ) -> Result<IterationControl> {
+        // A replay has no fuzzer to report to and no statistics: it logs how the testcase
+        // ended, then runs the next one from the snapshot or stays stopped after the last.
+        if let Some(inputs) = self.replay.as_mut() {
+            let (input, _) = inputs
+                .pop_front()
+                .ok_or_else(|| anyhow!("No replayed testcase to finish"))?;
+            let last = inputs.is_empty();
+
+            // Set the log level so these messages always print
+            if log_level(self.as_conf_object_mut())? < LogLevel::Info as u32 {
+                set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
+            }
+
+            info!(
+                self.as_conf_object(),
+                "Replayed {}: {}",
+                input.display(),
+                self.last_stop_reason.as_deref().unwrap_or_default()
+            );
+
+            if last {
+                info!(
+                    self.as_conf_object(),
+                    "Stopped for repro. Restore origin state with '{}'",
+                    Tsffs::repro_restore_command()
+                );
+
+                return Ok(IterationControl::StopRequested);
+            }
+
+            self.last_exception_processor_number = None;
+            self.last_stop_reason = None;
+            self.start_next_execution(true, missing_start_info_message)?;
+
+            return Ok(IterationControl::Continue);
+        }
+
         // 1) Count this iteration as complete.
         self.iterations += 1;
 
@@ -188,26 +250,17 @@ impl Tsffs {
         // 5) Publish this iteration result back to the fuzzer loop.
         fuzzer_tx.send(exit_kind)?;
 
-        // 6) Restore to initial snapshot according to the stop-specific restore policy.
-        if match snapshot_restore_mode {
-            SnapshotRestoreMode::PolicyControlled => self.should_restore_snapshot_this_iteration(),
-            SnapshotRestoreMode::Always => true,
-        } {
-            self.restore_initial_snapshot()?;
-        }
-
-        // 7) Reset AFL edge chaining state for the next execution.
-        self.coverage_prev_loc = 0;
-
-        // 8) Persist testcase bytes when start metadata is available.
-        if self.start_info.get().is_some() {
-            self.get_and_write_testcase()?;
-        } else {
-            debug!(self.as_conf_object(), "{missing_start_info_message}");
-        }
-
-        // 9) Arm timeout for the next iteration run.
-        self.post_timeout_event()?;
+        // 6) Restore to initial snapshot according to the stop-specific restore policy,
+        //    write the next testcase and arm its timeout.
+        self.start_next_execution(
+            match snapshot_restore_mode {
+                SnapshotRestoreMode::PolicyControlled => {
+                    self.should_restore_snapshot_this_iteration()
+                }
+                SnapshotRestoreMode::Always => true,
+            },
+            missing_start_info_message,
+        )?;
 
         Ok(IterationControl::Continue)
     }
@@ -220,24 +273,6 @@ impl Tsffs {
             );
         } else {
             self.cancel_timeout_event()?;
-
-            if self.repro_start_prepared {
-                self.stopped_for_repro = true;
-                let current_log_level = log_level(self.as_conf_object_mut())?;
-
-                if current_log_level < LogLevel::Info as u32 {
-                    set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
-                }
-
-                info!(
-                    self.as_conf_object(),
-                    "Stopped for repro. Restore origin state with '{}'",
-                    Tsffs::repro_restore_command()
-                );
-
-                // Skip the shutdown and continue, we are finished here
-                return Ok(());
-            }
 
             // Normal stop path: report successful completion without solution/timeout counters.
             if let IterationControl::StopRequested = self.finish_iteration(
@@ -258,7 +293,7 @@ impl Tsffs {
             self.save_symbolic_coverage()?;
         }
 
-        self.continue_after_repro_prepared()?;
+        self.resume()?;
 
         Ok(())
     }
@@ -282,7 +317,9 @@ impl Tsffs {
         processor: *mut ConfObject,
         info: ManualStartInfo,
     ) -> Result<()> {
-        if !self.have_initial_snapshot() {
+        let first = !self.have_initial_snapshot();
+
+        if first {
             self.add_processor(processor, true)?;
 
             let start_info = self
@@ -325,9 +362,8 @@ impl Tsffs {
         }
 
         self.execution_trace.0.clear();
-        self.mark_repro_start_prepared()?;
 
-        self.continue_after_repro_prepared()?;
+        self.resume_after_start(first)?;
 
         Ok(())
     }
@@ -336,7 +372,9 @@ impl Tsffs {
         &mut self,
         processor: *mut ConfObject,
     ) -> Result<()> {
-        if !self.have_initial_snapshot() {
+        let first = !self.have_initial_snapshot();
+
+        if first {
             self.start_fuzzer_thread()?;
             self.add_processor(processor, true)?;
 
@@ -367,9 +405,8 @@ impl Tsffs {
         }
 
         self.execution_trace.0.clear();
-        self.mark_repro_start_prepared()?;
 
-        self.continue_after_repro_prepared()?;
+        self.resume_after_start(first)?;
 
         Ok(())
     }
@@ -382,24 +419,6 @@ impl Tsffs {
             );
         } else {
             self.cancel_timeout_event()?;
-
-            if self.repro_start_prepared {
-                self.stopped_for_repro = true;
-                let current_log_level = log_level(self.as_conf_object_mut())?;
-
-                if current_log_level < LogLevel::Info as u32 {
-                    set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
-                }
-
-                info!(
-                    self.as_conf_object(),
-                    "Stopped for repro. Restore origin state with '{}'",
-                    Tsffs::repro_restore_command()
-                );
-
-                // Skip the shutdown and continue, we are finished here
-                return Ok(());
-            }
 
             // Manual stop behaves like normal completion for accounting purposes.
             if let IterationControl::StopRequested = self.finish_iteration(
@@ -438,24 +457,6 @@ impl Tsffs {
             );
         } else {
             self.cancel_timeout_event()?;
-
-            if self.repro_start_prepared {
-                self.stopped_for_repro = true;
-                let current_log_level = log_level(self.as_conf_object_mut())?;
-
-                if current_log_level < LogLevel::Info as u32 {
-                    set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
-                }
-
-                info!(
-                    self.as_conf_object(),
-                    "Stopped for repro. Restore origin state with '{}'",
-                    Tsffs::repro_restore_command()
-                );
-
-                // Skip the shutdown and continue, we are finished here
-                return Ok(());
-            }
 
             let (exit_kind, iteration_count) = match kind {
                 SolutionKind::Timeout => (ExitKind::Timeout, IterationCount::Timeout),
@@ -545,10 +546,10 @@ impl Tsffs {
                 // Fuzzing ends here: end the iteration in flight so that the fuzzer thread
                 // stops waiting for it
                 self.cancel_timeout_event()?;
-                self.fuzzer_tx
-                    .get()
-                    .ok_or_else(|| anyhow!("No fuzzer tx channel"))?
-                    .send(ExitKind::Ok)?;
+                // A session that only replays has no fuzzer thread
+                if let Some(fuzzer_tx) = self.fuzzer_tx.get() {
+                    fuzzer_tx.send(ExitKind::Ok)?;
+                }
                 self.send_shutdown()?;
             }
             // Otherwise the iteration in flight stays pending and its timeout stays armed: when
@@ -562,8 +563,8 @@ impl Tsffs {
 
     /// Called on core simulation stopped HAP
     pub fn on_simulation_stopped(&mut self) -> Result<()> {
-        if self.stopped_for_repro {
-            // If we are stopped for repro, we do nothing on this HAP!
+        if self.replay.as_ref().is_some_and(|inputs| inputs.is_empty()) {
+            // The replay has ended: the simulation is the user's, we do nothing on this HAP!
             return Ok(());
         }
 
