@@ -1,3 +1,4 @@
 .ninja_log
 test.efi
 *.craff
+debug-info/

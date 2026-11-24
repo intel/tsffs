@@ -23,6 +23,7 @@
   - [Monitoring a Campaign](fuzzing/monitoring-a-campaign.md)
   - [Optimizing For Fuzzing](fuzzing/optimizing-for-fuzzing.md)
   - [Analyzing Results](fuzzing/analyzing-results.md)
+  - [Source Coverage for UEFI Targets](fuzzing/source-coverage.md)
 
 ## Tutorials
 

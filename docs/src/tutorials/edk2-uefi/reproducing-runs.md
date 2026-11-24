@@ -35,8 +35,14 @@ simics> @tsffs.iface.fuzz.repro("%simics%/corpus/4385dc33f608888d")
 ```
 
 > **Note:** You can change the testcase you are examining by choosing a different one
-> with `tsffs.iface.fuzz.repro`, but you cannot resume fuzzing after entering repro
-> mode due to inconsistencies with the simulated system clock.
+> with `tsffs.iface.fuzz.repro`, as many times as you like, but you cannot resume
+> fuzzing after entering repro mode due to inconsistencies with the simulated system
+> clock.
+
+Each call restores the state at the harness and runs the testcase you give it. Given a
+directory, `repro` runs every testcase of it, which is how a source coverage report of a
+campaign is produced: see
+[Source Coverage for UEFI Targets](../../fuzzing/source-coverage.md).
 
 ## Inspecting State with SIMICS Reverse Debugging
 
@@ -51,14 +57,19 @@ version you are running:
   ```
 
 - On **SIMICS 7**, the `set-bookmark` / `reverse-to` commands have been removed. TSFFS
-  uses a snapshot named `tsffs-origin-snapshot` instead. Restore it with:
+  uses a snapshot named `tsffs-origin-snapshot` instead, taken at the harness *before*
+  the testcase is written. To go back to the start with the testcase written, call
+  `repro` again with the same file:
 
   ```txt
-  simics> restore-snapshot tsffs-origin-snapshot
+  simics> @tsffs.repro_auto_continue = False
+  simics> @tsffs.iface.fuzz.repro("%simics%/corpus/4385dc33f608888d")
   ```
 
-TSFFS prints the exact command to use in the `Stopped for repro.` log line, so you can
-just copy it from there.
+  TSFFS restores the snapshot, writes the testcase and leaves the simulation stopped at
+  the harness. Restoring the snapshot by hand (`restore-snapshot tsffs-origin-snapshot`,
+  the command of the `Stopped for repro.` log line) gives the state without the
+  testcase: resuming from there runs the target on its own buffer contents.
 
 From here, you can examine memory and registers (with `x`), single step execution (`si`)
 and more! Check out the SIMICS documentation and explore all the deep debugging
@@ -93,6 +104,10 @@ resume manually.
 
   Print(L"Input: %p Size: %d\n", Input, InputSize);
 ```
+
+The same holds when you call `repro` again later in the session with another testcase:
+TSFFS restores the state at the harness, writes the new testcase and waits. One resume
+then runs that testcase.
 
 **Step 2: Start the GDB stub.**
 

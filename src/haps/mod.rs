@@ -40,7 +40,9 @@ enum SnapshotRestoreMode {
 
 impl Tsffs {
     fn on_simulation_stopped_magic_start(&mut self, magic_number: MagicNumber) -> Result<()> {
-        if !self.have_initial_snapshot() {
+        let first = !self.have_initial_snapshot();
+
+        if first {
             let start_processor = self
                 .start_processor()
                 .ok_or_else(|| anyhow!("No start processor"))?;
@@ -94,15 +96,42 @@ impl Tsffs {
         }
 
         self.execution_trace.0.clear();
-        self.save_repro_bookmark_if_needed()?;
 
-        self.continue_after_repro_prepared()?;
+        self.resume_after_start(first)?;
 
         Ok(())
     }
 
     fn on_simulation_stopped_magic_assert(&mut self) -> Result<()> {
         self.on_simulation_stopped_solution(SolutionKind::Manual)
+    }
+
+    /// Set up the next execution: restore the initial snapshot if asked to, write the next
+    /// testcase when there is a buffer to write it to, and arm the timeout.
+    pub fn start_next_execution(
+        &mut self,
+        restore_snapshot: bool,
+        missing_start_info_message: &str,
+    ) -> Result<()> {
+        if restore_snapshot {
+            // Restoring the snapshot also restores this object's attributes: keep the
+            // `repro_auto_continue` the user has set by now.
+            let repro_auto_continue = self.repro_auto_continue;
+            self.restore_initial_snapshot()?;
+            self.repro_auto_continue = repro_auto_continue;
+        }
+
+        // Reset AFL edge chaining state for the next execution.
+        self.coverage_prev_loc = 0;
+
+        // Persist testcase bytes when start metadata is available.
+        if self.start_info.get().is_some() {
+            self.get_and_write_testcase()?;
+        } else {
+            debug!(self.as_conf_object(), "{missing_start_info_message}");
+        }
+
+        self.post_timeout_event()
     }
 
     fn finish_iteration(
@@ -112,6 +141,52 @@ impl Tsffs {
         snapshot_restore_mode: SnapshotRestoreMode,
         missing_start_info_message: &str,
     ) -> Result<IterationControl> {
+        // A replay has no fuzzer to report to and no statistics: it logs how the testcase
+        // ended, then runs the next one from the snapshot or stays stopped after the last.
+        if let Some(inputs) = self.replay.as_mut() {
+            let input = inputs
+                .pop_front()
+                .ok_or_else(|| anyhow!("No replayed testcase to finish"))?;
+            let last = inputs.is_empty();
+
+            // Set the log level so these messages always print
+            if log_level(self.as_conf_object_mut())? < LogLevel::Info as u32 {
+                set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
+            }
+
+            info!(
+                self.as_conf_object(),
+                "Replayed {}: {}",
+                input.display(),
+                self.last_stop_reason.as_deref().unwrap_or_default()
+            );
+
+            if last {
+                // The stop handlers save these for a testcase that is followed by another
+                if self.save_all_execution_traces {
+                    self.save_execution_trace()?;
+                }
+
+                if self.symbolic_coverage {
+                    self.save_symbolic_coverage()?;
+                }
+
+                info!(
+                    self.as_conf_object(),
+                    "Stopped for repro. Restore origin state with '{}'",
+                    Tsffs::repro_restore_command()
+                );
+
+                return Ok(IterationControl::StopRequested);
+            }
+
+            self.last_exception_processor_number = None;
+            self.last_stop_reason = None;
+            self.start_next_execution(true, missing_start_info_message)?;
+
+            return Ok(IterationControl::Continue);
+        }
+
         // 1) Count this iteration as complete.
         self.iterations += 1;
 
@@ -188,26 +263,17 @@ impl Tsffs {
         // 5) Publish this iteration result back to the fuzzer loop.
         fuzzer_tx.send(exit_kind)?;
 
-        // 6) Restore to initial snapshot according to the stop-specific restore policy.
-        if match snapshot_restore_mode {
-            SnapshotRestoreMode::PolicyControlled => self.should_restore_snapshot_this_iteration(),
-            SnapshotRestoreMode::Always => true,
-        } {
-            self.restore_initial_snapshot()?;
-        }
-
-        // 7) Reset AFL edge chaining state for the next execution.
-        self.coverage_prev_loc = 0;
-
-        // 8) Persist testcase bytes when start metadata is available.
-        if self.start_info.get().is_some() {
-            self.get_and_write_testcase()?;
-        } else {
-            debug!(self.as_conf_object(), "{missing_start_info_message}");
-        }
-
-        // 9) Arm timeout for the next iteration run.
-        self.post_timeout_event()?;
+        // 6) Restore to initial snapshot according to the stop-specific restore policy,
+        //    write the next testcase and arm its timeout.
+        self.start_next_execution(
+            match snapshot_restore_mode {
+                SnapshotRestoreMode::PolicyControlled => {
+                    self.should_restore_snapshot_this_iteration()
+                }
+                SnapshotRestoreMode::Always => true,
+            },
+            missing_start_info_message,
+        )?;
 
         Ok(IterationControl::Continue)
     }
@@ -220,24 +286,6 @@ impl Tsffs {
             );
         } else {
             self.cancel_timeout_event()?;
-
-            if self.repro_bookmark_set {
-                self.stopped_for_repro = true;
-                let current_log_level = log_level(self.as_conf_object_mut())?;
-
-                if current_log_level < LogLevel::Info as u32 {
-                    set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
-                }
-
-                info!(
-                    self.as_conf_object(),
-                    "Stopped for repro. Restore origin state with '{}'",
-                    Tsffs::repro_restore_command()
-                );
-
-                // Skip the shutdown and continue, we are finished here
-                return Ok(());
-            }
 
             // Normal stop path: report successful completion without solution/timeout counters.
             if let IterationControl::StopRequested = self.finish_iteration(
@@ -258,7 +306,7 @@ impl Tsffs {
             self.save_symbolic_coverage()?;
         }
 
-        self.continue_after_repro_prepared()?;
+        self.resume()?;
 
         Ok(())
     }
@@ -282,7 +330,9 @@ impl Tsffs {
         processor: *mut ConfObject,
         info: ManualStartInfo,
     ) -> Result<()> {
-        if !self.have_initial_snapshot() {
+        let first = !self.have_initial_snapshot();
+
+        if first {
             self.add_processor(processor, true)?;
 
             let start_info = self
@@ -325,9 +375,8 @@ impl Tsffs {
         }
 
         self.execution_trace.0.clear();
-        self.save_repro_bookmark_if_needed()?;
 
-        self.continue_after_repro_prepared()?;
+        self.resume_after_start(first)?;
 
         Ok(())
     }
@@ -336,7 +385,9 @@ impl Tsffs {
         &mut self,
         processor: *mut ConfObject,
     ) -> Result<()> {
-        if !self.have_initial_snapshot() {
+        let first = !self.have_initial_snapshot();
+
+        if first {
             self.start_fuzzer_thread()?;
             self.add_processor(processor, true)?;
 
@@ -367,14 +418,8 @@ impl Tsffs {
         }
 
         self.execution_trace.0.clear();
-        self.save_repro_bookmark_if_needed()?;
 
-        debug!(self.as_conf_object(), "Resuming simulation");
-
-        run_alone(|| {
-            continue_simulation(0)?;
-            Ok(())
-        })?;
+        self.resume_after_start(first)?;
 
         Ok(())
     }
@@ -387,24 +432,6 @@ impl Tsffs {
             );
         } else {
             self.cancel_timeout_event()?;
-
-            if self.repro_bookmark_set {
-                self.stopped_for_repro = true;
-                let current_log_level = log_level(self.as_conf_object_mut())?;
-
-                if current_log_level < LogLevel::Info as u32 {
-                    set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
-                }
-
-                info!(
-                    self.as_conf_object(),
-                    "Stopped for repro. Restore origin state with '{}'",
-                    Tsffs::repro_restore_command()
-                );
-
-                // Skip the shutdown and continue, we are finished here
-                return Ok(());
-            }
 
             // Manual stop behaves like normal completion for accounting purposes.
             if let IterationControl::StopRequested = self.finish_iteration(
@@ -443,24 +470,6 @@ impl Tsffs {
             );
         } else {
             self.cancel_timeout_event()?;
-
-            if self.repro_bookmark_set {
-                self.stopped_for_repro = true;
-                let current_log_level = log_level(self.as_conf_object_mut())?;
-
-                if current_log_level < LogLevel::Info as u32 {
-                    set_log_level(self.as_conf_object_mut(), LogLevel::Info)?;
-                }
-
-                info!(
-                    self.as_conf_object(),
-                    "Stopped for repro. Restore origin state with '{}'",
-                    Tsffs::repro_restore_command()
-                );
-
-                // Skip the shutdown and continue, we are finished here
-                return Ok(());
-            }
 
             let (exit_kind, iteration_count) = match kind {
                 SolutionKind::Timeout => (ExitKind::Timeout, IterationCount::Timeout),
@@ -546,7 +555,8 @@ impl Tsffs {
                 self.iterations as f32 / duration.as_secs_f32()
             );
 
-            if self.shutdown_on_stop_without_reason {
+            // A replay is not fuzzing: its testcase stays pending with its timeout armed
+            if self.shutdown_on_stop_without_reason && self.replay.is_none() {
                 // Fuzzing ends here: end the iteration in flight so that the fuzzer thread
                 // stops waiting for it
                 self.cancel_timeout_event()?;
@@ -567,8 +577,11 @@ impl Tsffs {
 
     /// Called on core simulation stopped HAP
     pub fn on_simulation_stopped(&mut self) -> Result<()> {
-        if self.stopped_for_repro {
-            // If we are stopped for repro, we do nothing on this HAP!
+        if self.replay.as_ref().is_some_and(|inputs| inputs.is_empty()) {
+            // The replay has ended: the simulation is the user's, we do nothing on this
+            // HAP, and the reason of this stop must not be taken for a later one
+            self.stop_reason = None;
+
             return Ok(());
         }
 
