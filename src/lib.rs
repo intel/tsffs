@@ -762,22 +762,11 @@ impl Tsffs {
 
 /// Implementations for controlling the simulation
 impl Tsffs {
-    /// Stop the simulation with a reason.
-    ///
-    /// Every magic harness and every interface method that starts, stops or reports a
-    /// solution goes through here, so the one reason that must not stop is decided here
-    /// and not by each caller: a harness start reached again in repro mode. The start is
-    /// a stop only the first time it is reached. After that, `repro` restores the initial
-    /// snapshot and prepares its testcase itself, and the restored snapshot executes the
-    /// harness start again. Stopping there would take a second resume before the testcase
-    /// runs, so the simulation keeps running instead.
+    /// Stop the simulation with a reason, except a harness start reached again in repro
+    /// mode: `repro` restores the snapshot and prepares its testcase itself, so stopping
+    /// where the restored snapshot executes the start again would cost a second resume.
     pub fn stop_simulation(&mut self, reason: StopReason) -> Result<()> {
         if self.repro_start_prepared && reason.is_harness_start() {
-            debug!(
-                self.as_conf_object(),
-                "Harness start reached again in repro mode, not stopping"
-            );
-
             self.execution_trace.0.clear();
 
             return Ok(());

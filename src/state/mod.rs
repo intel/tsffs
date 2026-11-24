@@ -53,16 +53,15 @@ impl StopReason {
     /// Whether this reason is the harness start being reached, by a start magic
     /// instruction or by one of the manual start methods
     pub(crate) fn is_harness_start(&self) -> bool {
-        match self {
-            StopReason::Magic { magic_number } => match magic_number {
-                MagicNumber::StartBufferPtrSizePtr
-                | MagicNumber::StartBufferPtrSizeVal
-                | MagicNumber::StartBufferPtrSizePtrVal => true,
-                MagicNumber::StopNormal | MagicNumber::StopAssert => false,
-            },
-            StopReason::ManualStart { .. } | StopReason::ManualStartWithoutBuffer { .. } => true,
-            StopReason::ManualStop | StopReason::Solution { .. } => false,
-        }
+        matches!(
+            self,
+            StopReason::Magic {
+                magic_number: MagicNumber::StartBufferPtrSizePtr
+                    | MagicNumber::StartBufferPtrSizeVal
+                    | MagicNumber::StartBufferPtrSizePtrVal
+            } | StopReason::ManualStart { .. }
+                | StopReason::ManualStartWithoutBuffer { .. }
+        )
     }
 }
 

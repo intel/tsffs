@@ -1,41 +1,20 @@
 # Source Coverage for UEFI Targets
 
 After a campaign on UEFI firmware, you usually want to know which source lines the
-fuzzer reached and which it never touched. TSFFS does not compute that itself. SIMICS
-already ships source-level code coverage (the `collect-coverage` command), so the report
-is produced by running the inputs the campaign saved once more, in a separate SIMICS
-session, while SIMICS collects coverage.
+fuzzer reached. TSFFS does not compute that itself. SIMICS already ships source-level
+code coverage (the `collect-coverage` command), so the report is produced by running the
+inputs the campaign saved once more, in a separate SIMICS session, while SIMICS collects
+coverage.
 
 An *input* on this page is one file saved by the fuzzer, in the corpus or in the
 solutions directory. The rest of this documentation calls it a *testcase*, the name it
 has once TSFFS runs it.
 
-This page gives the full recipe. It relies on three things:
-
-- The *corpus*: the directory of inputs the fuzzer kept because each one reached code
-  no earlier input had reached (`%simics%/corpus` unless you
-  [changed it](../config/common-options.md#set-corpus-and-solutions-directory)).
-  Running every input of the corpus again reaches the code the campaign reached, as
-  long as the campaign restored its snapshot at every iteration (the default, see
-  [Campaigns That Do Not Restore Every
-  Iteration](#campaigns-that-do-not-restore-every-iteration)).
-- [Repro mode](analyzing-results.md), which runs one saved input from the snapshot TSFFS
-  takes at the harness. Here it is called in a loop, once per input.
-- The SIMICS *UEFI firmware tracker*, which tells SIMICS which firmware module is loaded
-  at which address, so that executed instructions can be matched to the debug
-  information of the right module.
-
 ## Why Coverage Is a Separate Pass
 
-The coverage that guides the fuzzer is a fixed-size map, as in AFL. Each branch the
-target takes is hashed, together with the branch taken before it, into one slot of the
-map, and an occupied slot is what TSFFS counts as an
-[Edge](../config/common-options.md#afl-statistics-and-the-instance-directory). The map
-is cheap to maintain, but it is not a list of the jumps that were taken: several
-branches can share a slot, and nothing in it names a source file or a line. Source
-coverage needs the firmware's debug information and costs more at run time.
-
-Collecting source coverage while fuzzing has two costs:
+The coverage that guides the fuzzer is a fixed-size map of hashed branches, as in AFL.
+It is cheap to maintain, but nothing in it names a source file or a line. Collecting
+source coverage while fuzzing has two costs:
 
 - The campaign slows down. With `collect-coverage` active during fuzzing, the campaign
   we measured ran about 2.6 times slower.
@@ -46,24 +25,21 @@ Replaying the corpus afterwards avoids both. The campaign runs at full speed and
 writes its corpus, as it always does. The report is rebuilt from the corpus whenever you
 want it: after the campaign, while it is still running, or on another machine.
 
-Each run of the replay script needs report directories that do not exist yet. The two
-report commands refuse an existing output directory, and they only run at the end, so a
-second run fails after the whole replay with
-`Error: '<...>/coverage-lcov' is a directory`. Before each run, remove the two report
-directories of the previous one (`coverage-lcov` and `coverage-html` in the script
-below) or choose new ones.
-
 ## What You Need
 
-- **The inputs to replay.** The corpus directory of the campaign, and the solutions
-  directory if you also want the lines only reached by crashing or hanging inputs (see
+- **The inputs to replay.** The *corpus* of the campaign: the directory of inputs the
+  fuzzer kept because each one reached code no earlier input had reached
+  (`%simics%/corpus` unless you
+  [changed it](../config/common-options.md#set-corpus-and-solutions-directory)). Add the
+  solutions directory for the lines only reached by crashing or hanging inputs (see
   [Choosing the Inputs to Replay](#choosing-the-inputs-to-replay)).
-- **Firmware built with debug information**, and its build tree. For each module, the
-  tracker needs the module's `DEBUG` directory from the EDK2 `Build` tree. For a GCC
-  build that directory holds the `.efi`, `.dll` and `.debug` files of the module. The
-  source files are needed too, to render the report.
-- **The UEFI firmware tracker** (the `uefi-fw-tracker` SIMICS module). The script below
-  enables it. Its options are described in the [SIMICS documentation of the
+- **Firmware built with debug information**, and its build tree. For each module, SIMICS
+  needs the module's `DEBUG` directory from the EDK2 `Build` tree. For a GCC build that
+  directory holds the `.efi`, `.dll` and `.debug` files of the module. The source files
+  are needed too, to render the report.
+- **The UEFI firmware tracker** (the `uefi-fw-tracker` SIMICS module), which tells
+  SIMICS which firmware module is loaded at which address. The script below enables it.
+  Its options are described in the [SIMICS documentation of the
   tracker](https://intel.github.io/tsffs/simics/analyzer-user-guide/uefi-fw-trk.html).
 - **The replay helper**, `examples/source-coverage/replay.py` in the TSFFS repository
   ([view it on
@@ -157,70 +133,60 @@ an input that ran longer than `tsffs.timeout`.
 **The settings stay those of the campaign.** An input must end in the replay where it
 ended while fuzzing. Keep the harness settings, `tsffs.timeout`, `tsffs.exceptions` and
 any breakpoints of the fuzzing script, so that a crashing input stops at its exception
-and a hanging input stops at the timeout instead of running on. One setting has no
-effect on the replay: `tsffs.snapshot_restore_interval` (see
-[Campaigns That Do Not Restore Every
+and a hanging input stops at the timeout. One setting has no effect on the replay:
+`tsffs.snapshot_restore_interval` (see [Campaigns That Do Not Restore Every
 Iteration](#campaigns-that-do-not-restore-every-iteration)).
 
-**`tsffs_replay_arm(directory)`** puts TSFFS in repro mode with the first input of the
-directory, and sets `tsffs.repro_auto_continue = False`. Call it after `init-tsffs` and
-before the target runs. With that setting, the first `run` ends when the target reaches
-the harness: TSFFS takes its snapshot, writes the input into the target's buffer, logs
-that the testcase is prepared and that it waits for an external resume, and leaves the
-simulation stopped there.
+**`tsffs_replay_arm(directory)`** puts TSFFS in [repro mode](analyzing-results.md) with
+the first input of the directory, and sets `tsffs.repro_auto_continue = False`. Call it
+after `init-tsffs` and before the target runs. The first `run` then ends when the target
+reaches the harness: TSFFS takes its snapshot, writes the input into the target's buffer
+and leaves the simulation stopped there.
 
-**Coverage starts at that stop.** The boot is then not part of the report, and the
-snapshot TSFFS restores for every input already exists. The context query
-`'UEFI Firmware'` is the name the tracker gives to the firmware in the SIMICS debugger
-(`list-debug-contexts` shows it). `-running` makes SIMICS collect on that firmware
-context, which already exists at this point, instead of waiting for a new one to be
-created. `collect-coverage` returns the coverage object the following commands are
-called on (`$cc` here).
+**Coverage starts at that stop**, which keeps the boot out of the report. The context
+query `'UEFI Firmware'` is the name the tracker gives to the firmware in the SIMICS
+debugger (`list-debug-contexts` shows it). `-running` makes SIMICS collect on that
+context, which already exists at this point, instead of waiting for a new one.
 
 **`tsffs_replay(directory)`** runs every input, one after the other. For each one it
 calls `tsffs.iface.fuzz.repro(file)`, which restores the snapshot and writes the input,
-then resumes the simulation once. That one resume ends when the input ends: at the stop
+then resumes the simulation once. That resume ends when the input ends: at the stop
 harness, at an exception, or at the timeout. Restoring the snapshot rewinds the target,
 not the coverage SIMICS has collected, so the coverage of all the inputs adds up.
 
 **The inputs** are the regular files directly inside the directory, sorted by name.
 Hidden files are skipped (the fuzzer keeps `.lafl_lock` and `.metadata` files next to
 the corpus entries), and so are subdirectories. If the directory is missing or holds no
-input, both functions raise a `ValueError` naming the directory.
+input, both functions raise a `ValueError` naming the directory. A corpus written by a
+campaign holds every input twice, with identical bytes: once as `<hash>` and once as
+`id_<n>_<hash>`. The replay runs both, which doubles its duration and changes nothing in
+the coverage.
 
-A corpus written by a campaign holds every input twice, with identical bytes: once as
-`<hash>` and once as `id_<n>_<hash>`. The replay runs both files. The coverage is the
-same as with one of them, and the replay takes twice as long.
-
-**The report commands** stop the collection, add function and source line information
-to the collected data, and write it in two formats: LCOV in `coverage-lcov` and HTML in
-`coverage-html`, both in the SIMICS project. Neither directory may exist before the
-run, as explained in
-[Why Coverage Is a Separate Pass](#why-coverage-is-a-separate-pass).
+**The report commands** add function and source line information to the collected data
+and write it in two formats: LCOV in `coverage-lcov` and HTML in `coverage-html`, both
+in the SIMICS project. Both commands refuse an existing output directory, and they only
+run at the end, so a second run fails after the whole replay with
+`Error: '<...>/coverage-lcov' is a directory`. Before each run, remove the report
+directories of the previous one or choose new ones.
 
 > **Note:** TSFFS starts its fuzzer when the harness is first reached, even in a session
 > that only replays, and the fuzzer does not start without at least one input. If
 > `tsffs.corpus_directory` (by default `%simics%/corpus`) is missing or empty, SIMICS
 > exits at the harness with `No interesting cases found from inputs!`. Replaying the
-> corpus from its usual place satisfies this. If you replay another directory in a
-> project that has no corpus, point `tsffs.corpus_directory` at a directory with at
-> least one input, or set `tsffs.generate_random_corpus = True`. See [Set Corpus and
-> Solutions Directory](../config/common-options.md#set-corpus-and-solutions-directory)
-> and [Enable Random Corpus
+> corpus from its usual place satisfies this. Otherwise point `tsffs.corpus_directory`
+> at a directory with at least one input, or set `tsffs.generate_random_corpus = True`.
+> See [Set Corpus and Solutions
+> Directory](../config/common-options.md#set-corpus-and-solutions-directory) and [Enable
+> Random Corpus
 > Generation](../config/common-options.md#enable-random-corpus-generation).
 
 ## Mapping Build Paths
 
 Debug information records paths as they were on the machine that built the firmware:
 the path of each module's debug file, and the paths of the source files. SIMICS looks
-for those paths on the machine that runs the replay.
-
-No path map is needed when the build tree is still at the path it was built at, on the
-same machine. Add one when that is not the case, for example when:
-
-- the firmware was built in a container or on a build server, and the tree was copied
-  out afterwards,
-- the tree was moved, or the replay runs on another machine.
+for those paths on the machine that runs the replay. Add a path map when the build tree
+is no longer there: the firmware was built in a container or on a build server, the tree
+was moved, or the replay runs on another machine.
 
 A path map replaces the start of the recorded paths by the place where the tree is now:
 
@@ -231,7 +197,8 @@ $cc.add-path-map "/edk2/HelloWorld" (lookup-file "%simics%/debug-info")
 The first argument is the path at build time, the second one the path on this machine.
 SIMICS uses the map both to find the debug files of the modules and to find the source
 files, so the copy must keep the layout of the original tree below the mapped directory.
-In the example, the files needed from `/edk2/HelloWorld` in the container are:
+In the example, `debug-info` holds these files of `/edk2/HelloWorld` at the same
+relative paths:
 
 ```txt
 HelloWorld.c
@@ -240,9 +207,8 @@ Build/HelloWorld/DEBUG_GCC5/X64/HelloWorld/HelloWorld/DEBUG/HelloWorld.dll
 Build/HelloWorld/DEBUG_GCC5/X64/HelloWorld/HelloWorld/DEBUG/HelloWorld.debug
 ```
 
-and `debug-info` holds these four files at the same relative paths. For a whole
-firmware, map the root of the EDK2 workspace the same way. Several path maps can be
-added, one command each, when sources and build output were moved separately.
+For a whole firmware, map the root of the EDK2 workspace the same way. Several path maps
+can be added, one command each, when sources and build output were moved separately.
 
 Add the path maps before the report commands. If the report misses a source file you
 expect, the path map is the first thing to check.
@@ -256,17 +222,15 @@ files listed on the first page instead, write the report with
 `$cc.html-report $html -summary-per-file`.
 
 The page of a file shows its source: executed lines in green, lines that could have been
-executed but were not in red, and lines without code (comments, lines the compiler
-optimized away, the continuation lines of a statement) in grey. A line counts as
-executed as soon as one instruction compiled from it was executed. The report also links
-to a disassembly view with the coverage of each function.
+executed but were not in red, and lines without code in grey. A line counts as executed
+as soon as one instruction compiled from it was executed. The report also links to a
+disassembly view with the coverage of each function.
 
 **LCOV.** `coverage-lcov` is a directory that holds the same data in the LCOV tracefile
-format, a text format that other tools read: `genhtml` from the LCOV project, editor
-plugins, and the coverage services of CI systems. There is one tracefile per module that
-has debug information, named `<symbol file>_<load address>`: `HelloWorld.efi_dd99d000`
-for the application above, `BoardBdsHookDxe.debug_dee9e000` for a module of a full
-firmware. A module without debug information gets no tracefile.
+format, which `genhtml`, editor plugins and the coverage services of CI systems read.
+There is one tracefile per module that has debug information, named
+`<symbol file>_<load address>`: `HelloWorld.efi_dd99d000` for the application above,
+`BoardBdsHookDxe.debug_dee9e000` for a module of a full firmware.
 
 In a tracefile, a record starts with `SF:` and the path of a source file, and each
 `DA:<line>,<count>` entry below it is one executable line. A count of zero means the
@@ -295,12 +259,10 @@ directory after the corpus:
 $cc.stop
 ```
 
-Add the `solutions` line only when the campaign found solutions. If that directory is
-missing or holds no input, `tsffs_replay` raises a `ValueError` naming it and the script
-ends there, before the report commands run.
-
-Each input that times out runs for `tsffs.timeout` seconds of simulated time, so a
-solutions directory full of hangs takes a while.
+Add the `solutions` line only when the campaign found solutions: on a missing or empty
+directory the `ValueError` ends the script before the report commands run. Each input
+that times out runs for `tsffs.timeout` seconds of simulated time, so a solutions
+directory full of hangs takes a while.
 
 To get a report while the campaign is still running, copy the corpus directory and
 replay the copy in a separate SIMICS project, so that the replay session never works in
@@ -327,8 +289,7 @@ reached.
   in PDB files, which SIMICS only reads on Windows, where it needs `DBGHELP.DLL`.
 - **System Management Mode (SMM) code** is only covered when the tracker tracks SMM
   modules, which needs both its SMM tracking and its execution tracking (the
-  `smm_tracking` and `exec_tracking` parameters of the tracker). See the [SIMICS tracker
-  docs](https://intel.github.io/tsffs/simics/analyzer-user-guide/uefi-fw-trk.html).
+  `smm_tracking` and `exec_tracking` parameters of the tracker).
 - **SIMICS versions.** The recipe was run on the EDK2 test application of the TSFFS test
   suite with SIMICS 6.0.185, 7.70.0 and 7.113.0, and on a full debug firmware with
   SIMICS 7.113.0 only.

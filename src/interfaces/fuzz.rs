@@ -42,35 +42,26 @@ impl Tsffs {
         self.repro_testcase = Some(contents);
 
         if self.have_initial_snapshot() {
-            // The harness start was already reached, in a fuzzing iteration or in an earlier
-            // repro run, so we need to reset and run. An earlier repro run left the stop
-            // handlers disabled: enable them again for this testcase.
+            // The harness start was already reached, while fuzzing or in an earlier repro
+            // run. That run left the stop handlers disabled: enable them again.
             self.stopped_for_repro = false;
             // What the previous execution reported does not describe this testcase
             self.last_exception_processor_number = None;
             self.last_stop_reason = None;
-            // Restoring the snapshot also restores the attributes this object had when
-            // the snapshot was taken. Whether to resume is decided below, by the value
-            // the user has set by now, not by the one saved in the snapshot.
+            // Restoring the snapshot also restores this object's attributes: keep the
+            // `repro_auto_continue` the user has set by now.
             let repro_auto_continue = self.repro_auto_continue;
             self.restore_initial_snapshot()?;
             self.repro_auto_continue = repro_auto_continue;
 
+            // With `start_without_buffer` there is no buffer to write: the restored
+            // snapshot executes the harness start again, which hands over this testcase.
             if self.start_info.get().is_some() {
                 self.get_and_write_testcase()?;
-            } else {
-                // The harness started with `start_without_buffer`: there is no buffer to
-                // write. The restored snapshot executes the harness start again, where the
-                // harness calls `start_without_buffer` and is handed this testcase.
-                debug!(
-                    self.as_conf_object(),
-                    "No start buffer, the harness start hands over the repro testcase"
-                );
             }
 
             self.post_timeout_event()?;
-            // Everything the harness start prepares is done, so that the start the restored
-            // snapshot executes again does not stop the simulation a second time.
+            // The start the restored snapshot executes again must not stop a second time
             self.mark_repro_start_prepared()?;
             self.continue_after_repro_prepared()?;
         }
