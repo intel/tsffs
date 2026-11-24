@@ -6,15 +6,10 @@ use crate::{
     util::c_str_arg,
     ManualStartAddress, ManualStartInfo, ManualStartSize, Tsffs,
 };
-use anyhow::{anyhow, ensure, Result};
+use anyhow::{ensure, Result};
 use libafl::inputs::HasBytesVec;
 use simics::{debug, interface, lookup_file, AsConfObject, AttrValue, ConfObject, GenericAddress};
-use std::{
-    collections::VecDeque,
-    ffi::c_char,
-    fs::{read, read_dir},
-    io,
-};
+use std::{collections::VecDeque, ffi::c_char, fs::read_dir, io};
 
 extern crate ffi2 as ffi;
 
@@ -59,28 +54,17 @@ impl Tsffs {
 
         files.sort();
 
-        let inputs = files
-            .into_iter()
-            .map(|file| {
-                let contents = read(&file).map_err(|e| {
-                    anyhow!(
-                        "Failed to read repro testcase file {}: {}",
-                        file.display(),
-                        e
-                    )
-                })?;
-
-                Ok((file, contents))
-            })
-            .collect::<Result<VecDeque<_>>>()?;
-
         ensure!(
-            !inputs.is_empty(),
+            !files.is_empty(),
             "No testcase to reproduce in {}",
             testcase_file.display()
         );
 
-        self.replay = Some(inputs);
+        // The campaign's statistics end where the replay begins
+        self.afl_stats_tick(true);
+        self.afl_writer = None;
+
+        self.replay = Some(VecDeque::from(files));
 
         if self.have_initial_snapshot() {
             // The harness start was already reached, while fuzzing or in an earlier repro
@@ -88,14 +72,10 @@ impl Tsffs {
             // What the previous execution reported does not describe this testcase
             self.last_exception_processor_number = None;
             self.last_stop_reason = None;
-            // Restoring the snapshot also restores this object's attributes: keep the
-            // `repro_auto_continue` the user has set by now.
-            let repro_auto_continue = self.repro_auto_continue;
             self.start_next_execution(
                 true,
                 "No start buffer, the harness start hands over the testcase.",
             )?;
-            self.repro_auto_continue = repro_auto_continue;
             self.execution_trace.0.clear();
             self.resume_after_start(true)?;
         }

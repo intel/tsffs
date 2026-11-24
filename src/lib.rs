@@ -612,10 +612,12 @@ pub(crate) struct Tsffs {
     instrumented_processors: HashSet<i32>,
     /// Whether a cached-instruction callback failure has already been reported
     cached_feedback_error_reported: bool,
-    /// The testcases `repro` still has to run, with the file each one was read from. The
-    /// first one is the testcase being executed. `None` while fuzzing, and empty once the
-    /// last one has ended: the simulation then stays stopped and stops are not handled.
-    replay: Option<VecDeque<(PathBuf, Vec<u8>)>>,
+    /// The files of the testcases `repro` still has to run. The first one is the testcase
+    /// being executed. `None` while fuzzing, and empty once the last one has ended: the
+    /// simulation then stays stopped and stops are not handled.
+    replay: Option<VecDeque<PathBuf>>,
+    /// Whether the `start` bookmark of repro mode is set (Simics 6 only)
+    repro_bookmark_set: bool,
     /// The number of iterations which have been executed so far
     iterations: usize,
     /// Whether snapshots are used. Snapshots are used on Simics 7.0.0 and later.
@@ -1011,11 +1013,6 @@ impl Tsffs {
                         })?,
                 )
                 .map_err(|_| anyhow!("Micro checkpoint index already set"))?;
-
-            // The point `reverse-to start` goes back to after a reproduced execution
-            if self.replay.is_some() {
-                free_attribute(run_command("set-bookmark start")?)?;
-            }
         }
 
         Ok(())
@@ -1077,7 +1074,16 @@ impl Tsffs {
     /// Resume after a harness start. `first` is whether this start prepared the first
     /// testcase of a `repro` call or of the fuzzing loop: that one waits for an external
     /// resume when a replay was asked not to continue by itself.
-    pub fn resume_after_start(&self, first: bool) -> Result<()> {
+    pub fn resume_after_start(&mut self, first: bool) -> Result<()> {
+        // The point `reverse-to start` goes back to after a reproduced execution, set
+        // once the first testcase is prepared, in a session that fuzzed before or not.
+        // Simics 7 has no bookmarks: `repro` is called again instead.
+        if self.replay.is_some() && !self.repro_bookmark_set {
+            #[cfg(simics_version = "6")]
+            free_attribute(run_command("set-bookmark start")?)?;
+            self.repro_bookmark_set = true;
+        }
+
         if first && self.replay.is_some() && !self.repro_auto_continue {
             info!(
                 self.as_conf_object(),

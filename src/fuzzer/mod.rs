@@ -44,8 +44,14 @@ use libafl_targets::{AFLppCmpLogObserver, AFLppCmplogTracingStage};
 use simics::{api::AsConfObject, debug, trace, warn};
 use stats_stage::TsffsAflStatsStage;
 use std::{
-    cell::RefCell, fmt::Debug, fs::write, io::stderr, slice::from_raw_parts_mut,
-    sync::mpsc::channel, thread::spawn, time::Duration,
+    cell::RefCell,
+    fmt::Debug,
+    fs::{read, write},
+    io::stderr,
+    slice::from_raw_parts_mut,
+    sync::mpsc::channel,
+    thread::spawn,
+    time::Duration,
 };
 use tokenize::{tokenize_executable_file, tokenize_src_file};
 use tracing::{level_filters::LevelFilter, Level};
@@ -580,25 +586,37 @@ impl Tsffs {
     }
 
     pub fn get_testcase(&mut self) -> Result<Testcase> {
-        let testcase = if let Some(inputs) = self.replay.as_ref() {
+        if let Some(inputs) = self.replay.as_ref() {
             debug!(self.as_conf_object(), "Using repro testcase");
-            Testcase {
-                // Empty once the last testcase has ended and the user runs into the start
-                testcase: BytesInput::new(
-                    inputs
-                        .front()
-                        .map(|(_, contents)| contents.clone())
-                        .unwrap_or_default(),
-                ),
+
+            self.cmplog_enabled = false;
+
+            // Read when it runs, so that a large corpus is not held in memory. Empty once
+            // the last testcase has ended and the user runs into the start.
+            let contents = match inputs.front() {
+                Some(file) => read(file).map_err(|e| {
+                    anyhow!(
+                        "Failed to read repro testcase file {}: {}",
+                        file.display(),
+                        e
+                    )
+                })?,
+                None => Vec::new(),
+            };
+
+            // Not archived with `keep_all_corpus`: a replay does not write to the corpus
+            return Ok(Testcase {
+                testcase: BytesInput::new(contents),
                 cmplog: false,
-            }
-        } else {
-            self.fuzzer_rx
-                .get_mut()
-                .ok_or_else(|| anyhow!("Fuzzer receiver not set"))?
-                .recv()
-                .map_err(|e| anyhow!("Error receiving from fuzzer: {e}"))?
-        };
+            });
+        }
+
+        let testcase = self
+            .fuzzer_rx
+            .get_mut()
+            .ok_or_else(|| anyhow!("Fuzzer receiver not set"))?
+            .recv()
+            .map_err(|e| anyhow!("Error receiving from fuzzer: {e}"))?;
 
         if self.keep_all_corpus {
             let testcase_name = testcase.testcase.generate_name(0);

@@ -114,7 +114,11 @@ impl Tsffs {
         missing_start_info_message: &str,
     ) -> Result<()> {
         if restore_snapshot {
+            // Restoring the snapshot also restores this object's attributes: keep the
+            // `repro_auto_continue` the user has set by now.
+            let repro_auto_continue = self.repro_auto_continue;
             self.restore_initial_snapshot()?;
+            self.repro_auto_continue = repro_auto_continue;
         }
 
         // Reset AFL edge chaining state for the next execution.
@@ -140,7 +144,7 @@ impl Tsffs {
         // A replay has no fuzzer to report to and no statistics: it logs how the testcase
         // ended, then runs the next one from the snapshot or stays stopped after the last.
         if let Some(inputs) = self.replay.as_mut() {
-            let (input, _) = inputs
+            let input = inputs
                 .pop_front()
                 .ok_or_else(|| anyhow!("No replayed testcase to finish"))?;
             let last = inputs.is_empty();
@@ -158,6 +162,15 @@ impl Tsffs {
             );
 
             if last {
+                // The stop handlers save these for a testcase that is followed by another
+                if self.save_all_execution_traces {
+                    self.save_execution_trace()?;
+                }
+
+                if self.symbolic_coverage {
+                    self.save_symbolic_coverage()?;
+                }
+
                 info!(
                     self.as_conf_object(),
                     "Stopped for repro. Restore origin state with '{}'",
@@ -542,14 +555,15 @@ impl Tsffs {
                 self.iterations as f32 / duration.as_secs_f32()
             );
 
-            if self.shutdown_on_stop_without_reason {
+            // A replay is not fuzzing: its testcase stays pending with its timeout armed
+            if self.shutdown_on_stop_without_reason && self.replay.is_none() {
                 // Fuzzing ends here: end the iteration in flight so that the fuzzer thread
                 // stops waiting for it
                 self.cancel_timeout_event()?;
-                // A session that only replays has no fuzzer thread
-                if let Some(fuzzer_tx) = self.fuzzer_tx.get() {
-                    fuzzer_tx.send(ExitKind::Ok)?;
-                }
+                self.fuzzer_tx
+                    .get()
+                    .ok_or_else(|| anyhow!("No fuzzer tx channel"))?
+                    .send(ExitKind::Ok)?;
                 self.send_shutdown()?;
             }
             // Otherwise the iteration in flight stays pending and its timeout stays armed: when
@@ -564,7 +578,10 @@ impl Tsffs {
     /// Called on core simulation stopped HAP
     pub fn on_simulation_stopped(&mut self) -> Result<()> {
         if self.replay.as_ref().is_some_and(|inputs| inputs.is_empty()) {
-            // The replay has ended: the simulation is the user's, we do nothing on this HAP!
+            // The replay has ended: the simulation is the user's, we do nothing on this
+            // HAP, and the reason of this stop must not be taken for a later one
+            self.stop_reason = None;
+
             return Ok(());
         }
 

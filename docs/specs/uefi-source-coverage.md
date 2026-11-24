@@ -35,11 +35,12 @@ A crash during the campaign loses no coverage, because the report is rebuilt fro
 
 ### Mechanics
 
-1. One piece of state replaces the three repro flags: the queue of testcases still to run. It is absent while fuzzing, and empty once the last testcase has ended, from when on TSFFS ignores stops.
-2. `get_testcase` returns the front of the queue instead of asking the fuzzer.
+1. One piece of state replaces the three repro flags: the queue of the files still to run. It is absent while fuzzing, and empty once the last testcase has ended, from when on TSFFS ignores stops.
+2. `get_testcase` reads the file at the front of the queue instead of asking the fuzzer. A file is read when it runs, so the memory used does not grow with the corpus, and it is not archived by `keep_all_corpus`.
 3. `finish_iteration` handles the end of a replayed testcase: log it, then either stay stopped (queue empty) or restore the snapshot, write the next testcase and arm the timeout. Restoring, writing and arming are one function, shared with the fuzzing path and with `repro` called on an existing snapshot.
 4. A harness start reached again (with `start_without_buffer`, the restored snapshot executes it for every testcase) resumes, as it does while fuzzing. Only the start that prepares the first testcase can wait for an external resume.
-5. On Simics 6 the `start` bookmark is set when the snapshot is taken in a session that reproduces.
+5. On Simics 6 the `start` bookmark is set once, when the first testcase of the first `repro` call is prepared, in a session that fuzzed before or not.
+6. A replay is not fuzzing: entering it writes the campaign's last statistics and stops updating them, a stop without reason (Ctrl+C, a debugger breakpoint) leaves the testcase and its timeout pending, and the execution trace and Windows symbolic coverage options apply to every replayed testcase.
 
 The replay always restores the snapshot between two testcases, whatever `snapshot_restore_interval` is: each saved input is reproducible by itself, and the order of the corpus is not the order of the campaign.
 
@@ -57,7 +58,7 @@ To add the solutions, call `repro` on that directory and run once more before st
 
 Two tests on the latest Simics, both in sessions that never fuzzed. Simics 6.0.185 and 7.113.0 run the same scripts by hand.
 
-1. The recipe on the EDK2 test application, with no corpus directory: the first run stops at the harness, the second executes six inputs (normal paths, a page fault, a timeout, an invalid opcode, an oversized input) in order and skips the hidden file and the subdirectory, the LCOV output credits the line of each path to `HelloWorld.c`, and the HTML report is written. Two more `repro` calls on single files then check that a prepared testcase does not report the stop of the previous one, and that `repro_auto_continue` set after the snapshot is the one that counts.
+1. The recipe on the EDK2 test application, with no corpus directory and `keep_all_corpus` set: the first run stops at the harness, the second executes six inputs (normal paths, a page fault, a timeout, an invalid opcode, an oversized input) in order and skips the hidden file and the subdirectory, the LCOV output credits the line of each path to `HelloWorld.c`, and the HTML report is written. Two more `repro` calls, on a file then on a directory, check that a prepared testcase does not report the stop of the previous one, that `repro_auto_continue` set after the snapshot is the one that counts, also after the restores between two testcases, and that no corpus directory was created.
 2. The directory replay with `start_without_buffer`.
 
 The EDK2 test application's build script exports the application's debug files, which the first test needs.

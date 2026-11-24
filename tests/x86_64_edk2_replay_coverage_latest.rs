@@ -117,6 +117,8 @@ fn test_x86_64_edk2_replay_coverage_latest() -> Result<()> {
                 b"{}".to_vec(),
             ),
             ("replay-inputs/subdir/ignored".to_string(), b"C".to_vec()),
+            ("replay-again/0_pagefault".to_string(), b"C".to_vec()),
+            ("replay-again/1_default".to_string(), b"Zdefault".to_vec()),
             (
                 "print_report.py".to_string(),
                 PRINT_REPORT.as_bytes().to_vec(),
@@ -133,6 +135,8 @@ fn test_x86_64_edk2_replay_coverage_latest() -> Result<()> {
             @tsffs.stop_on_harness = True
             @tsffs.timeout = 3.0
             @tsffs.exceptions = [14, 6]
+            # A replay must neither need nor write the corpus directory
+            @tsffs.keep_all_corpus = True
 
             @tsffs.repro_auto_continue = False
             @tsffs.iface.fuzz.repro("%simics%/replay-inputs")
@@ -191,12 +195,14 @@ fn test_x86_64_edk2_replay_coverage_latest() -> Result<()> {
             run
             @print(f"TSFFS_EVENT ended {tsffs.last_stop_reason} {tsffs.last_exception_processor_number}")
 
-            # Restoring the snapshot must not bring repro_auto_continue = False back: the
-            # setting of the moment decides, so this repro resumes by itself and has run its
-            # testcase before the next line.
+            # Restoring the snapshot must not bring repro_auto_continue = False back, here
+            # and between the two testcases: the setting of the moment decides, so this
+            # repro resumes by itself and has run its testcases before the next line.
             @tsffs.repro_auto_continue = True
-            @tsffs.iface.fuzz.repro("%simics%/replay-inputs/1_default")
+            @tsffs.iface.fuzz.repro("%simics%/replay-again")
             @print(f"TSFFS_EVENT auto resumed {tsffs.repro_auto_continue} {tsffs.last_stop_reason}")
+            @import os
+            @print(f"TSFFS_EVENT corpus directory {os.path.exists(SIM_lookup_file('%simics%') + '/corpus')}")
         "#})?;
 
     let output_str = String::from_utf8_lossy(&output.stdout);
@@ -234,9 +240,13 @@ fn test_x86_64_edk2_replay_coverage_latest() -> Result<()> {
         vec!["prepared None None"],
         vec!["replay-inputs/2_pagefault: ", PAGE_FAULT],
         vec!["ended ", PAGE_FAULT, " 0"],
-        // `repro_auto_continue` set after the snapshot was taken is the one that counts
-        vec!["replay-inputs/1_default: ", "StopNormal"],
+        // `repro_auto_continue` set after the snapshot was taken is the one that counts,
+        // and the restores between the testcases of a directory do not bring the old
+        // value back
+        vec!["replay-again/0_pagefault: ", PAGE_FAULT],
+        vec!["replay-again/1_default: ", "StopNormal"],
         vec!["auto resumed True", "StopNormal"],
+        vec!["corpus directory False"],
     ];
 
     assert_eq!(
