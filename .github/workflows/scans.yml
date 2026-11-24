@@ -237,7 +237,8 @@ jobs:
 
       - name: Install Cargo Plugins
         run: |
-          cargo install --locked cargo-audit cargo-outdated
+          # rust-toolchain.toml pins an older rustc than the latest plugins require
+          cargo +nightly install --locked cargo-audit cargo-outdated
 
       - name: (CT247/CT200) (N/C) - Scan 3rd-Party Components for Vulnerabilities
         run: |
