@@ -67,9 +67,12 @@ version you are running:
   ```
 
   TSFFS restores the snapshot, writes the testcase and leaves the simulation stopped at
-  the harness. Restoring the snapshot by hand (`restore-snapshot tsffs-origin-snapshot`,
-  the command of the `Stopped for repro.` log line) gives the state without the
-  testcase: resuming from there runs the target on its own buffer contents.
+  the harness. Restoring the snapshot by hand (`restore-snapshot tsffs-origin-snapshot`)
+  gives the state without the testcase: resuming from there runs the target on its own
+  buffer contents.
+
+TSFFS prints the command to use in the `Stopped for repro.` log line, so you can copy it
+from there.
 
 From here, you can examine memory and registers (with `x`), single step execution (`si`)
 and more! Check out the SIMICS documentation and explore all the deep debugging
@@ -128,7 +131,7 @@ new-gdb-remote
 SIMICS output (Simics 7; Simics 6 shows `reverse-to start` instead):
 
 ```txt
-[tsffs info] Stopped for repro. Restore origin state with 'restore-snapshot tsffs-origin-snapshot'
+[tsffs info] Stopped for repro. Run the testcase again from the harness with '@tsffs.iface.fuzz.repro("/path/to/project/corpus/4385dc33f608888d")'
 No CPU is specified; using current processor.
 [gdb0 info] Attached to CPU: qsp.mb.cpu0.core[0][0]
 Warning: This can expose the target system on the host local network.

@@ -75,7 +75,7 @@ use std::{
     ffi::c_void,
     fs::{create_dir_all, remove_dir_all, File},
     hash::{DefaultHasher, Hash, Hasher},
-    path::PathBuf,
+    path::{Path, PathBuf},
     ptr::null_mut,
     str::FromStr,
     sync::mpsc::{Receiver, Sender},
@@ -749,13 +749,20 @@ impl Tsffs {
 }
 
 impl Tsffs {
-    /// CLI command shown to the user to restore the origin state when stopped for repro.
-    /// Simics 6 uses reverse-execution bookmarks; Simics 7 uses snapshots.
-    pub fn repro_restore_command() -> String {
+    /// How the user goes back to the harness with `testcase` written, shown when stopped
+    /// for repro. Simics 6 has a bookmark there. The Simics 7 snapshot is taken before the
+    /// testcase is written, so `repro` itself is the way back.
+    #[cfg_attr(simics_version = "6", allow(unused_variables))]
+    pub fn repro_restore_hint(testcase: &Path) -> String {
         #[cfg(simics_version = "6")]
-        return "reverse-to start".to_string();
+        return "Restore origin state with 'reverse-to start'".to_string();
         #[cfg(simics_version = "7")]
-        return format!("restore-snapshot {}", Self::SNAPSHOT_NAME);
+        // Simics logs the message as a printf format: a literal `%` must be doubled
+        return format!(
+            "Run the testcase again from the harness with '@tsffs.iface.fuzz.repro({:?})'",
+            testcase.display().to_string()
+        )
+        .replace('%', "%%");
     }
 }
 

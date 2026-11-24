@@ -116,7 +116,7 @@ TSFFS logs one line per input when it ends, then a last line once the replay is 
 
 ```txt
 [tsffs info] Replayed <file>: <stop reason>
-[tsffs info] Stopped for repro. Restore origin state with '<command>'
+[tsffs info] Stopped for repro. <how to run the last input again from the harness>
 ```
 
 The stop reason is the value of `tsffs.last_stop_reason` when the input ended. It
