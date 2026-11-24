@@ -173,8 +173,8 @@ impl Tsffs {
 
                 info!(
                     self.as_conf_object(),
-                    "Stopped for repro. Restore origin state with '{}'",
-                    Tsffs::repro_restore_command()
+                    "Stopped for repro. {}",
+                    Tsffs::repro_restore_hint(&input)
                 );
 
                 return Ok(IterationControl::StopRequested);
