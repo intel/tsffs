@@ -6,7 +6,7 @@ use crate::{
     util::c_str_arg,
     ManualStartAddress, ManualStartInfo, ManualStartSize, Tsffs,
 };
-use anyhow::{ensure, Result};
+use anyhow::{anyhow, ensure, Result};
 use libafl::inputs::HasBytesVec;
 use simics::{debug, interface, lookup_file, AsConfObject, AttrValue, ConfObject, GenericAddress};
 use std::{collections::VecDeque, ffi::c_char, fs::read_dir, io};
@@ -36,9 +36,19 @@ impl Tsffs {
         debug!(self.as_conf_object(), "repro({})", testcase_file.display());
 
         let mut files = if testcase_file.is_dir() {
-            let mut files = read_dir(&testcase_file)?
-                .map(|entry| entry.map(|entry| entry.path()))
-                .collect::<io::Result<Vec<_>>>()?;
+            let mut files = read_dir(&testcase_file)
+                .and_then(|entries| {
+                    entries
+                        .map(|entry| entry.map(|entry| entry.path()))
+                        .collect::<io::Result<Vec<_>>>()
+                })
+                .map_err(|e| {
+                    anyhow!(
+                        "Failed to list the testcases of {}: {}",
+                        testcase_file.display(),
+                        e
+                    )
+                })?;
 
             files.retain(|file| {
                 file.is_file()
