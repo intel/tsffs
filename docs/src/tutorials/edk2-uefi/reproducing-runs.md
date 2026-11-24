@@ -57,14 +57,19 @@ version you are running:
   ```
 
 - On **SIMICS 7**, the `set-bookmark` / `reverse-to` commands have been removed. TSFFS
-  uses a snapshot named `tsffs-origin-snapshot` instead. Restore it with:
+  uses a snapshot named `tsffs-origin-snapshot` instead, taken at the harness *before*
+  the testcase is written. To go back to the start with the testcase written, call
+  `repro` again with the same file:
 
   ```txt
-  simics> restore-snapshot tsffs-origin-snapshot
+  simics> @tsffs.repro_auto_continue = False
+  simics> @tsffs.iface.fuzz.repro("%simics%/corpus/4385dc33f608888d")
   ```
 
-TSFFS prints the exact command to use in the `Stopped for repro.` log line, so you can
-just copy it from there.
+  TSFFS restores the snapshot, writes the testcase and leaves the simulation stopped at
+  the harness. Restoring the snapshot by hand (`restore-snapshot tsffs-origin-snapshot`,
+  the command of the `Stopped for repro.` log line) gives the state without the
+  testcase: resuming from there runs the target on its own buffer contents.
 
 From here, you can examine memory and registers (with `x`), single step execution (`si`)
 and more! Check out the SIMICS documentation and explore all the deep debugging
